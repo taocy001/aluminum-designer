@@ -27,7 +27,6 @@ const Profile: React.FC<ProfileProps> = ({
   const geometry = useMemo(() => {
     try {
       const shape = getProfileShape(spec)
-      // Standardize on 1mm depth, then scale it. This is the CAD standard.
       const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false })
       geo.computeVertexNormals()
       return geo
@@ -50,10 +49,10 @@ const Profile: React.FC<ProfileProps> = ({
         onClick?.()
       }}
     >
-      <meshStandardMaterial 
-        color={isSelected ? '#3b82f6' : '#cbd5e1'} 
-        metalness={0.8}
-        roughness={0.2}
+      <meshStandardMaterial
+        color={isSelected ? '#3b82f6' : '#b0bec5'}
+        metalness={0.3}
+        roughness={0.6}
       />
     </mesh>
   )
