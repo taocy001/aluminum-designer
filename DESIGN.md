@@ -1,0 +1,854 @@
+# Aluminum Designer — 设计文档
+
+> 版本：v1.0
+> 日期：2026-03-18
+
+---
+
+## 目录
+
+1. [项目概述](#1-项目概述)
+2. [技术栈](#2-技术栈)
+3. [架构设计](#3-架构设计)
+4. [核心模块详解](#4-核心模块详解)
+5. [交互流程](#5-交互流程)
+6. [编译与部署](#6-编译与部署)
+7. [Bug 记录与修复](#7-bug-记录与修复)
+8. [业界对比分析](#8-业界对比分析)
+9. [下一步优化方向](#9-下一步优化方向)
+
+---
+
+## 1. 项目概述
+
+Aluminum Designer 是一款运行在浏览器中的铝型材框架设计工具，允许用户在三维视口中快速绘制铝型材（20系列、30系列、40系列）并放置连接件，最终导出物料清单（BOM）。
+
+**核心功能：**
+- 三维视口：轨道相机（旋转/缩放/平移）
+- 绘制模式：点击起点→终点，自动对齐 X/Y/Z 轴
+- 吸附系统：端点吸附 + 轴向约束 + 网格对齐
+- 碰撞检测：防止型材重叠（AABB + 一维区间两级检查）
+- 型材拖拽：导航模式下拖移型材到新位置
+- 14 种连接件：L 角码、T 角码、合页、轴承座等
+- 持久化：设计数据保存至 localStorage，刷新不丢失
+- 双语：中文 / English 界面切换
+- BOM 导出：CSV 格式
+
+---
+
+## 2. 技术栈
+
+| 层次 | 技术 | 版本 | 说明 |
+|------|------|------|------|
+| UI 框架 | React | 19 | 函数组件 + Hooks |
+| 3D 渲染 | Three.js | 0.183 | WebGL 渲染引擎 |
+| R3F | @react-three/fiber | 9.5 | React 绑定 Three.js |
+| R3F 工具 | @react-three/drei | 10.7 | OrbitControls、Grid、Line 等 |
+| 状态管理 | Zustand | 5.0 | 全局状态 + persist 中间件 |
+| 样式 | TailwindCSS | 4.0 | 原子化 CSS |
+| 图标 | lucide-react | 0.577 | SVG 图标库 |
+| 构建 | Vite | 6.0 | 开发服务器 + 生产构建 |
+| 类型 | TypeScript | 5.7 | 全量类型检查 |
+| 容器 | Docker + nginx | alpine | 生产部署 |
+
+---
+
+## 3. 架构设计
+
+### 3.1 目录结构
+
+```
+src/
+├── main.tsx                  # 应用入口
+├── App.tsx                   # 根组件（布局、快捷键、状态展示）
+├── components/
+│   ├── Viewport.tsx          # Three.js Canvas 容器 + 相机控制
+│   ├── DrawingHandler.tsx    # 绘制交互（大球体事件捕获 + 射线平面求交）
+│   ├── DragHandler.tsx       # 拖拽交互（canvas DOM 原生事件）
+│   ├── Profile.tsx           # 单根型材渲染 + 点击触发拖拽
+│   ├── Connector.tsx         # 连接件渲染（14 种 3D 几何）
+│   └── Sidebar.tsx           # 侧边栏（规格选择、属性面板、BOM）
+├── hooks/
+│   └── useDrawTool.ts        # 绘制逻辑（吸附、轴对齐、碰撞校验、放置）
+├── store/
+│   ├── useStore.ts           # 数据 store（型材、连接件、选中状态）
+│   └── useToolStore.ts       # 工具 store（绘制状态、拖拽状态、视图模式）
+└── utils/
+    ├── profileShapes.ts      # 型材截面 2D 形状生成（T 槽细节）
+    ├── snapUtils.ts          # 吸附、轴对齐、AABB 碰撞检测
+    └── translations.ts       # 中英文翻译字典
+```
+
+### 3.2 状态层次
+
+```
+┌─────────────────────────────────────────┐
+│  useStore（持久化至 localStorage）        │
+│  profiles[]  connectors[]  selectedId   │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│  useToolStore（运行时，不持久化）          │
+│  viewMode  isDrawing  startPoint        │
+│  currentPoint  snapPoint  activeSpec    │
+│  isDragging  dragProfileId  ...         │
+└─────────────────────────────────────────┘
+```
+
+### 3.3 坐标约定
+
+- **世界坐标**：Three.js 默认右手系，Y 轴朝上
+- **型材本地坐标**：
+  - 局部 Z 轴 = 拉伸方向（ExtrudeGeometry 沿 +Z 拉伸）
+  - 局部 X/Y = 截面平面
+- **四元数**：`setFromUnitVectors(Z, direction)` 将局部 Z 旋转到世界中的目标方向
+- **位置存储**：型材的 `position` 是起点（start endpoint），不是中心
+
+---
+
+## 4. 核心模块详解
+
+### 4.1 型材截面生成 — `profileShapes.ts`
+
+根据规格字符串（如 `'2040'`）生成带 T 槽细节的 2D `THREE.Shape`，
+再由 `ExtrudeGeometry` 沿 Z 轴拉伸深度=1（后通过 `scale.z = length` 缩放到实际长度）。
+
+**规格解析：**
+```ts
+const w = Number(spec.substring(0, 2))  // 前两位 → 宽度 mm
+const h = Number(spec.substring(2)) || w  // 后两位 → 高度，默认等于宽度
+```
+
+支持规格：`2020`（20×20）、`2040`（20×40）、`3030`、`3040`、`4040`。
+
+**T 槽参数：**
+- 槽口半宽 `sw`：20系 = 3mm，30/40系 = 4mm
+- 槽深 `sd`：20系 = 6mm，30/40系 = 9mm
+- 每面槽数 `nx/ny = floor(dim/20)`
+
+**路径方向：** 逆时针（CCW），Three.js ExtrudeGeometry 要求外轮廓为 CCW。
+
+---
+
+### 4.2 吸附与碰撞 — `snapUtils.ts`
+
+#### `getProfileEndpoints(profile)`
+从 position（起点）+ quaternion（旋转）计算型材的起点和终点 Vector3。
+
+```
+end = start + rotate(Z, quat) * length
+```
+
+#### `findSnapPoint(point, profiles, threshold, exclude?)`
+遍历所有型材的两个端点，返回距离 `point` 最近且在 `threshold` 内的端点。
+`exclude` 参数用于排除起点自身（防止零长度型材）。
+
+#### `snapToAxis(start, end)`
+将 end 投影到距 start 最近的轴方向（X/Y/Z 三选一），确保型材横平竖直。
+
+```
+d = end - start
+取 |dx|、|dy|、|dz| 中最大的轴，沿该轴方向截取端点
+```
+
+#### `wouldOverlap(candidate, existing[])` — 两级碰撞检测
+
+**Case 1 — 同轴同直线：1D 区间重叠**
+- 判断两根型材是否共轴（同方向 + 垂直偏移 ≤ 2mm）
+- 若共轴，只比较沿轴的 1D 区间是否重叠（允许端对端接触，TOUCH_EPS=2mm）
+
+**Case 2 — 其他情况：AABB 三维包围盒相交**
+- 计算每根型材的世界空间 AABB（考虑截面实际 w×h 尺寸）
+- 若 AABB 不相交 → 无碰撞
+- 若相交 → 检查**角接头例外**：两根非共轴型材共享一个端点（距离<2mm）视为合法角接头，允许小范围 AABB 重叠
+
+```
+AABB计算：
+  min.x = pos.x - |lx.x|*hw - |ly.x|*hh + min(0, dir.x*len)
+  max.x = pos.x + |lx.x|*hw + |ly.x|*hh + max(0, dir.x*len)
+  （y, z 同理）
+```
+
+---
+
+### 4.3 绘制交互 — `DrawingHandler.tsx`
+
+#### 事件捕获机制
+在绘制模式下渲染一个**半径 8000mm 的透明反面球体**（`THREE.BackSide`）。
+射线从相机出发，打到球体内表面，总能得到一个交点，与相机角度无关。
+
+```tsx
+<mesh onPointerDown={onPointerDown} onPointerMove={onPointerMove}>
+  <sphereGeometry args={[8000, 8, 6]} />
+  <meshBasicMaterial transparent opacity={0} side={THREE.BackSide} />
+</mesh>
+```
+
+#### 射线-平面求交
+两种绘制平面动态切换：
+
+| 模式 | 平面 | 触发条件 |
+|------|------|----------|
+| 水平 | Y=startPoint.y 的 XZ 平面 | 鼠标左右移动（`dx > dy*2`）|
+| 垂直 | 过 startPoint、法向量指向相机 XZ 分量的竖直平面 | 鼠标斜向移动（`dy > dx*0.5`）|
+
+**垂直平面法向量计算：**
+```ts
+const toCamera = new Vector3(cam.x - start.x, 0, cam.z - start.z).normalize()
+plane.setFromNormalAndCoplanarPoint(toCamera, startPoint)
+```
+
+#### 屏幕空间方向检测
+记录第一次点击时的屏幕坐标，后续移动时实时计算 dx/dy 比例：
+```ts
+isVerticalRef.current = dy > dx * 0.5
+```
+
+---
+
+### 4.4 拖拽交互 — `DragHandler.tsx`
+
+**设计思路：** R3F mesh 的 `onPointerMove` 不支持指针捕获，鼠标离开 mesh 后事件停止。
+因此改用 canvas DOM 原生 `pointermove`/`pointerup` 事件，该事件不受 3D 对象边界限制。
+
+```ts
+useEffect(() => {
+  const canvas = gl.domElement
+  canvas.addEventListener('pointermove', onPointerMove)
+  canvas.addEventListener('pointerup', onPointerUp)
+  return () => { /* cleanup */ }
+}, [gl, camera, updateProfile])
+```
+
+**拖拽流程：**
+1. 用户在导航模式下按下型材 → `Profile.onPointerDown` → `startDrag(id, hitOnGround, originPos)`
+2. 每次 `pointermove` → 从屏幕坐标重建 Raycaster → 射线与 Y=0 平面求交 → 计算偏移量
+3. 应用网格吸附（5mm）+ 端点吸附（15mm）
+4. `pointerup` → `stopDrag()`
+
+**OrbitControls 禁用：** 拖拽期间 `enabled={!isDragging}` 防止相机同步转动。
+
+---
+
+### 4.5 状态管理
+
+#### `useStore`（Zustand + persist）
+```ts
+interface ProfileData {
+  id: string
+  spec: ProfileSpec         // '2020' | '2040' | ...
+  length: number            // mm
+  position: [x, y, z]      // 起点世界坐标
+  quaternion: [x, y, z, w] // 旋转（起点→终点方向）
+  miterCuts: MiterCut[]    // 预留：斜切信息
+  holes: Hole[]             // 预留：打孔信息
+}
+```
+
+持久化配置：仅 `profiles` 和 `connectors` 保存到 localStorage（key: `aluminum-designer-store`），
+`selectedId` 等运行时状态不持久化。
+
+#### `useToolStore`（Zustand，不持久化）
+关键状态：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `viewMode` | `'draw' \| 'navigate'` | 当前交互模式 |
+| `isDrawing` | `boolean` | 是否正在绘制中（已确认起点）|
+| `startPoint` | `Vector3 \| null` | 绘制起点 |
+| `currentPoint` | `Vector3 \| null` | 当前鼠标位置（含吸附修正）|
+| `snapPoint` | `Vector3 \| null` | 当前吸附点（用于黄色指示球）|
+| `isDragging` | `boolean` | 是否正在拖拽 |
+| `dragProfileId` | `string \| null` | 被拖拽型材 ID |
+| `dragStartHit` | `Vector3 \| null` | 拖拽开始时的地面交点 |
+| `dragOriginPos` | `Vector3 \| null` | 被拖型材的原始位置 |
+
+---
+
+### 4.6 连接件 — `Connector.tsx`
+
+14 种连接件均由基础几何体（BoxGeometry / CylinderGeometry）组合而成：
+
+| 类型 | 中文名 | 几何描述 |
+|------|--------|----------|
+| bracket | L型角码 | 两段 20mm 臂，90° |
+| inside-corner | 内角码 | 小尺寸内嵌角码 |
+| gusset | 加强筋 | 三角形拉伸体 |
+| flat-plate | 直连板 | 长条板 + 两个螺孔柱 |
+| t-bracket | T型角码 | 横臂 + 垂直臂 |
+| cross-bracket | 十字连接板 | 两臂正交十字 |
+| corner-3way | 三维角码 | XYZ 三方向 + 中心块 |
+| joining-plate | 对接板 | 内置型槽连接条 |
+| end-cap | 端盖 | 方板 + 插芯 |
+| t-nut | 滑块螺母 | T 形滑块 + 螺柱 |
+| hinge | 合页 | 双叶 + 铰轴 |
+| pivot | 轴承座 | 底板 + 轴承圈 |
+| caster-mount | 脚轮座 | 顶板 + 轮毂 + 轮轴 |
+| foot | 调节脚 | 底盘 + 螺柱 + 顶板 |
+
+---
+
+## 5. 交互流程
+
+### 5.1 放置型材（完整流程）
+
+```
+用户点击侧边栏型材规格按钮（如 2020）
+    ↓
+useToolStore.setActiveSpec('2020')
+viewMode → 'draw', placementMode → 'profile'
+    ↓
+DrawingHandler 中的 BackSide 球体激活（viewMode=draw）
+    ↓
+用户在视口点击起点
+    ↓
+DrawingHandler.onPointerDown（第一次点击）
+  → getWorldPoint(ray, null, false, camera)  // 水平平面
+  → useDrawTool.handlePointerDown(worldPoint)
+    → findSnapPoint() 寻找附近端点
+    → 或 5mm 网格对齐
+    → setPoints(point, point), setDrawing(true)
+    ↓
+用户移动鼠标
+    ↓
+DrawingHandler.onPointerMove
+  → 检测 dx/dy 判断水平/垂直模式
+  → getWorldPoint(ray, startPoint, isVertical, camera)
+  → useDrawTool.handlePointerMove(worldPoint)
+    → findSnapPoint() → setSnapPoint()
+    → snapToAxis(start, point) → setPoints(start, axisPoint)
+    ↓
+视口实时显示：
+  - 彩色轴线（X红/Y绿/Z蓝）
+  - 半透明型材预览（同色）
+  - 黄色吸附指示球
+  - Header 显示轴名 + 长度
+    ↓
+用户点击终点
+    ↓
+DrawingHandler.onPointerDown（第二次点击）
+  → getWorldPoint(ray, startPoint, isVerticalRef.current, camera)
+  → useDrawTool.handlePointerDown(worldPoint)
+    → snapToAxis() 确保轴对齐
+    → dist > 5mm ? 继续 : 忽略
+    → 构建 candidate ProfileData（position=起点, quaternion=方向）
+    → wouldOverlap(candidate, profiles) ? 丢弃 : addProfile()
+    → setDrawing(false), 清除 points/snapPoint
+```
+
+### 5.2 拖拽型材
+
+```
+（导航模式）用户按下型材
+    ↓
+Profile.onPointerDown
+  → ray.intersectPlane(GROUND_PLANE) → hitOnGround
+  → useToolStore.startDrag(id, hitOnGround, position)
+  → isDragging=true, OrbitControls.enabled=false
+    ↓
+用户移动鼠标（canvas DOM pointermove）
+    ↓
+DragHandler.onPointerMove
+  → 重建 Raycaster（屏幕坐标 → NDC → setFromCamera）
+  → ray.intersectPlane(GROUND_PLANE) → currentHit
+  → delta = currentHit - dragStartHit
+  → newPos = dragOriginPos + delta
+  → 5mm 网格对齐
+  → findSnapPoint() → 15mm 端点吸附
+  → updateProfile(id, { position: [x, originY, z] })
+    ↓
+用户松开鼠标（canvas DOM pointerup）
+    ↓
+DragHandler.onPointerUp → stopDrag()
+isDragging=false, OrbitControls.enabled=true
+```
+
+### 5.3 模式切换逻辑
+
+```
+默认：viewMode = 'navigate'
+  ↓
+点击型材规格/连接件 → viewMode = 'draw'
+再次点击同一规格/连接件 → viewMode = 'navigate'
+Esc 键：
+  - 绘制中 → 取消当前绘制（setDrawing false）
+  - 非绘制中 → 退出 draw 模式
+Delete/Backspace：删除选中对象（仅导航模式）
+```
+
+### 5.4 相机操作
+
+| 操作 | 效果 |
+|------|------|
+| 左键拖拽（导航模式）| 旋转视角 |
+| 右键拖拽 / 中键拖拽 | 平移视角 |
+| 滚轮 | 缩放 |
+| 点击 Home 按钮 | 相机归位 position(300,300,300), target(0,0,0) |
+| 绘制/拖拽期间 | OrbitControls 禁用 |
+
+---
+
+## 6. 编译与部署
+
+### 6.1 本地开发
+
+**前提：** Node.js ≥ 20
+
+```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器（热更新，端口 5173）
+npm run dev
+
+# 访问
+open http://localhost:5173
+```
+
+### 6.2 生产构建（本地）
+
+```bash
+# TypeScript 类型检查 + Vite 打包
+npm run build
+
+# 产物在 dist/ 目录，可用 nginx 或任意静态服务器托管
+npm run preview  # 本地预览生产构建（端口 4173）
+```
+
+### 6.3 Docker 构建与部署
+
+**Dockerfile 结构（多阶段构建）：**
+```dockerfile
+# 阶段1：在 node:20-alpine 中编译
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install          # 依赖层单独缓存
+COPY . .
+RUN npm run build        # tsc + vite build → dist/
+
+# 阶段2：nginx:alpine 托管静态文件
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+```
+
+**构建镜像：**
+```bash
+docker build -t aluminum-designer .
+```
+
+**运行容器：**
+```bash
+# 端口映射 4174 → 容器内 80
+docker run -d --name aluminum-designer -p 4174:80 aluminum-designer
+```
+
+**重新部署（代码更新后）：**
+```bash
+docker build -t aluminum-designer . \
+  && docker rm -f aluminum-designer \
+  && docker run -d --name aluminum-designer -p 4174:80 aluminum-designer
+```
+
+**查看日志：**
+```bash
+docker logs aluminum-designer
+```
+
+**访问：** http://localhost:4174
+
+### 6.4 .gitignore 说明
+
+```
+node_modules/   # npm 依赖，不入库
+dist/           # 构建产物，由 CI/Docker 生成
+.DS_Store       # macOS 系统文件
+*.local         # 本地环境配置
+.claude/        # AI 辅助工具配置
+```
+
+---
+
+## 7. Bug 记录与修复
+
+### Bug 1：型材不渲染（只有红线，无实体）
+
+**现象：** 绘制时有彩色轴线，点击终点后型材消失，视口中无任何实体。
+
+**根本原因：** `profileShapes.ts` 中规格解析错误。
+
+```ts
+// ❌ 旧代码
+const matches = spec.match(/\d+/g)
+const w = matches ? Number(matches[0]) : 20
+const h = matches ? (matches.length > 1 ? Number(matches[1]) : w) : 20
+```
+
+`'2020'.match(/\d+/g)` 返回 `['2020']`（整个字符串作为一个数字匹配），
+而非预期的 `['20', '20']`，导致 `w=2020, h=2020`（2 米），
+型材几何体生成但远超视口范围，肉眼不可见。
+
+**修复：**
+```ts
+// ✅ 新代码
+const w = Number(spec.substring(0, 2))  // '2020' → 20
+const h = Number(spec.substring(2)) || w  // '2020'→'' →0→w=20; '2040'→'40'→40
+```
+
+**Diff（profileShapes.ts）：**
+```diff
+-  const matches = spec.match(/\d+/g)
+-  const w = matches ? Number(matches[0]) : 20
+-  const h = matches ? (matches.length > 1 ? Number(matches[1]) : w) : 20
++  const w = Number(spec.substring(0, 2))
++  const h = Number(spec.substring(2)) || w
+```
+
+---
+
+### Bug 2：预览方向正确，放置位置错误（垂直型材水平放置）
+
+**现象：** 鼠标向上移动时绿色预览正确显示垂直型材，但点击后型材被放置在水平方向。
+
+**根本原因：** `DrawingHandler.onPointerDown` 第二次点击（放置）时，
+始终用 `isVertical=false`（水平平面），而非跟随鼠标移动时确定的 `isVerticalRef.current`。
+
+```ts
+// ❌ 旧代码
+const onPointerDown = (e) => {
+  if (!toolStore.isDrawing) {
+    // 第一次点击
+    const pt = getWorldPoint(e.ray, null, false, camera)
+    handlePointerDown(pt)
+  } else {
+    // 第二次点击 — 错误：硬编码 false
+    const pt = getWorldPoint(e.ray, toolStore.startPoint, false, camera)
+    handlePointerDown(pt)
+  }
+}
+```
+
+**修复：** 第二次点击使用 `isVerticalRef.current`（由 `onPointerMove` 实时更新）。
+
+```diff
+-  const pt = getWorldPoint(e.ray, toolStore.startPoint, false, camera)
++  const pt = getWorldPoint(e.ray, toolStore.startPoint, isVerticalRef.current, camera)
+```
+
+---
+
+### Bug 3：Z 轴方向无法绘制型材
+
+**现象：** 在任何方向放置了一根型材后，再试图从其端点出发绘制 Z 轴方向型材，
+第二次点击无反应（不放置，也不报错）。
+
+**根本原因：** `findSnapPoint` 会把离鼠标点最近的已有端点作为吸附目标，
+而 `startPoint` 本身是现有型材的端点，距离为 0（远小于 20mm 阈值），
+导致第一次点击吸附到 `startPoint` 自身，`startPoint` 和吸附点重合。
+第二次点击时，`findSnapPoint` 仍返回同一个端点，使 dist = 0，被 `dist > 5` 过滤。
+
+**修复：** 为 `findSnapPoint` 增加 `exclude` 参数，排除与 `startPoint` 重合的候选点。
+
+```diff
+// snapUtils.ts
+ export function findSnapPoint(
+   point: THREE.Vector3,
+   profiles: ProfileData[],
+   threshold = 20,
++  exclude?: THREE.Vector3 | null
+ ): THREE.Vector3 | null {
+   for (const candidate of [start, end]) {
++    if (exclude && candidate.distanceTo(exclude) < 1) continue
+     ...
+   }
+ }
+
+// useDrawTool.ts
+-  const snap = findSnapPoint(worldPoint, profiles, 20)
++  const snap = findSnapPoint(worldPoint, profiles, 20, startPoint)
+```
+
+---
+
+### Bug 4：绘制模式下型材 mesh 拦截点击事件
+
+**现象：** 碰撞检测开启后，试图在已有型材附近绘制新型材时，
+点击事件被已有型材的 mesh 拦截，导致绘制平面收不到事件。
+同时重叠部位渲染异常（变红）。
+
+**根本原因：** R3F 中只要 mesh 有事件处理函数（如 `onClick`），它就会参与射线检测，
+并在命中时阻止事件传播到背后的绘制球体。
+
+**修复：** 在绘制模式下（`inDrawMode=true`）禁用型材 mesh 的射线检测。
+
+```diff
+// Profile.tsx
++  const inDrawMode = viewMode === 'draw'
+
+   <mesh
++    raycast={inDrawMode ? () => null : undefined}
++    onPointerOver={inDrawMode ? undefined : () => setIsHovered(true)}
++    onPointerDown={inDrawMode ? undefined : onPointerDown}
+   >
+```
+
+---
+
+### Bug 5：拖拽功能完全失效
+
+**现象：** 在导航模式下点住型材拖拽，型材不移动。
+
+**根本原因：** R3F 事件系统中，mesh 的 `onPointerMove` 只在鼠标**仍在该 mesh 上方**时触发。
+鼠标稍微移出 mesh 范围，事件立即停止。
+另外 `(e.target as HTMLElement).setPointerCapture(e.pointerId)` 对 Three.js Object3D 无效
+（`e.target` 是 THREE.Object3D，不是 HTML 元素，没有 `setPointerCapture` 方法）。
+
+**修复：** 彻底绕开 R3F 事件系统，改用 canvas DOM 原生事件。
+
+```ts
+// DragHandler.tsx — 新方案
+useEffect(() => {
+  const canvas = gl.domElement
+
+  const onPointerMove = (e: PointerEvent) => {
+    const { isDragging, ... } = useToolStore.getState()
+    if (!isDragging) return
+    // 重建 Raycaster 计算世界坐标
+    const rect = canvas.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+    const y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+    const raycaster = new THREE.Raycaster()
+    raycaster.setFromCamera(new THREE.Vector2(x, y), camera)
+    // 射线与地面平面求交
+    const currentHit = new THREE.Vector3()
+    raycaster.ray.intersectPlane(GROUND_PLANE, currentHit)
+    // 计算偏移、网格吸附、端点吸附，更新位置
+    ...
+  }
+
+  canvas.addEventListener('pointermove', onPointerMove)
+  canvas.addEventListener('pointerup', onPointerUp)
+  return () => { canvas.removeEventListener(...) }
+}, [gl, camera])
+```
+
+**关键区别：** canvas DOM 事件不依赖 Three.js 射线检测，鼠标在任何位置都能触发，
+等同于原生 HTML 的指针捕获行为。
+
+---
+
+### Bug 6：React 无限重渲染导致页面崩溃
+
+**现象：** 部署后页面白屏 / JavaScript 崩溃，无法访问。
+
+**根本原因：** `Profile.tsx` 中 `useToolStore` 被调用两次，第二次使用对象选择器：
+
+```ts
+// ❌ 旧代码
+const { isDragging: isDraggingThis } = useToolStore(s => ({
+  isDragging: s.isDragging && s.dragProfileId === id
+}))
+```
+
+Zustand 的 `useStore(selector)` 使用 `Object.is` 检查引用相等。
+selector 每次返回**新对象** `{isDragging: ...}`，导致 Zustand 认为状态永远在变化，
+触发无限重渲染，最终栈溢出崩溃。
+
+**修复：** selector 直接返回原始值（boolean），而非对象。
+
+```diff
+-  const { isDragging: isDraggingThis } = useToolStore(s => ({
+-    isDragging: s.isDragging && s.dragProfileId === id
+-  }))
++  const isDraggingThis = useToolStore(s => s.isDragging && s.dragProfileId === id)
+```
+
+---
+
+### Bug 7：重叠检测未生效（共轴型材绕过角接头例外）
+
+**现象：** 在同一直线上放置两根相互重叠的同轴型材，系统未阻止，且渲染异常。
+
+**根本原因：** `wouldOverlap` 对非共轴型材设有"角接头例外"（共享端点视为合法），
+但代码中共轴型材也误入该分支，被错误地豁免：
+
+```ts
+// ❌ 旧代码：共轴型材也可能触发 cornerJoint 豁免
+if (!aabbsOverlap(candAABB, exAABB)) continue
+const cornerJoint = (/* 端点距离检测 */)
+if (cornerJoint) continue  // ← 共轴型材端对端时也会触发此处，造成漏检
+return true
+```
+
+**修复：** 只有**非共轴**型材才享有角接头例外。
+
+```diff
++  const isCoaxial = (() => {
++    if (!candSeg || !exSeg) return false
++    if (candSeg.axis !== exSeg.axis) return false
++    return Math.abs(candSeg.perp1 - exSeg.perp1) <= PERP_EPS &&
++           Math.abs(candSeg.perp2 - exSeg.perp2) <= PERP_EPS
++  })()
+
+-  const cornerJoint = (/* 端点距离检测 */)
+-  if (cornerJoint) continue
++  if (!isCoaxial) {
++    const cornerJoint = (/* 端点距离检测 */)
++    if (cornerJoint) continue
++  }
+```
+
+---
+
+## 8. 业界对比分析
+
+### 8.1 主要竞品
+
+| 软件 | 类型 | 特点 |
+|------|------|------|
+| **MayCad** | Web | 专注铝型材，BOM 导出，连接件库 |
+| **Misumi MEXE02** | 桌面 | 精确参数化，与供应商目录直连 |
+| **Framing Expert (8020)** | Web | 美国 80/20 配件生态，实时报价 |
+| **OpenBuilds Part Designer** | Web | 开源，V-Slot 生态 |
+| **SolidWorks / Fusion 360** | 桌面 | 通用 CAD，学习曲线陡峭 |
+| **本项目** | Web (Docker) | 轻量浏览器工具，零安装 |
+
+### 8.2 功能对比
+
+| 功能 | 本项目 | MayCad | MEXE02 | Fusion 360 |
+|------|--------|--------|--------|------------|
+| 浏览器可用 | ✅ | ✅ | ❌ | ✅（有限）|
+| 零安装 | ✅ | ✅ | ❌ | ❌ |
+| 3D 实时预览 | ✅ | ✅ | ✅ | ✅ |
+| 轴对齐强制 | ✅ | ✅ | ✅ | 可选 |
+| 端点吸附 | ✅（基础）| ✅ | ✅ | ✅ |
+| 角度自由绘制 | ❌ | ❌ | ✅ | ✅ |
+| 精确尺寸输入 | ❌（仅属性面板）| ✅ | ✅ | ✅ |
+| T 槽截面细节 | ✅ | ✅ | ✅ | ✅ |
+| 自动切割计算 | ❌ | ✅ | ✅ | ❌ |
+| 连接件数量 | 14 | ~50 | ~100+ | 自定义 |
+| 斜切（Miter Cut）| ❌（数据预留）| ✅ | ✅ | ✅ |
+| BOM 导出 | ✅（CSV）| ✅（PDF/Excel）| ✅ | ✅ |
+| 在线协作 | ❌ | ❌ | ❌ | ✅ |
+| 供应商目录集成 | ❌ | 部分 | ✅ | ❌ |
+| 撤销/重做 | ❌ | ✅ | ✅ | ✅ |
+| 多选操作 | ❌ | ✅ | ✅ | ✅ |
+| 尺寸标注 | ❌ | ✅ | ✅ | ✅ |
+| 导出 STL/STEP | ❌ | ❌ | ✅ | ✅ |
+
+### 8.3 我们的优势
+
+1. **零依赖安装**：Docker 一键部署，浏览器直接使用
+2. **轻量快速**：无需账号，无需加载大型资产库，首屏 <5s
+3. **代码完全可控**：可深度定制，与企业内部系统对接
+4. **现代技术栈**：React 19 + R3F，便于扩展新功能
+
+### 8.4 我们的劣势
+
+1. **精确输入缺失**：无法直接键入长度数值绘制（只能拖拽估算 + 属性面板修改）
+2. **无撤销/重做**：误操作代价大
+3. **连接件库不足**：14 种 vs 竞品 50-100+ 种
+4. **无自动布局辅助**：复杂框架需要手动规划，无智能对齐辅助线
+5. **无尺寸标注**：看不到型材间距、总体尺寸
+6. **无斜切支持**：所有接头直角，无 45° 斜接
+7. **无导出格式**：无法导出 STL/STEP，与下游 CAD/CAM 断链
+
+---
+
+## 9. 下一步优化方向
+
+按优先级排序（P0 最高）：
+
+### P0 — 核心体验必须修复
+
+#### 精确长度输入
+**目标：** 绘制时直接键盘输入长度数值（如 `500 Enter`）确认放置，无需依赖鼠标精度。
+
+**实现思路：**
+- 检测 `isDrawing=true` 时的键盘输入，显示输入框 HUD
+- 按 Enter 时用输入的长度替代鼠标距离，沿当前吸附轴方向放置
+
+#### 撤销/重做（Ctrl+Z / Ctrl+Y）
+**目标：** 操作可逆，消除误操作成本。
+
+**实现思路：**
+- Zustand 的 `temporal` 中间件（`zundo`）或自建操作历史栈
+- 将 `profiles[]` 和 `connectors[]` 的每次变更推入历史，支持回退
+
+---
+
+### P1 — 显著提升易用性
+
+#### 尺寸标注
+**目标：** 实时显示型材长度和端点间距离。
+
+**实现思路：**
+- 每根型材中点上方显示长度 `Text` 组件（@react-three/drei `Text`）
+- 选中时显示端点坐标
+- 可选：悬停时显示邻近型材间距
+
+#### 智能辅助线（Alignment Guides）
+**目标：** 拖拽/绘制时，当当前端点与其他型材端点对齐时，显示虚线提示。
+
+**实现思路：**
+- 在 pointerMove 时检测当前点与所有端点的轴向对齐关系
+- 满足条件时用 `<Line>` 渲染延伸辅助线
+
+#### 多选与群组操作
+**目标：** 框选多根型材整体移动/删除。
+
+**实现思路：**
+- 导航模式下拖拽空白区域 = 框选（2D 屏幕坐标矩形）
+- useStore 中 `selectedId` 改为 `selectedIds: Set<string>`
+- 移动时对每个选中对象应用相同的 delta
+
+---
+
+### P2 — 功能完整性
+
+#### 斜切支持（Miter Cut）
+数据结构已预留 `miterCuts: MiterCut[]`，需实现：
+- UI：选中型材端点，设置斜切角度
+- 几何：在 ExtrudeGeometry 上应用斜切变换（沿端面法向量旋转裁剪）
+
+#### 更丰富的连接件库
+- 补充：弹性螺母、滑动连接件、铰链支架等
+- 考虑接入 MISUMI / 80/20 的开放 API，实时同步真实型材规格和价格
+
+#### BOM 增强
+- 按规格汇总（去重 + 数量合计），而非每根单独列出
+- 导出 Excel（`.xlsx`）格式
+- 附带连接件用量统计
+
+#### JSON 导出/导入
+- 将设计导出为 JSON 文件，支持分享和版本管理
+- 导入 JSON 恢复设计（比 localStorage 更可靠）
+
+---
+
+### P3 — 长期方向
+
+#### 测量工具
+- 点选两个端点 → 显示距离
+- 角度测量
+
+#### 截面/投影视图
+- 正交投影（俯视图、侧视图、正视图）
+- 输出为 SVG 工程图
+
+#### 与供应商集成
+- 实时价格计算（对接 MISUMI 铝型材 API）
+- 一键生成采购清单
+
+#### 性能优化
+- 使用 `InstancedMesh` 批量渲染大量相同规格型材（当前每根独立 mesh）
+- 代码分割（Three.js 单包 1.1MB，可按需加载）
+
+#### 协作功能（长期）
+- WebSocket 多用户实时协作
+- 设计版本历史
+
+---
+
+*文档最后更新：2026-03-18*
