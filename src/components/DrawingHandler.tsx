@@ -7,7 +7,7 @@ import { getProfileShape } from '../utils/profileShapes'
 
 const DrawingHandler: React.FC = () => {
   const { handlePointerDown, handlePointerMove } = useDrawTool()
-  const { isDrawing, startPoint, currentPoint, placementMode, activeSpec } = useToolStore()
+  const { isDrawing, startPoint, currentPoint, snapPoint, placementMode, activeSpec, viewMode } = useToolStore()
   const [hoverNormal, setHoverNormal] = useState(new THREE.Vector3(0, 1, 0))
 
   // Single source of geometry for the active spec
@@ -28,12 +28,12 @@ const DrawingHandler: React.FC = () => {
     if (!isDrawing || !startPoint || !currentPoint) return null
     const dist = startPoint.distanceTo(currentPoint)
     if (dist < 0.1) return null
-    
-    const dummy = new THREE.Object3D()
-    dummy.position.copy(startPoint)
-    dummy.lookAt(currentPoint)
-    
-    return { pos: startPoint.clone(), quat: dummy.quaternion.clone(), scale: dist }
+
+    // Align local +Z with draw direction (same convention as placed profiles)
+    const dir = new THREE.Vector3().subVectors(currentPoint, startPoint).normalize()
+    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir)
+
+    return { pos: startPoint.clone(), quat, scale: dist }
   }, [isDrawing, startPoint, currentPoint])
 
   const connectorQuat = useMemo(() => {
@@ -44,22 +44,24 @@ const DrawingHandler: React.FC = () => {
 
   return (
     <>
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.05, 0]}
-        onPointerDown={(e) => {
-          e.stopPropagation()
-          handlePointerDown(e)
-        }}
-        onPointerMove={(e) => {
-          e.stopPropagation()
-          setHoverNormal(new THREE.Vector3(0, 1, 0))
-          handlePointerMove(e)
-        }}
-      >
-        <planeGeometry args={[10000, 10000]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
+      {viewMode === 'draw' && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, -0.05, 0]}
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            handlePointerDown(e)
+          }}
+          onPointerMove={(e) => {
+            e.stopPropagation()
+            setHoverNormal(new THREE.Vector3(0, 1, 0))
+            handlePointerMove(e)
+          }}
+        >
+          <planeGeometry args={[10000, 10000]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
 
       {/* VERIFIED RED LINE */}
       {isDrawing && startPoint && currentPoint && (
@@ -75,15 +77,21 @@ const DrawingHandler: React.FC = () => {
           geometry={previewGeo}
           raycast={() => null}
         >
-          <meshStandardMaterial 
-            color="#3b82f6" 
-            transparent 
-            opacity={0.5} 
-            depthTest={true} // ENABLE DEPTH TEST TO FIX SLICING
-            depthWrite={false}
+          <meshStandardMaterial
+            color="#3b82f6"
+            metalness={0.3}
+            roughness={0.6}
             polygonOffset
             polygonOffsetFactor={-1}
           />
+        </mesh>
+      )}
+
+      {/* Snap Indicator */}
+      {snapPoint && (
+        <mesh position={snapPoint} raycast={() => null}>
+          <sphereGeometry args={[4, 16, 16]} />
+          <meshStandardMaterial color="#facc15" emissive="#facc15" emissiveIntensity={0.5} />
         </mesh>
       )}
 
