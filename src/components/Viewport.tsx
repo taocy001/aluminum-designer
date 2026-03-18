@@ -7,6 +7,7 @@ import { useToolStore } from '../store/useToolStore'
 import Profile from './Profile'
 import Connector from './Connector'
 import DrawingHandler from './DrawingHandler'
+import DragHandler from './DragHandler'
 
 // Resets camera position and orbit target when triggerred
 const CameraController: React.FC = () => {
@@ -31,9 +32,9 @@ const CameraController: React.FC = () => {
 
 const Viewport: React.FC = () => {
   const { profiles, connectors, selectedId, selectProfile } = useStore()
-  const { isDrawing, viewMode } = useToolStore()
+  const { isDrawing, viewMode, isDragging } = useToolStore()
 
-  const orbitEnabled = viewMode === 'navigate' || !isDrawing
+  const orbitEnabled = !isDragging && (viewMode === 'navigate' || !isDrawing)
 
   return (
     <Canvas
@@ -74,6 +75,7 @@ const Viewport: React.FC = () => {
       ))}
 
       <DrawingHandler />
+      <DragHandler />
 
       <OrbitControls makeDefault enabled={orbitEnabled} />
       <CameraController />

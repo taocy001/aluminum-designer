@@ -17,6 +17,11 @@ interface ToolState {
   activeConnectorType: string | null
   language: Language
   cameraResetTrigger: number
+  // Drag state
+  isDragging: boolean
+  dragProfileId: string | null
+  dragStartHit: THREE.Vector3 | null
+  dragOriginPos: THREE.Vector3 | null
   setPlacementMode: (mode: PlacementMode) => void
   setViewMode: (mode: ViewMode) => void
   setDrawing: (isDrawing: boolean) => void
@@ -26,6 +31,8 @@ interface ToolState {
   setActiveConnector: (type: string | null) => void
   setLanguage: (lang: Language) => void
   triggerCameraReset: () => void
+  startDrag: (id: string, hit: THREE.Vector3, origin: THREE.Vector3) => void
+  stopDrag: () => void
 }
 
 export const useToolStore = create<ToolState>((set) => ({
@@ -39,6 +46,10 @@ export const useToolStore = create<ToolState>((set) => ({
   activeConnectorType: null,
   language: 'zh',
   cameraResetTrigger: 0,
+  isDragging: false,
+  dragProfileId: null,
+  dragStartHit: null,
+  dragOriginPos: null,
   setPlacementMode: (placementMode) => set({ placementMode }),
   setViewMode: (viewMode) => set({ viewMode, isDrawing: false, startPoint: null, currentPoint: null }),
   setDrawing: (isDrawing) => set({ isDrawing }),
@@ -48,4 +59,6 @@ export const useToolStore = create<ToolState>((set) => ({
   setActiveConnector: (type) => set({ activeConnectorType: type, placementMode: 'connector', viewMode: 'draw' }),
   setLanguage: (language) => set({ language }),
   triggerCameraReset: () => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1 })),
+  startDrag: (id, hit, origin) => set({ isDragging: true, dragProfileId: id, dragStartHit: hit, dragOriginPos: origin }),
+  stopDrag: () => set({ isDragging: false, dragProfileId: null, dragStartHit: null, dragOriginPos: null }),
 }))

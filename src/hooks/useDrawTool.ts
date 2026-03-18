@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import * as THREE from 'three'
-import { ThreeEvent } from '@react-three/fiber'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { findSnapPoint, snapToAxis, wouldOverlap } from '../utils/snapUtils'
@@ -8,21 +7,19 @@ import { findSnapPoint, snapToAxis, wouldOverlap } from '../utils/snapUtils'
 export const useDrawTool = () => {
   const { addProfile, addConnector } = useStore()
 
-  const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
-    if (e.button !== 0) return
-    e.stopPropagation()
-
+  // Both handlers now accept a pre-computed world point (not ThreeEvent)
+  const handlePointerDown = useCallback((worldPoint: THREE.Vector3) => {
     const toolStore = useToolStore.getState()
-    const { isDrawing, startPoint, activeSpec, placementMode, activeConnectorType, snapPoint, setDrawing, setPoints, setSnapPoint } = toolStore
+    const { isDrawing, startPoint, activeSpec, placementMode, activeConnectorType, setDrawing, setPoints, setSnapPoint } = toolStore
 
-    if (!e.point || !isFinite(e.point.x)) return
+    const profiles = useStore.getState().profiles
+    const snap = findSnapPoint(worldPoint, profiles, 20, startPoint)
 
-    // Use snap point if available, otherwise grid-round
     let point: THREE.Vector3
-    if (snapPoint) {
-      point = snapPoint.clone()
+    if (snap) {
+      point = snap.clone()
     } else {
-      point = e.point.clone()
+      point = worldPoint.clone()
       point.x = Math.round(point.x / 5) * 5
       point.y = Math.round(point.y / 5) * 5
       point.z = Math.round(point.z / 5) * 5
@@ -33,8 +30,7 @@ export const useDrawTool = () => {
         setPoints(point, point)
         setDrawing(true)
       } else if (startPoint) {
-        // Axis-align the endpoint
-        const axisPoint = snapPoint ? point : snapToAxis(startPoint, point)
+        const axisPoint = snapToAxis(startPoint, point)
         const dist = startPoint.distanceTo(axisPoint)
 
         if (dist > 5) {
@@ -51,7 +47,6 @@ export const useDrawTool = () => {
             holes: []
           }
 
-          const profiles = useStore.getState().profiles
           if (!wouldOverlap(candidate, profiles)) {
             addProfile(candidate)
           }
@@ -71,30 +66,24 @@ export const useDrawTool = () => {
     }
   }, [addProfile, addConnector])
 
-  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
-    if (!e.point || !isFinite(e.point.x)) return
+  const handlePointerMove = useCallback((worldPoint: THREE.Vector3) => {
     const toolStore = useToolStore.getState()
     const { isDrawing, startPoint, setPoints, setSnapPoint } = toolStore
     const profiles = useStore.getState().profiles
 
-    // Compute snap point from all profile endpoints
-    const snap = findSnapPoint(e.point, profiles)
+    const snap = findSnapPoint(worldPoint, profiles, 20, startPoint)
     setSnapPoint(snap)
 
-    let point: THREE.Vector3
-    if (snap) {
-      point = snap.clone()
-    } else {
-      point = e.point.clone()
-      point.x = Math.round(point.x / 5) * 5
-      point.y = Math.round(point.y / 5) * 5
-      point.z = Math.round(point.z / 5) * 5
-    }
+    let point = snap ? snap.clone() : (() => {
+      const p = worldPoint.clone()
+      p.x = Math.round(p.x / 5) * 5
+      p.y = Math.round(p.y / 5) * 5
+      p.z = Math.round(p.z / 5) * 5
+      return p
+    })()
 
     if (isDrawing && startPoint) {
-      // Apply axis constraint during preview (unless snapping to an endpoint)
-      const constrained = snap ? point : snapToAxis(startPoint, point)
-      setPoints(startPoint, constrained)
+      setPoints(startPoint, snapToAxis(startPoint, point))
     } else {
       setPoints(null, point)
     }
