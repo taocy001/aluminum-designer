@@ -1,5 +1,6 @@
 import React from 'react'
 import * as THREE from 'three'
+import { useToolStore } from '../store/useToolStore'
 
 interface ConnectorProps {
   id: string
@@ -35,8 +36,9 @@ const Connector: React.FC<ConnectorProps> = ({
   isSelected,
   onClick
 }) => {
+  const { viewMode } = useToolStore()
   const c = isSelected ? '#3b82f6' : '#94a3b8'
-  const handleClick = (e: any) => { e.stopPropagation(); onClick?.() }
+  const handleClick = viewMode !== 'draw' ? (e: any) => { e.stopPropagation(); onClick?.() } : undefined
 
   const renderParts = () => {
     switch (type) {
