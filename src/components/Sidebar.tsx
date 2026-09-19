@@ -1,33 +1,36 @@
 import React from 'react'
-import { Plus, Trash2, Download, Box, FileText, Eraser, Bug } from 'lucide-react'
+import { Plus, Trash2, Download, Box, FileText, Eraser, Bug, Undo2, Redo2 } from 'lucide-react'
 import { useStore, ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
 
 const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = [
-  { type: 'bracket',      labelZh: 'L型角码',   labelEn: 'L-Bracket' },
-  { type: 'inside-corner',labelZh: '内角码',     labelEn: 'Inside Corner' },
-  { type: 'gusset',       labelZh: '加强筋',     labelEn: 'Gusset' },
-  { type: 'flat-plate',   labelZh: '直连板',     labelEn: 'Flat Plate' },
-  { type: 't-bracket',    labelZh: 'T型角码',    labelEn: 'T-Bracket' },
-  { type: 'cross-bracket',labelZh: '十字连接板', labelEn: 'Cross Plate' },
-  { type: 'corner-3way',  labelZh: '三维角码',   labelEn: '3-Way Corner' },
-  { type: 'joining-plate',labelZh: '对接板',     labelEn: 'Joining Plate' },
-  { type: 'end-cap',      labelZh: '端盖',       labelEn: 'End Cap' },
-  { type: 't-nut',        labelZh: '滑块螺母',   labelEn: 'T-Nut' },
-  { type: 'hinge',        labelZh: '合页',       labelEn: 'Hinge' },
-  { type: 'pivot',        labelZh: '轴承座',     labelEn: 'Pivot' },
-  { type: 'caster-mount', labelZh: '脚轮座',     labelEn: 'Caster Mount' },
-  { type: 'foot',         labelZh: '调节脚',     labelEn: 'Leveling Foot' },
+  { type: 'bracket',       labelZh: 'L型角码',   labelEn: 'L-Bracket' },
+  { type: 'inside-corner', labelZh: '内角码',     labelEn: 'Inside Corner' },
+  { type: 'gusset',        labelZh: '加强筋',     labelEn: 'Gusset' },
+  { type: 'flat-plate',    labelZh: '直连板',     labelEn: 'Flat Plate' },
+  { type: 't-bracket',     labelZh: 'T型角码',    labelEn: 'T-Bracket' },
+  { type: 'cross-bracket', labelZh: '十字连接板', labelEn: 'Cross Plate' },
+  { type: 'corner-3way',   labelZh: '三维角码',   labelEn: '3-Way Corner' },
+  { type: 'joining-plate', labelZh: '对接板',     labelEn: 'Joining Plate' },
+  { type: 'end-cap',       labelZh: '端盖',       labelEn: 'End Cap' },
+  { type: 't-nut',         labelZh: '滑块螺母',   labelEn: 'T-Nut' },
+  { type: 'hinge',         labelZh: '合页',       labelEn: 'Hinge' },
+  { type: 'pivot',         labelZh: '轴承座',     labelEn: 'Pivot' },
+  { type: 'caster-mount',  labelZh: '脚轮座',     labelEn: 'Caster Mount' },
+  { type: 'foot',          labelZh: '调节脚',     labelEn: 'Leveling Foot' },
 ]
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, selectedId, removeProfile, removeConnector, updateProfile, clearAll } = useStore()
+  const {
+    profiles, connectors, selectedIds, removeSelected, removeConnector,
+    updateProfile, commitProfileEdit, clearAll, undo, redo, past, future,
+  } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, placementMode, viewMode, setViewMode, language } = useToolStore()
   const t = translations[language]
 
-  const selectedProfile = profiles.find((p) => p.id === selectedId)
-  const selectedConnector = connectors.find((c) => c.id === selectedId)
+  const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
+  const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
 
   const handleSpecClick = (spec: ProfileSpec) => {
     if (placementMode === 'profile' && activeSpec === spec && viewMode === 'draw') {
@@ -43,11 +46,6 @@ const Sidebar: React.FC = () => {
     } else {
       setActiveConnector(type)
     }
-  }
-
-  const handleDelete = () => {
-    if (selectedProfile) removeProfile(selectedId!)
-    if (selectedConnector) removeConnector(selectedId!)
   }
 
   const handleClearAll = () => {
@@ -131,7 +129,7 @@ const Sidebar: React.FC = () => {
           <div className="bg-slate-900/50 rounded-xl p-4 border border-white/5 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <span className="text-[10px] font-black uppercase text-slate-400">{t.properties}</span>
-              <button onClick={handleDelete} className="text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg">
+              <button onClick={removeSelected} className="text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg">
                 <Trash2 size={14} />
               </button>
             </div>
@@ -146,7 +144,8 @@ const Sidebar: React.FC = () => {
                   <input
                     type="number"
                     value={selectedProfile.length.toFixed(0)}
-                    onChange={(e) => updateProfile(selectedId!, { length: Number(e.target.value) })}
+                    onChange={(e) => updateProfile(selectedProfile.id, { length: Number(e.target.value) })}
+                    onBlur={(e) => commitProfileEdit(selectedProfile.id, { length: Number(e.target.value) })}
                     className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-blue-500"
                   />
                 </div>
@@ -156,6 +155,11 @@ const Sidebar: React.FC = () => {
               <div className="text-xs text-slate-400">
                 <span className="text-slate-500">{language === 'zh' ? '类型' : 'Type'}: </span>
                 <span className="text-emerald-400 font-mono">{selectedConnector.type}</span>
+              </div>
+            )}
+            {selectedIds.length > 1 && (
+              <div className="text-[10px] text-slate-500 pt-1 border-t border-white/5">
+                {language === 'zh' ? `已选中 ${selectedIds.length} 个元素` : `${selectedIds.length} items selected`}
               </div>
             )}
           </div>
@@ -169,6 +173,26 @@ const Sidebar: React.FC = () => {
 
       {/* BOM + actions */}
       <div className="p-5 bg-slate-900 border-t border-white/5 space-y-3">
+        {/* Undo / Redo */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={undo}
+            disabled={past.length === 0}
+            title={language === 'zh' ? '撤销 (Ctrl+Z)' : 'Undo (Ctrl+Z)'}
+            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold transition-all"
+          >
+            <Undo2 size={13} /> {language === 'zh' ? '撤销' : 'Undo'}
+          </button>
+          <button
+            onClick={redo}
+            disabled={future.length === 0}
+            title={language === 'zh' ? '重做 (Ctrl+Y)' : 'Redo (Ctrl+Y)'}
+            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold transition-all"
+          >
+            <Redo2 size={13} /> {language === 'zh' ? '重做' : 'Redo'}
+          </button>
+        </div>
+
         <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-2">
           <FileText size={12} /> {t.bomSummary}
         </h2>

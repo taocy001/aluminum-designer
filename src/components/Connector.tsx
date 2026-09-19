@@ -8,7 +8,7 @@ interface ConnectorProps {
   position: [number, number, number]
   quaternion?: [number, number, number, number]
   isSelected?: boolean
-  onClick?: () => void
+  onClick?: (multi: boolean) => void
 }
 
 interface MeshPartProps {
@@ -38,7 +38,10 @@ const Connector: React.FC<ConnectorProps> = ({
 }) => {
   const { viewMode } = useToolStore()
   const c = isSelected ? '#3b82f6' : '#94a3b8'
-  const handleClick = viewMode !== 'draw' ? (e: any) => { e.stopPropagation(); onClick?.() } : undefined
+  const handleClick = viewMode !== 'draw' ? (e: any) => {
+    e.stopPropagation()
+    onClick?.(e.nativeEvent?.ctrlKey || e.nativeEvent?.metaKey || false)
+  } : undefined
 
   const renderParts = () => {
     switch (type) {
