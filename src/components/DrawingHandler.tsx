@@ -1,72 +1,27 @@
-import React, { useMemo, useRef, useCallback, useState } from 'react'
+import React, { useMemo, useCallback, useRef } from 'react'
 import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
-import { useToolStore } from '../store/useToolStore'
-import { useDrawTool } from '../hooks/useDrawTool'
 import { Line } from '@react-three/drei'
-import { getProfileShape } from '../utils/profileShapes'
-import { getProfileEndpoints, findSnapPoint, snapToAxis } from '../utils/snapUtils'
+import { useToolStore } from '../store/useToolStore'
 import { useStore } from '../store/useStore'
+import { getProfileShape } from '../utils/profileShapes'
+import { pickPoint, resolveAxisEnd } from '../utils/pickUtils'
+import { floorY, tryAddProfile, placeConnector } from '../utils/profileFactory'
+import { specDims } from '../utils/specUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 
-function rayPlaneIntersect(ray: THREE.Ray, plane: THREE.Plane): THREE.Vector3 | null {
-  const pt = new THREE.Vector3()
-  return ray.intersectPlane(plane, pt) ? pt.clone() : null
-}
-
-function getWorldPoint(
-  ray: THREE.Ray,
-  startPoint: THREE.Vector3 | null,
-  isVertical: boolean,
-  camera: THREE.Camera
-): THREE.Vector3 | null {
-  if (!startPoint) {
-    return rayPlaneIntersect(ray, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0))
-  }
-  if (isVertical) {
-    const toCamera = new THREE.Vector3(camera.position.x - startPoint.x, 0, camera.position.z - startPoint.z)
-    if (toCamera.lengthSq() < 0.001) toCamera.set(0, 0, 1)
-    toCamera.normalize()
-    return rayPlaneIntersect(ray, new THREE.Plane().setFromNormalAndCoplanarPoint(toCamera, startPoint))
-  } else {
-    return rayPlaneIntersect(ray, new THREE.Plane(new THREE.Vector3(0, 1, 0), -startPoint.y))
-  }
-}
-
-function getActiveAxis(start: THREE.Vector3, end: THREE.Vector3): 'x' | 'y' | 'z' {
-  const d = end.clone().sub(start)
-  const ax = Math.abs(d.x), ay = Math.abs(d.y), az = Math.abs(d.z)
-  if (ax >= ay && ax >= az) return 'x'
-  if (ay >= ax && ay >= az) return 'y'
-  return 'z'
-}
-
-interface AlignGuide {
-  from: [number, number, number]
-  to: [number, number, number]
-}
-
 const DrawingHandler: React.FC = () => {
-  const { handlePointerDown, handlePointerMove } = useDrawTool()
-  const { isDrawing, startPoint, currentPoint, snapPoint, placementMode, activeSpec, viewMode } = useToolStore()
-  const { camera } = useThree()
-
-  const startScreenRef = useRef<{ x: number; y: number } | null>(null)
-  const isVerticalRef = useRef(false)
-  const [alignGuides, setAlignGuides] = useState<AlignGuide[]>([])
+  const { isDrawing, startPoint, currentPoint, snapPoint, placementMode, activeSpec, viewMode, drawAxis, alignGuides } = useToolStore()
+  const { camera, size } = useThree()
+  const lastRay = useRef<THREE.Ray | null>(null)
+  const lastCursor = useRef<THREE.Vector2 | null>(null)
 
   const previewGeo = useMemo(() => {
-    try {
-      const shape = getProfileShape(activeSpec)
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false })
-      geo.computeVertexNormals()
-      return geo
-    } catch (e) {
-      const fallback = new THREE.BoxGeometry(20, 20, 1)
-      fallback.translate(0, 0, 0.5)
-      return fallback
-    }
+    const shape = getProfileShape(activeSpec)
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false })
+    geo.computeVertexNormals()
+    return geo
   }, [activeSpec])
 
   const xform = useMemo(() => {
@@ -78,160 +33,150 @@ const DrawingHandler: React.FC = () => {
     return { pos: startPoint.clone(), quat, scale: dist }
   }, [isDrawing, startPoint, currentPoint])
 
-  const activeAxis = useMemo(() => {
-    if (!startPoint || !currentPoint) return null
-    return getActiveAxis(startPoint, currentPoint)
-  }, [startPoint, currentPoint])
-
-  const axisColor = activeAxis ? AXIS_COLORS[activeAxis] : '#ef4444'
+  const axisColor = drawAxis ? AXIS_COLORS[drawAxis] : '#94a3b8'
   const drawDist = startPoint && currentPoint ? startPoint.distanceTo(currentPoint) : 0
 
-  const computeAlignGuides = useCallback((axisPt: THREE.Vector3, currentStartPoint: THREE.Vector3) => {
+  const cursorFromEvent = (e: any): THREE.Vector2 =>
+    new THREE.Vector2((e.pointer.x + 1) / 2 * size.width, (1 - e.pointer.y) / 2 * size.height)
+
+  /** Recompute the axis-constrained end point for the current cursor */
+  const updateEnd = useCallback((ray: THREE.Ray, cursor: THREE.Vector2) => {
+    const ts = useToolStore.getState()
+    if (!ts.isDrawing || !ts.drawOrigin) return
     const profiles = useStore.getState().profiles
-    const guides: AlignGuide[] = []
-    const EPS = 3
+    const origin = ts.drawOrigin
 
-    for (const profile of profiles) {
-      const { start: ps, end: pe } = getProfileEndpoints(profile)
-      for (const ep of [ps, pe]) {
-        if (ep.distanceTo(currentStartPoint) < 2) continue
-
-        if (Math.abs(ep.x - axisPt.x) < EPS) {
-          guides.push({
-            from: [ep.x, ep.y, ep.z],
-            to: [axisPt.x, axisPt.y, axisPt.z],
-          })
-        } else if (Math.abs(ep.z - axisPt.z) < EPS) {
-          guides.push({
-            from: [ep.x, ep.y, ep.z],
-            to: [axisPt.x, axisPt.y, axisPt.z],
-          })
-        } else if (Math.abs(ep.y - axisPt.y) < EPS) {
-          guides.push({
-            from: [ep.x, ep.y, ep.z],
-            to: [axisPt.x, axisPt.y, axisPt.z],
-          })
-        }
-      }
+    // Pass 1: which axis is the user pulling along?
+    const first = resolveAxisEnd(origin, ray, cursor, camera, size, profiles, ts.lockedAxis)
+    if (!first) {
+      ts.updateDraw({ startPoint: origin.clone(), currentPoint: origin.clone(), snapPoint: null, drawAxis: null, alignGuides: [] })
+      return
     }
-    return guides
-  }, [])
+    // Horizontal members are lifted so they rest on the floor instead of sinking into it
+    const start = origin.clone()
+    if (first.axis !== 'y') start.y = Math.max(start.y, floorY(ts.activeSpec))
 
-  const onPointerDown = useCallback((e: any) => {
-    e.stopPropagation()
-    const toolStore = useToolStore.getState()
+    const res = start.equals(origin)
+      ? first
+      : resolveAxisEnd(start, ray, cursor, camera, size, profiles, first.axis)
+    if (!res) return
 
-    if (!toolStore.isDrawing) {
-      startScreenRef.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
-      isVerticalRef.current = false
-      const pt = getWorldPoint(e.ray, null, false, camera)
-      if (pt) handlePointerDown(pt)
-    } else {
-      const pt = getWorldPoint(e.ray, toolStore.startPoint, isVerticalRef.current, camera)
-      if (pt) handlePointerDown(pt)
-      setAlignGuides([])
-    }
-  }, [camera, handlePointerDown])
+    ts.updateDraw({
+      startPoint: start,
+      currentPoint: res.end,
+      snapPoint: res.snapPoint,
+      drawAxis: res.axis,
+      alignGuides: res.guide ? [{ from: res.guide.from.toArray() as any, to: res.guide.to.toArray() as any }] : [],
+    })
+  }, [camera, size])
 
   const onPointerMove = useCallback((e: any) => {
-    e.stopPropagation()
-    const toolStore = useToolStore.getState()
+    const ray: THREE.Ray = e.ray
+    const cursor = cursorFromEvent(e)
+    lastRay.current = ray.clone()
+    lastCursor.current = cursor
+    const ts = useToolStore.getState()
 
-    if (toolStore.isDrawing && startScreenRef.current) {
-      const dx = Math.abs(e.nativeEvent.clientX - startScreenRef.current.x)
-      const dy = Math.abs(e.nativeEvent.clientY - startScreenRef.current.y)
-      isVerticalRef.current = dy > dx * 0.5
+    if (ts.isDrawing) {
+      updateEnd(ray, cursor)
+      return
+    }
+    const profiles = useStore.getState().profiles
+    const pick = pickPoint(ray, cursor, camera, size, profiles)
+    if (pick.kind === 'none') { ts.setHover(null, null); return }
+    ts.setHover(pick.point, pick.kind === 'ground' ? null : pick.point)
+  }, [camera, size, updateEnd])
+
+  const onPointerDown = useCallback((e: any) => {
+    const ts = useToolStore.getState()
+    // Right button: cancel current draw (orbit keeps working through OrbitControls)
+    if (e.button === 2) {
+      if (ts.isDrawing) ts.cancelDraw()
+      return
+    }
+    if (e.button !== 0) return
+
+    const ray: THREE.Ray = e.ray
+    const cursor = cursorFromEvent(e)
+
+    if (ts.placementMode === 'connector') {
+      if (!ts.activeConnectorType) return
+      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles)
+      if (pick.kind === 'none') return
+      placeConnector(pick.point, ts.activeConnectorType)
+      return
     }
 
-    const pt = getWorldPoint(e.ray, toolStore.startPoint, isVerticalRef.current, camera)
-    if (pt) {
-      handlePointerMove(pt)
-
-      // Compute alignment guides during draw preview
-      if (toolStore.isDrawing && toolStore.startPoint) {
-        const profiles = useStore.getState().profiles
-        const snap = findSnapPoint(pt, profiles, 20, toolStore.startPoint)
-        const snappedPt = snap ? snap.clone() : (() => {
-          const p = pt.clone()
-          p.x = Math.round(p.x / 5) * 5
-          p.y = Math.round(p.y / 5) * 5
-          p.z = Math.round(p.z / 5) * 5
-          return p
-        })()
-        const axisPt = snapToAxis(toolStore.startPoint, snappedPt)
-        setAlignGuides(computeAlignGuides(axisPt, toolStore.startPoint))
-      } else {
-        setAlignGuides([])
-      }
+    if (!ts.isDrawing) {
+      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles)
+      if (pick.kind === 'none') return
+      ts.beginDraw(pick.point)
+      return
     }
-  }, [camera, handlePointerMove, computeAlignGuides])
+
+    updateEnd(ray, cursor)
+    const { startPoint: s, currentPoint: c, activeSpec } = useToolStore.getState()
+    if (!s || !c) return
+    if (s.distanceTo(c) < 1) return // no direction yet — ignore the click
+    tryAddProfile(s, c, activeSpec)
+    ts.cancelDraw()
+  }, [camera, size, updateEnd])
+
+  const { hh } = specDims(activeSpec)
 
   return (
     <>
-      {/* Invisible sphere — catches ALL pointer events regardless of camera angle */}
+      {/* Invisible catcher sphere — receives pointer events regardless of camera angle */}
       {viewMode === 'draw' && (
         <mesh onPointerDown={onPointerDown} onPointerMove={onPointerMove}>
-          <sphereGeometry args={[8000, 8, 6]} />
-          <meshBasicMaterial
-            transparent opacity={0} depthWrite={false}
-            side={THREE.BackSide}
-          />
+          <sphereGeometry args={[50000, 8, 6]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.BackSide} />
         </mesh>
       )}
 
-      {/* Axis-colored draw line */}
+      {/* Centerline of the member being drawn */}
       {isDrawing && startPoint && currentPoint && drawDist > 1 && (
-        <Line
-          points={[startPoint.toArray(), currentPoint.toArray()]}
-          color={axisColor}
-          lineWidth={2}
-        />
+        <Line points={[startPoint.toArray(), currentPoint.toArray()]} color={axisColor} lineWidth={2} />
       )}
 
-      {/* Profile preview — colored by active axis */}
-      {placementMode === 'profile' && xform && (
-        <mesh
-          position={xform.pos}
-          quaternion={xform.quat}
-          scale={[1, 1, xform.scale]}
-          geometry={previewGeo}
-          raycast={() => null}
-        >
-          <meshStandardMaterial
-            color={axisColor}
-            metalness={0.3}
-            roughness={0.6}
-            polygonOffset
-            polygonOffsetFactor={-1}
-            transparent
-            opacity={0.7}
-          />
+      {/* Start marker */}
+      {isDrawing && startPoint && (
+        <mesh position={startPoint} raycast={() => null}>
+          <sphereGeometry args={[3, 12, 12]} />
+          <meshBasicMaterial color={axisColor} />
         </mesh>
       )}
 
-      {/* Snap indicator */}
-      {snapPoint && (
+      {/* Member preview */}
+      {placementMode === 'profile' && xform && (
+        <mesh position={xform.pos} quaternion={xform.quat} scale={[1, 1, xform.scale]} geometry={previewGeo} raycast={() => null}>
+          <meshStandardMaterial color={axisColor} metalness={0.3} roughness={0.6} transparent opacity={0.65} depthWrite={false} />
+        </mesh>
+      )}
+
+      {/* Snap indicator (endpoint / centerline hit) */}
+      {viewMode === 'draw' && snapPoint && (
         <mesh position={snapPoint} raycast={() => null}>
           <sphereGeometry args={[4, 16, 16]} />
-          <meshStandardMaterial color="#facc15" emissive="#facc15" emissiveIntensity={0.6} />
+          <meshBasicMaterial color="#facc15" />
         </mesh>
       )}
 
-      {/* Alignment guides — dashed lines showing axis alignment with other endpoints */}
-      {alignGuides.map((guide, i) => (
-        <Line
-          key={i}
-          points={[guide.from, guide.to]}
-          color="#a78bfa"
-          lineWidth={1}
-          dashed
-          dashSize={8}
-          gapSize={5}
-        />
+      {/* Hover cursor on the floor when not snapped */}
+      {viewMode === 'draw' && !isDrawing && currentPoint && !snapPoint && (
+        <mesh position={[currentPoint.x, currentPoint.y + 0.2, currentPoint.z]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+          <ringGeometry args={[hh * 0.6, hh * 0.9, 24]} />
+          <meshBasicMaterial color="#94a3b8" transparent opacity={0.8} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+
+      {/* Alignment guides */}
+      {alignGuides.map((g, i) => (
+        <Line key={i} points={[g.from, g.to]} color="#a78bfa" lineWidth={1} dashed dashSize={8} gapSize={5} />
       ))}
 
       {/* Connector preview */}
-      {placementMode === 'connector' && currentPoint && (
+      {viewMode === 'draw' && placementMode === 'connector' && currentPoint && (
         <group position={currentPoint} raycast={() => null}>
           <mesh>
             <boxGeometry args={[20, 4, 20]} />

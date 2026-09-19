@@ -1,6 +1,7 @@
 import React from 'react'
 import * as THREE from 'three'
 import { useToolStore } from '../store/useToolStore'
+import { useThree } from '@react-three/fiber'
 
 interface ConnectorProps {
   id: string
@@ -8,7 +9,7 @@ interface ConnectorProps {
   position: [number, number, number]
   quaternion?: [number, number, number, number]
   isSelected?: boolean
-  onClick?: (multi: boolean) => void
+  onSelect?: (multi: boolean) => void
 }
 
 interface MeshPartProps {
@@ -34,13 +35,17 @@ const Connector: React.FC<ConnectorProps> = ({
   position,
   quaternion = [0, 0, 0, 1],
   isSelected,
-  onClick
+  onSelect
 }) => {
-  const { viewMode } = useToolStore()
+  const viewMode = useToolStore((s) => s.viewMode)
+  const controls = useThree((s) => s.controls) as any
   const c = isSelected ? '#3b82f6' : '#94a3b8'
   const handleClick = viewMode !== 'draw' ? (e: any) => {
+    if (e.button !== undefined && e.button !== 0) return
     e.stopPropagation()
-    onClick?.(e.nativeEvent?.ctrlKey || e.nativeEvent?.metaKey || false)
+    e.nativeEvent?.stopPropagation?.()
+    if (controls) { controls.enabled = false; setTimeout(() => { controls.enabled = true }, 0) }
+    onSelect?.(!!(e.nativeEvent?.ctrlKey || e.nativeEvent?.metaKey))
   } : undefined
 
   const renderParts = () => {
@@ -58,7 +63,7 @@ const Connector: React.FC<ConnectorProps> = ({
         const shape = new THREE.Shape()
         shape.moveTo(0, 0); shape.lineTo(24, 0); shape.lineTo(0, 24); shape.closePath()
         const geo = new THREE.ExtrudeGeometry(shape, { depth: 4, bevelEnabled: false })
-        return <mesh geometry={geo} position={[-12, -12, -2]} onClick={handleClick}>
+        return <mesh geometry={geo} position={[-12, -12, -2]}>
           <meshStandardMaterial color={c} metalness={0.8} roughness={0.2} />
         </mesh>
       }
@@ -165,7 +170,7 @@ const Connector: React.FC<ConnectorProps> = ({
     <group
       position={new THREE.Vector3(...position)}
       quaternion={new THREE.Quaternion(...quaternion)}
-      onClick={handleClick}
+      onPointerDown={handleClick}
     >
       {renderParts()}
     </group>

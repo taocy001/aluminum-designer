@@ -47,6 +47,9 @@ interface State {
   future: Snapshot[]
 
   addProfile: (profile: ProfileData) => void
+  addProfiles: (profiles: ProfileData[], select?: boolean) => void
+  /** Replace the whole document (import) */
+  loadDocument: (doc: { profiles: ProfileData[]; connectors: ConnectorData[] }) => void
   removeProfile: (id: string) => void
   removeSelected: () => void
   clearAll: () => void
@@ -60,6 +63,7 @@ interface State {
   updateProfiles: (updates: Array<{ id: string; updates: Partial<ProfileData> }>) => void
   // Commit to history (for sidebar edits)
   commitProfileEdit: (id: string, updates: Partial<ProfileData>) => void
+  commitProfilesEdit: (updates: Array<{ id: string; updates: Partial<ProfileData> }>) => void
   snapshotHistory: () => void
   undo: () => void
   redo: () => void
@@ -80,6 +84,21 @@ export const useStore = create<State>()(
         past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
         future: [],
         profiles: [...state.profiles, profile],
+      })),
+
+      addProfiles: (list, select = false) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        profiles: [...state.profiles, ...list],
+        selectedIds: select ? list.map((p) => p.id) : state.selectedIds,
+      })),
+
+      loadDocument: (doc) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        profiles: doc.profiles,
+        connectors: doc.connectors,
+        selectedIds: [],
       })),
 
       removeProfile: (id) => set((state) => ({
@@ -152,6 +171,15 @@ export const useStore = create<State>()(
         future: [],
         profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p),
       })),
+
+      commitProfilesEdit: (updates) => set((state) => {
+        const map = new Map(updates.map((u) => [u.id, u.updates]))
+        return {
+          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          future: [],
+          profiles: state.profiles.map((p) => map.has(p.id) ? { ...p, ...map.get(p.id)! } : p),
+        }
+      }),
 
       snapshotHistory: () => set((state) => ({
         past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],

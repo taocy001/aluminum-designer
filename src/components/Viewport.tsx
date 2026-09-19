@@ -1,169 +1,159 @@
-import React, { useEffect, useRef } from 'react'
-import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { OrbitControls, Grid, Text, Billboard } from '@react-three/drei'
+import React, { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Canvas, useThree } from '@react-three/fiber'
+import { OrbitControls, Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/snapUtils'
+import { computeAllTrims, computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
 import Profile from './Profile'
 import Connector from './Connector'
 import DrawingHandler from './DrawingHandler'
 import DragHandler from './DragHandler'
+import TextSprite from './TextSprite'
 
-// Resets camera position and orbit target when triggered
+const DEFAULT_CAM = new THREE.Vector3(600, 500, 600)
+
+// Fits the camera to the whole frame when triggered (or resets when empty)
 const CameraController: React.FC = () => {
   const { camera, controls } = useThree()
-  const { cameraResetTrigger } = useToolStore()
+  const cameraResetTrigger = useToolStore((s) => s.cameraResetTrigger)
   const prevTrigger = useRef(0)
 
   useEffect(() => {
-    if (cameraResetTrigger > 0 && cameraResetTrigger !== prevTrigger.current) {
-      prevTrigger.current = cameraResetTrigger
-      camera.position.set(300, 300, 300)
-      if (controls) {
-        const orbit = controls as any
-        orbit.target.set(0, 0, 0)
-        orbit.update()
-      }
+    if (cameraResetTrigger === prevTrigger.current) return
+    prevTrigger.current = cameraResetTrigger
+    const orbit = controls as any
+    const bounds = computeFrameBounds(useStore.getState().profiles)
+    let target = new THREE.Vector3(0, 0, 0)
+    let pos = DEFAULT_CAM.clone()
+    if (bounds) {
+      target = bounds.getCenter(new THREE.Vector3())
+      const radius = Math.max(bounds.getSize(new THREE.Vector3()).length() / 2, 100)
+      const persp = camera as THREE.PerspectiveCamera
+      const dist = radius / Math.sin(THREE.MathUtils.degToRad(persp.fov) / 2) * 1.1
+      pos = target.clone().add(new THREE.Vector3(1, 0.8, 1).normalize().multiplyScalar(dist))
     }
+    camera.position.copy(pos)
+    if (orbit) { orbit.target.copy(target); orbit.update() } else camera.lookAt(target)
   }, [cameraResetTrigger, camera, controls])
 
   return null
 }
 
-// Resolves frame selection rect → profile IDs
+// Resolves frame selection rect → profile IDs (any endpoint or midpoint inside the box)
 const FrameSelector: React.FC = () => {
   const { camera, size } = useThree()
-  const profiles = useStore((s) => s.profiles)
-  const selectItems = useStore((s) => s.selectItems)
   const frameSelectRect = useToolStore((s) => s.frameSelectRect)
   const clearFrameSelectRect = useToolStore((s) => s.clearFrameSelectRect)
 
   useEffect(() => {
     if (!frameSelectRect) return
     const { x1, y1, x2, y2 } = frameSelectRect
-    if (x2 - x1 < 5 || y2 - y1 < 5) {
-      clearFrameSelectRect()
-      return
-    }
-
-    const selected: string[] = []
-    for (const profile of profiles) {
-      const pos = new THREE.Vector3(...profile.position)
-      const quat = new THREE.Quaternion(...profile.quaternion)
-      const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(quat)
-      const mid = pos.clone().addScaledVector(dir, profile.length / 2)
-
-      mid.project(camera)
-      const sx = (mid.x + 1) / 2 * size.width
-      const sy = (1 - mid.y) / 2 * size.height
-
-      if (sx >= x1 && sx <= x2 && sy >= y1 && sy <= y2) {
-        selected.push(profile.id)
-      }
-    }
-
-    selectItems(selected)
     clearFrameSelectRect()
-  }, [frameSelectRect, camera, size, profiles, selectItems, clearFrameSelectRect])
+    if (x2 - x1 < 5 || y2 - y1 < 5) return
+
+    const inside = (v: THREE.Vector3) => {
+      const p = v.clone().project(camera)
+      const sx = (p.x + 1) / 2 * size.width
+      const sy = (1 - p.y) / 2 * size.height
+      return sx >= x1 && sx <= x2 && sy >= y1 && sy <= y2
+    }
+    const selected: string[] = []
+    for (const profile of useStore.getState().profiles) {
+      const { start, end } = getProfileEndpoints(profile)
+      const mid = start.clone().lerp(end, 0.5)
+      if (inside(start) && inside(end) || inside(mid)) selected.push(profile.id)
+    }
+    useStore.getState().selectItems(selected)
+  }, [frameSelectRect, camera, size, clearFrameSelectRect])
 
   return null
 }
 
-// Dimension labels — always positioned outside the profile cross-section
-const DimensionLabels: React.FC = () => {
+// Cut-length labels, placed just outside the member body
+const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims }) => {
   const profiles = useStore((s) => s.profiles)
-
   return (
     <>
       {profiles.map((p) => {
         const { start, end } = getProfileEndpoints(p)
         const mid = start.clone().lerp(end, 0.5)
-        const dir = end.clone().sub(start).normalize()
-
-        // Offset away from the profile body based on orientation
-        if (Math.abs(dir.y) > 0.7) {
-          // Vertical profile → offset sideways
-          mid.x += 30
-          mid.z += 10
-        } else {
-          // Horizontal profile → offset upward past the cross-section
-          // Tallest spec is 40mm, so top surface is 20mm above center; use 28mm
-          mid.y += 28
-        }
-
-        return (
-          <Billboard key={p.id} position={mid.toArray() as [number, number, number]}>
-            <Text
-              fontSize={9}
-              color="#e2e8f0"
-              anchorX="center"
-              anchorY="middle"
-              outlineWidth={0.8}
-              outlineColor="#0f172a"
-              depthOffset={-5}
-            >
-              {Math.round(p.length)}mm
-            </Text>
-          </Billboard>
-        )
+        const dir = getProfileDir(p)
+        if (Math.abs(dir.y) > 0.7) { mid.x += 26; mid.z += 26 } else mid.y += 30
+        const cut = trims.get(p.id)?.cutLength ?? p.length
+        return <TextSprite key={p.id} text={String(Math.round(cut))} position={mid.toArray() as [number, number, number]} />
       })}
     </>
   )
 }
 
-const Viewport: React.FC = () => {
-  const { profiles, connectors, selectedIds, selectItem, clearSelection } = useStore()
-  const { isDrawing, viewMode, isDragging, showDimensionLabels, selectMode } = useToolStore()
+// Dev-only: expose camera helpers for end-to-end tests
+const DevHook: React.FC = () => {
+  const { camera, size, gl, controls } = useThree()
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const w = window as any
+    w.__aluframe = w.__aluframe ?? {}
+    w.__aluframe.camera = camera
+    w.__aluframe.setView = (pos: [number, number, number], target: [number, number, number] = [0, 0, 0]) => {
+      camera.position.set(...pos)
+      const orbit = controls as any
+      if (orbit) { orbit.target.set(...target); orbit.update() } else camera.lookAt(...target)
+    }
+    w.__aluframe.worldToClient = (x: number, y: number, z: number) => {
+      const rect = gl.domElement.getBoundingClientRect()
+      const p = new THREE.Vector3(x, y, z).project(camera)
+      return { x: rect.left + (p.x + 1) / 2 * size.width, y: rect.top + (1 - p.y) / 2 * size.height }
+    }
+  }, [camera, size, gl, controls])
+  return null
+}
 
-  const orbitEnabled = !isDragging && !selectMode && (viewMode === 'navigate' || !isDrawing)
+const Viewport: React.FC = () => {
+  const { profiles, connectors, selectedIds, selectItem } = useStore()
+  const { viewMode, isDragging, showDimensionLabels, selectMode } = useToolStore()
+  const trims = useMemo(() => computeAllTrims(profiles), [profiles])
+
+  const orbitEnabled = !isDragging && !selectMode
+  // Draw mode: left button draws, right button orbits, middle pans. Navigate: left orbits.
+  const mouseButtons = viewMode === 'draw'
+    ? { MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE }
+    : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
 
   return (
     <Canvas
-      camera={{ position: [300, 300, 300], fov: 45 }}
+      camera={{ position: DEFAULT_CAM.toArray(), fov: 45, near: 1, far: 100000 }}
       shadows={false}
+      onContextMenu={(e) => e.preventDefault()}
+      style={{ touchAction: 'none' }}
     >
+      <Suspense fallback={null}>
       <color attach="background" args={['#1e293b']} />
-
       <ambientLight intensity={0.6} />
       <directionalLight position={[300, 500, 300]} intensity={1.2} />
       <directionalLight position={[-200, 300, -200]} intensity={0.4} color="#cce4ff" />
 
-      <Grid
-        infiniteGrid
-        cellSize={10}
-        sectionSize={100}
-        fadeDistance={1500}
-        cellColor="#334155"
-        sectionColor="#475569"
-      />
+      <Grid infiniteGrid cellSize={50} sectionSize={500} fadeDistance={6000} fadeStrength={1.5} cellColor="#334155" sectionColor="#475569" position={[0, -0.5, 0]} />
 
       {profiles.map((p) => (
-        <Profile
-          key={p.id}
-          {...p}
-          isSelected={selectedIds.includes(p.id)}
-          onClick={(multi) => selectItem(p.id, multi)}
-        />
+        <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selectedIds.includes(p.id)} onSelect={(multi) => selectItem(p.id, multi)} />
       ))}
 
       {connectors.map((c) => (
-        <Connector
-          key={c.id}
-          {...c}
-          isSelected={selectedIds.includes(c.id)}
-          onClick={() => selectItem(c.id, false)}
-        />
+        <Connector key={c.id} {...c} isSelected={selectedIds.includes(c.id)} onSelect={(multi) => selectItem(c.id, multi)} />
       ))}
 
-      {showDimensionLabels && <DimensionLabels />}
+      {showDimensionLabels && <DimensionLabels trims={trims} />}
 
       <DrawingHandler />
       <DragHandler />
       <FrameSelector />
 
-      <OrbitControls makeDefault enabled={orbitEnabled} />
+      <OrbitControls makeDefault enabled={orbitEnabled} mouseButtons={mouseButtons} minDistance={50} maxDistance={30000} />
       <CameraController />
+      <DevHook />
+      </Suspense>
     </Canvas>
   )
 }
