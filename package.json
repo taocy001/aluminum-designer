@@ -1,16 +1,18 @@
 {
-  "name": "app",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "aluminum-designer",
+  "version": "2.0.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:all": "vitest run && playwright test"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "MIT",
+  "description": "Aluminum extrusion frame designer: axis-constrained 3D drawing, joint trimming, cut-length BOM",
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
@@ -24,6 +26,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -33,6 +36,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.2",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^3.2.7"
   }
 }

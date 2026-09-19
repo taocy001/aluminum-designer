@@ -1,31 +1,54 @@
 import { create } from 'zustand'
 import * as THREE from 'three'
 import { ProfileSpec } from './useStore'
+import type { Axis } from '../utils/jointUtils'
 
 export type PlacementMode = 'profile' | 'connector'
 export type ViewMode = 'draw' | 'navigate'
 export type Language = 'en' | 'zh'
+export type ToastKind = 'info' | 'error' | 'success'
+
+export interface Toast { id: number; message: string; kind: ToastKind }
+export interface AlignGuide { from: [number, number, number]; to: [number, number, number] }
 
 interface ToolState {
   placementMode: PlacementMode
   viewMode: ViewMode
-  isDrawing: boolean
-  startPoint: THREE.Vector3 | null
-  currentPoint: THREE.Vector3 | null
-  snapPoint: THREE.Vector3 | null
   activeSpec: ProfileSpec
   activeConnectorType: string | null
   language: Language
   cameraResetTrigger: number
-  // Drag state
+
+  // Drawing
+  isDrawing: boolean
+  /** raw point the user clicked to start (before floor lift) */
+  drawOrigin: THREE.Vector3 | null
+  /** effective start (may be lifted so horizontals rest on the floor) */
+  startPoint: THREE.Vector3 | null
+  currentPoint: THREE.Vector3 | null
+  snapPoint: THREE.Vector3 | null
+  drawAxis: Axis | null
+  lockedAxis: Axis | null
+  alignGuides: AlignGuide[]
+  /** incremented when a digit is typed while drawing → focus the exact-length input */
+  preciseFocusRequest: number
+  preciseSeed: string
+
+  // Drag
   isDragging: boolean
   dragProfileId: string | null
   dragStartHit: THREE.Vector3 | null
   dragOriginPos: THREE.Vector3 | null
   dragGroupOrigins: Record<string, [number, number, number]>
-  // UI state
+  dragPlane: THREE.Plane | null
+  dragVertical: boolean
+  dragMoved: boolean
+
+  // UI
   showDimensionLabels: boolean
   selectMode: boolean
+  toasts: Toast[]
+
   // Frame selection
   isFrameSelecting: boolean
   frameSelectStart: { x: number; y: number } | null
@@ -34,17 +57,30 @@ interface ToolState {
 
   setPlacementMode: (mode: PlacementMode) => void
   setViewMode: (mode: ViewMode) => void
-  setDrawing: (isDrawing: boolean) => void
-  setPoints: (start: THREE.Vector3 | null, current: THREE.Vector3 | null) => void
-  setSnapPoint: (snap: THREE.Vector3 | null) => void
   setActiveSpec: (spec: ProfileSpec) => void
   setActiveConnector: (type: string | null) => void
   setLanguage: (lang: Language) => void
   triggerCameraReset: () => void
-  startDrag: (id: string, hit: THREE.Vector3, origin: THREE.Vector3, groupOrigins?: Record<string, [number, number, number]>) => void
+
+  beginDraw: (origin: THREE.Vector3) => void
+  updateDraw: (patch: Partial<Pick<ToolState, 'startPoint' | 'currentPoint' | 'snapPoint' | 'drawAxis' | 'alignGuides'>>) => void
+  setHover: (point: THREE.Vector3 | null, snap: THREE.Vector3 | null) => void
+  cancelDraw: () => void
+  setLockedAxis: (axis: Axis | null) => void
+  requestPreciseFocus: (seed: string) => void
+
+  startDrag: (args: {
+    id: string; hit: THREE.Vector3; origin: THREE.Vector3;
+    groupOrigins: Record<string, [number, number, number]>; plane: THREE.Plane; vertical: boolean
+  }) => void
+  markDragMoved: () => void
   stopDrag: () => void
+
   toggleDimensionLabels: () => void
   setSelectMode: (on: boolean) => void
+  showToast: (message: string, kind?: ToastKind) => void
+  dismissToast: (id: number) => void
+
   startFrameSelect: (x: number, y: number) => void
   updateFrameSelect: (x: number, y: number) => void
   endFrameSelect: (x: number, y: number) => void
@@ -52,68 +88,91 @@ interface ToolState {
   clearFrameSelectRect: () => void
 }
 
-export const useToolStore = create<ToolState>((set) => ({
+let toastSeq = 1
+
+export const useToolStore = create<ToolState>((set, get) => ({
   placementMode: 'profile',
   viewMode: 'navigate',
-  isDrawing: false,
-  startPoint: null,
-  currentPoint: null,
-  snapPoint: null,
   activeSpec: '2020',
   activeConnectorType: null,
   language: 'zh',
   cameraResetTrigger: 0,
+
+  isDrawing: false,
+  drawOrigin: null,
+  startPoint: null,
+  currentPoint: null,
+  snapPoint: null,
+  drawAxis: null,
+  lockedAxis: null,
+  alignGuides: [],
+  preciseFocusRequest: 0,
+  preciseSeed: '',
+
   isDragging: false,
   dragProfileId: null,
   dragStartHit: null,
   dragOriginPos: null,
   dragGroupOrigins: {},
+  dragPlane: null,
+  dragVertical: false,
+  dragMoved: false,
+
   showDimensionLabels: true,
   selectMode: false,
+  toasts: [],
+
   isFrameSelecting: false,
   frameSelectStart: null,
   frameSelectCurrent: null,
   frameSelectRect: null,
 
   setPlacementMode: (placementMode) => set({ placementMode }),
-  setViewMode: (viewMode) => set({ viewMode, isDrawing: false, startPoint: null, currentPoint: null, selectMode: false }),
-  setDrawing: (isDrawing) => set({ isDrawing }),
-  setPoints: (start, current) => set({ startPoint: start, currentPoint: current }),
-  setSnapPoint: (snapPoint) => set({ snapPoint }),
+  setViewMode: (viewMode) => set({
+    viewMode, isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
+    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], selectMode: false,
+  }),
   setActiveSpec: (spec) => set({ activeSpec: spec, placementMode: 'profile', viewMode: 'draw', selectMode: false }),
   setActiveConnector: (type) => set({ activeConnectorType: type, placementMode: 'connector', viewMode: 'draw', selectMode: false }),
   setLanguage: (language) => set({ language }),
   triggerCameraReset: () => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1 })),
-  startDrag: (id, hit, origin, groupOrigins = {}) => set({
-    isDragging: true,
-    dragProfileId: id,
-    dragStartHit: hit,
-    dragOriginPos: origin,
-    dragGroupOrigins: groupOrigins,
+
+  beginDraw: (origin) => set({
+    isDrawing: true, drawOrigin: origin.clone(), startPoint: origin.clone(), currentPoint: origin.clone(),
+    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [],
   }),
-  stopDrag: () => set({ isDragging: false, dragProfileId: null, dragStartHit: null, dragOriginPos: null, dragGroupOrigins: {} }),
+  updateDraw: (patch) => set(patch),
+  setHover: (point, snap) => set({ currentPoint: point, snapPoint: snap }),
+  cancelDraw: () => set({
+    isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
+    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [],
+  }),
+  setLockedAxis: (lockedAxis) => set({ lockedAxis }),
+  requestPreciseFocus: (seed) => set((s) => ({ preciseFocusRequest: s.preciseFocusRequest + 1, preciseSeed: seed })),
+
+  startDrag: ({ id, hit, origin, groupOrigins, plane, vertical }) => set({
+    isDragging: true, dragProfileId: id, dragStartHit: hit, dragOriginPos: origin,
+    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragMoved: false,
+  }),
+  markDragMoved: () => { if (!get().dragMoved) set({ dragMoved: true }) },
+  stopDrag: () => set({
+    isDragging: false, dragProfileId: null, dragStartHit: null, dragOriginPos: null,
+    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragMoved: false,
+  }),
+
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
   setSelectMode: (on) => set({ selectMode: on }),
+  showToast: (message, kind = 'info') => {
+    const id = toastSeq++
+    set((s) => ({ toasts: [...s.toasts.slice(-3), { id, message, kind }] }))
+    setTimeout(() => get().dismissToast(id), kind === 'error' ? 3500 : 2200)
+  },
+  dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-  startFrameSelect: (x, y) => set({
-    isFrameSelecting: true,
-    frameSelectStart: { x, y },
-    frameSelectCurrent: { x, y },
-  }),
+  startFrameSelect: (x, y) => set({ isFrameSelecting: true, frameSelectStart: { x, y }, frameSelectCurrent: { x, y } }),
   updateFrameSelect: (x, y) => set({ frameSelectCurrent: { x, y } }),
-  endFrameSelect: (x, y) => set((s) => {
-    if (!s.frameSelectStart) return { isFrameSelecting: false }
-    return {
-      isFrameSelecting: false,
-      frameSelectCurrent: { x, y },
-      frameSelectRect: {
-        x1: Math.min(s.frameSelectStart.x, x),
-        y1: Math.min(s.frameSelectStart.y, y),
-        x2: Math.max(s.frameSelectStart.x, x),
-        y2: Math.max(s.frameSelectStart.y, y),
-      },
-    }
-  }),
+  // The canvas-relative selection rect is set separately by the caller (setFrameSelectRect)
+  endFrameSelect: (x, y) => set({ isFrameSelecting: false, frameSelectCurrent: { x, y } }),
   setFrameSelectRect: (rect) => set({ frameSelectRect: rect }),
   clearFrameSelectRect: () => set({ frameSelectRect: null }),
 }))
