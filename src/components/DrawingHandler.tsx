@@ -5,15 +5,29 @@ import { Line } from '@react-three/drei'
 import { useToolStore } from '../store/useToolStore'
 import { useStore } from '../store/useStore'
 import { getProfileShape } from '../utils/profileShapes'
-import { pickPoint, resolveAxisEnd } from '../utils/pickUtils'
+import { pickPoint, resolveAxisEnd, type MeshHit } from '../utils/pickUtils'
+import SnapMarker from './SnapMarker'
 import { floorY, tryAddProfile, placeConnector } from '../utils/profileFactory'
 import { specDims } from '../utils/specUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 
 const DrawingHandler: React.FC = () => {
-  const { isDrawing, startPoint, currentPoint, snapPoint, placementMode, activeSpec, viewMode, drawAxis, alignGuides } = useToolStore()
-  const { camera, size } = useThree()
+  const { isDrawing, startPoint, currentPoint, snapPoint, snapKind, placementMode, activeSpec, viewMode, drawAxis, alignGuides } = useToolStore()
+  const { camera, size, scene } = useThree()
+  const raycaster = useMemo(() => new THREE.Raycaster(), [])
+
+  /** First member body under the ray (the catcher sphere and markers are skipped) */
+  const hitMember = useCallback((ray: THREE.Ray): MeshHit | null => {
+    raycaster.ray.copy(ray)
+    const meshes: THREE.Object3D[] = []
+    scene.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.userData?.profileId) meshes.push(o) })
+    const hits = raycaster.intersectObjects(meshes, false)
+    const h = hits[0]
+    if (!h || !h.face) return null
+    const normal = h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize()
+    return { profileId: h.object.userData.profileId as string, point: h.point.clone(), normal }
+  }, [raycaster, scene])
   const lastRay = useRef<THREE.Ray | null>(null)
   const lastCursor = useRef<THREE.Vector2 | null>(null)
 
@@ -46,10 +60,11 @@ const DrawingHandler: React.FC = () => {
     const profiles = useStore.getState().profiles
     const origin = ts.drawOrigin
 
+    const meshHit = hitMember(ray)
     // Pass 1: which axis is the user pulling along?
-    const first = resolveAxisEnd(origin, ray, cursor, camera, size, profiles, ts.lockedAxis)
+    const first = resolveAxisEnd(origin, ray, cursor, camera, size, profiles, ts.lockedAxis, meshHit)
     if (!first) {
-      ts.updateDraw({ startPoint: origin.clone(), currentPoint: origin.clone(), snapPoint: null, drawAxis: null, alignGuides: [] })
+      ts.updateDraw({ startPoint: origin.clone(), currentPoint: origin.clone(), snapPoint: null, drawAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null })
       return
     }
     // Horizontal members are lifted so they rest on the floor instead of sinking into it
@@ -58,17 +73,19 @@ const DrawingHandler: React.FC = () => {
 
     const res = start.equals(origin)
       ? first
-      : resolveAxisEnd(start, ray, cursor, camera, size, profiles, first.axis)
+      : resolveAxisEnd(start, ray, cursor, camera, size, profiles, first.axis, meshHit)
     if (!res) return
 
     ts.updateDraw({
       startPoint: start,
       currentPoint: res.end,
-      snapPoint: res.snapPoint,
+      snapPoint: res.snapKind === 'grid' ? null : res.end.clone(),
+      snapKind: res.snapKind,
+      hoverTargetId: res.targetId,
       drawAxis: res.axis,
       alignGuides: res.guide ? [{ from: res.guide.from.toArray() as any, to: res.guide.to.toArray() as any }] : [],
     })
-  }, [camera, size])
+  }, [camera, size, hitMember])
 
   const onPointerMove = useCallback((e: any) => {
     const ray: THREE.Ray = e.ray
@@ -82,10 +99,12 @@ const DrawingHandler: React.FC = () => {
       return
     }
     const profiles = useStore.getState().profiles
-    const pick = pickPoint(ray, cursor, camera, size, profiles)
-    if (pick.kind === 'none') { ts.setHover(null, null); return }
-    ts.setHover(pick.point, pick.kind === 'ground' ? null : pick.point)
-  }, [camera, size, updateEnd])
+    const pick = pickPoint(ray, cursor, camera, size, profiles, hitMember(ray))
+    if (pick.kind === 'none') { ts.setHover(null, null); ts.updateDraw({ alignGuides: [] }); return }
+    const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
+    ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null)
+    ts.updateDraw({ alignGuides: (pick.guides ?? []).map((g) => ({ from: g.from.toArray() as any, to: g.to.toArray() as any })) })
+  }, [camera, size, updateEnd, hitMember])
 
   const onPointerDown = useCallback((e: any) => {
     const ts = useToolStore.getState()
@@ -101,14 +120,14 @@ const DrawingHandler: React.FC = () => {
 
     if (ts.placementMode === 'connector') {
       if (!ts.activeConnectorType) return
-      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles)
+      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray))
       if (pick.kind === 'none') return
       placeConnector(pick.point, ts.activeConnectorType)
       return
     }
 
     if (!ts.isDrawing) {
-      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles)
+      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray))
       if (pick.kind === 'none') return
       ts.beginDraw(pick.point)
       return
@@ -120,7 +139,7 @@ const DrawingHandler: React.FC = () => {
     if (s.distanceTo(c) < 1) return // no direction yet — ignore the click
     tryAddProfile(s, c, activeSpec)
     ts.cancelDraw()
-  }, [camera, size, updateEnd])
+  }, [camera, size, updateEnd, hitMember])
 
   const { hh } = specDims(activeSpec)
 
@@ -140,12 +159,7 @@ const DrawingHandler: React.FC = () => {
       )}
 
       {/* Start marker */}
-      {isDrawing && startPoint && (
-        <mesh position={startPoint} raycast={() => null}>
-          <sphereGeometry args={[3, 12, 12]} />
-          <meshBasicMaterial color={axisColor} />
-        </mesh>
-      )}
+      {isDrawing && startPoint && <SnapMarker position={startPoint} kind="start" size={0.022} />}
 
       {/* Member preview */}
       {placementMode === 'profile' && xform && (
@@ -154,13 +168,8 @@ const DrawingHandler: React.FC = () => {
         </mesh>
       )}
 
-      {/* Snap indicator (endpoint / centerline hit) */}
-      {viewMode === 'draw' && snapPoint && (
-        <mesh position={snapPoint} raycast={() => null}>
-          <sphereGeometry args={[4, 16, 16]} />
-          <meshBasicMaterial color="#facc15" />
-        </mesh>
-      )}
+      {/* Snap indicator (endpoint / centerline / alignment) — constant screen size */}
+      {viewMode === 'draw' && snapPoint && <SnapMarker position={snapPoint} kind={snapKind ?? 'endpoint'} />}
 
       {/* Hover cursor on the floor when not snapped */}
       {viewMode === 'draw' && !isDrawing && currentPoint && !snapPoint && (

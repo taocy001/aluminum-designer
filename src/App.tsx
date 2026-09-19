@@ -14,7 +14,7 @@ const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3
 function App() {
   const { clearSelection, removeSelected, undo, redo } = useStore()
   const {
-    language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis,
+    language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind,
     viewMode, setViewMode, triggerCameraReset, cancelDraw, activeSpec,
     isDragging, showDimensionLabels, toggleDimensionLabels,
     selectMode, setSelectMode,
@@ -151,6 +151,7 @@ function App() {
                 <span>{t.axisNames[drawAxis]}{lockedAxis ? ' 🔒' : ''}</span>
                 <span className="opacity-60">|</span>
                 <span data-testid="draw-length">{drawDist.toFixed(0)} mm</span>
+                {snapKind && snapKind !== 'grid' && (<><span className="opacity-60">|</span><span data-testid="snap-kind" className="text-cyan-300">{t.snapNames[snapKind] ?? snapKind}</span></>)}
               </div>
               <div className="flex items-center gap-1 bg-slate-700/80 border border-white/10 rounded-full overflow-hidden">
                 <input ref={preciseInputRef} type="number" value={preciseInput} data-testid="precise-input"

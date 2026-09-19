@@ -1,15 +1,8 @@
 import * as THREE from 'three'
 import { ProfileData } from '../store/useStore'
+import { getProfileEndpoints, getProfileDir, endContactsBody } from './geometryCore'
 
-// ── Endpoint utilities ────────────────────────────────────────────────────
-
-export function getProfileEndpoints(profile: ProfileData): { start: THREE.Vector3; end: THREE.Vector3 } {
-  const start = new THREE.Vector3(...profile.position)
-  const quat = new THREE.Quaternion(...profile.quaternion).normalize()
-  const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(quat)
-  const end = start.clone().addScaledVector(dir, profile.length)
-  return { start, end }
-}
+export { getProfileEndpoints }
 
 // Returns the nearest snap endpoint within threshold, optionally excluding a point
 export function findSnapPoint(
@@ -40,17 +33,6 @@ export function snapToAxis(start: THREE.Vector3, end: THREE.Vector3): THREE.Vect
   else if (ay >= ax && ay >= az) result.y = end.y
   else result.z = end.z
   return result
-}
-
-// ── Point-to-segment distance helper ──────────────────────────────────────
-
-/** Closest distance from point `pt` to the finite segment [a, b] */
-function distToSeg(pt: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3): number {
-  const ab = b.clone().sub(a)
-  const lenSq = ab.lengthSq()
-  if (lenSq < 0.0001) return pt.distanceTo(a)
-  const t = Math.max(0, Math.min(1, pt.clone().sub(a).dot(ab) / lenSq))
-  return pt.distanceTo(a.clone().addScaledVector(ab, t))
 }
 
 // ── AABB-based overlap detection ──────────────────────────────────────────
@@ -180,27 +162,16 @@ export function wouldOverlap(candidate: ProfileData, existing: ProfileData[]): b
       )
       if (cornerJoint) continue
 
-      // T-joint: one profile's endpoint meets the body of a non-parallel profile.
-      // (e.g. a vertical upright seated on a horizontal beam mid-span)
-      // Guard: only when profiles are NOT near-parallel (dot < 0.8, i.e. angle > ~37°).
-      // Parallel profiles that happen to be close are handled solely by AABB.
-      const candDir = new THREE.Vector3(0, 0, 1).applyQuaternion(
-        new THREE.Quaternion(...candidate.quaternion).normalize()
-      )
-      const exDir = new THREE.Vector3(0, 0, 1).applyQuaternion(
-        new THREE.Quaternion(...prof.quaternion).normalize()
-      )
-      if (Math.abs(candDir.dot(exDir)) < 0.8) {
-        // T_EPS slightly larger than max half cross-section (2040 → 20 mm) + grid tolerance
-        const T_EPS = 12
-        const tJoint = (
-          distToSeg(candEps.start, exEps.start, exEps.end) < T_EPS ||
-          distToSeg(candEps.end,   exEps.start, exEps.end) < T_EPS ||
-          distToSeg(exEps.start,   candEps.start, candEps.end) < T_EPS ||
-          distToSeg(exEps.end,     candEps.start, candEps.end) < T_EPS
-        )
-        if (tJoint) continue
-      }
+      // T-joint: one member's end lands inside the body of a non-parallel member (it will be trimmed
+      // to that member's face by jointUtils, so the as-built parts do not penetrate)
+      const candDir = getProfileDir(candidate)
+      const exDir = getProfileDir(prof)
+      const tJoint =
+        endContactsBody(candEps.end, candDir, prof) !== null ||
+        endContactsBody(candEps.start, candDir.clone().negate(), prof) !== null ||
+        endContactsBody(exEps.end, exDir, candidate) !== null ||
+        endContactsBody(exEps.start, exDir.clone().negate(), candidate) !== null
+      if (tJoint) continue
     }
 
     return true   // real physical overlap

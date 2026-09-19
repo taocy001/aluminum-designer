@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
-import { computeTrims, computeAllTrims, computeFrameBounds } from '../utils/jointUtils'
+import { computeTrims, computeAllTrims, computeFrameBounds, findPenetrations } from '../utils/jointUtils'
 import { wouldOverlap } from '../utils/snapUtils'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
 
@@ -128,5 +128,67 @@ describe('overlap detection', () => {
     const a = P(0, 10, 0, 300, 10, 0)
     expect(wouldOverlap(P(0, 10, 20, 300, 10, 20), [a])).toBe(false)
     expect(wouldOverlap(P(0, 10, 15, 300, 10, 15), [a])).toBe(true)
+  })
+})
+
+describe('tolerant joints (ends landing inside a partner body)', () => {
+  it('a rail whose end overshoots the post axis by 6 mm is still trimmed to the post face', () => {
+    const post = P(600, 0, 0, 600, 800, 0)
+    const rail = P(0, 10, 0, 606, 10, 0)           // 6 mm past the post centerline
+    const t = computeTrims(rail, [post, rail])
+    expect(t.end.butt).toBe(true)
+    expect(t.end.trim).toBe(16)                    // 6 overshoot + 10 half post
+    expect(t.cutLength).toBe(590)                  // as-built ends at the post face (x=590)
+  })
+  it('a rail stopping 4 mm short of the post axis is cut to the same face', () => {
+    const post = P(600, 0, 0, 600, 800, 0)
+    const rail = P(0, 10, 0, 596, 10, 0)
+    const t = computeTrims(rail, [post, rail])
+    expect(t.end.trim).toBe(6)
+    expect(t.cutLength).toBe(590)
+  })
+  it('a rail 3 mm off the post centerline laterally still joins (within the post section)', () => {
+    const post = P(600, 0, 0, 600, 800, 0)
+    const rail = P(0, 10, 3, 600, 10, 3)
+    const t = computeTrims(rail, [post, rail])
+    expect(t.end.butt).toBe(true)
+    expect(t.end.trim).toBe(10)
+  })
+  it('a rail passing 25 mm beside a post is not a joint', () => {
+    const post = P(600, 0, 0, 600, 800, 0)
+    const rail = P(0, 10, 25, 600, 10, 25)
+    const t = computeTrims(rail, [post, rail])
+    expect(t.end.partners).toBe(0)
+  })
+  it('coaxial stacked posts through a rail joint neither extend nor trim at the shared end', () => {
+    const lower = P(0, 0, 0, 0, 800, 0)
+    const upper = P(0, 800, 0, 0, 1400, 0)
+    const rail = P(0, 800, 0, 600, 800, 0)
+    const tl = computeTrims(lower, [lower, upper, rail])
+    const tu = computeTrims(upper, [lower, upper, rail])
+    expect(tl.end.trim).toBe(0); expect(tl.end.continues).toBe(true)
+    expect(tu.start.trim).toBe(0); expect(tu.start.continues).toBe(true)
+    expect(computeTrims(rail, [lower, upper, rail]).start.trim).toBe(10)
+    expect(findPenetrations([lower, upper, rail], computeAllTrims([lower, upper, rail]))).toEqual([])
+  })
+})
+
+describe('interference check', () => {
+  it('a cabinet has no penetrations', () => {
+    const all = cabinet()
+    expect(findPenetrations(all, computeAllTrims(all))).toEqual([])
+  })
+  it('a cabinet with an imprecise rail (overshoot + lateral offset) still has no penetrations', () => {
+    const all = cabinet()
+    all.push(P(0, 400, 3, 604, 400, 3))  // shelf-height rail between the front posts, slightly off
+    expect(wouldOverlap(all[all.length - 1], all.slice(0, -1))).toBe(false)
+    expect(findPenetrations(all, computeAllTrims(all))).toEqual([])
+  })
+  it('detects two rails driven through each other', () => {
+    const a = P(0, 10, 200, 600, 10, 200)
+    const b = P(300, 10, 0, 300, 10, 400)
+    const pen = findPenetrations([a, b], computeAllTrims([a, b]))
+    expect(pen).toHaveLength(1)
+    expect(pen[0].depth).toBeGreaterThan(10)
   })
 })
