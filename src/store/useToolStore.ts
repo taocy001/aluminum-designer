@@ -30,6 +30,10 @@ interface ToolState {
   drawAxis: Axis | null
   lockedAxis: Axis | null
   alignGuides: AlignGuide[]
+  /** how the current point is attached: endpoint / joint (centerline) / align / grid */
+  snapKind: string | null
+  /** member the cursor/end is attaching to (highlighted in the scene) */
+  hoverTargetId: string | null
   /** incremented when a digit is typed while drawing → focus the exact-length input */
   preciseFocusRequest: number
   preciseSeed: string
@@ -63,8 +67,8 @@ interface ToolState {
   triggerCameraReset: () => void
 
   beginDraw: (origin: THREE.Vector3) => void
-  updateDraw: (patch: Partial<Pick<ToolState, 'startPoint' | 'currentPoint' | 'snapPoint' | 'drawAxis' | 'alignGuides'>>) => void
-  setHover: (point: THREE.Vector3 | null, snap: THREE.Vector3 | null) => void
+  updateDraw: (patch: Partial<Pick<ToolState, 'startPoint' | 'currentPoint' | 'snapPoint' | 'drawAxis' | 'alignGuides' | 'snapKind' | 'hoverTargetId'>>) => void
+  setHover: (point: THREE.Vector3 | null, snap: THREE.Vector3 | null, kind?: string | null, targetId?: string | null) => void
   cancelDraw: () => void
   setLockedAxis: (axis: Axis | null) => void
   requestPreciseFocus: (seed: string) => void
@@ -106,6 +110,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   drawAxis: null,
   lockedAxis: null,
   alignGuides: [],
+  snapKind: null,
+  hoverTargetId: null,
   preciseFocusRequest: 0,
   preciseSeed: '',
 
@@ -130,7 +136,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setPlacementMode: (placementMode) => set({ placementMode }),
   setViewMode: (viewMode) => set({
     viewMode, isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
-    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], selectMode: false,
+    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null, selectMode: false,
   }),
   setActiveSpec: (spec) => set({ activeSpec: spec, placementMode: 'profile', viewMode: 'draw', selectMode: false }),
   setActiveConnector: (type) => set({ activeConnectorType: type, placementMode: 'connector', viewMode: 'draw', selectMode: false }),
@@ -139,13 +145,13 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   beginDraw: (origin) => set({
     isDrawing: true, drawOrigin: origin.clone(), startPoint: origin.clone(), currentPoint: origin.clone(),
-    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [],
+    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null,
   }),
   updateDraw: (patch) => set(patch),
-  setHover: (point, snap) => set({ currentPoint: point, snapPoint: snap }),
+  setHover: (point, snap, kind = null, targetId = null) => set({ currentPoint: point, snapPoint: snap, snapKind: kind, hoverTargetId: targetId }),
   cancelDraw: () => set({
     isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
-    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [],
+    snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null,
   }),
   setLockedAxis: (lockedAxis) => set({ lockedAxis }),
   requestPreciseFocus: (seed) => set((s) => ({ preciseFocusRequest: s.preciseFocusRequest + 1, preciseSeed: seed })),

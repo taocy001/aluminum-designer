@@ -46,6 +46,9 @@ const en = {
   toastCleared: 'All members removed',
   toastLog: 'Debug data logged to console (F12)',
   axisNames: { x: 'X axis', y: 'Y axis (vertical)', z: 'Z axis' } as Record<string, string>,
+  snapNames: { endpoint: 'endpoint', joint: 'centerline T-joint', segment: 'centerline', align: 'aligned', grid: 'grid' } as Record<string, string>,
+  penetrations: 'Interference',
+  penetrationsOk: 'no interference',
   guideDraw: [
     'Click a start point (floor, endpoint or centerline)',
     'Move along X / Y / Z, click to finish',
@@ -114,6 +117,9 @@ const zh: typeof en = {
   toastCleared: '已清空所有型材',
   toastLog: '调试数据已打印至控制台 (F12)',
   axisNames: { x: 'X轴', y: 'Y轴（垂直）', z: 'Z轴' },
+  snapNames: { endpoint: '端点吸附', joint: '中线 T 接', segment: '中线吸附', align: '对齐', grid: '网格' },
+  penetrations: '干涉',
+  penetrationsOk: '无干涉',
   guideDraw: [
     '点击起点（地面 / 端点 / 型材中线）',
     '沿 X / Y / Z 方向拖出，再次点击完成',

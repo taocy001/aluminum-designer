@@ -4,7 +4,7 @@ import { Plus, Trash2, Download, Box, FileText, Eraser, Bug, Undo2, Redo2, Uploa
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
-import { computeAllTrims, computeFrameBounds } from '../utils/jointUtils'
+import { computeAllTrims, computeFrameBounds, findPenetrations } from '../utils/jointUtils'
 import { ALL_SPECS } from '../utils/specUtils'
 import { directionLabel, duplicateSelected, flipProfile, rotateSelected, setProfileLength, setProfilePosition, setProfileSpec } from '../utils/editOps'
 
@@ -100,6 +100,7 @@ const Sidebar: React.FC = () => {
   const totalCut = useMemo(() => profiles.reduce((s, p) => s + (trims.get(p.id)?.cutLength ?? p.length), 0), [profiles, trims])
   const buttEnds = useMemo(() => [...trims.values()].reduce((n, tr) => n + (tr.start.butt ? 1 : 0) + (tr.end.butt ? 1 : 0), 0), [trims])
   const bounds = useMemo(() => computeFrameBounds(profiles, trims), [profiles, trims])
+  const penetrations = useMemo(() => findPenetrations(profiles, trims), [profiles, trims])
   const overall = bounds ? bounds.getSize(new THREE.Vector3()) : null
 
   const handleSpecClick = (spec: ProfileSpec) => {
@@ -278,6 +279,12 @@ const Sidebar: React.FC = () => {
         </div>
         {overall && (
           <div className="text-[10px] text-slate-400 flex justify-between"><span>{t.overall}</span><span className="font-mono text-slate-200" data-testid="bom-overall">{Math.round(overall.x)}×{Math.round(overall.z)}×{Math.round(overall.y)}</span></div>
+        )}
+        {profiles.length > 1 && (
+          <div className={`text-[10px] flex justify-between ${penetrations.length ? 'text-red-400' : 'text-slate-500'}`}>
+            <span>{t.penetrations}</span>
+            <span className="font-mono" data-testid="bom-penetrations">{penetrations.length ? `${penetrations.length}` : t.penetrationsOk}</span>
+          </div>
         )}
         {bom.length > 0 && (
           <div className="max-h-28 overflow-y-auto rounded-lg border border-white/5 text-[10px] font-mono" data-testid="bom-table">

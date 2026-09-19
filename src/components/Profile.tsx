@@ -24,6 +24,7 @@ const Profile: React.FC<ProfileProps> = ({
   const selectMode = useToolStore((s) => s.selectMode)
   const isDraggingThis = useToolStore((s) => s.isDragging && (s.dragProfileId === id || id in s.dragGroupOrigins))
   const controls = useThree((s) => s.controls) as any
+  const isSnapTarget = useToolStore((s) => s.hoverTargetId === id)
   const [isHovered, setIsHovered] = useState(false)
 
   const geometry = useMemo(() => {
@@ -44,7 +45,7 @@ const Profile: React.FC<ProfileProps> = ({
   }, [position, quat, trims, length])
 
   const interactive = viewMode === 'navigate'
-  const color = isSelected ? '#3b82f6' : isDraggingThis ? '#f59e0b' : isHovered ? '#d1d5db' : '#b0bec5'
+  const color = isSelected ? '#3b82f6' : isDraggingThis ? '#f59e0b' : isSnapTarget ? '#67e8f9' : isHovered ? '#d1d5db' : '#b0bec5'
 
   const onPointerDown = interactive ? (e: any) => {
     if (e.button !== 0) return
@@ -96,6 +97,7 @@ const Profile: React.FC<ProfileProps> = ({
       quaternion={quat}
       scale={[1, 1, cutLen]}
       geometry={geometry}
+      userData={{ profileId: id }}
       onPointerOver={interactive ? (e) => { e.stopPropagation(); setIsHovered(true) } : undefined}
       onPointerOut={interactive ? () => setIsHovered(false) : undefined}
       onPointerDown={onPointerDown}
@@ -104,7 +106,8 @@ const Profile: React.FC<ProfileProps> = ({
         color={color}
         metalness={0.3}
         roughness={0.6}
-        emissive={isHovered && !isSelected ? new THREE.Color('#334155') : new THREE.Color(0, 0, 0)}
+        emissive={isSnapTarget ? new THREE.Color('#0e7490') : isHovered && !isSelected ? new THREE.Color('#334155') : new THREE.Color(0, 0, 0)}
+        emissiveIntensity={isSnapTarget ? 0.6 : 1}
       />
     </mesh>
   )
