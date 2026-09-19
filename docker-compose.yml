@@ -1,12 +1,6 @@
 services:
   app:
     build: .
-    volumes:
-      - .:/app
-      - /app/node_modules
     ports:
-      - "5173:5173"
-    environment:
-      - NODE_ENV=development
-    tty: true
-    stdin_open: true
+      - "4174:80"
+    restart: unless-stopped

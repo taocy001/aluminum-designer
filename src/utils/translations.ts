@@ -23,7 +23,12 @@ export const translations = {
       '• Select profile to modify properties'
     ],
     bracket: 'Bracket',
-    gusset: 'Gusset'
+    gusset: 'Gusset',
+    undo: 'Undo',
+    redo: 'Redo',
+    selectMode: 'Select',
+    labels: 'Labels',
+    exactMm: 'exact mm',
   },
   zh: {
     title: '铝型材设计网站',
@@ -49,6 +54,11 @@ export const translations = {
       '• 选中型材后可修改属性'
     ],
     bracket: 'L型角码',
-    gusset: '加强筋角码'
+    gusset: '加强筋角码',
+    undo: '撤销',
+    redo: '重做',
+    selectMode: '框选',
+    labels: '标注',
+    exactMm: '精确长度',
   }
 }

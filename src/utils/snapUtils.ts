@@ -42,6 +42,17 @@ export function snapToAxis(start: THREE.Vector3, end: THREE.Vector3): THREE.Vect
   return result
 }
 
+// ── Point-to-segment distance helper ──────────────────────────────────────
+
+/** Closest distance from point `pt` to the finite segment [a, b] */
+function distToSeg(pt: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3): number {
+  const ab = b.clone().sub(a)
+  const lenSq = ab.lengthSq()
+  if (lenSq < 0.0001) return pt.distanceTo(a)
+  const t = Math.max(0, Math.min(1, pt.clone().sub(a).dot(ab) / lenSq))
+  return pt.distanceTo(a.clone().addScaledVector(ab, t))
+}
+
 // ── AABB-based overlap detection ──────────────────────────────────────────
 
 interface AABB { min: THREE.Vector3; max: THREE.Vector3 }
@@ -146,10 +157,9 @@ export function wouldOverlap(candidate: ProfileData, existing: ProfileData[]): b
     const exAABB = getAABB(prof)
     if (!aabbsOverlap(candAABB, exAABB)) continue
 
-    // Corner joint exception: non-coaxial profiles that share exactly one endpoint
-    // (e.g. L-joint, T-end) have small overlapping AABBs at the joint but are valid.
-    // Coaxial profiles are NEVER granted this exception — their 1D check above
-    // already handled the legitimate end-to-end case.
+    // Joint exceptions — only for non-coaxial profiles.
+    // Coaxial profiles are NEVER granted exceptions; their 1D check above handles
+    // the legitimate end-to-end case.
     const isCoaxial = (() => {
       if (!candSeg || !exSeg) return false
       if (candSeg.axis !== exSeg.axis) return false
@@ -159,13 +169,38 @@ export function wouldOverlap(candidate: ProfileData, existing: ProfileData[]): b
 
     if (!isCoaxial) {
       const exEps = getProfileEndpoints(prof)
+
+      // Corner joint: two profiles share exactly one endpoint (L-joint, T-end)
+      const CORNER_EPS = 0.5
       const cornerJoint = (
-        candEps.start.distanceTo(exEps.start) < 2 ||
-        candEps.start.distanceTo(exEps.end)   < 2 ||
-        candEps.end.distanceTo(exEps.start)   < 2 ||
-        candEps.end.distanceTo(exEps.end)     < 2
+        candEps.start.distanceTo(exEps.start) < CORNER_EPS ||
+        candEps.start.distanceTo(exEps.end)   < CORNER_EPS ||
+        candEps.end.distanceTo(exEps.start)   < CORNER_EPS ||
+        candEps.end.distanceTo(exEps.end)     < CORNER_EPS
       )
       if (cornerJoint) continue
+
+      // T-joint: one profile's endpoint meets the body of a non-parallel profile.
+      // (e.g. a vertical upright seated on a horizontal beam mid-span)
+      // Guard: only when profiles are NOT near-parallel (dot < 0.8, i.e. angle > ~37°).
+      // Parallel profiles that happen to be close are handled solely by AABB.
+      const candDir = new THREE.Vector3(0, 0, 1).applyQuaternion(
+        new THREE.Quaternion(...candidate.quaternion).normalize()
+      )
+      const exDir = new THREE.Vector3(0, 0, 1).applyQuaternion(
+        new THREE.Quaternion(...prof.quaternion).normalize()
+      )
+      if (Math.abs(candDir.dot(exDir)) < 0.8) {
+        // T_EPS slightly larger than max half cross-section (2040 → 20 mm) + grid tolerance
+        const T_EPS = 12
+        const tJoint = (
+          distToSeg(candEps.start, exEps.start, exEps.end) < T_EPS ||
+          distToSeg(candEps.end,   exEps.start, exEps.end) < T_EPS ||
+          distToSeg(exEps.start,   candEps.start, candEps.end) < T_EPS ||
+          distToSeg(exEps.end,     candEps.start, candEps.end) < T_EPS
+        )
+        if (tJoint) continue
+      }
     }
 
     return true   // real physical overlap

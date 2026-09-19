@@ -31,17 +31,40 @@ export interface ConnectorData {
   quaternion: [number, number, number, number]
 }
 
+type Snapshot = { profiles: ProfileData[]; connectors: ConnectorData[] }
+
+const MAX_HISTORY = 50
+
+function takeSnapshot(state: Pick<State, 'profiles' | 'connectors'>): Snapshot {
+  return { profiles: [...state.profiles], connectors: [...state.connectors] }
+}
+
 interface State {
   profiles: ProfileData[]
   connectors: ConnectorData[]
-  selectedId: string | null
+  selectedIds: string[]
+  past: Snapshot[]
+  future: Snapshot[]
+
   addProfile: (profile: ProfileData) => void
   removeProfile: (id: string) => void
+  removeSelected: () => void
   clearAll: () => void
   addConnector: (connector: ConnectorData) => void
   removeConnector: (id: string) => void
-  selectProfile: (id: string | null) => void
+  selectItem: (id: string, multi?: boolean) => void
+  selectItems: (ids: string[]) => void
+  clearSelection: () => void
+  // Live update without history (for drag)
   updateProfile: (id: string, updates: Partial<ProfileData>) => void
+  updateProfiles: (updates: Array<{ id: string; updates: Partial<ProfileData> }>) => void
+  // Commit to history (for sidebar edits)
+  commitProfileEdit: (id: string, updates: Partial<ProfileData>) => void
+  snapshotHistory: () => void
+  undo: () => void
+  redo: () => void
+  // Backward compat
+  selectProfile: (id: string | null) => void
 }
 
 export const useStore = create<State>()(
@@ -49,19 +72,115 @@ export const useStore = create<State>()(
     (set) => ({
       profiles: [],
       connectors: [],
-      selectedId: null,
-      addProfile: (profile) => set((state) => ({ profiles: [...state.profiles, profile] })),
+      selectedIds: [],
+      past: [],
+      future: [],
+
+      addProfile: (profile) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        profiles: [...state.profiles, profile],
+      })),
+
       removeProfile: (id) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
         profiles: state.profiles.filter((p) => p.id !== id),
-        selectedId: state.selectedId === id ? null : state.selectedId
+        selectedIds: state.selectedIds.filter((s) => s !== id),
       })),
-      clearAll: () => set({ profiles: [], connectors: [], selectedId: null }),
-      addConnector: (connector) => set((state) => ({ connectors: [...state.connectors, connector] })),
-      removeConnector: (id) => set((state) => ({ connectors: state.connectors.filter((c) => c.id !== id) })),
-      selectProfile: (id) => set({ selectedId: id }),
+
+      removeSelected: () => set((state) => {
+        const ids = new Set(state.selectedIds)
+        if (ids.size === 0) return {}
+        return {
+          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          future: [],
+          profiles: state.profiles.filter((p) => !ids.has(p.id)),
+          connectors: state.connectors.filter((c) => !ids.has(c.id)),
+          selectedIds: [],
+        }
+      }),
+
+      clearAll: () => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        profiles: [],
+        connectors: [],
+        selectedIds: [],
+      })),
+
+      addConnector: (connector) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        connectors: [...state.connectors, connector],
+      })),
+
+      removeConnector: (id) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        connectors: state.connectors.filter((c) => c.id !== id),
+        selectedIds: state.selectedIds.filter((s) => s !== id),
+      })),
+
+      selectItem: (id, multi = false) => set((state) => {
+        if (multi) {
+          const idx = state.selectedIds.indexOf(id)
+          return { selectedIds: idx >= 0 ? state.selectedIds.filter((s) => s !== id) : [...state.selectedIds, id] }
+        }
+        return { selectedIds: [id] }
+      }),
+
+      selectItems: (ids) => set({ selectedIds: ids }),
+      clearSelection: () => set({ selectedIds: [] }),
+
+      // backward compat
+      selectProfile: (id) => set({ selectedIds: id ? [id] : [] }),
+
       updateProfile: (id, updates) => set((state) => ({
-        profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p)
+        profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p),
       })),
+
+      updateProfiles: (updates) => set((state) => {
+        const map = new Map(updates.map((u) => [u.id, u.updates]))
+        return {
+          profiles: state.profiles.map((p) => map.has(p.id) ? { ...p, ...map.get(p.id)! } : p),
+        }
+      }),
+
+      commitProfileEdit: (id, updates) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p),
+      })),
+
+      snapshotHistory: () => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+      })),
+
+      undo: () => set((state) => {
+        if (state.past.length === 0) return {}
+        const prev = state.past[state.past.length - 1]
+        return {
+          past: state.past.slice(0, -1),
+          future: [takeSnapshot(state), ...state.future.slice(0, MAX_HISTORY - 1)],
+          profiles: prev.profiles,
+          connectors: prev.connectors,
+          selectedIds: [],
+        }
+      }),
+
+      redo: () => set((state) => {
+        if (state.future.length === 0) return {}
+        const next = state.future[0]
+        return {
+          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          future: state.future.slice(1),
+          profiles: next.profiles,
+          connectors: next.connectors,
+          selectedIds: [],
+        }
+      }),
     }),
     {
       name: 'aluminum-designer-store',
