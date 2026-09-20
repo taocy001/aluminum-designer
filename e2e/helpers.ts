@@ -32,6 +32,10 @@ export async function store(page: Page) {
   })
 }
 
+export async function conflicts(page: Page): Promise<{ conflicts: Array<{ a: string; b: string; depth: number }>; ids: string[] }> {
+  return page.evaluate(() => (window as any).__aluframe.conflicts())
+}
+
 export async function cursor(page: Page): Promise<string> {
   return page.getByTestId('viewport').evaluate((el) => getComputedStyle(el as HTMLElement).cursor)
 }

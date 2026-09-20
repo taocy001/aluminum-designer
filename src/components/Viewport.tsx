@@ -4,8 +4,9 @@ import { OrbitControls, Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { getProfileEndpoints } from '../utils/snapUtils'
-import { computeAllTrims, computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
+import { getProfileEndpoints } from '../utils/geometryCore'
+import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
+import { analyzeFrame, type Conflict } from '../utils/analysis'
 import Profile from './Profile'
 import Connector from './Connector'
 import DrawingHandler from './DrawingHandler'
@@ -111,10 +112,36 @@ const DevHook: React.FC = () => {
   return null
 }
 
+/**
+ * Marks exactly where members interfere: a bright box with a wire outline, drawn through
+ * the geometry so the spot is findable even when it sits inside the parts.
+ */
+const ConflictMarkers: React.FC<{ conflicts: Conflict[] }> = ({ conflicts }) => (
+  <>
+    {conflicts.map((c, i) => {
+      const size = c.region.getSize(new THREE.Vector3())
+      const center = c.region.getCenter(new THREE.Vector3())
+      const args: [number, number, number] = [size.x + 3, size.y + 3, size.z + 3]
+      return (
+        <group key={`${c.a}-${c.b}-${i}`} position={center} raycast={() => null}>
+          <mesh renderOrder={6}>
+            <boxGeometry args={args} />
+            <meshBasicMaterial color="#ff2d2d" transparent opacity={0.5} depthTest={false} />
+          </mesh>
+          <lineSegments renderOrder={7}>
+            <edgesGeometry args={[new THREE.BoxGeometry(...args)]} />
+            <lineBasicMaterial color="#fecaca" transparent opacity={0.95} depthTest={false} />
+          </lineSegments>
+        </group>
+      )
+    })}
+  </>
+)
+
 const Viewport: React.FC = () => {
   const { profiles, connectors, selectedIds } = useStore()
   const { viewMode, isDragging, showDimensionLabels, selectMode } = useToolStore()
-  const trims = useMemo(() => computeAllTrims(profiles), [profiles])
+  const { trims, conflicts, conflictIds } = useMemo(() => analyzeFrame(profiles), [profiles])
 
   const orbitEnabled = !isDragging && !selectMode
   // Draw mode: left button draws, right button orbits, middle pans. Navigate: left orbits.
@@ -138,7 +165,7 @@ const Viewport: React.FC = () => {
       <Grid infiniteGrid cellSize={50} sectionSize={500} fadeDistance={6000} fadeStrength={1.5} cellColor="#334155" sectionColor="#475569" position={[0, -0.5, 0]} />
 
       {profiles.map((p) => (
-        <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selectedIds.includes(p.id)} />
+        <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selectedIds.includes(p.id)} conflict={conflictIds.has(p.id)} />
       ))}
 
       {connectors.map((c) => (
@@ -146,6 +173,7 @@ const Viewport: React.FC = () => {
       ))}
 
       {showDimensionLabels && <DimensionLabels trims={trims} />}
+      <ConflictMarkers conflicts={conflicts} />
 
       <DrawingHandler />
       <DragHandler />

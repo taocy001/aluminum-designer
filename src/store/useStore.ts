@@ -48,6 +48,7 @@ interface State {
 
   addProfile: (profile: ProfileData) => void
   addProfiles: (profiles: ProfileData[], select?: boolean) => void
+  addItems: (profiles: ProfileData[], connectors: ConnectorData[], select?: boolean) => void
   /** Replace the whole document (import) */
   loadDocument: (doc: { profiles: ProfileData[]; connectors: ConnectorData[] }) => void
   removeProfile: (id: string) => void
@@ -64,6 +65,9 @@ interface State {
   // Commit to history (for sidebar edits)
   commitProfileEdit: (id: string, updates: Partial<ProfileData>) => void
   commitProfilesEdit: (updates: Array<{ id: string; updates: Partial<ProfileData> }>) => void
+  /** Move/rotate profiles and connectors together as one undoable step */
+  commitTransform: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }> }) => void
+  updateConnector: (id: string, updates: Partial<ConnectorData>) => void
   snapshotHistory: () => void
   undo: () => void
   redo: () => void
@@ -91,6 +95,14 @@ export const useStore = create<State>()(
         future: [],
         profiles: [...state.profiles, ...list],
         selectedIds: select ? list.map((p) => p.id) : state.selectedIds,
+      })),
+
+      addItems: (list, conns, select = false) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        profiles: [...state.profiles, ...list],
+        connectors: [...state.connectors, ...conns],
+        selectedIds: select ? [...list.map((p) => p.id), ...conns.map((c) => c.id)] : state.selectedIds,
       })),
 
       loadDocument: (doc) => set((state) => ({
@@ -180,6 +192,22 @@ export const useStore = create<State>()(
           profiles: state.profiles.map((p) => map.has(p.id) ? { ...p, ...map.get(p.id)! } : p),
         }
       }),
+
+      commitTransform: ({ profiles = [], connectors = [] }) => set((state) => {
+        if (profiles.length === 0 && connectors.length === 0) return {}
+        const pMap = new Map(profiles.map((u) => [u.id, u.updates]))
+        const cMap = new Map(connectors.map((u) => [u.id, u.updates]))
+        return {
+          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          future: [],
+          profiles: state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p),
+          connectors: state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c),
+        }
+      }),
+
+      updateConnector: (id, updates) => set((state) => ({
+        connectors: state.connectors.map((c) => c.id === id ? { ...c, ...updates } : c),
+      })),
 
       snapshotHistory: () => set((state) => ({
         past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],

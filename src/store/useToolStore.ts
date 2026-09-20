@@ -40,6 +40,8 @@ interface ToolState {
 
   // Drag
   isDragging: boolean
+  /** what is being dragged: a member or a connector */
+  dragKind: 'profile' | 'connector'
   dragProfileId: string | null
   dragStartHit: THREE.Vector3 | null
   dragOriginPos: THREE.Vector3 | null
@@ -47,8 +49,8 @@ interface ToolState {
   dragPlane: THREE.Plane | null
   dragVertical: boolean
   dragMoved: boolean
-  /** true while the current drag position is rejected (overlap / floor) — drives the cursor */
-  dragBlocked: boolean
+  /** true while the dragged parts interfere with something — drives the cursor */
+  dragConflict: boolean
 
   // UI
   showDimensionLabels: boolean
@@ -78,11 +80,11 @@ interface ToolState {
   requestPreciseFocus: (seed: string) => void
 
   startDrag: (args: {
-    id: string; hit: THREE.Vector3; origin: THREE.Vector3;
+    id: string; kind?: 'profile' | 'connector'; hit: THREE.Vector3; origin: THREE.Vector3;
     groupOrigins: Record<string, [number, number, number]>; plane: THREE.Plane; vertical: boolean
   }) => void
   markDragMoved: () => void
-  setDragBlocked: (blocked: boolean) => void
+  setDragConflict: (conflict: boolean) => void
   stopDrag: () => void
   setHoverProfile: (id: string | null) => void
 
@@ -122,6 +124,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   preciseSeed: '',
 
   isDragging: false,
+  dragKind: 'profile',
   dragProfileId: null,
   dragStartHit: null,
   dragOriginPos: null,
@@ -129,7 +132,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   dragPlane: null,
   dragVertical: false,
   dragMoved: false,
-  dragBlocked: false,
+  dragConflict: false,
 
   showDimensionLabels: true,
   selectMode: false,
@@ -164,15 +167,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setLockedAxis: (lockedAxis) => set({ lockedAxis }),
   requestPreciseFocus: (seed) => set((s) => ({ preciseFocusRequest: s.preciseFocusRequest + 1, preciseSeed: seed })),
 
-  startDrag: ({ id, hit, origin, groupOrigins, plane, vertical }) => set({
-    isDragging: true, dragProfileId: id, dragStartHit: hit, dragOriginPos: origin,
-    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragMoved: false, dragBlocked: false,
+  startDrag: ({ id, kind = 'profile', hit, origin, groupOrigins, plane, vertical }) => set({
+    isDragging: true, dragKind: kind, dragProfileId: id, dragStartHit: hit, dragOriginPos: origin,
+    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragMoved: false, dragConflict: false,
   }),
   markDragMoved: () => { if (!get().dragMoved) set({ dragMoved: true }) },
-  setDragBlocked: (blocked) => { if (get().dragBlocked !== blocked) set({ dragBlocked: blocked }) },
+  setDragConflict: (conflict) => { if (get().dragConflict !== conflict) set({ dragConflict: conflict }) },
   stopDrag: () => set({
-    isDragging: false, dragProfileId: null, dragStartHit: null, dragOriginPos: null,
-    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragMoved: false, dragBlocked: false,
+    isDragging: false, dragKind: 'profile', dragProfileId: null, dragStartHit: null, dragOriginPos: null,
+    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragMoved: false, dragConflict: false,
   }),
   setHoverProfile: (id) => { if (get().hoverProfileId !== id) set({ hoverProfileId: id }) },
 

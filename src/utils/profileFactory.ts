@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { useStore, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { wouldOverlap } from './snapUtils'
+import { analyzeFrame } from './analysis'
 import { specDims } from './specUtils'
 import { translations } from './translations'
 
@@ -40,15 +40,34 @@ export function floorY(spec: ProfileSpec): number {
   return specDims(spec).hh
 }
 
-/** Validate and add a profile; shows a toast on rejection. Returns true on success. */
+/**
+ * Lowest point of a member's body, valid at any orientation.
+ * Gesture-driven moves use it to keep parts on or above the floor; typed coordinates don't.
+ */
+export function lowestPointY(p: ProfileData): number {
+  const quat = new THREE.Quaternion(...p.quaternion).normalize()
+  const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(quat)
+  const lx = new THREE.Vector3(1, 0, 0).applyQuaternion(quat)
+  const ly = new THREE.Vector3(0, 1, 0).applyQuaternion(quat)
+  const { hw, hh } = specDims(p.spec)
+  const start = new THREE.Vector3(...p.position)
+  const end = start.clone().addScaledVector(dir, p.length)
+  const half = Math.abs(lx.y) * hw + Math.abs(ly.y) * hh
+  return Math.min(start.y, end.y) - half
+}
+
+/**
+ * Add a profile. Interference no longer blocks placement — the member is created and the
+ * conflicting parts are flagged in red, which keeps modelling fluid.
+ */
 export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec): boolean {
   const { showToast, language } = useToolStore.getState()
   const t = translations[language]
   const candidate = buildProfile(start, end, spec)
   if (!candidate) { showToast(t.toastTooShort, 'error'); return false }
-  const profiles = useStore.getState().profiles
-  if (wouldOverlap(candidate, profiles)) { showToast(t.toastOverlap, 'error'); return false }
   useStore.getState().addProfile(candidate)
+  const { conflictIds } = analyzeFrame(useStore.getState().profiles)
+  if (conflictIds.has(candidate.id)) showToast(t.toastOverlap, 'error')
   return true
 }
 
