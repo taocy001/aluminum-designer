@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
-import { computeTrims, computeAllTrims, computeFrameBounds, findPenetrations } from '../utils/jointUtils'
-import { wouldOverlap } from '../utils/snapUtils'
+import { computeTrims, computeAllTrims, computeFrameBounds } from '../utils/jointUtils'
+import { analyzeFrame, findConflicts } from '../utils/analysis'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
@@ -102,32 +102,40 @@ describe('joint trimming', () => {
   })
 })
 
-describe('overlap detection', () => {
-  it('allows every member of a cabinet frame', () => {
-    const all = cabinet()
-    for (let i = 0; i < all.length; i++) {
-      expect(wouldOverlap(all[i], all.filter((_, j) => j !== i))).toBe(false)
-    }
+const conflictsOf = (all: ProfileData[]) => findConflicts(all, computeAllTrims(all))
+
+describe('interference is reported, never blocked', () => {
+  it('a cabinet frame has no interference', () => {
+    expect(conflictsOf(cabinet())).toEqual([])
   })
-  it('allows a shelf whose ends land on rail centerlines', () => {
-    const all = cabinet()
-    const shelf = P(300, 10, 0, 300, 10, 400)
-    expect(wouldOverlap(shelf, all)).toBe(false)
+  it('a shelf whose ends land on rail centerlines is clean', () => {
+    const all = [...cabinet(), P(300, 10, 0, 300, 10, 400)]
+    expect(conflictsOf(all)).toEqual([])
   })
-  it('rejects two rails crossing mid-span at the same height', () => {
+  it('two rails crossing mid-span at the same height are flagged', () => {
     const r1 = P(0, 10, 200, 600, 10, 200)
     const r2 = P(300, 10, 0, 300, 10, 400)
-    expect(wouldOverlap(r2, [r1])).toBe(true)
+    const c = conflictsOf([r1, r2])
+    expect(c).toHaveLength(1)
+    expect(c[0].depth).toBeGreaterThan(10)
+    expect([c[0].a, c[0].b].sort()).toEqual([r1.id, r2.id].sort())
   })
-  it('rejects a coaxial duplicate but allows end-to-end', () => {
+  it('a coaxial duplicate is flagged while end-to-end is not', () => {
     const a = P(0, 10, 0, 300, 10, 0)
-    expect(wouldOverlap(P(100, 10, 0, 400, 10, 0), [a])).toBe(true)
-    expect(wouldOverlap(P(300, 10, 0, 600, 10, 0), [a])).toBe(false)
+    expect(conflictsOf([a, P(100, 10, 0, 400, 10, 0)])).toHaveLength(1)
+    expect(conflictsOf([a, P(300, 10, 0, 600, 10, 0)])).toEqual([])
   })
-  it('allows parallel rails touching face to face', () => {
+  it('parallel rails touching face to face are clean, overlapping ones are flagged', () => {
     const a = P(0, 10, 0, 300, 10, 0)
-    expect(wouldOverlap(P(0, 10, 20, 300, 10, 20), [a])).toBe(false)
-    expect(wouldOverlap(P(0, 10, 15, 300, 10, 15), [a])).toBe(true)
+    expect(conflictsOf([a, P(0, 10, 20, 300, 10, 20)])).toEqual([])
+    expect(conflictsOf([a, P(0, 10, 15, 300, 10, 15)])).toHaveLength(1)
+  })
+  it('analyzeFrame lists every member involved in a conflict', () => {
+    const r1 = P(0, 10, 200, 600, 10, 200)
+    const r2 = P(300, 10, 0, 300, 10, 400)
+    const { conflictIds, conflicts } = analyzeFrame([r1, r2])
+    expect([...conflictIds].sort()).toEqual([r1.id, r2.id].sort())
+    expect(conflicts[0].region.isEmpty()).toBe(false)
   })
 })
 
@@ -169,25 +177,21 @@ describe('tolerant joints (ends landing inside a partner body)', () => {
     expect(tl.end.trim).toBe(0); expect(tl.end.continues).toBe(true)
     expect(tu.start.trim).toBe(0); expect(tu.start.continues).toBe(true)
     expect(computeTrims(rail, [lower, upper, rail]).start.trim).toBe(10)
-    expect(findPenetrations([lower, upper, rail], computeAllTrims([lower, upper, rail]))).toEqual([])
+    expect(conflictsOf([lower, upper, rail])).toEqual([])
   })
 })
 
 describe('interference check', () => {
-  it('a cabinet has no penetrations', () => {
-    const all = cabinet()
-    expect(findPenetrations(all, computeAllTrims(all))).toEqual([])
+  it('a cabinet has no interference', () => {
+    expect(conflictsOf(cabinet())).toEqual([])
   })
-  it('a cabinet with an imprecise rail (overshoot + lateral offset) still has no penetrations', () => {
+  it('a cabinet with an imprecise rail (overshoot + lateral offset) still has no interference', () => {
     const all = cabinet()
     all.push(P(0, 400, 3, 604, 400, 3))  // shelf-height rail between the front posts, slightly off
-    expect(wouldOverlap(all[all.length - 1], all.slice(0, -1))).toBe(false)
-    expect(findPenetrations(all, computeAllTrims(all))).toEqual([])
+    expect(conflictsOf(all)).toEqual([])
   })
   it('detects two rails driven through each other', () => {
-    const a = P(0, 10, 200, 600, 10, 200)
-    const b = P(300, 10, 0, 300, 10, 400)
-    const pen = findPenetrations([a, b], computeAllTrims([a, b]))
+    const pen = conflictsOf([P(0, 10, 200, 600, 10, 200), P(300, 10, 0, 300, 10, 400)])
     expect(pen).toHaveLength(1)
     expect(pen[0].depth).toBeGreaterThan(10)
   })

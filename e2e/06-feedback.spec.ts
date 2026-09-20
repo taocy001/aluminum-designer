@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, dragWorld, dragHold, store, tool, cursor, hoverId, w2c, r, type V3 } from './helpers'
+import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, dragWorld, dragHold, store, tool, conflicts, cursor, hoverId, w2c, r, type V3 } from './helpers'
 
 async function toNavigate(page: Page) {
   await page.keyboard.press('Escape')
@@ -60,8 +60,8 @@ test.describe('Selection survives orbiting', () => {
   })
 })
 
-test.describe('Rejected drags speak up', () => {
-  test('an overlapping drag shows a toast and the cursor says not-allowed', async ({ page }) => {
+test.describe('Interfering drags are visible, not blocked', () => {
+  test('a drag onto another member goes through, flags both and changes the cursor', async ({ page }) => {
     await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200])
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
@@ -70,12 +70,13 @@ test.describe('Rejected drags speak up', () => {
     const from = await w2c(page, [300, 10, 300])
     const to = await w2c(page, [300, 10, 0])
     await dragHold(page, from, to)
-    await expect(page.getByTestId('toasts')).toContainText('重叠')
-    expect(await cursor(page)).toBe('not-allowed')
+    expect(await cursor(page)).toBe('alias')          // the pointer marks the interference
+    expect((await conflicts(page)).ids).toHaveLength(2)
     await page.mouse.up()
     await page.waitForTimeout(50)
     const zs = (await store(page)).profiles.map((p) => r(p.position[2])).sort((x, y) => x - y)
-    expect(zs[1] - zs[0]).toBeGreaterThanOrEqual(20)
+    expect(zs[1] - zs[0]).toBeLessThan(20)            // the member really did move there
+    await expect(page.getByTestId('bom-penetrations')).toHaveText('1 处')
   })
 })
 

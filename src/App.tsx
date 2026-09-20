@@ -20,7 +20,7 @@ function App() {
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
-    toasts, showToast, dragBlocked, hoverProfileId,
+    toasts, showToast, dragConflict, hoverProfileId,
   } = useToolStore()
   const t = translations[language]
 
@@ -80,7 +80,7 @@ function App() {
 
       if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); return }
-      if (e.key.toLowerCase() === 'r' && !mod) { rotateSelected(); return }
+      if (e.key.toLowerCase() === 'r' && !mod) { rotateSelected('y', e.shiftKey ? -90 : 90); return }
       if (e.key.toLowerCase() === 'f' && !mod) { triggerCameraReset(); return }
 
       const step = e.shiftKey ? 50 : 5
@@ -151,7 +151,7 @@ function App() {
 
   // What a press would do right now, so the pointer stops looking inert
   const viewportCursor = isDragging
-    ? (dragBlocked ? 'not-allowed' : 'grabbing')
+    ? (dragConflict ? 'alias' : 'grabbing')
     : viewMode === 'draw' ? 'crosshair'
     : selectMode ? 'crosshair'
     : hoverProfileId ? 'grab'

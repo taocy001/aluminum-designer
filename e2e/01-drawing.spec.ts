@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, store, tool, endpoints, r } from './helpers'
+import { openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, store, tool, conflicts, endpoints, r } from './helpers'
 
 test.describe('Drawing', () => {
   test.beforeEach(async ({ page }) => { await openApp(page) })
@@ -78,22 +78,28 @@ test.describe('Drawing', () => {
     await expect(page.getByTestId('cut-length')).toHaveText('380 mm')
   })
 
-  test('rejects an overlapping member with a toast and keeps drawing state clean', async ({ page }) => {
+  test('an interfering member is still placed, flagged in red with a warning', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [400, 10, 0])
-    expect(await drawMember(page, [100, 10, 0], [300, 10, 0])).toBe(0)
-    await expect(page.getByTestId('toasts')).toContainText('重叠')
+    expect(await drawMember(page, [100, 10, 0], [300, 10, 0])).toBe(1)
+    await expect(page.getByTestId('toasts')).toContainText('干涉')
     expect((await tool(page)).isDrawing).toBe(false)
-    expect((await store(page)).profiles).toHaveLength(1)
+    expect((await store(page)).profiles).toHaveLength(2)
+    const c = await conflicts(page)
+    expect(c.conflicts).toHaveLength(1)
+    expect(c.ids).toHaveLength(2)
+    await expect(page.getByTestId('bom-penetrations')).toHaveText('1 处')
   })
 
-  test('rejects a crossing member at the same height but allows a shelf between rails', async ({ page }) => {
+  test('a shelf between rails is clean, a member crossing it mid-span is flagged', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await drawMember(page, [0, 0, 400], [600, 10, 400])
     expect(await drawMember(page, [300, 10, 0], [300, 10, 400])).toBe(1)     // shelf: ends on both rails
-    expect(await drawMember(page, [0, 10, 200], [600, 10, 200])).toBe(0)     // crosses the shelf mid-span
-    await expect(page.getByTestId('toasts')).toContainText('重叠')
+    expect((await conflicts(page)).conflicts).toEqual([])
+    expect(await drawMember(page, [0, 10, 200], [600, 10, 200])).toBe(1)     // crosses the shelf mid-span
+    await expect(page.getByTestId('toasts')).toContainText('干涉')
+    expect((await conflicts(page)).conflicts).toHaveLength(1)
   })
 
   test('axis lock keys and right-click cancel', async ({ page }) => {

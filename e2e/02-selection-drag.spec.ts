@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, enterDraw, drawMember, drawExact, clickWorld, dragWorld, store, tool, endpoints, r, w2c } from './helpers'
+import { openApp, enterDraw, drawMember, drawExact, clickWorld, dragWorld, store, tool, conflicts, endpoints, r, w2c } from './helpers'
 
 async function toNavigate(page: any) {
   await page.keyboard.press('Escape')
@@ -131,13 +131,14 @@ test.describe('Drag', () => {
     expect(r(a.position[1])).toBe(10)
   })
 
-  test('drag is blocked where it would overlap another member', async ({ page }) => {
+  test('a drag onto another member is allowed and both are flagged', async ({ page }) => {
     const { A, B } = await scene(page)
-    // Try to drop rail A right on top of rail B (same line) → must not end up coaxially overlapping
     await dragWorld(page, [200, 10, 0], [200, 10, 300])
     const a = (await store(page)).profiles.find((p) => p.id === A.id)!
     const b = (await store(page)).profiles.find((p) => p.id === B.id)!
-    expect(Math.abs(a.position[2] - b.position[2])).toBeGreaterThanOrEqual(20)
+    expect(Math.abs(a.position[2] - b.position[2])).toBeLessThan(20)   // it really moved on top of B
+    const c = await conflicts(page)
+    expect(c.ids.sort()).toEqual([A.id, B.id].sort())
   })
 
   test('group drag moves every selected member by the same offset', async ({ page }) => {
@@ -158,7 +159,7 @@ test.describe('Drag', () => {
 test.describe('Keyboard editing', () => {
   test.beforeEach(async ({ page }) => { await openApp(page) })
 
-  test('arrow keys nudge 5 mm, Shift 50 mm, PageUp/PageDown vertical, blocked by overlap', async ({ page }) => {
+  test('arrow keys nudge 5 mm, Shift 50 mm, PageUp/PageDown vertical; interference only warns', async ({ page }) => {
     const { A, B } = await scene(page)
     await clickWorld(page, [200, 10, 0])
     await page.keyboard.press('ArrowRight')
@@ -169,12 +170,12 @@ test.describe('Keyboard editing', () => {
     await page.keyboard.press('PageDown'); await page.keyboard.press('PageDown')
     a = (await store(page)).profiles.find((p) => p.id === A.id)!
     expect(r(a.position[1])).toBe(10) // floor clamp
-    // push into rail B (z=300): 250 more → blocked with a toast at the last step
+    // push into rail B (z=300): the move goes through and the pair is flagged instead
     for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowDown')
     a = (await store(page)).profiles.find((p) => p.id === A.id)!
-    expect(r(a.position[2])).toBe(250)
-    await expect(page.getByTestId('toasts')).toContainText('重叠')
-    expect(B.position.map(r)).toEqual([0, 10, 300])
+    expect(r(a.position[2])).toBe(300)
+    await expect(page.getByTestId('toasts')).toContainText('干涉')
+    expect((await conflicts(page)).ids.sort()).toEqual([A.id, B.id].sort())
   })
 
   test('Ctrl+D duplicates and selects the copies; R rotates 90°; Ctrl+Z / Ctrl+Y round-trip', async ({ page }) => {

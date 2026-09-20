@@ -65,18 +65,20 @@ const PointerRouter: React.FC = () => {
       const store = useStore.getState()
       const alreadySelected = store.selectedIds.includes(pick.id)
 
-      if (pick.kind === 'connector') { store.selectItem(pick.id, multi); return }
       // Ctrl/Cmd+click only toggles the selection — it must never start a drag
       if (multi) { store.selectItem(pick.id, true); return }
       if (!alreadySelected) store.selectItem(pick.id, false)
 
-      const profile = store.profiles.find((p) => p.id === pick.id)
-      if (!profile) return
+      const item = pick.kind === 'connector'
+        ? store.connectors.find((c) => c.id === pick.id)
+        : store.profiles.find((p) => p.id === pick.id)
+      if (!item) return
+      // dragging any selected part moves the whole selection, members and connectors alike
       const dragGroup = store.selectedIds.includes(pick.id) ? store.selectedIds : [pick.id]
       const groupOrigins: Record<string, [number, number, number]> = {}
       for (const sid of dragGroup) {
-        const p = store.profiles.find((q) => q.id === sid)
-        if (p) groupOrigins[sid] = [p.position[0], p.position[1], p.position[2]]
+        const part = store.profiles.find((q) => q.id === sid) ?? store.connectors.find((q) => q.id === sid)
+        if (part) groupOrigins[sid] = [part.position[0], part.position[1], part.position[2]]
       }
 
       // Drag plane through the grabbed point (not the member's origin): for an upright the
@@ -100,7 +102,7 @@ const PointerRouter: React.FC = () => {
       if (orbit) orbit.enabled = false
 
       useToolStore.getState().startDrag({
-        id: pick.id, hit: grab, origin: new THREE.Vector3(...profile.position), groupOrigins, plane, vertical: shift,
+        id: pick.id, kind: pick.kind, hit: grab, origin: new THREE.Vector3(...item.position), groupOrigins, plane, vertical: shift,
       })
     }
 

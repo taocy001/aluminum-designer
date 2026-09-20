@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Plus, Trash2, Download, Box, FileText, Eraser, Bug, Undo2, Redo2, Upload, Save, RotateCw, Copy, ArrowLeftRight } from 'lucide-react'
+import { Plus, Trash2, Download, Box, FileText, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
-import { computeAllTrims, computeFrameBounds, findPenetrations } from '../utils/jointUtils'
+import { computeFrameBounds } from '../utils/jointUtils'
+import { analyzeFrame } from '../utils/analysis'
 import { ALL_SPECS } from '../utils/specUtils'
-import { directionLabel, duplicateSelected, flipProfile, rotateSelected, setProfileLength, setProfilePosition, setProfileSpec } from '../utils/editOps'
+import { directionLabel, duplicateSelected, flipProfile, orientationDegrees, rotateSelected, setConnectorPosition, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = [
   { type: 'bracket',       labelZh: 'L型角码',   labelEn: 'L-Bracket' },
@@ -75,7 +76,10 @@ const Sidebar: React.FC = () => {
     return () => clearTimeout(id)
   }, [confirmClear])
 
-  const trims = useMemo(() => computeAllTrims(profiles), [profiles])
+  const { trims, conflicts, conflictIds } = useMemo(() => analyzeFrame(profiles), [profiles])
+  const [rotAngleText, setRotAngleText] = useState('90')
+  const rotAngle = parseFloat(rotAngleText)
+  const rotAngleValid = isFinite(rotAngle) && rotAngle % 360 !== 0
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
   const selTrim = selectedProfile ? trims.get(selectedProfile.id) : undefined
@@ -100,7 +104,6 @@ const Sidebar: React.FC = () => {
   const totalCut = useMemo(() => profiles.reduce((s, p) => s + (trims.get(p.id)?.cutLength ?? p.length), 0), [profiles, trims])
   const buttEnds = useMemo(() => [...trims.values()].reduce((n, tr) => n + (tr.start.butt ? 1 : 0) + (tr.end.butt ? 1 : 0), 0), [trims])
   const bounds = useMemo(() => computeFrameBounds(profiles, trims), [profiles, trims])
-  const penetrations = useMemo(() => findPenetrations(profiles, trims), [profiles, trims])
   const overall = bounds ? bounds.getSize(new THREE.Vector3()) : null
 
   const handleSpecClick = (spec: ProfileSpec) => {
@@ -233,19 +236,69 @@ const Sidebar: React.FC = () => {
                   <div className="flex justify-between"><span className="text-slate-500">{t.joints} A</span><span className="font-mono text-slate-300">{jointText(selTrim?.start)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">{t.joints} B</span><span className="font-mono text-slate-300">{jointText(selTrim?.end)}</span></div>
                 </div>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-2 gap-1">
                   <button onClick={() => flipProfile(selectedProfile.id)} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
-                  <button onClick={() => rotateSelected()} title={`${t.rotate} (R)`} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><RotateCw size={12} />90°</button>
                   <button onClick={() => duplicateSelected()} title={`${t.duplicate} (Ctrl+D)`} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><Copy size={12} />{t.duplicate}</button>
                 </div>
               </div>
             )}
             {selectedConnector && !selectedProfile && (
-              <div className="text-xs text-slate-400">
-                <span className="text-slate-500">{language === 'zh' ? '类型' : 'Type'}: </span>
-                <span className="text-emerald-400 font-mono">{selectedConnector.type}</span>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500">{t.connectorProps}</span>
+                  <span className="text-emerald-400 font-mono">
+                    {CONNECTOR_LIST.find((x) => x.type === selectedConnector.type)?.[language === 'zh' ? 'labelZh' : 'labelEn'] ?? selectedConnector.type}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold">{t.position}</span>
+                  <div className="grid grid-cols-3 gap-1">
+                    {(['X', 'Y', 'Z'] as const).map((ax, i) => (
+                      <NumField key={ax} label={ax} value={selectedConnector.position[i]} onCommit={(v) => {
+                        const pos = [...selectedConnector.position] as [number, number, number]
+                        pos[i] = v
+                        setConnectorPosition(selectedConnector.id, pos)
+                      }} />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">{t.orientation}</span>
+                  <span className="font-mono text-slate-300" data-testid="connector-orientation">{orientationDegrees(selectedConnector.quaternion).join(' / ')}</span>
+                </div>
               </div>
             )}
+
+            {/* Free rotation about any world axis — members and connectors alike */}
+            <div className="space-y-1 pt-1 border-t border-white/5" data-testid="rotate-block">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-500 uppercase font-bold">{t.rotate3d}</span>
+                <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500">
+                  <span className="text-[9px] text-slate-500 font-bold">{t.rotateAngle}</span>
+                  <input
+                    type="number" step={15} value={rotAngleText} data-testid="rotate-angle"
+                    onChange={(e) => setRotAngleText(e.target.value)}
+                    onBlur={() => { if (!isFinite(parseFloat(rotAngleText))) setRotAngleText('90') }}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    className={`w-14 bg-transparent py-1 text-xs font-mono outline-none ${rotAngleValid ? '' : 'text-red-400'}`}
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-6 gap-1">
+                {(['x', 'y', 'z'] as RotAxis[]).flatMap((ax) => [
+                  <button key={`${ax}+`} data-testid={`rot-${ax}-plus`} disabled={!rotAngleValid} onClick={() => rotateSelected(ax, rotAngle)}
+                    className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold font-mono">{ax.toUpperCase()}+</button>,
+                  <button key={`${ax}-`} data-testid={`rot-${ax}-minus`} disabled={!rotAngleValid} onClick={() => rotateSelected(ax, -rotAngle)}
+                    className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold font-mono">{ax.toUpperCase()}−</button>,
+                ])}
+              </div>
+              {selectedProfile && (
+                <div className="flex justify-between items-center text-[11px] pt-1">
+                  <span className="text-slate-500">{t.orientation}</span>
+                  <span className="font-mono text-slate-300" data-testid="profile-orientation">{orientationDegrees(selectedProfile.quaternion).join(' / ')}</span>
+                </div>
+              )}
+            </div>
             {selectedIds.length > 1 && (
               <div className="text-[10px] text-slate-400 pt-1 border-t border-white/5">{t.selected(selectedIds.length)}</div>
             )}
@@ -281,10 +334,14 @@ const Sidebar: React.FC = () => {
           <div className="text-[10px] text-slate-400 flex justify-between"><span>{t.overall}</span><span className="font-mono text-slate-200" data-testid="bom-overall">{Math.round(overall.x)}×{Math.round(overall.z)}×{Math.round(overall.y)}</span></div>
         )}
         {profiles.length > 1 && (
-          <div className={`text-[10px] flex justify-between ${penetrations.length ? 'text-red-400' : 'text-slate-500'}`}>
-            <span>{t.penetrations}</span>
-            <span className="font-mono" data-testid="bom-penetrations">{penetrations.length ? `${penetrations.length}` : t.penetrationsOk}</span>
-          </div>
+          <button
+            onClick={() => { if (conflicts.length) useStore.getState().selectItems([...conflictIds]) }}
+            disabled={conflicts.length === 0}
+            className={`w-full text-[10px] flex justify-between items-center ${conflicts.length ? 'text-red-400 hover:text-red-300' : 'text-slate-500 cursor-default'}`}
+          >
+            <span className="flex items-center gap-1">{conflicts.length > 0 && <AlertTriangle size={11} />}{t.penetrations}</span>
+            <span className="font-mono" data-testid="bom-penetrations">{conflicts.length ? t.penetrationsCount(conflicts.length) : t.penetrationsOk}</span>
+          </button>
         )}
         {bom.length > 0 && (
           <div className="max-h-28 overflow-y-auto rounded-lg border border-white/5 text-[10px] font-mono" data-testid="bom-table">

@@ -104,19 +104,3 @@ export function computeFrameBounds(all: ProfileData[], trims?: Map<string, Profi
   for (const p of all) box.union(trimmedBox(p, trims?.get(p.id) ?? computeTrims(p, all)))
   return box
 }
-
-export interface Penetration { a: string; b: string; depth: number }
-
-/** Pairs of members whose as-built bodies intersect by more than `tol` mm on every axis */
-export function findPenetrations(all: ProfileData[], trims: Map<string, ProfileTrims>, tol = 1): Penetration[] {
-  const boxes = all.map((p) => ({ id: p.id, box: trimmedBox(p, trims.get(p.id) ?? computeTrims(p, all)) }))
-  const out: Penetration[] = []
-  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
-    const a = boxes[i].box, b = boxes[j].box
-    const dx = Math.min(a.max.x, b.max.x) - Math.max(a.min.x, b.min.x)
-    const dy = Math.min(a.max.y, b.max.y) - Math.max(a.min.y, b.min.y)
-    const dz = Math.min(a.max.z, b.max.z) - Math.max(a.min.z, b.min.z)
-    if (dx > tol && dy > tol && dz > tol) out.push({ a: boxes[i].id, b: boxes[j].id, depth: round3(Math.min(dx, dy, dz)) })
-  }
-  return out
-}

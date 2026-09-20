@@ -70,13 +70,10 @@ test.describe('Cabinet build', () => {
     expect(await drawMember(page, [W, 400, 0], [W, 400, D])).toBe(1)
     expect(await drawMember(page, [0, 400, 200], [W, 400, 200])).toBe(1) // shelf rail between the side rails (T-joints)
     expect(await drawMember(page, [0, 400, 0], [W, 400, 0])).toBe(1)     // front rail at shelf height
-    // a member from the front rail crossing the shelf rail mid-span must be refused
-    expect(await drawMember(page, [300, 400, 0], [300, 400, D])).toBe(0)
-    await expect(page.getByTestId('toasts')).toContainText('重叠')
-
     const s = await store(page)
     expect(s.profiles).toHaveLength(16)
     await expect(page.getByTestId('bom-count')).toHaveText('16')
+    await expect(page.getByTestId('bom-penetrations')).toHaveText('无干涉')
     await expect(page.getByTestId('bom-overall')).toHaveText('620×420×810')
     const table = page.getByTestId('bom-table')
     await expect(table).toContainText('810 mm')   // uprights extended to the top rail face

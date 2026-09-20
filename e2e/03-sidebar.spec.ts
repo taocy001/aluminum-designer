@@ -29,14 +29,15 @@ test.describe('Sidebar properties', () => {
     expect((await store(page)).profiles[0].length).toBe(400)
   })
 
-  test('position fields move the member; floor rule enforced', async ({ page }) => {
+  test('typed coordinates are applied exactly, including below the floor', async ({ page }) => {
     const inputs = page.getByTestId('properties').locator('input[type=number]')
     await inputs.nth(1).fill('120'); await inputs.nth(1).press('Enter')   // X
-    await inputs.nth(2).fill('-50'); await inputs.nth(2).press('Enter')   // Y below floor → refused
+    await inputs.nth(2).fill('-50'); await inputs.nth(2).press('Enter')   // Y: typed values are deliberate
     await inputs.nth(3).fill('80'); await inputs.nth(3).press('Enter')    // Z
-    const p = (await store(page)).profiles[0]
-    expect(p.position.map(r)).toEqual([120, 10, 80])
-    await expect(page.getByTestId('toasts')).toContainText('地面')
+    expect((await store(page)).profiles[0].position.map(r)).toEqual([120, -50, 80])
+    // gestures still keep members above the floor
+    await page.keyboard.press('PageDown')
+    expect(r((await store(page)).profiles[0].position[1])).toBe(10)
   })
 
   test('spec select changes the profile and re-lifts it', async ({ page }) => {
@@ -51,7 +52,7 @@ test.describe('Sidebar properties', () => {
     let p = (await store(page)).profiles[0]
     expect(p.position.map(r)).toEqual([400, 10, 0])
     expect(endpoints(p).end.map(r)).toEqual([0, 10, 0])
-    await page.getByTestId('properties').getByTitle(/旋转90/).click()
+    await page.getByTestId('rot-y-plus').click()
     p = (await store(page)).profiles[0]
     expect(Math.abs(r(endpoints(p).end[2] - endpoints(p).start[2]))).toBe(400)
     await page.getByTestId('properties').getByTitle(/复制/).click()

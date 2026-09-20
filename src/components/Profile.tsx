@@ -12,10 +12,12 @@ interface ProfileProps {
   quaternion: [number, number, number, number]
   trims?: ProfileTrims
   isSelected?: boolean
+  /** true when this member interferes with another one */
+  conflict?: boolean
 }
 
 const Profile: React.FC<ProfileProps> = ({
-  id, spec, length, position, quaternion, trims, isSelected = false,
+  id, spec, length, position, quaternion, trims, isSelected = false, conflict = false,
 }) => {
   const isDraggingThis = useToolStore((s) => s.isDragging && (s.dragProfileId === id || id in s.dragGroupOrigins))
   const isSnapTarget = useToolStore((s) => s.hoverTargetId === id)
@@ -38,7 +40,13 @@ const Profile: React.FC<ProfileProps> = ({
     return { meshPos: pos, cutLen: isFinite(cut) && cut > 0.1 ? cut : 1 }
   }, [position, quat, trims, length])
 
-  const color = isSelected ? '#3b82f6' : isDraggingThis ? '#f59e0b' : isSnapTarget ? '#67e8f9' : isHovered ? '#e2e8f0' : '#b0bec5'
+  // Interference is allowed, so it has to be visible: conflicting members read red
+  const color = conflict ? '#b91c1c'
+    : isSelected ? '#3b82f6'
+    : isDraggingThis ? '#f59e0b'
+    : isSnapTarget ? '#67e8f9'
+    : isHovered ? '#e2e8f0'
+    : '#b0bec5'
 
   return (
     <mesh
@@ -52,7 +60,11 @@ const Profile: React.FC<ProfileProps> = ({
         color={color}
         metalness={0.3}
         roughness={0.6}
-        emissive={isSnapTarget ? new THREE.Color('#0e7490') : isHovered && !isSelected ? new THREE.Color('#1e40af') : new THREE.Color(0, 0, 0)}
+        emissive={conflict && isSelected ? new THREE.Color('#1d4ed8')
+          : conflict ? new THREE.Color('#7f1d1d')
+          : isSnapTarget ? new THREE.Color('#0e7490')
+          : isHovered && !isSelected ? new THREE.Color('#1e40af')
+          : new THREE.Color(0, 0, 0)}
         emissiveIntensity={isSnapTarget ? 0.6 : 0.8}
       />
     </mesh>
