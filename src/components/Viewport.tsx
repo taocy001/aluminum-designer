@@ -12,6 +12,8 @@ import Connector from './Connector'
 import DrawingHandler from './DrawingHandler'
 import DragHandler from './DragHandler'
 import PointerRouter from './PointerRouter'
+import ResizeHandles from './ResizeHandles'
+import RotateGizmo from './RotateGizmo'
 import TextSprite from './TextSprite'
 
 const DEFAULT_CAM = new THREE.Vector3(600, 500, 600)
@@ -116,25 +118,33 @@ const DevHook: React.FC = () => {
  * Marks exactly where members interfere: a bright box with a wire outline, drawn through
  * the geometry so the spot is findable even when it sits inside the parts.
  */
+const ConflictMarker: React.FC<{ conflict: Conflict }> = ({ conflict }) => {
+  const size = conflict.region.getSize(new THREE.Vector3())
+  const center = conflict.region.getCenter(new THREE.Vector3())
+  const [w, h, d] = [size.x + 3, size.y + 3, size.z + 3]
+
+  // built once per size: dragging re-renders this every frame, and EdgesGeometry is not cheap
+  const geometries = useMemo(() => {
+    const box = new THREE.BoxGeometry(w, h, d)
+    return { box, edges: new THREE.EdgesGeometry(box) }
+  }, [w, h, d])
+  useEffect(() => () => { geometries.box.dispose(); geometries.edges.dispose() }, [geometries])
+
+  return (
+    <group position={center} raycast={() => null}>
+      <mesh geometry={geometries.box} renderOrder={6}>
+        <meshBasicMaterial color="#ff2d2d" transparent opacity={0.5} depthTest={false} />
+      </mesh>
+      <lineSegments geometry={geometries.edges} renderOrder={7}>
+        <lineBasicMaterial color="#fecaca" transparent opacity={0.95} depthTest={false} />
+      </lineSegments>
+    </group>
+  )
+}
+
 const ConflictMarkers: React.FC<{ conflicts: Conflict[] }> = ({ conflicts }) => (
   <>
-    {conflicts.map((c, i) => {
-      const size = c.region.getSize(new THREE.Vector3())
-      const center = c.region.getCenter(new THREE.Vector3())
-      const args: [number, number, number] = [size.x + 3, size.y + 3, size.z + 3]
-      return (
-        <group key={`${c.a}-${c.b}-${i}`} position={center} raycast={() => null}>
-          <mesh renderOrder={6}>
-            <boxGeometry args={args} />
-            <meshBasicMaterial color="#ff2d2d" transparent opacity={0.5} depthTest={false} />
-          </mesh>
-          <lineSegments renderOrder={7}>
-            <edgesGeometry args={[new THREE.BoxGeometry(...args)]} />
-            <lineBasicMaterial color="#fecaca" transparent opacity={0.95} depthTest={false} />
-          </lineSegments>
-        </group>
-      )
-    })}
+    {conflicts.map((c, i) => <ConflictMarker key={`${c.a}-${c.b}-${i}`} conflict={c} />)}
   </>
 )
 
@@ -144,9 +154,10 @@ const Viewport: React.FC = () => {
   const { trims, conflicts, conflictIds } = useMemo(() => analyzeFrame(profiles), [profiles])
 
   const orbitEnabled = !isDragging && !selectMode
-  // Draw mode: left button draws, right button orbits, middle pans. Navigate: left orbits.
+  // Left button orbits in both modes; in draw mode a plain click (no travel) places a point
+  // instead, which DrawingHandler decides on release.
   const mouseButtons = viewMode === 'draw'
-    ? { MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE }
+    ? { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE }
     : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
 
   return (
@@ -178,6 +189,8 @@ const Viewport: React.FC = () => {
       <DrawingHandler />
       <DragHandler />
       <PointerRouter />
+      <ResizeHandles />
+      <RotateGizmo />
       <FrameSelector />
 
       <OrbitControls makeDefault enabled={orbitEnabled} mouseButtons={mouseButtons} minDistance={50} maxDistance={30000} />

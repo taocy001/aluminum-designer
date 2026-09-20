@@ -68,6 +68,8 @@ interface State {
   /** Move/rotate profiles and connectors together as one undoable step */
   commitTransform: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }> }) => void
   updateConnector: (id: string, updates: Partial<ConnectorData>) => void
+  /** Live move of several parts at once (no history) — one store write per frame */
+  updateParts: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }> }) => void
   snapshotHistory: () => void
   undo: () => void
   redo: () => void
@@ -202,6 +204,16 @@ export const useStore = create<State>()(
           future: [],
           profiles: state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p),
           connectors: state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c),
+        }
+      }),
+
+      updateParts: ({ profiles = [], connectors = [] }) => set((state) => {
+        if (profiles.length === 0 && connectors.length === 0) return {}
+        const pMap = new Map(profiles.map((u) => [u.id, u.updates]))
+        const cMap = new Map(connectors.map((u) => [u.id, u.updates]))
+        return {
+          profiles: pMap.size ? state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p) : state.profiles,
+          connectors: cMap.size ? state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c) : state.connectors,
         }
       }),
 

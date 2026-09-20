@@ -6,7 +6,7 @@ import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { duplicateSelected, nudgeSelected, rotateSelected } from './utils/editOps'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand } from 'lucide-react'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -16,7 +16,7 @@ function App() {
   const {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind,
     viewMode, setViewMode, triggerCameraReset, cancelDraw, activeSpec,
-    isDragging, showDimensionLabels, toggleDimensionLabels,
+    isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
@@ -238,6 +238,11 @@ function App() {
             <div className="w-px h-5 bg-white/10 mx-0.5" />
             <button onClick={toggleDimensionLabels} className={toolBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
               <Ruler size={13} />{t.labels}
+            </button>
+            <div className="w-px h-5 bg-white/10 mx-0.5" />
+            <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
+              className={toolBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
+              <Rotate3d size={13} />{t.rotate3d}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5" />
             <button data-testid="fit-view" onClick={triggerCameraReset} title="F" className={toolBtn(false, '')}>

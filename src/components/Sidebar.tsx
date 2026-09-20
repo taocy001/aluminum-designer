@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Plus, Trash2, Download, Box, FileText, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -37,6 +37,32 @@ function downloadText(filename: string, text: string, mime: string) {
   document.body.removeChild(link)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+
+type SectionKey = 'components' | 'properties' | 'bom'
+
+/** Collapsible sidebar section with a sticky header */
+const Section: React.FC<{
+  id: SectionKey
+  title: string
+  badge?: React.ReactNode
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}> = ({ id, title, badge, open, onToggle, children }) => (
+  <div className="flex flex-col border-b border-white/5">
+    <button
+      onClick={onToggle}
+      data-testid={`section-${id}`}
+      aria-expanded={open}
+      className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 hover:text-white hover:bg-white/5 shrink-0"
+    >
+      <ChevronRight size={13} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
+      <span className="flex-1 text-left">{title}</span>
+      {badge}
+    </button>
+    {open && <div className="px-4 pb-4" data-testid={`section-${id}-body`}>{children}</div>}
+  </div>
+)
 
 /** Numeric field that commits on Enter / blur and re-syncs from props otherwise */
 const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: number; className?: string; label?: string }> = ({ value, onCommit, step = 5, className = '', label }) => {
@@ -77,7 +103,34 @@ const Sidebar: React.FC = () => {
   }, [confirmClear])
 
   const { trims, conflicts, conflictIds } = useMemo(() => analyzeFrame(profiles), [profiles])
+  const selectedIdsSignature = selectedIds.join(',')
+  const selectedIdsRef = useRef(selectedIds)
+  selectedIdsRef.current = selectedIds
   const [rotAngleText, setRotAngleText] = useState('90')
+  const [collapsed, setCollapsed] = useState(false)
+  // section state is remembered per browser, and selecting something opens the properties
+  const [open, setOpen] = useState<Record<SectionKey, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('aluminum-designer-sections')
+      if (saved) return { components: true, properties: true, bom: true, ...JSON.parse(saved) }
+    } catch { /* private mode or blocked storage */ }
+    return { components: true, properties: true, bom: true }
+  })
+  useEffect(() => {
+    if (selectedIdsRef.current.length === 0) return
+    setOpen((prev) => {
+      if (prev.properties) return prev
+      const next = { ...prev, properties: true }
+      try { localStorage.setItem('aluminum-designer-sections', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [selectedIdsSignature])
+
+  const toggle = (key: SectionKey) => setOpen((prev) => {
+    const next = { ...prev, [key]: !prev[key] }
+    try { localStorage.setItem('aluminum-designer-sections', JSON.stringify(next)) } catch { /* ignore */ }
+    return next
+  })
   const rotAngle = parseFloat(rotAngleText)
   const rotAngleValid = isFinite(rotAngle) && rotAngle % 360 !== 0
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
@@ -158,12 +211,30 @@ const Sidebar: React.FC = () => {
     return t.through
   }
 
+  if (collapsed) {
+    return (
+      <div className="w-11 bg-slate-800 border-r border-white/5 flex flex-col items-center gap-2 py-3 shrink-0" data-testid="sidebar-rail">
+        <button onClick={() => setCollapsed(false)} title={t.expandPanel} data-testid="sidebar-expand"
+          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><PanelLeftOpen size={16} /></button>
+        <div className="w-6 h-px bg-white/10" />
+        <div className="text-[9px] font-mono text-slate-500 writing-vertical" style={{ writingMode: 'vertical-rl' }}>
+          {profiles.length} · {(totalCut / 1000).toFixed(2)}m{conflicts.length ? ` · ⚠${conflicts.length}` : ''}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="w-80 bg-slate-800 border-r border-white/5 flex flex-col text-slate-200 shrink-0">
-      <div className="p-4 border-b border-white/5">
-        <h2 className="text-xs font-black mb-3 flex items-center gap-2 uppercase tracking-[0.2em] text-blue-400">
-          <Plus size={14} strokeWidth={3} /> {t.components}
-        </h2>
+    <div className="w-80 bg-slate-800 border-r border-white/5 flex flex-col text-slate-200 shrink-0" data-testid="sidebar">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 shrink-0">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{t.components}</span>
+        <button onClick={() => setCollapsed(true)} title={t.collapsePanel} data-testid="sidebar-collapse"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><PanelLeftClose size={15} /></button>
+      </div>
+
+      {/* one scroll container for all sections: on a short window nothing gets squeezed away */}
+      <div className="flex-1 overflow-y-auto min-h-0" data-testid="sidebar-scroll">
+      <Section id="components" title={t.components} open={open.components} onToggle={() => toggle('components')}>
         <div className="space-y-4">
           <div>
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.profiles}</label>
@@ -192,10 +263,15 @@ const Sidebar: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </Section>
 
-      {/* Properties */}
-      <div className="flex-grow overflow-y-auto p-4">
+      <Section
+        id="properties"
+        title={t.properties}
+        open={open.properties}
+        onToggle={() => toggle('properties')}
+        badge={selectedIds.length > 0 ? <span className="text-[9px] font-mono text-blue-400">{selectedIds.length}</span> : undefined}
+      >
         {selectedProfile || selectedConnector ? (
           <div className="bg-slate-900/50 rounded-xl p-3 border border-white/5 space-y-3 shadow-xl" data-testid="properties">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
@@ -304,27 +380,34 @@ const Sidebar: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-40 space-y-2">
-            <Box size={32} />
-            <span className="text-[10px] font-bold uppercase">{t.selectToEdit}</span>
+          <div className="py-8 flex flex-col items-center justify-center text-slate-600 opacity-40 space-y-2">
+            <Box size={28} />
+            <span className="text-[10px] font-bold uppercase text-center">{t.selectToEdit}</span>
           </div>
         )}
+      </Section>
+
+      <div className="grid grid-cols-2 gap-2 px-4 py-2 border-b border-white/5 shrink-0">
+        <button onClick={undo} disabled={past.length === 0} title={`${t.undo} (Ctrl+Z)`}
+          className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold">
+          <Undo2 size={13} /> {t.undo}
+        </button>
+        <button onClick={redo} disabled={future.length === 0} title={`${t.redo} (Ctrl+Y)`}
+          className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold">
+          <Redo2 size={13} /> {t.redo}
+        </button>
       </div>
 
-      {/* BOM + actions */}
-      <div className="p-4 bg-slate-900 border-t border-white/5 space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={undo} disabled={past.length === 0} title={`${t.undo} (Ctrl+Z)`}
-            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold">
-            <Undo2 size={13} /> {t.undo}
-          </button>
-          <button onClick={redo} disabled={future.length === 0} title={`${t.redo} (Ctrl+Y)`}
-            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold">
-            <Redo2 size={13} /> {t.redo}
-          </button>
-        </div>
-
-        <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2"><FileText size={12} /> {t.bomSummary}</h2>
+      <Section
+        id="bom"
+        title={t.bomSummary}
+        open={open.bom}
+        onToggle={() => toggle('bom')}
+        badge={<span className={`text-[9px] font-mono ${conflicts.length ? 'text-red-400' : 'text-slate-500'}`}>
+          {profiles.length}{conflicts.length ? ` · ⚠${conflicts.length}` : ''}
+        </span>}
+      >
+        <div className="space-y-3">
         <div className="grid grid-cols-3 gap-1.5 text-center">
           <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.totalProfiles}</div><div className="text-sm font-mono font-bold text-blue-400" data-testid="bom-count">{profiles.length}</div></div>
           <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.totalLength}</div><div className="text-sm font-mono font-bold text-blue-400">{(totalCut / 1000).toFixed(2)}m</div></div>
@@ -373,6 +456,8 @@ const Sidebar: React.FC = () => {
             <Eraser size={14} /> {confirmClear ? t.clearConfirm : t.clear}
           </button>
         </div>
+        </div>
+      </Section>
       </div>
     </div>
   )

@@ -12,6 +12,8 @@ import { specDims } from '../utils/specUtils'
 import { translations } from '../utils/translations'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
+/** a left press that travels this far orbits the camera instead of placing a point */
+const ORBIT_SLOP_PX = 5
 
 const DrawingHandler: React.FC = () => {
   const { isDrawing, startPoint, currentPoint, snapPoint, snapKind, placementMode, activeSpec, viewMode, drawAxis, alignGuides } = useToolStore()
@@ -32,6 +34,8 @@ const DrawingHandler: React.FC = () => {
   const lastRay = useRef<THREE.Ray | null>(null)
   const lastCursor = useRef<THREE.Vector2 | null>(null)
   const rightDownRef = useRef<{ x: number; y: number } | null>(null)
+  /** left press in draw mode: a click places a point, a press-and-drag orbits the camera */
+  const leftDownRef = useRef<{ x: number; y: number; ray: THREE.Ray; cursor: THREE.Vector2; orbiting: boolean } | null>(null)
 
   // Right-click cancels only when the pointer did not travel (a right-drag is an orbit)
   useEffect(() => {
@@ -113,6 +117,15 @@ const DrawingHandler: React.FC = () => {
     lastCursor.current = cursor
     const ts = useToolStore.getState()
 
+    // while the left button is held and the pointer travels, the gesture is an orbit:
+    // freeze the preview so the line does not chase the camera
+    const down = leftDownRef.current
+    if (down) {
+      const moved = Math.hypot(e.nativeEvent.clientX - down.x, e.nativeEvent.clientY - down.y)
+      if (moved > ORBIT_SLOP_PX) down.orbiting = true
+      if (down.orbiting) return
+    }
+
     if (ts.isDrawing) {
       updateEnd(ray, cursor)
       return
@@ -134,8 +147,18 @@ const DrawingHandler: React.FC = () => {
     }
     if (e.button !== 0) return
 
-    const ray: THREE.Ray = e.ray
-    const cursor = cursorFromEvent(e)
+    // Decide on release: a click draws, a press-and-drag orbits. The press ray is kept so a
+    // tap without a preceding move still places a point, and a release outside the canvas does not.
+    leftDownRef.current = {
+      x: e.nativeEvent.clientX, y: e.nativeEvent.clientY,
+      ray: (e.ray as THREE.Ray).clone(), cursor: cursorFromEvent(e), orbiting: false,
+    }
+    void ts
+  }, [camera, size, updateEnd])
+
+  /** The actual placement, run on release when the gesture turned out to be a click */
+  const placeAt = useCallback((ray: THREE.Ray, cursor: THREE.Vector2) => {
+    const ts = useToolStore.getState()
 
     if (ts.placementMode === 'connector') {
       if (!ts.activeConnectorType) return
@@ -159,6 +182,23 @@ const DrawingHandler: React.FC = () => {
     tryAddProfile(s, c, activeSpec)
     ts.cancelDraw()
   }, [camera, size, updateEnd, hitMember])
+
+  // Release decides between drawing and orbiting
+  useEffect(() => {
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0) return               // another button's release must not eat the press
+      const down = leftDownRef.current
+      leftDownRef.current = null
+      if (!down) return
+      if (useToolStore.getState().viewMode !== 'draw') return
+      const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y)
+      if (down.orbiting || moved > ORBIT_SLOP_PX) return  // it was a camera move
+      // the press ray is the fresh one: a hover ray can predate a camera change or a tap
+      placeAt(down.ray, down.cursor)
+    }
+    window.addEventListener('pointerup', onUp)
+    return () => window.removeEventListener('pointerup', onUp)
+  }, [placeAt])
 
   const { hh } = specDims(activeSpec)
 

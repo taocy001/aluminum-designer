@@ -113,20 +113,20 @@ test.describe('Drag', () => {
     expect(A.position.map(r)).toEqual([0, 10, 0])
   })
 
-  test('Shift+drag moves vertically and uprights cannot sink below the floor', async ({ page }) => {
+  test('Alt+drag moves vertically and uprights cannot sink below the floor', async ({ page }) => {
     const { C } = await scene(page)
-    await dragWorld(page, [700, 250, 0], [700, 400, 0], ['Shift'])
+    await dragWorld(page, [700, 250, 0], [700, 400, 0], ['Alt'])
     let c = (await store(page)).profiles.find((p) => p.id === C.id)!
     expect(r(c.position[1])).toBeGreaterThanOrEqual(140)
     expect(r(c.position[0])).toBe(700); expect(r(c.position[2])).toBe(0)
-    await dragWorld(page, [700, c.position[1] + 200, 0], [700, -500, 0], ['Shift'])
+    await dragWorld(page, [700, c.position[1] + 200, 0], [700, -500, 0], ['Alt'])
     c = (await store(page)).profiles.find((p) => p.id === C.id)!
     expect(r(c.position[1])).toBe(0)
   })
 
   test('horizontal members cannot be dragged below the floor', async ({ page }) => {
     const { A } = await scene(page)
-    await dragWorld(page, [200, 10, 0], [200, -300, 0], ['Shift'])
+    await dragWorld(page, [200, 10, 0], [200, -300, 0], ['Alt'])
     const a = (await store(page)).profiles.find((p) => p.id === A.id)!
     expect(r(a.position[1])).toBe(10)
   })
