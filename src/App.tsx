@@ -20,7 +20,7 @@ function App() {
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
-    toasts,
+    toasts, showToast, dragBlocked, hoverProfileId,
   } = useToolStore()
   const t = translations[language]
 
@@ -32,15 +32,19 @@ function App() {
   const drawDist = isDrawing && startPoint && currentPoint ? startPoint.distanceTo(currentPoint) : 0
 
   const confirmPreciseLength = useCallback(() => {
+    if (!startPoint || !currentPoint || startPoint.distanceTo(currentPoint) < 1) {
+      showToast(t.toastNeedDirection, 'info')
+      return
+    }
+    if (preciseInput.trim() === '') { showToast(t.toastNeedLength, 'info'); return }
     const len = parseFloat(preciseInput)
-    if (!isFinite(len) || len < 10) return
-    if (!startPoint || !currentPoint || startPoint.distanceTo(currentPoint) < 1) return
+    if (!isFinite(len) || len < 10) { showToast(t.toastTooShort, 'error'); return }
     const dir = currentPoint.clone().sub(startPoint).normalize()
     const end = startPoint.clone().addScaledVector(dir, len)
     tryAddProfile(startPoint, end, activeSpec)
     cancelDraw()
     setPreciseInput('')
-  }, [preciseInput, startPoint, currentPoint, activeSpec, cancelDraw])
+  }, [preciseInput, startPoint, currentPoint, activeSpec, cancelDraw, showToast, t])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -91,6 +95,20 @@ function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [isDrawing, viewMode, selectMode, lockedAxis, cancelDraw, setViewMode, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset])
 
+  // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
+  useEffect(() => {
+    if (!isDrawing) return
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null
+      if (!el || el.tagName === 'CANVAS') return
+      if (el.closest('[data-keep-draw]')) return // the exact-length HUD
+      cancelDraw()
+      showToast(t.toastDrawCancelled, 'info')
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    return () => window.removeEventListener('pointerdown', onDown, true)
+  }, [isDrawing, cancelDraw, showToast, t])
+
   // Frame selection overlay
   const mainRef = useRef<HTMLDivElement>(null)
   const frameRect = isFrameSelecting && frameSelectStart && frameSelectCurrent ? {
@@ -103,9 +121,9 @@ function App() {
   const handleMainPointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).tagName !== 'CANVAS') return // toolbar / overlays
     if (viewMode !== 'navigate' || e.button !== 0) return
+    // Plain selection and clearing are handled by PointerRouter (on release, so orbiting keeps it)
     if (selectMode) startFrameSelect(e.clientX, e.clientY)
-    else if (!(e.ctrlKey || e.metaKey)) clearSelection() // members stop propagation, so this is empty space
-  }, [selectMode, viewMode, startFrameSelect, clearSelection])
+  }, [selectMode, viewMode, startFrameSelect])
 
   const handleMainPointerMove = useCallback((e: React.PointerEvent) => {
     if (!isFrameSelecting) return
@@ -131,6 +149,14 @@ function App() {
     endFrameSelect(e.clientX, e.clientY)
   }, [isFrameSelecting, frameSelectStart, endFrameSelect])
 
+  // What a press would do right now, so the pointer stops looking inert
+  const viewportCursor = isDragging
+    ? (dragBlocked ? 'not-allowed' : 'grabbing')
+    : viewMode === 'draw' ? 'crosshair'
+    : selectMode ? 'crosshair'
+    : hoverProfileId ? 'grab'
+    : 'default'
+
   const guide = selectMode ? t.guideSelect : viewMode === 'draw' ? t.guideDraw : t.guideNavigate
   const toolBtn = (active: boolean, activeCls: string) =>
     `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
@@ -144,11 +170,13 @@ function App() {
         </h1>
 
         <div className="ml-auto flex items-center gap-3">
-          {isDrawing && drawAxis && drawDist > 1 && (
-            <div className="flex items-center gap-2" data-testid="draw-hud">
+          {isDrawing && (
+            <div className="flex items-center gap-2" data-testid="draw-hud" data-keep-draw>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-bold border"
-                style={{ color: AXIS_COLORS[drawAxis], borderColor: AXIS_COLORS[drawAxis] + '66', background: AXIS_COLORS[drawAxis] + '15' }}>
-                <span>{t.axisNames[drawAxis]}{lockedAxis ? ' 🔒' : ''}</span>
+                style={drawAxis
+                  ? { color: AXIS_COLORS[drawAxis], borderColor: AXIS_COLORS[drawAxis] + '66', background: AXIS_COLORS[drawAxis] + '15' }
+                  : { color: '#94a3b8', borderColor: '#94a3b855', background: '#94a3b815' }}>
+                <span>{drawAxis ? `${t.axisNames[drawAxis]}${lockedAxis ? ' 🔒 (X/Y/Z)' : ''}` : t.pickDirection}</span>
                 <span className="opacity-60">|</span>
                 <span data-testid="draw-length">{drawDist.toFixed(0)} mm</span>
                 {snapKind && snapKind !== 'grid' && (<><span className="opacity-60">|</span><span data-testid="snap-kind" className="text-cyan-300">{t.snapNames[snapKind] ?? snapKind}</span></>)}
@@ -177,8 +205,15 @@ function App() {
 
       <div className="flex-grow flex overflow-hidden">
         <Sidebar />
-        <main ref={mainRef} className="flex-grow relative min-w-0"
-          onPointerDown={handleMainPointerDown} onPointerMove={handleMainPointerMove} onPointerUp={handleMainPointerUp}>
+        <main
+          ref={mainRef}
+          className="flex-grow relative min-w-0"
+          style={{ cursor: viewportCursor }}
+          data-testid="viewport"
+          onPointerDown={handleMainPointerDown}
+          onPointerMove={handleMainPointerMove}
+          onPointerUp={handleMainPointerUp}
+        >
           <Viewport />
 
           {frameRect && frameRect.width > 3 && frameRect.height > 3 && (

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef } from 'react'
+import React, { useMemo, useCallback, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
@@ -9,6 +9,7 @@ import { pickPoint, resolveAxisEnd, type MeshHit } from '../utils/pickUtils'
 import SnapMarker from './SnapMarker'
 import { floorY, tryAddProfile, placeConnector } from '../utils/profileFactory'
 import { specDims } from '../utils/specUtils'
+import { translations } from '../utils/translations'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 
@@ -30,6 +31,24 @@ const DrawingHandler: React.FC = () => {
   }, [raycaster, scene])
   const lastRay = useRef<THREE.Ray | null>(null)
   const lastCursor = useRef<THREE.Vector2 | null>(null)
+  const rightDownRef = useRef<{ x: number; y: number } | null>(null)
+
+  // Right-click cancels only when the pointer did not travel (a right-drag is an orbit)
+  useEffect(() => {
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 2) return   // a left-click release must not consume the pending right-click
+      const down = rightDownRef.current
+      rightDownRef.current = null
+      if (!down) return
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return
+      const ts = useToolStore.getState()
+      if (!ts.isDrawing) return
+      ts.cancelDraw()
+      ts.showToast(translations[ts.language].toastDrawCancelled, 'info')
+    }
+    window.addEventListener('pointerup', onUp)
+    return () => window.removeEventListener('pointerup', onUp)
+  }, [])
 
   const previewGeo = useMemo(() => {
     const shape = getProfileShape(activeSpec)
@@ -108,9 +127,9 @@ const DrawingHandler: React.FC = () => {
 
   const onPointerDown = useCallback((e: any) => {
     const ts = useToolStore.getState()
-    // Right button: cancel current draw (orbit keeps working through OrbitControls)
+    // Right button: a plain click cancels the draw, a drag orbits the camera (decided on release)
     if (e.button === 2) {
-      if (ts.isDrawing) ts.cancelDraw()
+      rightDownRef.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
       return
     }
     if (e.button !== 0) return

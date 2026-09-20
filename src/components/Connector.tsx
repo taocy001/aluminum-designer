@@ -1,7 +1,5 @@
 import React from 'react'
 import * as THREE from 'three'
-import { useToolStore } from '../store/useToolStore'
-import { useThree } from '@react-three/fiber'
 
 interface ConnectorProps {
   id: string
@@ -9,7 +7,6 @@ interface ConnectorProps {
   position: [number, number, number]
   quaternion?: [number, number, number, number]
   isSelected?: boolean
-  onSelect?: (multi: boolean) => void
 }
 
 interface MeshPartProps {
@@ -35,18 +32,8 @@ const Connector: React.FC<ConnectorProps> = ({
   position,
   quaternion = [0, 0, 0, 1],
   isSelected,
-  onSelect
 }) => {
-  const viewMode = useToolStore((s) => s.viewMode)
-  const controls = useThree((s) => s.controls) as any
   const c = isSelected ? '#3b82f6' : '#94a3b8'
-  const handleClick = viewMode !== 'draw' ? (e: any) => {
-    if (e.button !== undefined && e.button !== 0) return
-    e.stopPropagation()
-    e.nativeEvent?.stopPropagation?.()
-    if (controls) { controls.enabled = false; setTimeout(() => { controls.enabled = true }, 0) }
-    onSelect?.(!!(e.nativeEvent?.ctrlKey || e.nativeEvent?.metaKey))
-  } : undefined
 
   const renderParts = () => {
     switch (type) {
@@ -170,7 +157,6 @@ const Connector: React.FC<ConnectorProps> = ({
     <group
       position={new THREE.Vector3(...position)}
       quaternion={new THREE.Quaternion(...quaternion)}
-      onPointerDown={handleClick}
     >
       {renderParts()}
     </group>

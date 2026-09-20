@@ -30,7 +30,7 @@ export interface ProfileTrims {
   cutLength: number
 }
 
-function resolveEnd(p: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | null, others: ProfileData[]): EndJoint {
+function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | null, others: ProfileData[]): EndJoint {
   let buttTrim = -Infinity
   let anyButt = false
   let extend = 0
@@ -70,8 +70,8 @@ export function computeTrims(profile: ProfileData, all: ProfileData[]): ProfileT
   const { start, end } = getProfileEndpoints(profile)
   const dir = getProfileDir(profile)
   const axis = getProfileAxis(profile)
-  const s = resolveEnd(profile, start, dir.clone().negate(), axis, others)
-  const e = resolveEnd(profile, end, dir, axis, others)
+  const s = resolveEnd(start, dir.clone().negate(), axis, others)
+  const e = resolveEnd(end, dir, axis, others)
   let cutLength = round3(profile.length - s.trim - e.trim)
   if (!isFinite(cutLength) || cutLength < 1) cutLength = Math.max(1, profile.length)
   return { start: s, end: e, cutLength }
