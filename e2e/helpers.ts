@@ -32,6 +32,24 @@ export async function store(page: Page) {
   })
 }
 
+export async function cursor(page: Page): Promise<string> {
+  return page.getByTestId('viewport').evaluate((el) => getComputedStyle(el as HTMLElement).cursor)
+}
+
+export async function hoverId(page: Page): Promise<string | null> {
+  return page.evaluate(() => (window as any).__aluframe.tool.getState().hoverProfileId)
+}
+
+/** Press, move in steps, hold — the caller releases. Useful to inspect mid-drag state. */
+export async function dragHold(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, steps = 6) {
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(from.x + (to.x - from.x) * i / steps, from.y + (to.y - from.y) * i / steps)
+    await page.waitForTimeout(15)
+  }
+}
+
 export async function tool(page: Page) {
   return page.evaluate(() => {
     const t = (window as any).__aluframe.tool.getState()

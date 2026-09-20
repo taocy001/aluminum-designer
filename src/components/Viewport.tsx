@@ -10,6 +10,7 @@ import Profile from './Profile'
 import Connector from './Connector'
 import DrawingHandler from './DrawingHandler'
 import DragHandler from './DragHandler'
+import PointerRouter from './PointerRouter'
 import TextSprite from './TextSprite'
 
 const DEFAULT_CAM = new THREE.Vector3(600, 500, 600)
@@ -111,7 +112,7 @@ const DevHook: React.FC = () => {
 }
 
 const Viewport: React.FC = () => {
-  const { profiles, connectors, selectedIds, selectItem } = useStore()
+  const { profiles, connectors, selectedIds } = useStore()
   const { viewMode, isDragging, showDimensionLabels, selectMode } = useToolStore()
   const trims = useMemo(() => computeAllTrims(profiles), [profiles])
 
@@ -137,17 +138,18 @@ const Viewport: React.FC = () => {
       <Grid infiniteGrid cellSize={50} sectionSize={500} fadeDistance={6000} fadeStrength={1.5} cellColor="#334155" sectionColor="#475569" position={[0, -0.5, 0]} />
 
       {profiles.map((p) => (
-        <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selectedIds.includes(p.id)} onSelect={(multi) => selectItem(p.id, multi)} />
+        <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selectedIds.includes(p.id)} />
       ))}
 
       {connectors.map((c) => (
-        <Connector key={c.id} {...c} isSelected={selectedIds.includes(c.id)} onSelect={(multi) => selectItem(c.id, multi)} />
+        <Connector key={c.id} {...c} isSelected={selectedIds.includes(c.id)} />
       ))}
 
       {showDimensionLabels && <DimensionLabels trims={trims} />}
 
       <DrawingHandler />
       <DragHandler />
+      <PointerRouter />
       <FrameSelector />
 
       <OrbitControls makeDefault enabled={orbitEnabled} mouseButtons={mouseButtons} minDistance={50} maxDistance={30000} />

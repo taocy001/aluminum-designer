@@ -4,25 +4,44 @@ import { useThree } from '@react-three/fiber'
 import { useToolStore } from '../store/useToolStore'
 import { useStore, type ProfileData } from '../store/useStore'
 import { getProfileEndpoints, wouldOverlap } from '../utils/snapUtils'
+import { translations } from '../utils/translations'
 import { getProfileAxis } from '../utils/jointUtils'
 import { floorY } from '../utils/profileFactory'
 import { roundToGrid } from '../utils/specUtils'
+import { toScreen } from '../utils/pickUtils'
 
-const SNAP_MM = 20
+/** endpoint snapping while dragging: generous on screen, capped in world units */
+const SNAP_PX = 14
+const SNAP_MAX_MM = 40
+/** always snap within this world distance, however far the camera is zoomed in */
+const SNAP_MIN_MM = 8
+/** a rejected drag repeats every frame — only tell the user this often (ms) */
+const BLOCK_TOAST_INTERVAL = 1500
 
-/** Snap either end of the moved profile to any endpoint of the others. Returns the adjusted start position. */
-function snapProfilePosition(p: ProfileData, newStart: THREE.Vector3, others: ProfileData[]): THREE.Vector3 {
+/**
+ * Snap either end of the moved profile to any endpoint of the others.
+ * Measured in pixels (like the drawing tool) so the pull feels the same at any zoom,
+ * with a world-space cap so a distant endpoint never grabs the member.
+ */
+function snapProfilePosition(
+  p: ProfileData, newStart: THREE.Vector3, others: ProfileData[],
+  camera: THREE.Camera, size: { width: number; height: number },
+): THREE.Vector3 {
   const { start, end } = getProfileEndpoints({ ...p, position: [newStart.x, newStart.y, newStart.z] })
   const offset = end.clone().sub(start)
   let best: THREE.Vector3 | null = null
-  let bestD = SNAP_MM
+  let bestPx = SNAP_PX
   for (const o of others) {
     const eps = getProfileEndpoints(o)
     for (const ep of [eps.start, eps.end]) {
-      const d1 = ep.distanceTo(start)
-      if (d1 < bestD) { bestD = d1; best = ep.clone() }
-      const d2 = ep.distanceTo(end)
-      if (d2 < bestD) { bestD = d2; best = ep.clone().sub(offset) }
+      const epPx = toScreen(ep, camera, size)
+      for (const [corner, candidate] of [[start, ep], [end, ep.clone().sub(offset)]] as const) {
+        const world = ep.distanceTo(corner)
+        if (world > SNAP_MAX_MM) continue
+        const px = epPx.distanceTo(toScreen(corner, camera, size))
+        const effective = world <= SNAP_MIN_MM ? Math.min(px, SNAP_PX - 1) : px
+        if (effective < bestPx) { bestPx = effective; best = candidate.clone() }
+      }
     }
   }
   return best ?? newStart
@@ -41,10 +60,11 @@ function clampFloor(p: ProfileData, pos: THREE.Vector3): void {
 }
 
 const DragHandler: React.FC = () => {
-  const { gl, camera } = useThree()
+  const { gl, camera, size } = useThree()
 
   useEffect(() => {
     const canvas = gl.domElement
+    let lastBlockToast = 0
 
     const applyDrag = (e: { clientX: number; clientY: number }) => {
       const ts = useToolStore.getState()
@@ -80,7 +100,7 @@ const DragHandler: React.FC = () => {
       const leadOrigin = new THREE.Vector3(...(dragGroupOrigins[dragProfileId] ?? dragOriginPos.toArray()))
       const leadNew = leadOrigin.clone().add(delta)
       leadNew.x = roundToGrid(leadNew.x); leadNew.y = roundToGrid(leadNew.y); leadNew.z = roundToGrid(leadNew.z)
-      const snapped = single ? snapProfilePosition(lead, leadNew, others) : leadNew
+      const snapped = single ? snapProfilePosition(lead, leadNew, others, camera, size) : leadNew
       if (single) clampFloor(lead, snapped)
       const groupDelta = snapped.clone().sub(leadOrigin)
 
@@ -94,13 +114,27 @@ const DragHandler: React.FC = () => {
       }
 
       // Nothing in the group may end up overlapping a member outside the group
+      let floorViolation = false
       const valid = updates.every((u) => {
         const orig = all.find((p) => p.id === u.id)!
         const cand = { ...orig, position: u.updates.position! }
-        if (getProfileAxis(cand) !== 'y' && cand.position[1] < floorY(cand.spec) - 0.01) return false
+        if (getProfileAxis(cand) !== 'y' && cand.position[1] < floorY(cand.spec) - 0.01) { floorViolation = true; return false }
         return !wouldOverlap(cand, others)
       })
-      if (valid) store.updateProfiles(updates)
+
+      if (valid) {
+        ts.setDragBlocked(false)
+        store.updateProfiles(updates)
+        return
+      }
+      // Rejected: say why instead of letting the member look stuck
+      ts.setDragBlocked(true)
+      const now = performance.now()
+      if (now - lastBlockToast > BLOCK_TOAST_INTERVAL) {
+        lastBlockToast = now
+        const t = translations[ts.language]
+        ts.showToast(floorViolation ? t.toastBelowFloor : t.toastDragOverlap, 'error')
+      }
     }
 
     const onPointerMove = (e: PointerEvent) => applyDrag(e)
@@ -119,7 +153,7 @@ const DragHandler: React.FC = () => {
       canvas.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
     }
-  }, [gl, camera])
+  }, [gl, camera, size])
 
   return null
 }

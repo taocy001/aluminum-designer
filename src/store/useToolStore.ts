@@ -47,11 +47,15 @@ interface ToolState {
   dragPlane: THREE.Plane | null
   dragVertical: boolean
   dragMoved: boolean
+  /** true while the current drag position is rejected (overlap / floor) — drives the cursor */
+  dragBlocked: boolean
 
   // UI
   showDimensionLabels: boolean
   selectMode: boolean
   toasts: Toast[]
+  /** member under the cursor in navigate mode (screen-space pick) */
+  hoverProfileId: string | null
 
   // Frame selection
   isFrameSelecting: boolean
@@ -78,7 +82,9 @@ interface ToolState {
     groupOrigins: Record<string, [number, number, number]>; plane: THREE.Plane; vertical: boolean
   }) => void
   markDragMoved: () => void
+  setDragBlocked: (blocked: boolean) => void
   stopDrag: () => void
+  setHoverProfile: (id: string | null) => void
 
   toggleDimensionLabels: () => void
   setSelectMode: (on: boolean) => void
@@ -123,10 +129,12 @@ export const useToolStore = create<ToolState>((set, get) => ({
   dragPlane: null,
   dragVertical: false,
   dragMoved: false,
+  dragBlocked: false,
 
   showDimensionLabels: true,
   selectMode: false,
   toasts: [],
+  hoverProfileId: null,
 
   isFrameSelecting: false,
   frameSelectStart: null,
@@ -158,13 +166,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   startDrag: ({ id, hit, origin, groupOrigins, plane, vertical }) => set({
     isDragging: true, dragProfileId: id, dragStartHit: hit, dragOriginPos: origin,
-    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragMoved: false,
+    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragMoved: false, dragBlocked: false,
   }),
   markDragMoved: () => { if (!get().dragMoved) set({ dragMoved: true }) },
+  setDragBlocked: (blocked) => { if (get().dragBlocked !== blocked) set({ dragBlocked: blocked }) },
   stopDrag: () => set({
     isDragging: false, dragProfileId: null, dragStartHit: null, dragOriginPos: null,
-    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragMoved: false,
+    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragMoved: false, dragBlocked: false,
   }),
+  setHoverProfile: (id) => { if (get().hoverProfileId !== id) set({ hoverProfileId: id }) },
 
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
   setSelectMode: (on) => set({ selectMode: on }),
