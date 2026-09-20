@@ -237,14 +237,14 @@ test.describe('Floor and group rules after the rule change', () => {
     expect((await store(page)).past).toBe(past)         // and no history entry for a blocked move
   })
 
-  test('Shift+drag of a group stops at the floor', async ({ page }) => {
+  test('Alt+drag of a group stops at the floor', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await drawMember(page, [0, 0, 300], [600, 10, 300])
     await toNavigate(page)
     await clickWorld(page, [300, 10, 0])
     await clickWorld(page, [300, 10, 300], { modifiers: ['Control'] })
-    await dragWorld(page, [300, 10, 0], [300, -400, 0], ['Shift'])
+    await dragWorld(page, [300, 10, 0], [300, -400, 0], ['Alt'])
     const ys = (await store(page)).profiles.map((p) => r(p.position[1]))
     expect(ys).toEqual([10, 10])
   })

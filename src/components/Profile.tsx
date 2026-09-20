@@ -20,7 +20,7 @@ const Profile: React.FC<ProfileProps> = ({
   id, spec, length, position, quaternion, trims, isSelected = false, conflict = false,
 }) => {
   const isDraggingThis = useToolStore((s) => s.isDragging && (s.dragProfileId === id || id in s.dragGroupOrigins))
-  const isSnapTarget = useToolStore((s) => s.hoverTargetId === id)
+  const isSnapTarget = useToolStore((s) => s.hoverTargetId === id || s.snapRefIds.includes(id))
   const isHovered = useToolStore((s) => s.viewMode === 'navigate' && !s.isDragging && s.hoverProfileId === id)
 
   const geometry = useMemo(() => {

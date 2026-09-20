@@ -48,16 +48,33 @@ interface ToolState {
   dragGroupOrigins: Record<string, [number, number, number]>
   dragPlane: THREE.Plane | null
   dragVertical: boolean
+  /** Shift: place freely, ignoring alignment snapping */
+  dragFree: boolean
+  /** members the current drag is aligning to, highlighted while it lasts */
+  snapRefIds: string[]
   dragMoved: boolean
   /** true while the dragged parts interfere with something — drives the cursor */
   dragConflict: boolean
+  /** stretching a member by one of its end faces */
+  resize: {
+    id: string; end: 'start' | 'end'
+    origin: [number, number, number]; length: number
+    /** length the grabbed end would have if the pointer stayed exactly where it pressed */
+    grabLength: number
+    /** where the press happened, to tell a click from a stretch */
+    downX: number; downY: number
+  } | null
 
   // UI
   showDimensionLabels: boolean
+  /** on-canvas rotation handles for the selection */
+  showGizmo: boolean
   selectMode: boolean
   toasts: Toast[]
   /** member under the cursor in navigate mode (screen-space pick) */
   hoverProfileId: string | null
+  /** the cursor is over a part, so the rotation handles step aside and let it be grabbed */
+  gizmoSuppressed: boolean
 
   // Frame selection
   isFrameSelecting: boolean
@@ -81,14 +98,20 @@ interface ToolState {
 
   startDrag: (args: {
     id: string; kind?: 'profile' | 'connector'; hit: THREE.Vector3; origin: THREE.Vector3;
-    groupOrigins: Record<string, [number, number, number]>; plane: THREE.Plane; vertical: boolean
+    groupOrigins: Record<string, [number, number, number]>; plane: THREE.Plane; vertical: boolean; free?: boolean
   }) => void
+  setDragFree: (free: boolean) => void
+  setSnapRefs: (ids: string[]) => void
   markDragMoved: () => void
   setDragConflict: (conflict: boolean) => void
+  startResize: (args: NonNullable<ToolState['resize']>) => void
+  stopResize: () => void
   stopDrag: () => void
   setHoverProfile: (id: string | null) => void
+  setGizmoSuppressed: (suppressed: boolean) => void
 
   toggleDimensionLabels: () => void
+  toggleGizmo: () => void
   setSelectMode: (on: boolean) => void
   showToast: (message: string, kind?: ToastKind) => void
   dismissToast: (id: number) => void
@@ -131,13 +154,18 @@ export const useToolStore = create<ToolState>((set, get) => ({
   dragGroupOrigins: {},
   dragPlane: null,
   dragVertical: false,
+  dragFree: false,
+  snapRefIds: [],
   dragMoved: false,
   dragConflict: false,
+  resize: null,
 
   showDimensionLabels: true,
+  showGizmo: true,
   selectMode: false,
   toasts: [],
   hoverProfileId: null,
+  gizmoSuppressed: false,
 
   isFrameSelecting: false,
   frameSelectStart: null,
@@ -167,19 +195,30 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setLockedAxis: (lockedAxis) => set({ lockedAxis }),
   requestPreciseFocus: (seed) => set((s) => ({ preciseFocusRequest: s.preciseFocusRequest + 1, preciseSeed: seed })),
 
-  startDrag: ({ id, kind = 'profile', hit, origin, groupOrigins, plane, vertical }) => set({
+  startDrag: ({ id, kind = 'profile', hit, origin, groupOrigins, plane, vertical, free = false }) => set({
     isDragging: true, dragKind: kind, dragProfileId: id, dragStartHit: hit, dragOriginPos: origin,
-    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragMoved: false, dragConflict: false,
+    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragFree: free,
+    dragMoved: false, dragConflict: false, snapRefIds: [],
   }),
+  setDragFree: (free) => { if (get().dragFree !== free) set({ dragFree: free }) },
+  setSnapRefs: (ids) => {
+    const cur = get().snapRefIds
+    if (cur.length !== ids.length || ids.some((id, i) => cur[i] !== id)) set({ snapRefIds: ids })
+  },
   markDragMoved: () => { if (!get().dragMoved) set({ dragMoved: true }) },
   setDragConflict: (conflict) => { if (get().dragConflict !== conflict) set({ dragConflict: conflict }) },
+  startResize: (resize) => set({ resize }),
+  stopResize: () => set({ resize: null }),
   stopDrag: () => set({
     isDragging: false, dragKind: 'profile', dragProfileId: null, dragStartHit: null, dragOriginPos: null,
-    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragMoved: false, dragConflict: false,
+    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragFree: false,
+    dragMoved: false, dragConflict: false, snapRefIds: [],
   }),
   setHoverProfile: (id) => { if (get().hoverProfileId !== id) set({ hoverProfileId: id }) },
+  setGizmoSuppressed: (suppressed) => { if (get().gizmoSuppressed !== suppressed) set({ gizmoSuppressed: suppressed }) },
 
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
+  toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
   setSelectMode: (on) => set({ selectMode: on }),
   showToast: (message, kind = 'info') => {
     const id = toastSeq++

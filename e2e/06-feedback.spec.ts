@@ -23,11 +23,11 @@ test.describe('Drag plane follows the grab point', () => {
     expect(moved.length).toBe(800)
   })
 
-  test('Shift+drag of an upright stays on its own axis', async ({ page }) => {
+  test('Alt+drag of an upright stays on its own axis', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawExact(page, [0, 0, 0], [0, 300, 0], 600)
     await toNavigate(page)
-    await dragWorld(page, [0, 300, 0], [0, 500, 0], ['Shift'])
+    await dragWorld(page, [0, 300, 0], [0, 500, 0], ['Alt'])
     const p = (await store(page)).profiles[0]
     expect(r(p.position[0])).toBe(0); expect(r(p.position[2])).toBe(0)
     expect(p.position[1]).toBeGreaterThan(100)

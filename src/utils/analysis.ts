@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { ProfileData } from '../store/useStore'
-import { computeAllTrims, type ProfileTrims } from './jointUtils'
+import { computeAllTrims, computeTrims, type ProfileTrims } from './jointUtils'
 import { getProfileDir } from './geometryCore'
 import { specDims } from './specUtils'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
@@ -64,6 +64,28 @@ export function findConflicts(profiles: ProfileData[], trims: Map<string, Profil
 
 let cacheKey: ProfileData[] | null = null
 let cacheValue: FrameAnalysis | null = null
+
+/**
+ * Do the moving members interfere with anything? Used while dragging, where re-running the
+ * whole O(n²) analysis every frame would stall a large frame: only the moved parts are tested,
+ * and their trims are computed against the current document.
+ */
+export function movingPartsConflict(all: ProfileData[], movingIds: Set<string>): boolean {
+  if (movingIds.size === 0) return false
+  const trims = new Map<string, ProfileTrims>()
+  const need = all.filter((p) => movingIds.has(p.id))
+  for (const p of need) trims.set(p.id, computeTrims(p, all))
+  const others = all.filter((p) => !movingIds.has(p.id))
+  for (const p of need) {
+    const a = trimmedOBB(p, trims.get(p.id)!)
+    for (const q of others) {
+      const qt = trims.get(q.id) ?? computeTrims(q, all)
+      trims.set(q.id, qt)
+      if (obbPenetration(a, trimmedOBB(q, qt), TOUCH_TOL) > 0) return true
+    }
+  }
+  return false
+}
 
 /** Trims + interference for the current document, memoised on the profiles array identity */
 export function analyzeFrame(profiles: ProfileData[]): FrameAnalysis {

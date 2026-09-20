@@ -110,7 +110,7 @@ export async function drawExact(page: Page, from: V3, toward: V3, length: number
   return (await store(page)).profiles.length - before
 }
 
-export async function dragWorld(page: Page, from: V3, to: V3, modifiers: ('Shift' | 'Control')[] = []) {
+export async function dragWorld(page: Page, from: V3, to: V3, modifiers: ('Shift' | 'Control' | 'Alt')[] = []) {
   const a = await w2c(page, from)
   const b = await w2c(page, to)
   for (const m of modifiers) await page.keyboard.down(m)
