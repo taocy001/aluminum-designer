@@ -13,7 +13,7 @@ import DrawingHandler from './DrawingHandler'
 import DragHandler from './DragHandler'
 import PointerRouter from './PointerRouter'
 import ResizeHandles from './ResizeHandles'
-import RotateGizmo from './RotateGizmo'
+import TransformGizmo from './TransformGizmo'
 import TextSprite from './TextSprite'
 
 const DEFAULT_CAM = new THREE.Vector3(600, 500, 600)
@@ -94,12 +94,17 @@ const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims
 
 // Dev-only: expose camera helpers for end-to-end tests
 const DevHook: React.FC = () => {
-  const { camera, size, gl, controls } = useThree()
+  const { camera, size, gl, controls, scene } = useThree()
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const w = window as any
     w.__aluframe = w.__aluframe ?? {}
     w.__aluframe.camera = camera
+    w.__aluframe.spriteCount = () => {
+      let n = 0
+      scene.traverse((o: THREE.Object3D) => { if ((o as THREE.Sprite).isSprite) n++ })
+      return n
+    }
     w.__aluframe.setView = (pos: [number, number, number], target: [number, number, number] = [0, 0, 0]) => {
       camera.position.set(...pos)
       const orbit = controls as any
@@ -110,7 +115,7 @@ const DevHook: React.FC = () => {
       const p = new THREE.Vector3(x, y, z).project(camera)
       return { x: rect.left + (p.x + 1) / 2 * size.width, y: rect.top + (1 - p.y) / 2 * size.height }
     }
-  }, [camera, size, gl, controls])
+  }, [camera, size, gl, controls, scene])
   return null
 }
 
@@ -219,7 +224,7 @@ const Viewport: React.FC = () => {
       <DragHandler />
       <PointerRouter />
       <ResizeHandles />
-      <RotateGizmo />
+      <TransformGizmo />
       <FrameSelector />
 
       <OrbitControls makeDefault enabled={orbitEnabled} mouseButtons={mouseButtons} minDistance={50} maxDistance={30000} />

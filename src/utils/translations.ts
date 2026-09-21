@@ -64,7 +64,9 @@ const en = {
   suggested: 'Suggested',
   collapsePanel: 'Collapse the panel',
   expandPanel: 'Show the panel',
-  gizmoHint: 'On-canvas rotation handles for the selection',
+  gizmoHint: 'On-canvas move and rotate handles for the selection',
+  gizmoMove: (axis: string) => `Move along ${axis}`,
+  gizmoRotate: (axis: string) => `Turn 90° about ${axis}`,
   guideDraw: [
     'Click a start point (floor, endpoint or centerline) · press and drag to orbit',
     'Move the mouse along X / Y / Z, click again to finish',
@@ -73,7 +75,7 @@ const en = {
   ],
   guideNavigate: [
     'Click to select · Ctrl+Click adds to selection',
-    'Drag a member to move it (snaps flush) · Alt+Drag moves vertically',
+    'Drag a member to move it (snaps flush) · drag the green arrow to move it vertically',
     'Shift+Drag places freely · end handles stretch · arcs rotate',
     'Arrow keys nudge 5 mm (Shift: 50) · PgUp/PgDn vertical',
     'Ctrl+D duplicate · R rotate 90° about Y · Delete removes',
@@ -153,7 +155,9 @@ const zh: typeof en = {
   suggested: '建议采购',
   collapsePanel: '收起面板',
   expandPanel: '展开面板',
-  gizmoHint: '画布内旋转手柄（拖动弧线旋转选中件）',
+  gizmoHint: '画布内移动与旋转手柄',
+  gizmoMove: (axis: string) => `沿 ${axis} 轴移动`,
+  gizmoRotate: (axis: string) => `绕 ${axis} 轴转 90°`,
   guideDraw: [
     '点击起点（地面 / 端点 / 型材中线）· 按住拖动旋转视角',
     '移动鼠标沿 X / Y / Z 预览，再次单击完成',
@@ -162,7 +166,7 @@ const zh: typeof en = {
   ],
   guideNavigate: [
     '点击选中 · Ctrl+点击 多选',
-    '拖动型材移动（自动贴合相邻面）· Alt+拖动 垂直移动',
+    '拖动型材移动（自动贴合）· 拖绿色箭头即垂直移动',
     'Shift+拖动 自由摆放（不吸附）· 端面手柄拉伸 · 弧线旋转',
     '方向键微调 5 mm（Shift 50）· PgUp/PgDn 上下',
     'Ctrl+D 复制 · R 绕 Y 轴转 90° · Delete 删除',

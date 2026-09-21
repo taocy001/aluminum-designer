@@ -6,7 +6,8 @@ import { useToolStore } from '../store/useToolStore'
 import { pickAtScreen } from '../utils/screenPick'
 import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { endGrabRadius } from './ResizeHandles'
-import { gizmoState, gizmoOwnsRay } from './RotateGizmo'
+import { gizmoState, gizmoHandleAt } from './TransformGizmo'
+import { rotateSelected } from '../utils/editOps'
 
 const CLICK_SLOP_PX = 5
 
@@ -21,6 +22,10 @@ const PointerRouter: React.FC = () => {
   // kept in refs, not in the effect closure: R3F recreates that closure between pointer events
   const pendingClear = useRef<{ x: number; y: number; keepSelection: boolean } | null>(null)
   const pendingSelect = useRef<{ x: number; y: number; id: string; multi: boolean } | null>(null)
+  /** draw mode: a press that landed on a member, waiting to see whether it becomes a drag */
+  const pendingDrawDrag = useRef<{ x: number; y: number; id: string; point: THREE.Vector3; shift: boolean; alt: boolean } | null>(null)
+  /** a press that landed on a rotation arc, waiting for the release */
+  const pendingRotate = useRef<{ x: number; y: number; axis: 'x' | 'y' | 'z'; shift: boolean } | null>(null)
 
   useEffect(() => {
     const canvas = gl.domElement
@@ -35,6 +40,59 @@ const PointerRouter: React.FC = () => {
       raycaster.setFromCamera(new THREE.Vector2((cursor.x / rect.width) * 2 - 1, -(cursor.y / rect.height) * 2 + 1), camera)
       return raycaster.ray.clone()   // a copy: the shared ray is overwritten by the next call
     }
+    /**
+     * Start moving a part: the drag plane runs through the grabbed point, because an
+     * upright's origin sits on the floor and a floor plane turns small cursor moves into
+     * huge jumps. Shared by navigate mode and the press-on-a-member gesture in draw mode.
+     */
+    const beginMove = (
+      id: string, grabPoint: THREE.Vector3, origin: THREE.Vector3,
+      groupOrigins: Record<string, [number, number, number]>,
+      mods: { shift: boolean; alt: boolean },
+      e: PointerEvent,
+      kind: 'profile' | 'connector' = 'profile',
+      axis: 'x' | 'y' | 'z' | null = null,
+    ) => {
+      const { cursor, rect } = cursorOf(e)
+      const ray = rayOf(cursor, rect)
+      const vertical = mods.alt || axis === 'y'
+      let plane: THREE.Plane
+      if (axis && axis !== 'y') {
+        // slide along a horizontal axis: keep the part at its own height
+        plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -grabPoint.y)
+      } else if (vertical) {
+        const n = ray.direction.clone().negate(); n.y = 0
+        if (n.lengthSq() < 1e-6) n.set(0, 0, 1)
+        plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n.normalize(), grabPoint)
+      } else {
+        plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -grabPoint.y)
+      }
+      const grab = new THREE.Vector3()
+      if (!ray.intersectPlane(plane, grab)) grab.copy(grabPoint)
+
+      // OrbitControls listens on the same canvas and would start rotating before React
+      // propagates enabled=false, which would move the camera mid-drag
+      if (orbit) orbit.enabled = false
+
+      useToolStore.getState().startDrag({
+        id, kind, hit: grab, origin, groupOrigins, plane, vertical, free: mods.shift, axis,
+      })
+    }
+
+    /** true when the pointer is close enough to an end of the single selected member to stretch it */
+    const reachingForEnd = (cursor: THREE.Vector2, rect: DOMRect, ray: THREE.Ray): boolean => {
+      const store = useStore.getState()
+      if (store.selectedIds.length !== 1) return false
+      const only = store.profiles.find((p) => p.id === store.selectedIds[0])
+      if (!only) return false
+      const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height }, [only], [])
+      if (!hit || hit.id !== only.id) return false
+      const { start, end } = getProfileEndpoints(only)
+      const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
+      const zone = endGrabRadius(only.length, hit.point.distanceTo(camPos), camera, size.height)
+      return hit.point.distanceTo(start) < zone || hit.point.distanceTo(end) < zone
+    }
+
     const pickFor = (e: PointerEvent) => {
       const { cursor, rect } = cursorOf(e)
       const { profiles, connectors } = useStore.getState()
@@ -43,9 +101,42 @@ const PointerRouter: React.FC = () => {
 
     const onPointerMove = (e: PointerEvent) => {
       const ts = useToolStore.getState()
-      if (gizmoState.busy) return   // a rotation button is pressed; leave the handles alone
-      if (ts.viewMode !== 'navigate' || ts.isDragging || ts.selectMode) {
-        ts.setHoverProfile(null)
+
+      // draw mode: the press on a member turns into a move once the pointer travels
+      const armed = pendingDrawDrag.current
+      if (armed && !ts.isDragging) {
+        if (Math.hypot(e.clientX - armed.x, e.clientY - armed.y) > CLICK_SLOP_PX) {
+          const store = useStore.getState()
+          const profile = store.profiles.find((p) => p.id === armed.id)
+          if (profile) {
+            store.selectItem(armed.id, false)
+            beginMove(profile.id, armed.point, new THREE.Vector3(...profile.position), { [profile.id]: [...profile.position] as [number, number, number] }, armed, e)
+          }
+          pendingDrawDrag.current = null
+        }
+        return
+      }
+
+      if (gizmoState.busy) return   // a gizmo handle is pressed; leave the model alone
+      if (ts.isDragging || ts.selectMode) { ts.setHoverProfile(null); ts.setHoverEnd(null); ts.setGizmoHover(null); return }
+
+      // reaching for an end of the selected member wins over the gizmo, which is centred on
+      // it and would otherwise cover the very ends the stretch handles live on
+      {
+        const { cursor, rect } = cursorOf(e)
+        const ray = rayOf(cursor, rect)
+        if (!reachingForEnd(cursor, rect, ray) && !(e.ctrlKey || e.metaKey || e.altKey)) {
+          const part = gizmoHandleAt(ray)
+          ts.setGizmoHover(part)
+          if (part) { ts.setHoverProfile(null); ts.setHoverEnd(null); return }
+        } else {
+          ts.setGizmoHover(null)
+        }
+      }
+      if (ts.viewMode === 'draw') {
+        // show what a press would grab, but only while no line is being drawn
+        const pick = ts.isDrawing || ts.placementMode !== 'profile' ? null : pickFor(e)
+        ts.setHoverProfile(pick?.kind === 'profile' ? pick.id : null)
         ts.setHoverEnd(null)
         return
       }
@@ -72,11 +163,56 @@ const PointerRouter: React.FC = () => {
 
     const onPointerDown = (e: PointerEvent) => {
       const ts = useToolStore.getState()
-      if (e.button !== 0 || ts.viewMode !== 'navigate') return
+      if (e.button !== 0) return
+
+      // a press on a move arrow slides the selection along that axis, in either mode.
+      // Ctrl/Cmd (add to selection) and Alt (plane drag) are gestures aimed at the model,
+      // so they pass straight through the handles.
+      const modifierHeld = e.ctrlKey || e.metaKey || e.altKey
+      {
+        const { cursor, rect } = cursorOf(e)
+        const ray = rayOf(cursor, rect)
+        const part = modifierHeld || reachingForEnd(cursor, rect, ray) ? null : gizmoHandleAt(ray)
+        if (part?.kind === 'move') {
+          const store = useStore.getState()
+          const lead = store.profiles.find((p) => store.selectedIds.includes(p.id))
+            ?? store.connectors.find((c) => store.selectedIds.includes(c.id))
+          if (!lead) return
+          const groupOrigins: Record<string, [number, number, number]> = {}
+          for (const sid of store.selectedIds) {
+            const part2 = store.profiles.find((p) => p.id === sid) ?? store.connectors.find((c) => c.id === sid)
+            if (part2) groupOrigins[sid] = [part2.position[0], part2.position[1], part2.position[2]]
+          }
+          const anchorPoint = new THREE.Vector3(...lead.position)
+          beginMove(lead.id, anchorPoint, anchorPoint.clone(), groupOrigins,
+            { shift: e.shiftKey, alt: false }, e,
+            store.profiles.some((p) => p.id === lead.id) ? 'profile' : 'connector', part.axis)
+          return
+        }
+        if (part?.kind === 'rotate') {
+          // a click on an arc turns the selection; a drag that wanders off is ignored
+          pendingRotate.current = { x: e.clientX, y: e.clientY, axis: part.axis, shift: e.shiftKey }
+          gizmoState.busy = true
+          return
+        }
+      }
+
+      // In draw mode a press on a member is a move, not a drawing click: the press is armed
+      // here and DrawingHandler skips placing a point once the drag has started.
+      if (ts.viewMode === 'draw') {
+        if (ts.isDrawing || ts.placementMode !== 'profile') return
+        const { cursor, rect } = cursorOf(e)
+        const ray = rayOf(cursor, rect)
+        const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height }, useStore.getState().profiles, [])
+        if (!hit || hit.kind !== 'profile') return
+        pendingDrawDrag.current = { x: e.clientX, y: e.clientY, id: hit.id, point: hit.point.clone(), shift: e.shiftKey, alt: e.altKey }
+        return
+      }
+      if (ts.viewMode !== 'navigate') return
       const { cursor: downCursor, rect: downRect } = cursorOf(e)
       const downRay = rayOf(downCursor, downRect)
       const pickHere = pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height }, useStore.getState().profiles, useStore.getState().connectors)
-      if (gizmoState.busy || gizmoOwnsRay(downRay)) return   // a rotation button owns this press
+      if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
       const multi = e.ctrlKey || e.metaKey
       const pick = pickHere   // already resolved above; picking twice per press is wasted work
 
@@ -137,32 +273,22 @@ const PointerRouter: React.FC = () => {
         if (part) groupOrigins[sid] = [part.position[0], part.position[1], part.position[2]]
       }
 
-      // Drag plane through the grabbed point (not the member's origin): for an upright the
-      // origin sits on the floor, and a floor plane turns small cursor moves into huge jumps.
-      const ray = downRay
-      const vertical = e.altKey        // Alt lifts a part straight up or down
-      let plane: THREE.Plane
-      if (vertical) {
-        const n = ray.direction.clone().negate(); n.y = 0
-        if (n.lengthSq() < 1e-6) n.set(0, 0, 1)
-        plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n.normalize(), pick.point)
-      } else {
-        plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -pick.point.y)
-      }
-      const grab = new THREE.Vector3()
-      if (!ray.intersectPlane(plane, grab)) grab.copy(pick.point)
-
-      // OrbitControls listens on the same canvas and would start rotating before React
-      // propagates enabled=false, which would move the camera mid-drag
-      if (orbit) orbit.enabled = false
-
-      useToolStore.getState().startDrag({
-        id: pick.id, kind: pick.kind, hit: grab, origin: new THREE.Vector3(...item.position),
-        groupOrigins, plane, vertical, free: e.shiftKey,   // Shift places freely, without alignment
-      })
+      beginMove(pick.id, pick.point, new THREE.Vector3(...item.position), groupOrigins, { shift: e.shiftKey, alt: e.altKey }, e, pick.kind)
     }
 
     const onPointerUp = (e: PointerEvent) => {
+      pendingDrawDrag.current = null
+
+      const rot = pendingRotate.current
+      pendingRotate.current = null
+      if (rot) {
+        gizmoState.busy = false
+        if (Math.hypot(e.clientX - rot.x, e.clientY - rot.y) <= CLICK_SLOP_PX) {
+          rotateSelected(rot.axis, rot.shift ? -90 : 90)
+        }
+        return
+      }
+
       const ts0 = useToolStore.getState()
       if (ts0.resize) ts0.stopResize()
       if (orbit && !ts0.isDragging) orbit.enabled = !ts0.selectMode

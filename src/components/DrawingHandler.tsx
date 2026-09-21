@@ -38,6 +38,8 @@ const DrawingHandler: React.FC = () => {
   const rightDownRef = useRef<{ x: number; y: number } | null>(null)
   /** surface the pointer is over, so a face-mounted part knows which side it was dropped on */
   const hoverNormal = useRef<THREE.Vector3 | null>(null)
+  /** set while a press in draw mode is moving a member rather than drawing */
+  const draggedThisPress = useRef(false)
   /** left press in draw mode: a click places a point, a press-and-drag orbits the camera */
   const leftDownRef = useRef<{ x: number; y: number; ray: THREE.Ray; cursor: THREE.Vector2; orbiting: boolean } | null>(null)
 
@@ -123,6 +125,7 @@ const DrawingHandler: React.FC = () => {
 
     // while the left button is held and the pointer travels, the gesture is an orbit:
     // freeze the preview so the line does not chase the camera
+    if (useToolStore.getState().isDragging) { draggedThisPress.current = true; return }
     const down = leftDownRef.current
     if (down) {
       const moved = Math.hypot(e.nativeEvent.clientX - down.x, e.nativeEvent.clientY - down.y)
@@ -195,7 +198,9 @@ const DrawingHandler: React.FC = () => {
       const down = leftDownRef.current
       leftDownRef.current = null
       if (!down) return
-      if (useToolStore.getState().viewMode !== 'draw') return
+      const ts = useToolStore.getState()
+      if (ts.viewMode !== 'draw') return
+      if (ts.isDragging || draggedThisPress.current) { draggedThisPress.current = false; return }  // the press moved a member
       const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y)
       if (down.orbiting || moved > ORBIT_SLOP_PX) return  // it was a camera move
       // the press ray is the fresh one: a hover ray can predate a camera change or a tap
@@ -234,10 +239,11 @@ const DrawingHandler: React.FC = () => {
       {/* Start marker */}
       {isDrawing && startPoint && <SnapMarker position={startPoint} kind="start" size={0.022} />}
 
-      {/* Member preview */}
+      {/* Member preview: a neutral ghost. The axis colour lives on the centreline and the
+          HUD instead, so a member being drawn along X is never mistaken for one flagged red. */}
       {placementMode === 'profile' && xform && (
         <mesh position={xform.pos} quaternion={xform.quat} scale={[1, 1, xform.scale]} geometry={previewGeo} raycast={() => null}>
-          <meshStandardMaterial color={axisColor} metalness={0.3} roughness={0.6} transparent opacity={0.65} depthWrite={false} />
+          <meshStandardMaterial color="#cbd5e1" metalness={0.2} roughness={0.7} transparent opacity={0.6} depthWrite={false} />
         </mesh>
       )}
 

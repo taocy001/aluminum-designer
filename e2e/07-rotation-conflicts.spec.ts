@@ -264,8 +264,9 @@ test.describe('Floor and group rules after the rule change', () => {
     await page.keyboard.press('ArrowRight')
     expect((await store(page)).profiles[0].position.map(r)).toEqual([beforeP[0] + 5, beforeP[1], beforeP[2]])
     expect((await store(page)).connectors[0].position.map(r)).toEqual([beforeC[0] + 5, beforeC[1], beforeC[2]])
-    // and dragging the connector drags the member along with it
-    await dragWorld(page, [605, 10, 0], [605, 10, 150])
+    // and dragging any part of the selection takes the whole group, connector included
+    // (grabbed away from the gizmo arrows, which own the pixels they are drawn on)
+    await dragWorld(page, [150, 10, 0], [150, 10, 150])
     const movedP = (await store(page)).profiles[0].position.map(r)
     const movedC = (await store(page)).connectors[0].position.map(r)
     expect(movedP[2] - beforeP[2]).toBe(movedC[2] - beforeC[2])

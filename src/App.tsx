@@ -20,7 +20,7 @@ function App() {
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
-    toasts, showToast, dragConflict, hoverProfileId, snapGuides,
+    toasts, showToast, dragConflict, hoverProfileId, snapGuides, gizmoHover,
   } = useToolStore()
   const t = translations[language]
 
@@ -170,6 +170,14 @@ function App() {
         </h1>
 
         <div className="ml-auto flex items-center gap-3">
+          {/* which gizmo handle the pointer is on */}
+          {gizmoHover && !isDragging && (
+            <div data-testid="gizmo-hint"
+              className="absolute top-[88px] left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-white/15 text-[11px] font-bold text-slate-200 shadow-lg pointer-events-none z-10">
+              {gizmoHover.kind === 'move' ? t.gizmoMove(gizmoHover.axis.toUpperCase()) : t.gizmoRotate(gizmoHover.axis.toUpperCase())}
+            </div>
+          )}
+
           {/* what the drag has locked onto right now */}
           {isDragging && snapGuides.length > 0 && (
             <div data-testid="snap-hud"
