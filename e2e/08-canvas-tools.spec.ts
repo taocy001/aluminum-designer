@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, dragHold, dragWorld, store, tool, w2c, r } from './helpers'
+import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, dragHold, dragWorld, hoverId, store, tool, w2c, r } from './helpers'
 
 async function toNavigate(page: Page) {
   await page.keyboard.press('Escape')
@@ -7,18 +7,20 @@ async function toNavigate(page: Page) {
   expect((await tool(page)).viewMode).toBe('navigate')
 }
 const cam = (page: Page) => page.evaluate(() => (window as any).__aluframe.camera.position.toArray().map(Math.round))
-/** Screen position of a rotate button, read from the dev hook (they are sprites, not DOM) */
-async function rotateButton(page: Page, axis: 'x' | 'y' | 'z'): Promise<{ x: number; y: number } | null> {
-  await page.waitForFunction(() => ((window as any).__aluframe.rotateButtons?.() ?? []).length === 3, null, { timeout: 4000 }).catch(() => {})
-  const world = await page.evaluate((a) => {
-    const b = (window as any).__aluframe.rotateButtons().find((x: any) => x.axis === a)
-    return b ? b.position : null
-  }, axis)
+/** Screen position of a gizmo handle, read from the dev hook (they are meshes, not DOM) */
+async function gizmoHandle(page: Page, kind: 'move' | 'rotate', axis: 'x' | 'y' | 'z'): Promise<{ x: number; y: number } | null> {
+  await page.waitForFunction(() => ((window as any).__aluframe.gizmoHandles?.() ?? []).length === 6, null, { timeout: 4000 }).catch(() => {})
+  const world = await page.evaluate(([k, a]) => {
+    const h = (window as any).__aluframe.gizmoHandles().find((x: any) => x.kind === k && x.axis === a)
+    return h ? h.position : null
+  }, [kind, axis])
   if (!world) return null
   return w2c(page, world as [number, number, number])
 }
+const rotateButton = (page: Page, axis: 'x' | 'y' | 'z') => gizmoHandle(page, 'rotate', axis)
 
 const round2 = (v: number) => Math.round(v * 100) / 100
+const hoverEndOf = (page: Page) => page.evaluate(() => (window as any).__aluframe.tool.getState().hoverEnd)
 
 function dirOf(p: any): [number, number, number] {
   const [x, y, z, w] = p.quaternion
@@ -454,13 +456,13 @@ test.describe('Rotate buttons hold up under camera motion', () => {
   })
 
   test('the buttons follow the camera after an orbit', async ({ page }) => {
-    const before = await page.evaluate(() => (window as any).__aluframe.rotateButtons().map((b: any) => b.position))
+    const before = await page.evaluate(() => (window as any).__aluframe.gizmoHandles().map((b: any) => b.position))
     const o = await w2c(page, [-700, 0, -700])
     await dragHold(page, o, { x: o.x + 220, y: o.y + 70 })
     await page.mouse.up()
     await page.waitForTimeout(120)
-    const after = await page.evaluate(() => (window as any).__aluframe.rotateButtons().map((b: any) => b.position))
-    expect(after).not.toEqual(before)                 // they moved with the camera
+    const after = await page.evaluate(() => (window as any).__aluframe.gizmoHandles().map((b: any) => b.position))
+    expect(after).not.toEqual(before)                 // the handles resized and re-aimed with the camera
     const y = await rotateButton(page, 'y')
     expect(y).not.toBeNull()
     await page.mouse.click(y!.x, y!.y)                // and are still clickable where they are drawn
@@ -510,5 +512,152 @@ test.describe('Rotate buttons hold up under camera motion', () => {
     expect(guides.every((g: any) => g.axis === 1)).toBe(true)
     await page.mouse.up()
     await page.keyboard.up('Alt')
+  })
+})
+
+test.describe('Draw mode: press a member to move it', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200])
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+  })
+
+  test('pressing a member and dragging moves it, without drawing anything', async ({ page }) => {
+    expect((await tool(page)).viewMode).toBe('draw')
+    const before = (await store(page)).profiles[0].position.map(r)
+    const from = await w2c(page, [300, 10, 0])
+    const to = await w2c(page, [300, 10, 250])
+    await dragHold(page, from, to)
+    expect((await tool(page)).isDragging).toBe(true)
+    await page.mouse.up()
+    await page.waitForTimeout(80)
+    const after = (await store(page)).profiles
+    expect(after).toHaveLength(1)                       // nothing was drawn
+    expect(after[0].position.map(r)).not.toEqual(before)
+    expect((await tool(page)).isDrawing).toBe(false)
+  })
+
+  test('pressing empty space and dragging still orbits', async ({ page }) => {
+    const before = await page.evaluate(() => (window as any).__aluframe.camera.position.toArray())
+    const a = await w2c(page, [-700, 0, -700])
+    await dragHold(page, a, { x: a.x + 200, y: a.y + 60 })
+    await page.mouse.up()
+    await page.waitForTimeout(80)
+    expect(await page.evaluate(() => (window as any).__aluframe.camera.position.toArray())).not.toEqual(before)
+    expect((await store(page)).profiles).toHaveLength(1)
+    expect((await tool(page)).isDrawing).toBe(false)
+  })
+
+  test('a plain click on a member still starts a line there', async ({ page }) => {
+    await clickWorld(page, [300, 10, 0])
+    expect((await tool(page)).isDrawing).toBe(true)
+    await page.keyboard.press('Escape')
+  })
+
+  test('the member under the cursor is highlighted in draw mode', async ({ page }) => {
+    await hoverWorld(page, [300, 10, 0])
+    expect(await hoverId(page)).toBe((await store(page)).profiles[0].id)
+    await hoverWorld(page, [-600, 0, -600])
+    expect(await hoverId(page)).toBeNull()
+  })
+})
+
+test.describe('Selected member handles', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200])
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await page.keyboard.press('Escape')
+    if ((await tool(page)).viewMode !== 'navigate') await page.keyboard.press('Escape')
+    await clickWorld(page, [300, 10, 0])
+  })
+
+  test('nothing is drawn at the ends until the pointer reaches for one', async ({ page }) => {
+    const sprites = () => page.evaluate(() => (window as any).__aluframe.spriteCount())
+    await hoverWorld(page, [300, 10, 0])
+    const idle = await sprites()
+    await hoverWorld(page, [598, 10, 0])
+    expect(await hoverEndOf(page)).toBe('end')
+    expect(await sprites()).toBeGreaterThan(idle)     // exactly one arrow appears
+    await hoverWorld(page, [300, 10, 0])
+    expect(await sprites()).toBe(idle)                // and goes away again
+  })
+})
+
+test.describe('Move arrows', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200])
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await toNavigate(page)
+    await clickWorld(page, [300, 10, 0])
+  })
+
+  /** drag a gizmo arrow by `dx, dy` screen pixels */
+  const dragArrow = async (page: Page, axis: 'x' | 'y' | 'z', dx: number, dy: number) => {
+    const h = await gizmoHandle(page, 'move', axis)
+    expect(h, `the ${axis} arrow is on screen`).not.toBeNull()
+    await dragHold(page, h!, { x: h!.x + dx, y: h!.y + dy })
+    await page.mouse.up()
+    await page.waitForTimeout(80)
+  }
+
+  test('the green arrow lifts a member straight up, with no modifier', async ({ page }) => {
+    const before = (await store(page)).profiles[0].position.map(r)
+    await dragArrow(page, 'y', 0, -120)                 // up the screen
+    const after = (await store(page)).profiles[0].position.map(r)
+    expect(after[1]).toBeGreaterThan(before[1] + 20)    // it really rose
+    expect(after[0]).toBe(before[0])                    // and stayed on its line
+    expect(after[2]).toBe(before[2])
+  })
+
+  test('the green arrow also brings it back down, stopping at the floor', async ({ page }) => {
+    await dragArrow(page, 'y', 0, -120)
+    expect((await store(page)).profiles[0].position[1]).toBeGreaterThan(20)
+    await dragArrow(page, 'y', 0, 600)                  // far past the ground
+    expect(r((await store(page)).profiles[0].position[1])).toBe(10)
+  })
+
+  test('a horizontal arrow only moves along its own axis', async ({ page }) => {
+    const before = (await store(page)).profiles[0].position.map(r)
+    await dragArrow(page, 'z', 60, 60)                  // a diagonal gesture
+    const after = (await store(page)).profiles[0].position.map(r)
+    expect(after[1]).toBe(before[1])
+    expect(after[0]).toBe(before[0])                    // X untouched, only Z moved
+    expect(after[2]).not.toBe(before[2])
+  })
+
+  test('an arrow drag is one undo step and keeps the selection', async ({ page }) => {
+    const before = (await store(page)).profiles[0].position.map(r)
+    const past = (await store(page)).past
+    await dragArrow(page, 'y', 0, -100)
+    expect((await store(page)).past).toBe(past + 1)
+    expect((await store(page)).selectedIds).toHaveLength(1)
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).profiles[0].position.map(r)).toEqual(before)
+  })
+
+  test('hovering a handle says what it does', async ({ page }) => {
+    const h = await gizmoHandle(page, 'move', 'y')
+    await page.mouse.move(h!.x, h!.y)
+    await page.waitForTimeout(80)
+    await expect(page.getByTestId('gizmo-hint')).toContainText('沿 Y 轴移动')
+    const arc = await gizmoHandle(page, 'rotate', 'z')
+    await page.mouse.move(arc!.x, arc!.y)
+    await page.waitForTimeout(80)
+    await expect(page.getByTestId('gizmo-hint')).toContainText('绕 Z 轴转 90°')
+  })
+
+  test('the arrows are available while drawing too', async ({ page }) => {
+    await enterDraw(page, '2020')
+    expect((await tool(page)).viewMode).toBe('draw')
+    const h = await gizmoHandle(page, 'move', 'y')
+    expect(h).not.toBeNull()
+    const before = (await store(page)).profiles[0].position.map(r)
+    await dragHold(page, h!, { x: h!.x, y: h!.y - 110 })
+    await page.mouse.up()
+    await page.waitForTimeout(80)
+    expect((await store(page)).profiles).toHaveLength(1)          // nothing was drawn
+    expect((await store(page)).profiles[0].position[1]).toBeGreaterThan(before[1] + 20)
   })
 })

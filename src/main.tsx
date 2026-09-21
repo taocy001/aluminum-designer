@@ -5,14 +5,17 @@ import './index.css'
 import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { analyzeFrame } from './utils/analysis'
-import { gizmoState } from './components/RotateGizmo'
+import { gizmoState } from './components/TransformGizmo'
 
 // Dev-only hook for end-to-end tests: window.__aluframe.{store,tool}
 if (import.meta.env.DEV) {
   ;(window as any).__aluframe = {
     store: useStore, tool: useToolStore,
     trims: () => Object.fromEntries(analyzeFrame(useStore.getState().profiles).trims),
-    rotateButtons: () => gizmoState.buttons.map((b) => ({ axis: b.axis, position: b.position.toArray() })),
+    gizmoHandles: () => gizmoState.handles.map((h) => {
+      const world = h.probe.getWorldPosition(h.probe.position.clone())
+      return { kind: h.part.kind, axis: h.part.axis, position: [world.x, world.y, world.z] }
+    }),
     gizmoBusy: () => gizmoState.busy,
     conflicts: () => {
       const { conflicts, conflictIds } = analyzeFrame(useStore.getState().profiles)

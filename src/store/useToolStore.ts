@@ -77,6 +77,10 @@ interface ToolState {
   hoverProfileId: string | null
   /** end of the selected member the pointer is reaching for */
   hoverEnd: 'start' | 'end' | null
+  /** gizmo handle under the cursor, for highlighting and the hint line */
+  gizmoHover: { kind: 'move' | 'rotate'; axis: 'x' | 'y' | 'z' } | null
+  /** axis a gizmo arrow drag is constrained to */
+  dragAxis: 'x' | 'y' | 'z' | null
 
   // Frame selection
   isFrameSelecting: boolean
@@ -100,7 +104,8 @@ interface ToolState {
 
   startDrag: (args: {
     id: string; kind?: 'profile' | 'connector'; hit: THREE.Vector3; origin: THREE.Vector3;
-    groupOrigins: Record<string, [number, number, number]>; plane: THREE.Plane; vertical: boolean; free?: boolean
+    groupOrigins: Record<string, [number, number, number]>; plane: THREE.Plane; vertical: boolean
+    free?: boolean; axis?: 'x' | 'y' | 'z' | null
   }) => void
   setDragFree: (free: boolean) => void
   setSnapRefs: (ids: string[]) => void
@@ -112,6 +117,7 @@ interface ToolState {
   stopDrag: () => void
   setHoverProfile: (id: string | null) => void
   setHoverEnd: (end: 'start' | 'end' | null) => void
+  setGizmoHover: (part: ToolState['gizmoHover']) => void
 
   toggleDimensionLabels: () => void
   toggleGizmo: () => void
@@ -170,6 +176,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   toasts: [],
   hoverProfileId: null,
   hoverEnd: null,
+  gizmoHover: null,
+  dragAxis: null,
 
   isFrameSelecting: false,
   frameSelectStart: null,
@@ -199,9 +207,9 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setLockedAxis: (lockedAxis) => set({ lockedAxis }),
   requestPreciseFocus: (seed) => set((s) => ({ preciseFocusRequest: s.preciseFocusRequest + 1, preciseSeed: seed })),
 
-  startDrag: ({ id, kind = 'profile', hit, origin, groupOrigins, plane, vertical, free = false }) => set({
+  startDrag: ({ id, kind = 'profile', hit, origin, groupOrigins, plane, vertical, free = false, axis = null }) => set({
     isDragging: true, dragKind: kind, dragProfileId: id, dragStartHit: hit, dragOriginPos: origin,
-    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragFree: free,
+    dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragFree: free, dragAxis: axis,
     dragMoved: false, dragConflict: false, snapRefIds: [], snapGuides: [],
   }),
   setDragFree: (free) => { if (get().dragFree !== free) set({ dragFree: free }) },
@@ -221,11 +229,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
   stopResize: () => set({ resize: null }),
   stopDrag: () => set({
     isDragging: false, dragKind: 'profile', dragProfileId: null, dragStartHit: null, dragOriginPos: null,
-    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragFree: false,
+    dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragFree: false, dragAxis: null,
     dragMoved: false, dragConflict: false, snapRefIds: [], snapGuides: [],
   }),
   setHoverProfile: (id) => { if (get().hoverProfileId !== id) set({ hoverProfileId: id }) },
   setHoverEnd: (end) => { if (get().hoverEnd !== end) set({ hoverEnd: end }) },
+  setGizmoHover: (part) => {
+    const cur = get().gizmoHover
+    if (cur?.kind !== part?.kind || cur?.axis !== part?.axis) set({ gizmoHover: part })
+  },
 
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),

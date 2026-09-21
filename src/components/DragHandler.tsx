@@ -148,6 +148,9 @@ const DragHandler: React.FC = () => {
 
       const delta = hit.clone().sub(dragStartHit)
       if (dragVertical) { delta.x = 0; delta.z = 0 } else { delta.y = 0 }
+      // a gizmo arrow constrains the move to its own axis
+      if (ts.dragAxis === 'x') { delta.y = 0; delta.z = 0 }
+      if (ts.dragAxis === 'z') { delta.x = 0; delta.y = 0 }
       const store = useStore.getState()
 
       if (!ts.dragMoved) {
@@ -197,9 +200,15 @@ const DragHandler: React.FC = () => {
           .distanceTo(new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld))
         const threshold = alignThreshold(dragged, pixelsToWorld(ALIGN_PX, camDist, camera, size.height))
         const snap = computeDragSnap(dragged, proposed, others, threshold)
-        // a vertical drag discards the horizontal pull, so it must not be announced either
-        const guides = dragVertical ? snap.guides.filter((g) => g.axis === 1) : snap.guides
-        if (dragVertical) { snap.offset.x = 0; snap.offset.z = 0 }
+        // an axis-locked move only takes the pull on its own axis; announcing the others
+        // would point at alignments the part was never allowed to make
+        const lockedAxis = ts.dragAxis ? { x: 0, y: 1, z: 2 }[ts.dragAxis] : dragVertical ? 1 : null
+        const guides = lockedAxis === null ? snap.guides : snap.guides.filter((g) => g.axis === lockedAxis)
+        if (lockedAxis !== null) {
+          if (lockedAxis !== 0) snap.offset.x = 0
+          if (lockedAxis !== 1) snap.offset.y = 0
+          if (lockedAxis !== 2) snap.offset.z = 0
+        }
         groupDelta.add(snap.offset)
         ts.setSnapRefs(guides.length ? snap.refIds : [])
         ts.setSnapGuides(guides)
