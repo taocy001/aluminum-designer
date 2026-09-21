@@ -428,6 +428,29 @@ export function setProfilePosition(id: string, position: [number, number, number
   return applyProfiles([{ ...p, position: position.map(round3) as [number, number, number] }])
 }
 
+/**
+ * Move a member's far end, keeping the start where it is.
+ *
+ * People think of a member as running from A to B; the model stores a start, a direction and
+ * a length. Without this you have to do that conversion in your head every time a span
+ * changes — work out the new length, type it, then check the direction did not flip.
+ *
+ * Each coordinate commits on its own, so a path that passes through a zero-length member is
+ * refused rather than silently collapsing it: to swing a member onto another axis, give it
+ * the new coordinate before clearing the old one.
+ */
+export function setProfileEnd(id: string, end: [number, number, number]): boolean {
+  const p = useStore.getState().profiles.find((q) => q.id === id)
+  if (!p) return false
+  if (p.locked) { toast(t().toastLocked); return false }
+  if (end.some((v) => !isFinite(v))) return false
+  const { start } = getProfileEndpoints(p)
+  const target = new THREE.Vector3(...end)
+  const rebuilt = buildProfile(start, target, p.spec)
+  if (!rebuilt) { toast(t().toastTooShort); return false }
+  return applyProfiles([{ ...p, length: rebuilt.length, position: rebuilt.position, quaternion: rebuilt.quaternion }])
+}
+
 export function setProfileSpec(id: string, spec: ProfileSpec): boolean {
   const p = useStore.getState().profiles.find((q) => q.id === id)
   if (!p) return false

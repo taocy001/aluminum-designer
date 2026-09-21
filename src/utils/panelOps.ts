@@ -40,8 +40,30 @@ export function panelCorners(panel: PanelData): THREE.Vector3[] {
  * rails give a shelf spanning them. Both readings are the same rule, which is what makes
  * it predictable — and the size is a plain number afterwards, so it can be corrected.
  */
+export type PanelFit = 'overlay' | 'inset'
+
+/**
+ * Inner bounds along one axis: the gap between the members that bound the opening, rather
+ * than the outside of them. An overlay door covers the frame, an inset panel sits between.
+ */
+function innerBounds(boxes: THREE.Box3[], axis: 0 | 1 | 2, union: THREE.Box3): [number, number] {
+  const key = (['x', 'y', 'z'] as const)[axis]
+  const mid = (union.min[key] + union.max[key]) / 2
+  const span = union.max[key] - union.min[key]
+  let low = -Infinity, high = Infinity
+  for (const b of boxes) {
+    const c = (b.min[key] + b.max[key]) / 2
+    // only members that are thin along this axis bound the opening; one spanning it does not
+    if (b.max[key] - b.min[key] > span * 0.5) continue
+    if (c < mid) low = Math.max(low, b.max[key])
+    else high = Math.min(high, b.min[key])
+  }
+  if (!isFinite(low) || !isFinite(high) || high - low < MIN_SIDE) return [union.min[key], union.max[key]]
+  return [low, high]
+}
+
 export function panelFromSelection(
-  material: PanelMaterial = 'mdf', thickness = DEFAULT_THICKNESS,
+  material: PanelMaterial = 'mdf', thickness = DEFAULT_THICKNESS, fit: PanelFit = 'overlay',
 ): PanelData | null {
   const { profiles, selectedIds } = useStore.getState()
   const ids = new Set(selectedIds)
@@ -49,10 +71,27 @@ export function panelFromSelection(
   const t = translations[useToolStore.getState().language]
   if (chosen.length < 2) { useToolStore.getState().showToast(t.toastPanelNeedsTwo, 'info'); return null }
 
+  const boxes = chosen.map((p) => memberBox(p))
   const box = new THREE.Box3()
-  for (const p of chosen) box.union(memberBox(p))
-  const size = box.getSize(new THREE.Vector3())
-  const centre = box.getCenter(new THREE.Vector3())
+  for (const b of boxes) box.union(b)
+
+  // A member that runs far past the others drives the board's size, which is almost never
+  // what was meant — it is the whole-run rail caught by a stray Ctrl+click.
+  const lengths = chosen.map((p) => p.length).sort((a, b) => a - b)
+  const median = lengths[Math.floor(lengths.length / 2)]
+  const longest = lengths[lengths.length - 1]
+  if (lengths.length >= 2 && longest > median * 2) {
+    useToolStore.getState().showToast(t.toastPanelSpanning(Math.round(longest)), 'error')
+  }
+
+  const inner = fit === 'inset'
+    ? new THREE.Box3(
+      new THREE.Vector3(...([0, 1, 2] as const).map((a) => innerBounds(boxes, a, box)[0]) as [number, number, number]),
+      new THREE.Vector3(...([0, 1, 2] as const).map((a) => innerBounds(boxes, a, box)[1]) as [number, number, number]),
+    )
+    : box
+  const size = inner.getSize(new THREE.Vector3())
+  const centre = inner.getCenter(new THREE.Vector3())
 
   // the thinnest axis is the one the board faces along
   const dims: Array<[0 | 1 | 2, number]> = [[0, size.x], [1, size.y], [2, size.z]]
@@ -86,8 +125,10 @@ export function panelFromSelection(
 }
 
 /** Add a board fitted to the selection, and select it so it can be sized straight away */
-export function addPanelFromSelection(material: PanelMaterial = 'mdf', thickness = DEFAULT_THICKNESS): boolean {
-  const panel = panelFromSelection(material, thickness)
+export function addPanelFromSelection(
+  material: PanelMaterial = 'mdf', thickness = DEFAULT_THICKNESS, fit: PanelFit = 'overlay',
+): boolean {
+  const panel = panelFromSelection(material, thickness, fit)
   if (!panel) return false
   useStore.getState().addPanels([panel], true)
   const t = translations[useToolStore.getState().language]

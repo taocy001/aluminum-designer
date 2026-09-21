@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { pickAtScreen } from '../utils/screenPick'
+import { pickAtScreen, pickCandidatesAtScreen, type ScreenPick } from '../utils/screenPick'
 import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { endGrabRadius } from './ResizeHandles'
 import { gizmoState, gizmoHandleAt } from './TransformGizmo'
@@ -34,6 +34,12 @@ const PointerRouter: React.FC = () => {
   const pendingDrawDrag = useRef<{ x: number; y: number; id: string; point: THREE.Vector3; shift: boolean; alt: boolean } | null>(null)
   /** a press that landed on a rotation arc, waiting for the release */
   const pendingRotate = useRef<{ x: number; y: number; axis: 'x' | 'y' | 'z'; shift: boolean } | null>(null)
+  /**
+   * Everything under the cursor and which of them Tab has stepped to. In a dense frame the
+   * nearest part is often not the one meant, and nudging the camera until the right one is
+   * in front is not an interaction. The list is rebuilt whenever the pointer really moves.
+   */
+  const candidates = useRef<{ x: number; y: number; list: ScreenPick[]; index: number }>({ x: 0, y: 0, list: [], index: 0 })
 
   useEffect(() => {
     const canvas = gl.domElement
@@ -150,8 +156,18 @@ const PointerRouter: React.FC = () => {
       // A half-drawn line owns the pointer, and a connector in hand is aimed at a surface
       // rather than at a part; otherwise the hover works the same whatever is in hand.
       const busy = ts.isDrawing || ts.held === 'connector'
-      const pick = busy ? null : pickFor(e)
+      const { cursor: hc, rect: hr } = cursorOf(e)
+      const list = busy ? [] : pickCandidatesAtScreen(hc, rayOf(hc, hr), camera,
+        { width: hr.width, height: hr.height }, useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
+      // a real move resets the cycle; jitter under a still hand must not
+      const moved = Math.hypot(e.clientX - candidates.current.x, e.clientY - candidates.current.y) > 3
+      candidates.current = {
+        x: e.clientX, y: e.clientY, list,
+        index: moved ? 0 : Math.min(candidates.current.index, Math.max(0, list.length - 1)),
+      }
+      const pick = list[candidates.current.index] ?? null
       ts.setHoverProfile(pick?.kind === 'profile' ? pick.id : null)
+      ts.setHoverCandidates(list.length, candidates.current.index)
 
       // End faces mean two different things: with a profile in hand they are where the next
       // member starts, with an empty hand they are the stretch grip. The hand decides, so
@@ -174,6 +190,8 @@ const PointerRouter: React.FC = () => {
       const ts = useToolStore.getState()
       ts.setHoverProfile(null)
       ts.setHoverEnd(null)
+      ts.setHoverCandidates(0, 0)
+      candidates.current = { x: 0, y: 0, list: [], index: 0 }
     }
 
     const onPointerDown = (e: PointerEvent) => {
@@ -227,7 +245,11 @@ const PointerRouter: React.FC = () => {
       }
       const { cursor: downCursor, rect: downRect } = cursorOf(e)
       const downRay = rayOf(downCursor, downRect)
-      const pickHere = pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height },
+      // Tab may have stepped past the nearest part; a press that has not moved since takes
+      // the one the hover is showing, which is the one under the highlight.
+      const cyc = candidates.current
+      const stepped = cyc.index > 0 && Math.hypot(e.clientX - cyc.x, e.clientY - cyc.y) <= 3 ? cyc.list[cyc.index] : null
+      const pickHere = stepped ?? pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height },
         useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
       const multi = e.ctrlKey || e.metaKey
@@ -329,11 +351,25 @@ const PointerRouter: React.FC = () => {
       if (!keepSelection && Math.hypot(e.clientX - x, e.clientY - y) <= CLICK_SLOP_PX) useStore.getState().clearSelection()
     }
 
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const c = candidates.current
+      if (c.list.length < 2) return
+      e.preventDefault()
+      c.index = (c.index + (e.shiftKey ? c.list.length - 1 : 1)) % c.list.length
+      const pick = c.list[c.index]
+      const ts = useToolStore.getState()
+      ts.setHoverProfile(pick.kind === 'profile' ? pick.id : null)
+      ts.setHoverCandidates(c.list.length, c.index)
+    }
+    window.addEventListener('keydown', onKey)
+
     canvas.addEventListener('pointermove', onPointerMove)
     canvas.addEventListener('pointerdown', onPointerDown)
     canvas.addEventListener('pointerleave', onPointerLeave)
     window.addEventListener('pointerup', onPointerUp)
     return () => {
+      window.removeEventListener('keydown', onKey)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointerleave', onPointerLeave)

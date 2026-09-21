@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type PanelMaterial } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
 import { computeFrameBounds } from '../utils/jointUtils'
+import { getProfileEndpoints } from '../utils/geometryCore'
 import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel } from '../utils/connectorCatalog'
 import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
 import { ALL_SPECS } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
-import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
+import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
 
@@ -128,6 +129,10 @@ const Sidebar: React.FC = () => {
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
   const selectedPanel = panels.find((b) => selectedIds.includes(b.id))
+  // the member's far end, derived: the model keeps a start, a direction and a length
+  const selectedEnd: [number, number, number] = selectedProfile
+    ? (() => { const e = getProfileEndpoints(selectedProfile).end; return [e.x, e.y, e.z] })()
+    : [0, 0, 0]
   const selectedProfileCount = profiles.filter((p) => selectedIds.includes(p.id)).length
   const selTrim = selectedProfile ? trims.get(selectedProfile.id) : undefined
   // the lock button reads locked only when everything selected is locked, matching the toggle
@@ -294,6 +299,20 @@ const Sidebar: React.FC = () => {
                     ))}
                   </div>
                 </div>
+                {/* The far end, so a span can be given as "from A to B" instead of being
+                    converted into a start and a length by hand every time. */}
+                <div className="space-y-1" data-testid="end-position">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold">{t.endPosition}</span>
+                  <div className="grid grid-cols-3 gap-1">
+                    {(['X', 'Y', 'Z'] as const).map((ax, i) => (
+                      <NumField key={ax} label={ax} value={selectedEnd[i]} onCommit={(v) => {
+                        const to = [...selectedEnd] as [number, number, number]
+                        to[i] = v
+                        setProfileEnd(selectedProfile.id, to)
+                      }} />
+                    ))}
+                  </div>
+                </div>
                 <div className="bg-slate-950/60 rounded-lg p-2 text-[11px] space-y-1">
                   <div className="flex justify-between"><span className="text-slate-500">{t.cutLength}</span><span className="font-mono text-emerald-400 font-bold" data-testid="cut-length">{Math.round(selTrim?.cutLength ?? selectedProfile.length)} mm</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">{t.joints} A</span><span className="font-mono text-slate-300">{jointText(selTrim?.start)}</span></div>
@@ -372,10 +391,16 @@ const Sidebar: React.FC = () => {
 
             {/* A board fitted to whatever members are selected: door, back, shelf, drawer front */}
             {selectedProfileCount >= 2 && (
-              <button onClick={() => addPanelFromSelection()} data-testid="add-panel" title={t.addPanelHint}
-                className="w-full flex items-center justify-center gap-1 py-1.5 bg-orange-600/80 hover:bg-orange-600 rounded-lg text-[10px] font-bold">
-                <Square size={12} />{t.addPanel}
-              </button>
+              <div className="grid grid-cols-2 gap-1">
+                <button onClick={() => addPanelFromSelection()} data-testid="add-panel" title={t.addPanelHint}
+                  className="flex items-center justify-center gap-1 py-1.5 bg-orange-600/80 hover:bg-orange-600 rounded-lg text-[10px] font-bold">
+                  <Square size={12} />{t.addPanel}
+                </button>
+                <button onClick={() => addPanelFromSelection('mdf', 18, 'inset')} data-testid="add-panel-inset" title={t.addPanelInsetHint}
+                  className="flex items-center justify-center gap-1 py-1.5 bg-orange-600/30 hover:bg-orange-600/50 rounded-lg text-[10px] font-bold">
+                  <SquareDashed size={12} />{t.addPanelInset}
+                </button>
+              </div>
             )}
 
             {/* Free rotation about any world axis — members and connectors alike */}

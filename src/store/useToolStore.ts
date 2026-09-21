@@ -79,6 +79,13 @@ interface ToolState {
   showGizmo: boolean
   /** what the selection turns about: its centre, or one end of a single member */
   pivotMode: PivotMode
+  /**
+   * Height of the plane a click falls onto when it finds nothing to attach to.
+   * A pointer gives two numbers; a point in space needs three, so the missing one has to
+   * come from somewhere. It used to be the floor, silently, which put members hundreds of
+   * millimetres from where they were aimed. Now it is a number you can see and set.
+   */
+  workPlaneY: number
   /** where the Space quick menu is open, in client pixels, or null when it is closed */
   quickMenuAt: { x: number; y: number } | null
   selectMode: boolean
@@ -87,6 +94,8 @@ interface ToolState {
   hoverProfileId: string | null
   /** end of the selected member the pointer is reaching for */
   hoverEnd: 'start' | 'end' | null
+  /** how many parts are stacked under the cursor, and which one Tab has stepped to */
+  hoverCandidates: { count: number; index: number }
   /** gizmo handle under the cursor, for highlighting and the hint line */
   gizmoHover: { kind: 'move' | 'rotate'; axis: 'x' | 'y' | 'z' } | null
   /** axis a gizmo arrow drag is constrained to */
@@ -130,10 +139,12 @@ interface ToolState {
   setHoverProfile: (id: string | null) => void
   setHoverEnd: (end: 'start' | 'end' | null) => void
   setGizmoHover: (part: ToolState['gizmoHover']) => void
+  setHoverCandidates: (count: number, index: number) => void
 
   toggleDimensionLabels: () => void
   toggleGizmo: () => void
   setPivotMode: (mode: PivotMode) => void
+  setWorkPlaneY: (y: number) => void
   cyclePivotMode: () => void
   openQuickMenu: (x: number, y: number) => void
   closeQuickMenu: () => void
@@ -188,11 +199,13 @@ export const useToolStore = create<ToolState>((set, get) => ({
   showDimensionLabels: true,
   showGizmo: true,
   pivotMode: 'center',
+  workPlaneY: 0,
   quickMenuAt: null,
   selectMode: false,
   toasts: [],
   hoverProfileId: null,
   hoverEnd: null,
+  hoverCandidates: { count: 0, index: 0 },
   gizmoHover: null,
   dragAxis: null,
 
@@ -254,6 +267,10 @@ export const useToolStore = create<ToolState>((set, get) => ({
   }),
   setHoverProfile: (id) => { if (get().hoverProfileId !== id) set({ hoverProfileId: id }) },
   setHoverEnd: (end) => { if (get().hoverEnd !== end) set({ hoverEnd: end }) },
+  setHoverCandidates: (count, index) => {
+    const cur = get().hoverCandidates
+    if (cur.count !== count || cur.index !== index) set({ hoverCandidates: { count, index } })
+  },
   setGizmoHover: (part) => {
     const cur = get().gizmoHover
     if (cur?.kind !== part?.kind || cur?.axis !== part?.axis) set({ gizmoHover: part })
@@ -262,6 +279,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
   setPivotMode: (pivotMode) => set({ pivotMode }),
+  setWorkPlaneY: (workPlaneY) => set({ workPlaneY: isFinite(workPlaneY) ? Math.max(0, Math.round(workPlaneY)) : 0 }),
   openQuickMenu: (x, y) => set({ quickMenuAt: { x, y } }),
   closeQuickMenu: () => set({ quickMenuAt: null }),
   cyclePivotMode: () => set((s) => ({

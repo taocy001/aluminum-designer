@@ -70,10 +70,23 @@ export function pickAtScreen(
   cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
   profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
 ): ScreenPick | null {
+  return pickCandidatesAtScreen(cursor, ray, camera, size, profiles, connectors, panels)[0] ?? null
+}
+
+/**
+ * Everything under the cursor, nearest first.
+ *
+ * In a dense frame several members cross the same few pixels and the nearest one is often
+ * not the one that was meant. The caller can cycle through these instead of nudging the
+ * camera until the right part happens to be in front.
+ */
+export function pickCandidatesAtScreen(
+  cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
+  profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
+): ScreenPick[] {
   const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
   const fwd = camera.getWorldDirection(new THREE.Vector3())
-  let best: ScreenPick | null = null
-  let bestScore = Infinity
+  const found: Array<{ pick: ScreenPick; score: number }> = []
 
   for (const p of profiles) {
     const { start: s0, end: e0 } = getProfileEndpoints(p)
@@ -92,14 +105,11 @@ export function pickAtScreen(
     const halfPx = toScreen(world.clone().addScaledVector(perp, crossExtentAlong(p, perp)), camera, size).distanceTo(toScreen(world, camera, size))
     if (dist > halfPx + PICK_SLACK_PX) continue
     const depth = world.distanceTo(camPos)
-    if (depth < bestScore) {
-      // point on the centerline nearest the sight line, for grabbing
-      const origin = new THREE.Vector3(...p.position)
-      const tRay = closestParamLineToRay(origin, dir, ray)
-      const grabT = tRay === null ? origin.distanceTo(world) : THREE.MathUtils.clamp(tRay, 0, p.length)
-      bestScore = depth
-      best = { kind: 'profile', id: p.id, point: origin.clone().addScaledVector(dir, grabT), depth }
-    }
+    // point on the centerline nearest the sight line, for grabbing
+    const origin = new THREE.Vector3(...p.position)
+    const tRay = closestParamLineToRay(origin, dir, ray)
+    const grabT = tRay === null ? origin.distanceTo(world) : THREE.MathUtils.clamp(tRay, 0, p.length)
+    found.push({ score: depth, pick: { kind: 'profile', id: p.id, point: origin.clone().addScaledVector(dir, grabT), depth } })
   }
 
   // A board is picked by its face: the cursor has to be inside the projected rectangle.
@@ -112,10 +122,7 @@ export function pickAtScreen(
     const pts = corners.map((v) => toScreen(v, camera, size))
     if (!insideQuad(pts, cursor)) continue
     const depth = centre.distanceTo(camPos)
-    if (depth < bestScore) {
-      bestScore = depth
-      best = { kind: 'panel', id: b.id, point: centre, depth }
-    }
+    found.push({ score: depth, pick: { kind: 'panel', id: b.id, point: centre, depth } })
   }
 
   for (const c of connectors) {
@@ -124,11 +131,8 @@ export function pickAtScreen(
     const dist = toScreen(world, camera, size).distanceTo(cursor)
     if (dist > CONNECTOR_RADIUS_PX) continue
     const depth = world.distanceTo(camPos)
-    if (depth - CONNECTOR_DEPTH_BIAS < bestScore) {
-      bestScore = depth - CONNECTOR_DEPTH_BIAS
-      best = { kind: 'connector', id: c.id, point: world, depth }
-    }
+    found.push({ score: depth - CONNECTOR_DEPTH_BIAS, pick: { kind: 'connector', id: c.id, point: world, depth } })
   }
 
-  return best
+  return found.sort((a, b) => a.score - b.score).map((f) => f.pick)
 }

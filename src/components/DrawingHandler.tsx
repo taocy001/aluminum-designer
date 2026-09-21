@@ -138,7 +138,7 @@ const DrawingHandler: React.FC = () => {
       return
     }
     const profiles = useStore.getState().profiles
-    const pick = pickPoint(ray, cursor, camera, size, profiles, hitMember(ray))
+    const pick = pickPoint(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY)
     hoverNormal.current = pick.normal ?? null
     if (pick.kind === 'none') { ts.setHover(null, null); ts.updateDraw({ alignGuides: [] }); return }
     const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
@@ -170,14 +170,14 @@ const DrawingHandler: React.FC = () => {
 
     if (ts.held === 'connector') {
       if (!ts.activeConnectorType) return
-      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray))
+      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray), ts.workPlaneY)
       if (pick.kind === 'none') return
       placeConnector(pick.point, ts.activeConnectorType, pick.normal ?? null)
       return
     }
 
     if (!ts.isDrawing) {
-      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray))
+      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray), ts.workPlaneY)
       if (pick.kind === 'none') return
       ts.beginDraw(pick.point)
       return
