@@ -12,6 +12,13 @@ import { translations } from '../utils/translations'
 
 const CLICK_SLOP_PX = 5
 
+/** Any movable part by id — members, connectors and boards all carry a position */
+type StoreLike = ReturnType<typeof useStore.getState>
+const partById = (store: StoreLike, id: string) =>
+  store.profiles.find((p) => p.id === id)
+  ?? store.connectors.find((c) => c.id === id)
+  ?? store.panels.find((b) => b.id === id)
+
 /**
  * Central pointer handling for navigate mode: hover highlight, selection and drag start.
  * Picking is screen-space (see screenPick) instead of an exact mesh raycast, so thin
@@ -102,7 +109,8 @@ const PointerRouter: React.FC = () => {
     const pickFor = (e: PointerEvent) => {
       const { cursor, rect } = cursorOf(e)
       const { profiles, connectors } = useStore.getState()
-      return pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height }, profiles, connectors)
+      const panels = useStore.getState().panels
+      return pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height }, profiles, connectors, panels)
     }
 
     const onPointerMove = (e: PointerEvent) => {
@@ -184,10 +192,11 @@ const PointerRouter: React.FC = () => {
           const store = useStore.getState()
           const lead = store.profiles.find((p) => store.selectedIds.includes(p.id))
             ?? store.connectors.find((c) => store.selectedIds.includes(c.id))
+            ?? store.panels.find((b) => store.selectedIds.includes(b.id))
           if (!lead) return
           const groupOrigins: Record<string, [number, number, number]> = {}
           for (const sid of store.selectedIds) {
-            const part2 = store.profiles.find((p) => p.id === sid) ?? store.connectors.find((c) => c.id === sid)
+            const part2 = partById(store, sid)
             if (part2 && !part2.locked) groupOrigins[sid] = [part2.position[0], part2.position[1], part2.position[2]]
           }
           if (Object.keys(groupOrigins).length === 0) return   // everything selected is locked
@@ -218,7 +227,8 @@ const PointerRouter: React.FC = () => {
       }
       const { cursor: downCursor, rect: downRect } = cursorOf(e)
       const downRay = rayOf(downCursor, downRect)
-      const pickHere = pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height }, useStore.getState().profiles, useStore.getState().connectors)
+      const pickHere = pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height },
+        useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
       const multi = e.ctrlKey || e.metaKey
       const pick = pickHere   // already resolved above; picking twice per press is wasted work
@@ -240,8 +250,8 @@ const PointerRouter: React.FC = () => {
       if (multi) { store.selectItem(pick.id, true); return }
       if (!alreadySelected) store.selectItem(pick.id, false)
 
-      const item = pick.kind === 'connector'
-        ? store.connectors.find((c) => c.id === pick.id)
+      const item = pick.kind === 'connector' ? store.connectors.find((c) => c.id === pick.id)
+        : pick.kind === 'panel' ? store.panels.find((b) => b.id === pick.id)
         : store.profiles.find((p) => p.id === pick.id)
       if (!item) return
 
@@ -278,11 +288,13 @@ const PointerRouter: React.FC = () => {
       const dragGroup = store.selectedIds.includes(pick.id) ? store.selectedIds : [pick.id]
       const groupOrigins: Record<string, [number, number, number]> = {}
       for (const sid of dragGroup) {
-        const part = store.profiles.find((q) => q.id === sid) ?? store.connectors.find((q) => q.id === sid)
+        const part = partById(store, sid)
         if (part && !part.locked) groupOrigins[sid] = [part.position[0], part.position[1], part.position[2]]
       }
 
-      beginMove(pick.id, pick.point, new THREE.Vector3(...item.position), groupOrigins, { shift: e.shiftKey, alt: e.altKey }, e, pick.kind)
+      // a board moves the same way a connector does: position only, no snapping to endpoints
+      beginMove(pick.id, pick.point, new THREE.Vector3(...item.position), groupOrigins,
+        { shift: e.shiftKey, alt: e.altKey }, e, pick.kind === 'profile' ? 'profile' : 'connector')
     }
 
     const onPointerUp = (e: PointerEvent) => {

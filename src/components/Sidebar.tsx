@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3 } from 'lucide-react'
-import { useStore, ProfileSpec, type ProfileData, type ConnectorData } from '../store/useStore'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square } from 'lucide-react'
+import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type PanelMaterial } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
 import { computeFrameBounds } from '../utils/jointUtils'
@@ -9,6 +9,7 @@ import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel 
 import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
 import { ALL_SPECS } from '../utils/specUtils'
+import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
@@ -77,7 +78,7 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
+  const { profiles, connectors, panels, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
@@ -126,13 +127,15 @@ const Sidebar: React.FC = () => {
     && isFinite(parseFloat(arraySpacingText)) && Math.abs(parseFloat(arraySpacingText)) >= 1
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
+  const selectedPanel = panels.find((b) => selectedIds.includes(b.id))
+  const selectedProfileCount = profiles.filter((p) => selectedIds.includes(p.id)).length
   const selTrim = selectedProfile ? trims.get(selectedProfile.id) : undefined
   // the lock button reads locked only when everything selected is locked, matching the toggle
   const selectionLocked = selectedIds.length > 0
     && profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
     && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
 
-  const bom = useMemo(() => buildBom(profiles, connectors, trims, language), [profiles, connectors, trims, language])
+  const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels), [profiles, connectors, trims, language, panels])
   const totalCut = bom.totalCutLength
   const buttEnds = bom.buttEnds
   const bounds = useMemo(() => computeFrameBounds(profiles, trims), [profiles, trims])
@@ -164,7 +167,7 @@ const Sidebar: React.FC = () => {
     downloadText('BOM.csv', '﻿' + bomToCsv(bom, dims), 'text/csv;charset=utf-8;')
   }
   const handleExportJSON = () => {
-    const doc = { version: 1, savedAt: new Date().toISOString(), profiles, connectors }
+    const doc = { version: 2, savedAt: new Date().toISOString(), profiles, connectors, panels }
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(doc, null, 2), 'application/json')
   }
   const handleImportJSON = (file: File) => {
@@ -175,7 +178,8 @@ const Sidebar: React.FC = () => {
         Array.isArray(p.position) && p.position.length === 3 && Array.isArray(p.quaternion) && p.quaternion.length === 4)
       if (!ok) throw new Error('bad doc')
       const conns: ConnectorData[] = Array.isArray(doc.connectors) ? doc.connectors : []
-      loadDocument({ profiles: doc.profiles.map((p: ProfileData) => ({ ...p, miterCuts: p.miterCuts ?? [], holes: p.holes ?? [] })), connectors: conns })
+      const boards: PanelData[] = Array.isArray(doc.panels) ? doc.panels : []
+      loadDocument({ profiles: doc.profiles.map((p: ProfileData) => ({ ...p, miterCuts: p.miterCuts ?? [], holes: p.holes ?? [] })), connectors: conns, panels: boards })
       showToast(t.toastImported, 'success')
     }).catch(() => showToast(t.toastImportFailed, 'error'))
   }
@@ -248,7 +252,7 @@ const Sidebar: React.FC = () => {
         onToggle={() => toggle('properties')}
         badge={selectedIds.length > 0 ? <span className="text-[9px] font-mono text-blue-400">{selectedIds.length}</span> : undefined}
       >
-        {selectedProfile || selectedConnector ? (
+        {selectedProfile || selectedConnector || selectedPanel ? (
           <div className="bg-slate-900/50 rounded-xl p-3 border border-white/5 space-y-3 shadow-xl" data-testid="properties">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <span className="text-[10px] font-black uppercase text-slate-400">{t.properties}</span>
@@ -346,6 +350,32 @@ const Sidebar: React.FC = () => {
                   <span className="font-mono text-slate-300" data-testid="connector-orientation">{orientationDegrees(selectedConnector.quaternion).join(' / ')}</span>
                 </div>
               </div>
+            )}
+
+            {selectedPanel && (
+              <div className="space-y-2" data-testid="panel-props">
+                <div className="grid grid-cols-3 gap-1">
+                  <NumField label="W" value={selectedPanel.width} step={10} onCommit={(v) => setPanelSize(selectedPanel.id, { width: v })} />
+                  <NumField label="H" value={selectedPanel.height} step={10} onCommit={(v) => setPanelSize(selectedPanel.id, { height: v })} />
+                  <NumField label="T" value={selectedPanel.thickness} step={1} onCommit={(v) => setPanelSize(selectedPanel.id, { thickness: v })} />
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500">{t.panelMaterial}</span>
+                  <select value={selectedPanel.material} data-testid="panel-material"
+                    onChange={(e) => setPanelMaterial(selectedPanel.id, e.target.value as PanelMaterial)}
+                    className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-orange-400 outline-none">
+                    {PANEL_MATERIALS.map((m) => <option key={m} value={m}>{materialLabel(m, language)}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* A board fitted to whatever members are selected: door, back, shelf, drawer front */}
+            {selectedProfileCount >= 2 && (
+              <button onClick={() => addPanelFromSelection()} data-testid="add-panel" title={t.addPanelHint}
+                className="w-full flex items-center justify-center gap-1 py-1.5 bg-orange-600/80 hover:bg-orange-600 rounded-lg text-[10px] font-bold">
+                <Square size={12} />{t.addPanel}
+              </button>
             )}
 
             {/* Free rotation about any world axis — members and connectors alike */}
@@ -483,6 +513,14 @@ const Sidebar: React.FC = () => {
             {bom.fasteners.map((r) => (
               <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
                 <span className="text-slate-400 truncate">{r.label}</span><span /><span className="text-amber-400">×{r.qty}</span>
+              </div>
+            ))}
+            {bom.panels.length > 0 && (
+              <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-panels">{t.boardCutList}</div>
+            )}
+            {bom.panels.map((r) => (
+              <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
+                <span className="text-slate-400 truncate">{r.label}</span><span className="text-slate-500">{r.spec}</span><span className="text-orange-400">×{r.qty}</span>
               </div>
             ))}
             {bom.suggested.length > 0 && (

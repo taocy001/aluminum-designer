@@ -36,17 +36,38 @@ export interface ConnectorData {
   locked?: boolean
 }
 
-type Snapshot = { profiles: ProfileData[]; connectors: ConnectorData[] }
+/**
+ * A flat board: a back, a shelf, a door or a drawer front. Modelled by its own size rather
+ * than by the opening it fills, so moving the frame around it does not silently resize it —
+ * a board is cut once and stays that size until somebody changes it.
+ * Local axes: width along X, height along Y, thickness along Z.
+ */
+export type PanelMaterial = 'mdf' | 'ply' | 'acrylic' | 'alu'
+
+export interface PanelData {
+  id: string
+  width: number
+  height: number
+  thickness: number
+  /** centre of the board */
+  position: [number, number, number]
+  quaternion: [number, number, number, number]
+  material: PanelMaterial
+  locked?: boolean
+}
+
+type Snapshot = { profiles: ProfileData[]; connectors: ConnectorData[]; panels: PanelData[] }
 
 const MAX_HISTORY = 50
 
-function takeSnapshot(state: Pick<State, 'profiles' | 'connectors'>): Snapshot {
-  return { profiles: [...state.profiles], connectors: [...state.connectors] }
+function takeSnapshot(state: Pick<State, 'profiles' | 'connectors' | 'panels'>): Snapshot {
+  return { profiles: [...state.profiles], connectors: [...state.connectors], panels: [...state.panels] }
 }
 
 interface State {
   profiles: ProfileData[]
   connectors: ConnectorData[]
+  panels: PanelData[]
   selectedIds: string[]
   past: Snapshot[]
   future: Snapshot[]
@@ -54,8 +75,11 @@ interface State {
   addProfile: (profile: ProfileData) => void
   addProfiles: (profiles: ProfileData[], select?: boolean) => void
   addItems: (profiles: ProfileData[], connectors: ConnectorData[], select?: boolean) => void
+  addPanels: (panels: PanelData[], select?: boolean) => void
+  updatePanel: (id: string, updates: Partial<PanelData>) => void
+  commitPanelEdit: (id: string, updates: Partial<PanelData>) => void
   /** Replace the whole document (import) */
-  loadDocument: (doc: { profiles: ProfileData[]; connectors: ConnectorData[] }) => void
+  loadDocument: (doc: { profiles: ProfileData[]; connectors: ConnectorData[]; panels?: PanelData[] }) => void
   removeProfile: (id: string) => void
   removeSelected: () => void
   /** lock or unlock the selection; locked parts are protected from moves and deletion */
@@ -73,10 +97,10 @@ interface State {
   commitProfileEdit: (id: string, updates: Partial<ProfileData>) => void
   commitProfilesEdit: (updates: Array<{ id: string; updates: Partial<ProfileData> }>) => void
   /** Move/rotate profiles and connectors together as one undoable step */
-  commitTransform: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }> }) => void
+  commitTransform: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>; panels?: Array<{ id: string; updates: Partial<PanelData> }> }) => void
   updateConnector: (id: string, updates: Partial<ConnectorData>) => void
   /** Live move of several parts at once (no history) — one store write per frame */
-  updateParts: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }> }) => void
+  updateParts: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>; panels?: Array<{ id: string; updates: Partial<PanelData> }> }) => void
   snapshotHistory: () => void
   undo: () => void
   redo: () => void
@@ -89,6 +113,7 @@ export const useStore = create<State>()(
     (set) => ({
       profiles: [],
       connectors: [],
+      panels: [],
       selectedIds: [],
       past: [],
       future: [],
@@ -114,11 +139,29 @@ export const useStore = create<State>()(
         selectedIds: select ? [...list.map((p) => p.id), ...conns.map((c) => c.id)] : state.selectedIds,
       })),
 
+      addPanels: (list, select = false) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        panels: [...state.panels, ...list],
+        selectedIds: select ? list.map((p) => p.id) : state.selectedIds,
+      })),
+
+      updatePanel: (id, updates) => set((state) => ({
+        panels: state.panels.map((p) => p.id === id ? { ...p, ...updates } : p),
+      })),
+
+      commitPanelEdit: (id, updates) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        panels: state.panels.map((p) => p.id === id ? { ...p, ...updates } : p),
+      })),
+
       loadDocument: (doc) => set((state) => ({
         past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
         future: [],
         profiles: doc.profiles,
         connectors: doc.connectors,
+        panels: doc.panels ?? [],
         selectedIds: [],
       })),
 
@@ -134,14 +177,17 @@ export const useStore = create<State>()(
         if (ids.size === 0) return {}
         // a lock protects against deletion too, or it would only be half a lock
         const removable = (x: { id: string; locked?: boolean }) => ids.has(x.id) && !x.locked
-        if (!state.profiles.some(removable) && !state.connectors.some(removable)) return {}
+        if (!state.profiles.some(removable) && !state.connectors.some(removable) && !state.panels.some(removable)) return {}
+        const stillLocked = (id: string) => state.profiles.some((p) => p.id === id && p.locked)
+          || state.connectors.some((c) => c.id === id && c.locked)
+          || state.panels.some((p) => p.id === id && p.locked)
         return {
           past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.filter((p) => !removable(p)),
           connectors: state.connectors.filter((c) => !removable(c)),
-          selectedIds: state.selectedIds.filter((id) =>
-            state.profiles.some((p) => p.id === id && p.locked) || state.connectors.some((c) => c.id === id && c.locked)),
+          panels: state.panels.filter((p) => !removable(p)),
+          selectedIds: state.selectedIds.filter(stillLocked),
         }
       }),
 
@@ -151,11 +197,13 @@ export const useStore = create<State>()(
         // mixed selections lock rather than unlock: the safer of the two
         const anyUnlocked = state.profiles.some((p) => ids.has(p.id) && !p.locked)
           || state.connectors.some((c) => ids.has(c.id) && !c.locked)
+          || state.panels.some((p) => ids.has(p.id) && !p.locked)
         return {
           past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
           connectors: state.connectors.map((c) => ids.has(c.id) ? { ...c, locked: anyUnlocked } : c),
+          panels: state.panels.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
         }
       }),
 
@@ -164,6 +212,7 @@ export const useStore = create<State>()(
         future: [],
         profiles: [],
         connectors: [],
+        panels: [],
         selectedIds: [],
       })),
 
@@ -220,25 +269,29 @@ export const useStore = create<State>()(
         }
       }),
 
-      commitTransform: ({ profiles = [], connectors = [] }) => set((state) => {
-        if (profiles.length === 0 && connectors.length === 0) return {}
+      commitTransform: ({ profiles = [], connectors = [], panels = [] }) => set((state) => {
+        if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return {}
         const pMap = new Map(profiles.map((u) => [u.id, u.updates]))
         const cMap = new Map(connectors.map((u) => [u.id, u.updates]))
+        const bMap = new Map(panels.map((u) => [u.id, u.updates]))
         return {
           past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p),
           connectors: state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c),
+          panels: state.panels.map((b) => bMap.has(b.id) ? { ...b, ...bMap.get(b.id)! } : b),
         }
       }),
 
-      updateParts: ({ profiles = [], connectors = [] }) => set((state) => {
-        if (profiles.length === 0 && connectors.length === 0) return {}
+      updateParts: ({ profiles = [], connectors = [], panels = [] }) => set((state) => {
+        if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return {}
         const pMap = new Map(profiles.map((u) => [u.id, u.updates]))
         const cMap = new Map(connectors.map((u) => [u.id, u.updates]))
+        const bMap = new Map(panels.map((u) => [u.id, u.updates]))
         return {
           profiles: pMap.size ? state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p) : state.profiles,
           connectors: cMap.size ? state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c) : state.connectors,
+          panels: bMap.size ? state.panels.map((b) => bMap.has(b.id) ? { ...b, ...bMap.get(b.id)! } : b) : state.panels,
         }
       }),
 
@@ -259,6 +312,7 @@ export const useStore = create<State>()(
           future: [takeSnapshot(state), ...state.future.slice(0, MAX_HISTORY - 1)],
           profiles: prev.profiles,
           connectors: prev.connectors,
+          panels: prev.panels ?? [],
           selectedIds: [],
         }
       }),
@@ -271,13 +325,14 @@ export const useStore = create<State>()(
           future: state.future.slice(1),
           profiles: next.profiles,
           connectors: next.connectors,
+          panels: next.panels ?? [],
           selectedIds: [],
         }
       }),
     }),
     {
       name: 'aluminum-designer-store',
-      partialize: (state) => ({ profiles: state.profiles, connectors: state.connectors }),
+      partialize: (state) => ({ profiles: state.profiles, connectors: state.connectors, panels: state.panels }),
     }
   )
 )

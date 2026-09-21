@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { useStore, type ConnectorData, type ProfileData, type ProfileSpec } from '../store/useStore'
+import { useStore, type ConnectorData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from './geometryCore'
 import { getProfileAxis, getProfileDir } from './jointUtils'
@@ -31,6 +31,16 @@ function selectedConnectors(includeLocked = false): ConnectorData[] {
   const ids = new Set(selectedIds)
   return connectors.filter((c) => ids.has(c.id) && (includeLocked || !c.locked))
 }
+
+function selectedPanels(includeLocked = false): PanelData[] {
+  const { panels, selectedIds } = useStore.getState()
+  const ids = new Set(selectedIds)
+  return panels.filter((p) => ids.has(p.id) && (includeLocked || !p.locked))
+}
+
+/** Shift a part's centre by a world delta, rounded the way everything else is */
+const shifted = (pos: [number, number, number], d: THREE.Vector3): [number, number, number] =>
+  [round3(pos[0] + d.x), round3(pos[1] + d.y), round3(pos[2] + d.z)]
 
 /**
  * Interference is allowed: edits always go through and the affected members are flagged
@@ -76,7 +86,8 @@ function sinkBelowFloor(profiles: ProfileData[], delta: [number, number, number]
 export function nudgeSelected(delta: [number, number, number]): boolean {
   const profiles = selectedProfiles()
   const connectors = selectedConnectors()
-  if (profiles.length === 0 && connectors.length === 0) return false
+  const panels = selectedPanels()
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
 
   const d: [number, number, number] = [...delta]
   const sink = sinkBelowFloor(profiles, d)
@@ -93,6 +104,10 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
       id: c.id,
       updates: { position: [round3(c.position[0] + d[0]), round3(c.position[1] + d[1]), round3(c.position[2] + d[2])] as [number, number, number] },
     })),
+    panels: panels.map((p) => ({
+      id: p.id,
+      updates: { position: [round3(p.position[0] + d[0]), round3(p.position[1] + d[1]), round3(p.position[2] + d[2])] as [number, number, number] },
+    })),
   })
   warnIfNewConflicts(before)
   return true
@@ -102,7 +117,8 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
 export function duplicateSelected(): boolean {
   const profiles = selectedProfiles(true)
   const connectors = selectedConnectors(true)
-  if (profiles.length === 0 && connectors.length === 0) return false
+  const panels = selectedPanels(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
   const axis = profiles[0] ? getProfileAxis(profiles[0]) : 'y'
   const d: [number, number, number] = axis === 'x' ? [0, 0, 50] : [50, 0, 0]
   const before = conflictPairsNow()
@@ -115,8 +131,13 @@ export function duplicateSelected(): boolean {
     ...c, id: nextId('c'), locked: false,
     position: [c.position[0] + d[0], c.position[1] + d[1], c.position[2] + d[2]] as [number, number, number],
   }))
+  const newPanels = panels.map((p) => ({
+    ...p, id: nextId('b'), locked: false,
+    position: [p.position[0] + d[0], p.position[1] + d[1], p.position[2] + d[2]] as [number, number, number],
+  }))
   store.addItems(newProfiles, newConnectors, true)
-  toast(t().toastDuplicated(newProfiles.length + newConnectors.length), 'success')
+  if (newPanels.length) store.addPanels(newPanels, false)
+  toast(t().toastDuplicated(newProfiles.length + newConnectors.length + newPanels.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
@@ -129,6 +150,7 @@ function documentCentre(): THREE.Vector3 {
   const add = (v: THREE.Vector3) => { min.min(v); max.max(v) }
   for (const p of profiles) { const { start, end } = getProfileEndpoints(p); add(start); add(end) }
   for (const c of connectors) add(new THREE.Vector3(...c.position))
+  for (const b of useStore.getState().panels) add(new THREE.Vector3(...b.position))
   if (!isFinite(min.x)) return new THREE.Vector3()
   return min.add(max).multiplyScalar(0.5)
 }
@@ -147,7 +169,8 @@ function documentCentre(): THREE.Vector3 {
 export function mirrorSelected(axis: RotAxis = 'x'): boolean {
   const profiles = selectedProfiles(true)
   const connectors = selectedConnectors(true)
-  if (profiles.length === 0 && connectors.length === 0) return false
+  const panels = selectedPanels(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
 
   const centre = documentCentre()
   const k = { x: 0, y: 1, z: 2 }[axis] as 0 | 1 | 2
@@ -174,10 +197,15 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
     const at = flip(new THREE.Vector3(...c2.position))
     return { ...c2, id: nextId('c'), locked: false, position: [round3(at.x), round3(at.y), round3(at.z)] as [number, number, number] }
   })
-  if (copies.length === 0 && connectorCopies.length === 0) return false
+  const panelCopies: PanelData[] = panels.map((b) => {
+    const at = flip(new THREE.Vector3(...b.position))
+    return { ...b, id: nextId('b'), locked: false, position: [round3(at.x), round3(at.y), round3(at.z)] as [number, number, number] }
+  })
+  if (copies.length === 0 && connectorCopies.length === 0 && panelCopies.length === 0) return false
 
   useStore.getState().addItems(copies, connectorCopies, true)
-  toast(t().toastMirrored(copies.length + connectorCopies.length), 'success')
+  if (panelCopies.length) useStore.getState().addPanels(panelCopies, false)
+  toast(t().toastMirrored(copies.length + connectorCopies.length + panelCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
@@ -190,7 +218,8 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
 export function arraySelected(axis: RotAxis, count: number, spacing: number): boolean {
   const profiles = selectedProfiles(true)
   const connectors = selectedConnectors(true)
-  if (profiles.length === 0 && connectors.length === 0) return false
+  const panels = selectedPanels(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
   if (!isFinite(count) || count < 1 || !isFinite(spacing) || Math.abs(spacing) < 1) return false
   const n = Math.min(Math.floor(count), 50)   // a slip of the keyboard must not make 5000 parts
 
@@ -200,6 +229,7 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
   const before = conflictPairsNow()
   const copies: ProfileData[] = []
   const connectorCopies: ConnectorData[] = []
+  const panelCopies: PanelData[] = []
   for (let i = 1; i <= n; i++) {
     const d = step.clone().multiplyScalar(i)
     for (const p of profiles) {
@@ -214,16 +244,19 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
         position: [round3(c.position[0] + d.x), round3(c.position[1] + d.y), round3(c.position[2] + d.z)],
       })
     }
+    for (const b of panels) panelCopies.push({ ...b, id: nextId('b'), locked: false, position: shifted(b.position, d) })
   }
   // the whole array is lifted as one, so the copies stay in line instead of being clamped apart
   const sink = sinkBelowFloor(copies, [0, 0, 0])
   if (sink < 0) {
     for (const p of copies) p.position = [p.position[0], round3(p.position[1] - sink), p.position[2]]
     for (const c of connectorCopies) c.position = [c.position[0], round3(c.position[1] - sink), c.position[2]]
+    for (const b of panelCopies) b.position = [b.position[0], round3(b.position[1] - sink), b.position[2]]
   }
 
   useStore.getState().addItems(copies, connectorCopies, true)
-  toast(t().toastArrayed(copies.length + connectorCopies.length), 'success')
+  if (panelCopies.length) useStore.getState().addPanels(panelCopies, false)
+  toast(t().toastArrayed(copies.length + connectorCopies.length + panelCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
@@ -268,7 +301,8 @@ export function pivotApplies(profiles: ProfileData[], connectors: ConnectorData[
 export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   const profiles = selectedProfiles()
   const connectors = selectedConnectors()
-  if (profiles.length === 0 && connectors.length === 0) return false
+  const panels = selectedPanels()
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
   if (!isFinite(degrees) || degrees % 360 === 0) return false
   const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode)
   const rot = new THREE.Quaternion().setFromAxisAngle(AXES[axis], THREE.MathUtils.degToRad(degrees))
@@ -282,6 +316,7 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   }
   const spunProfiles = profiles.map((p) => ({ id: p.id, updates: spin(p.position, p.quaternion) }))
   const spunConnectors = connectors.map((c) => ({ id: c.id, updates: spin(c.position, c.quaternion) }))
+  const spunPanels = panels.map((p) => ({ id: p.id, updates: spin(p.position, p.quaternion) }))
 
   // a turn must not bury the parts: lift the whole selection back onto the floor
   const rotated = profiles.map((p, i) => ({ ...p, ...spunProfiles[i].updates }))
@@ -289,10 +324,11 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   if (sink < 0) {
     for (const u of spunProfiles) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
     for (const u of spunConnectors) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
+    for (const u of spunPanels) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
   }
 
   const before = conflictPairsNow()
-  useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors })
+  useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors, panels: spunPanels })
   warnIfNewConflicts(before)
   return true
 }

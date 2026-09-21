@@ -1,7 +1,8 @@
 import * as THREE from 'three'
-import type { ProfileData, ConnectorData } from '../store/useStore'
+import type { ProfileData, ConnectorData, PanelData } from '../store/useStore'
 import { getProfileEndpoints, getProfileDir, crossExtentAlong } from './geometryCore'
 import { toScreen, closestParamLineToRay, type ScreenSize } from './pickUtils'
+import { panelCorners } from './panelOps'
 
 /** Extra pixels of slack around a member's rendered body, so thin beams stay easy to hit */
 export const PICK_SLACK_PX = 7
@@ -14,6 +15,20 @@ const CONNECTOR_DEPTH_BIAS = 60
 /** anything nearer than this to the camera plane cannot be projected meaningfully */
 const NEAR_EPS = 1
 
+/** Winding test on the projected quad, which stays correct however the board is turned */
+function insideQuad(q: THREE.Vector2[], p: THREE.Vector2): boolean {
+  let sign = 0
+  for (let i = 0; i < q.length; i++) {
+    const a = q[i], b = q[(i + 1) % q.length]
+    const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
+    if (Math.abs(cross) < 1e-9) continue
+    const s = cross > 0 ? 1 : -1
+    if (sign === 0) sign = s
+    else if (s !== sign) return false
+  }
+  return sign !== 0
+}
+
 function segmentDistancePx(a: THREE.Vector2, b: THREE.Vector2, p: THREE.Vector2): { dist: number; t: number } {
   const ab = b.clone().sub(a)
   const lenSq = ab.lengthSq()
@@ -23,7 +38,7 @@ function segmentDistancePx(a: THREE.Vector2, b: THREE.Vector2, p: THREE.Vector2)
 }
 
 export interface ScreenPick {
-  kind: 'profile' | 'connector'
+  kind: 'profile' | 'connector' | 'panel'
   id: string
   /** point on the member centerline nearest the sight line (profiles only) */
   point: THREE.Vector3
@@ -53,7 +68,7 @@ function clipToFront(a: THREE.Vector3, b: THREE.Vector3, camPos: THREE.Vector3, 
  */
 export function pickAtScreen(
   cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
-  profiles: ProfileData[], connectors: ConnectorData[] = [],
+  profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
 ): ScreenPick | null {
   const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
   const fwd = camera.getWorldDirection(new THREE.Vector3())
@@ -84,6 +99,22 @@ export function pickAtScreen(
       const grabT = tRay === null ? origin.distanceTo(world) : THREE.MathUtils.clamp(tRay, 0, p.length)
       bestScore = depth
       best = { kind: 'profile', id: p.id, point: origin.clone().addScaledVector(dir, grabT), depth }
+    }
+  }
+
+  // A board is picked by its face: the cursor has to be inside the projected rectangle.
+  // Boards sit behind the members they are screwed to, so they never steal a member's press.
+  for (const b of panels) {
+    const centre = new THREE.Vector3(...b.position)
+    if (centre.clone().sub(camPos).dot(fwd) <= NEAR_EPS) continue
+    const corners = panelCorners(b)
+    if (corners.some((v) => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
+    const pts = corners.map((v) => toScreen(v, camera, size))
+    if (!insideQuad(pts, cursor)) continue
+    const depth = centre.distanceTo(camPos)
+    if (depth < bestScore) {
+      bestScore = depth
+      best = { kind: 'panel', id: b.id, point: centre, depth }
     }
   }
 

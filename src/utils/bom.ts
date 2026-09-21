@@ -1,4 +1,5 @@
-import type { ConnectorData, ProfileData } from '../store/useStore'
+import type { ConnectorData, PanelData, ProfileData } from '../store/useStore'
+import { materialLabel } from './panelOps'
 import type { ProfileTrims } from './jointUtils'
 import {
   CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel, seriesOf,
@@ -6,7 +7,7 @@ import {
 } from './connectorCatalog'
 
 export interface BomRow {
-  kind: 'profile' | 'connector' | 'fastener' | 'suggested'
+  kind: 'profile' | 'connector' | 'fastener' | 'suggested' | 'panel'
   /** stable key for React and for the CSV */
   key: string
   label: string
@@ -21,7 +22,11 @@ export interface BomResult {
   connectors: BomRow[]
   fasteners: BomRow[]
   suggested: BomRow[]
+  /** board cut list: one row per distinct size, thickness and material */
+  panels: BomRow[]
   totalCutLength: number
+  /** square metres of board, which is how sheet goods are quoted */
+  totalBoardArea: number
   buttEnds: number
   freeEnds: number
 }
@@ -35,7 +40,7 @@ export interface BomResult {
  */
 export function buildBom(
   profiles: ProfileData[], connectors: ConnectorData[], trims: Map<string, ProfileTrims>,
-  language: 'zh' | 'en',
+  language: 'zh' | 'en', panels: PanelData[] = [],
 ): BomResult {
   const profileRows = new Map<string, BomRow>()
   let totalCutLength = 0
@@ -117,7 +122,28 @@ export function buildBom(
     })
   }
 
+  // Boards are grouped the way a cutting shop quotes them: one line per size and material.
+  const panelRows = new Map<string, BomRow>()
+  let totalBoardArea = 0
+  for (const b of panels) {
+    const w = Math.round(b.width), h = Math.round(b.height)
+    // the same board turned on its side is the same cut, so the pair is ordered
+    const [a1, a2] = w >= h ? [w, h] : [h, w]
+    totalBoardArea += (a1 * a2) / 1e6
+    const key = `${b.material}-${b.thickness}-${a1}x${a2}`
+    const row = panelRows.get(key) ?? {
+      kind: 'panel' as const, key,
+      label: `${a1} × ${a2} mm`,
+      spec: `${materialLabel(b.material, language)} ${b.thickness}mm`,
+      qty: 0,
+    }
+    row.qty++
+    panelRows.set(key, row)
+  }
+
   return {
+    panels: [...panelRows.values()].sort((a, b) => a.spec.localeCompare(b.spec) || a.label.localeCompare(b.label)),
+    totalBoardArea,
     profiles: [...profileRows.values()].sort((a, b) => a.spec.localeCompare(b.spec) || (b.length ?? 0) - (a.length ?? 0)),
     connectors: [...connectorRows.values()].sort((a, b) => a.label.localeCompare(b.label)),
     fasteners,
@@ -134,8 +160,10 @@ export function bomToCsv(bom: BomResult, overall: string): string {
   for (const r of bom.profiles) lines.push(`Profile,${r.label},${r.spec},${r.length ?? ''},${r.qty}`)
   for (const r of bom.connectors) lines.push(`Connector,"${r.label}",${r.spec},,${r.qty}`)
   for (const r of bom.fasteners) lines.push(`Fastener,"${r.label}",${r.spec},,${r.qty}`)
+  for (const r of bom.panels) lines.push(`Board,"${r.label}","${r.spec}",,${r.qty}`)
   for (const r of bom.suggested) lines.push(`Suggested,"${r.label}",${r.spec},,${r.qty}`)
   lines.push(`Summary,Overall WxDxH,${overall},,`)
   lines.push(`Summary,Total cut length (mm),,${Math.round(bom.totalCutLength)},`)
+  lines.push(`Summary,Board area (m2),,${bom.totalBoardArea.toFixed(2)},`)
   return lines.join('\n')
 }
