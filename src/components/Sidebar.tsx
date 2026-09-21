@@ -534,11 +534,11 @@ const Sidebar: React.FC = () => {
           </div>
         )}
 
-        <button onClick={handleExportBOM} disabled={profiles.length === 0} className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
+        <button onClick={handleExportBOM} disabled={profiles.length === 0} data-testid="export-bom" className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
           <Download size={14} /> {t.exportBOM}
         </button>
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={handleExportJSON} className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold"><Save size={13} /> {t.exportJSON}</button>
+          <button onClick={handleExportJSON} data-testid="export-project" className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold"><Save size={13} /> {t.exportJSON}</button>
           <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold"><Upload size={13} /> {t.importJSON}</button>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportJSON(f); e.target.value = '' }} />
         </div>

@@ -168,6 +168,24 @@ describe('tolerant joints (ends landing inside a partner body)', () => {
     const t = computeTrims(rail, [post, rail])
     expect(t.end.partners).toBe(0)
   })
+  it('an L corner still cuts when a coaxial member carries on from the same point', () => {
+    // The back rail turns the corner: one run along X, one along Z, both starting at the
+    // corner, with a depth rail arriving along Z as well. The coaxial arrival used to make
+    // the corner claim it "continues", so neither member was cut and they overlapped by 10.
+    const alongX = P(0, 20, 800, 5000, 20, 800)
+    const alongZ = P(0, 20, 800, 0, 20, 3000)
+    const depth = P(0, 20, 0, 0, 20, 800)
+    const all = [alongX, alongZ, depth]
+    const tz = computeTrims(alongZ, all)
+    const td = computeTrims(depth, all)
+    expect(tz.start.butt).toBe(true)
+    expect(tz.start.trim).toBe(10)          // cut back to the face of the X run
+    expect(td.end.butt).toBe(true)
+    expect(td.end.trim).toBe(10)
+    expect(computeTrims(alongX, all).start.trim).toBe(-10)   // the X run reaches the far face
+    expect(conflictsOf(all)).toEqual([])
+  })
+
   it('coaxial stacked posts through a rail joint neither extend nor trim at the shared end', () => {
     const lower = P(0, 0, 0, 0, 800, 0)
     const upper = P(0, 800, 0, 0, 1400, 0)

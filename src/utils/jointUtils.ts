@@ -58,8 +58,13 @@ function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | nul
     else if (pPri > qPri) extend = Math.max(extend, toFarFace)
   }
 
+  // A butt against a perpendicular partner still applies when a coaxial member carries on
+  // from this end: two rails meeting end to end at a post both butt into the post. Letting
+  // the continuation win left every such corner uncut, overlapping by half a section.
+  // An extension is different — a member that already continues through the joint has
+  // nothing to reach for, and extending it would drive it into its own coaxial neighbour.
+  if (anyButt) return { trim: round3(buttTrim), partners, butt: true, continues }
   if (continues) return { trim: 0, partners, butt: false, continues: true }
-  if (anyButt) return { trim: round3(buttTrim), partners, butt: true, continues: false }
   if (extend > 0) return { trim: round3(-extend), partners, butt: false, continues: false }
   return { trim: 0, partners, butt: false, continues: false }
 }
