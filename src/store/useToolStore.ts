@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import * as THREE from 'three'
 import { ProfileSpec } from './useStore'
 import type { Axis } from '../utils/jointUtils'
+import type { PivotMode } from '../utils/editOps'
 
 /** The profile or connector held for placement, reflected by the sidebar selection and preview. */
 export type HeldKind = 'profile' | 'connector'
@@ -71,6 +72,8 @@ interface ToolState {
   showDimensionLabels: boolean
   /** on-canvas rotation handles for the selection */
   showGizmo: boolean
+  /** what the selection turns about: its centre, or one end of a single member */
+  pivotMode: PivotMode
   selectMode: boolean
   toasts: Toast[]
   /** member under the cursor in navigate mode (screen-space pick) */
@@ -123,6 +126,8 @@ interface ToolState {
 
   toggleDimensionLabels: () => void
   toggleGizmo: () => void
+  setPivotMode: (mode: PivotMode) => void
+  cyclePivotMode: () => void
   setSelectMode: (on: boolean) => void
   showToast: (message: string, kind?: ToastKind) => void
   dismissToast: (id: number) => void
@@ -173,6 +178,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   showDimensionLabels: true,
   showGizmo: true,
+  pivotMode: 'center',
   selectMode: false,
   toasts: [],
   hoverProfileId: null,
@@ -228,8 +234,9 @@ export const useToolStore = create<ToolState>((set, get) => ({
   },
   markDragMoved: () => { if (!get().dragMoved) set({ dragMoved: true }) },
   setDragConflict: (conflict) => { if (get().dragConflict !== conflict) set({ dragConflict: conflict }) },
-  startResize: (resize) => set({ resize }),
-  stopResize: () => set({ resize: null }),
+  // dragMoved doubles as "this gesture already has a history entry", for both kinds of drag
+  startResize: (resize) => set({ resize, dragMoved: false }),
+  stopResize: () => set({ resize: null, dragMoved: false }),
   stopDrag: () => set({
     isDragging: false, dragKind: 'profile', dragProfileId: null, dragStartHit: null, dragOriginPos: null,
     dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragFree: false, dragAxis: null,
@@ -244,6 +251,10 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
+  setPivotMode: (pivotMode) => set({ pivotMode }),
+  cyclePivotMode: () => set((s) => ({
+    pivotMode: s.pivotMode === 'center' ? 'start' : s.pivotMode === 'start' ? 'end' : 'center',
+  })),
   setSelectMode: (on) => set({ selectMode: on }),
   showToast: (message, kind = 'info') => {
     const id = toastSeq++

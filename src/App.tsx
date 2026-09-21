@@ -5,23 +5,25 @@ import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
-import { duplicateSelected, nudgeSelected, rotateSelected } from './utils/editOps'
+import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X } from 'lucide-react'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X, Crosshair } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 
 function App() {
-  const { clearSelection, removeSelected, undo, redo } = useStore()
+  const { clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
   const {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind,
     held, putDown, triggerCameraReset, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
+    pivotMode, cyclePivotMode,
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
     toasts, showToast, dragConflict, hoverProfileId, snapGuides, gizmoHover,
+    dragMoved, resize,
   } = useToolStore()
   const t = translations[language]
 
@@ -31,6 +33,22 @@ function App() {
   useEffect(() => { if (!isDrawing) setPreciseInput('') }, [isDrawing])
 
   const drawDist = isDrawing && startPoint && currentPoint ? startPoint.distanceTo(currentPoint) : 0
+
+  // Exact value for a gesture already under way: a move that has travelled, or a stretch
+  const [exactInput, setExactInput] = useState('')
+  const exactInputRef = useRef<HTMLInputElement>(null)
+  const exactGesture: 'move' | 'resize' | null = resize ? 'resize' : (isDragging && dragMoved ? 'move' : null)
+  // read from the key handler, which must not be rebuilt on every frame of a drag
+  const exactGestureRef = useRef(exactGesture)
+  exactGestureRef.current = exactGesture
+  useEffect(() => { if (!exactGesture) setExactInput('') }, [exactGesture])
+
+  const confirmExact = useCallback(() => {
+    const value = parseFloat(exactInput)
+    if (!isFinite(value)) { showToast(t.toastNeedLength, 'info'); return }
+    const done = exactGesture === 'resize' ? commitExactLength(value) : commitExactMove(value)
+    if (done) setExactInput('')
+  }, [exactInput, exactGesture, showToast, t])
 
   const confirmPreciseLength = useCallback(() => {
     if (!startPoint || !currentPoint || startPoint.distanceTo(currentPoint) < 1) {
@@ -66,6 +84,14 @@ function App() {
         return
       }
 
+      // A gesture under way takes digits the same way drawing does
+      if (exactGestureRef.current && /^[0-9.]$/.test(e.key)) {
+        e.preventDefault()
+        setExactInput(e.key)
+        requestAnimationFrame(() => exactInputRef.current?.focus())
+        return
+      }
+
       if (isDrawing) {
         // Digits open the exact-length box; X/Y/Z lock the axis
         if (/^[0-9.]$/.test(e.key)) {
@@ -83,6 +109,8 @@ function App() {
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); return }
       if (e.key.toLowerCase() === 'r' && !mod) { rotateSelected('y', e.shiftKey ? -90 : 90); return }
       if (e.key.toLowerCase() === 'f' && !mod) { triggerCameraReset(); return }
+      if (e.key.toLowerCase() === 'p' && !mod) { cyclePivotMode(); return }
+      if (e.key.toLowerCase() === 'l' && !mod) { toggleLockSelected(); return }
 
       const step = e.shiftKey ? 50 : 5
       const nudge: Record<string, [number, number, number]> = {
@@ -94,7 +122,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, held, selectMode, lockedAxis, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset])
+  }, [isDrawing, held, selectMode, lockedAxis, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -217,6 +245,29 @@ function App() {
               </div>
             </div>
           )}
+
+          {/* Typing a number mid-gesture finishes it exactly: how far to move, or how long
+              the member should be. The mouse gets the direction, the keyboard the size. */}
+          {exactGesture && (
+            <div className="flex items-center gap-2" data-testid="exact-hud" data-keep-draw>
+              <div className="px-3 py-1.5 rounded-full text-xs font-mono font-bold border text-amber-200 border-amber-400/50 bg-amber-500/10">
+                {exactGesture === 'move' ? t.exactMove : t.exactLength}
+              </div>
+              <div className="flex items-center gap-1 bg-slate-700/80 border border-white/10 rounded-full overflow-hidden">
+                <input ref={exactInputRef} type="number" value={exactInput} data-testid="exact-input"
+                  onChange={(e) => setExactInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); confirmExact() }
+                    if (e.key === 'Escape') { e.preventDefault(); setExactInput('') }
+                    e.stopPropagation()
+                  }}
+                  placeholder={t.exactMm}
+                  className="w-28 bg-transparent px-3 py-1.5 text-xs font-mono text-white outline-none placeholder:text-slate-500" />
+                <button onClick={confirmExact} disabled={!exactInput} data-testid="exact-confirm"
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-[11px] font-bold text-white">↵</button>
+              </div>
+            </div>
+          )}
           <button onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
             className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-full text-xs font-bold shadow-lg active:scale-95">
             <Languages size={14} />{language === 'en' ? '中文' : 'English'}
@@ -272,6 +323,12 @@ function App() {
             <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
               className={toolBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
               <Rotate3d size={13} />{t.rotate3d}
+            </button>
+            {/* Where the selection turns about. The gizmo moves onto it, so the choice is visible. */}
+            <button data-testid="pivot-toggle" onClick={cyclePivotMode} title={t.pivotHint}
+              aria-label={t.pivotHint}
+              className={toolBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
+              <Crosshair size={13} />{pivotMode === 'center' ? t.pivotCenter : pivotMode === 'start' ? t.pivotStart : t.pivotEnd}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5" />
             <button data-testid="fit-view" onClick={triggerCameraReset} title="F" className={toolBtn(false, '')}>

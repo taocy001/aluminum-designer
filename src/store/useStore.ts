@@ -22,6 +22,8 @@ export interface ProfileData {
   quaternion: [number, number, number, number]
   miterCuts: MiterCut[]
   holes: Hole[]
+  /** a finished part: still visible and still a snapping reference, but nothing moves it */
+  locked?: boolean
 }
 
 export interface ConnectorData {
@@ -31,6 +33,7 @@ export interface ConnectorData {
   series?: 20 | 30 | 40
   position: [number, number, number]
   quaternion: [number, number, number, number]
+  locked?: boolean
 }
 
 type Snapshot = { profiles: ProfileData[]; connectors: ConnectorData[] }
@@ -55,6 +58,8 @@ interface State {
   loadDocument: (doc: { profiles: ProfileData[]; connectors: ConnectorData[] }) => void
   removeProfile: (id: string) => void
   removeSelected: () => void
+  /** lock or unlock the selection; locked parts are protected from moves and deletion */
+  toggleLockSelected: () => void
   clearAll: () => void
   addConnector: (connector: ConnectorData) => void
   removeConnector: (id: string) => void
@@ -127,12 +132,30 @@ export const useStore = create<State>()(
       removeSelected: () => set((state) => {
         const ids = new Set(state.selectedIds)
         if (ids.size === 0) return {}
+        // a lock protects against deletion too, or it would only be half a lock
+        const removable = (x: { id: string; locked?: boolean }) => ids.has(x.id) && !x.locked
+        if (!state.profiles.some(removable) && !state.connectors.some(removable)) return {}
         return {
           past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
           future: [],
-          profiles: state.profiles.filter((p) => !ids.has(p.id)),
-          connectors: state.connectors.filter((c) => !ids.has(c.id)),
-          selectedIds: [],
+          profiles: state.profiles.filter((p) => !removable(p)),
+          connectors: state.connectors.filter((c) => !removable(c)),
+          selectedIds: state.selectedIds.filter((id) =>
+            state.profiles.some((p) => p.id === id && p.locked) || state.connectors.some((c) => c.id === id && c.locked)),
+        }
+      }),
+
+      toggleLockSelected: () => set((state) => {
+        const ids = new Set(state.selectedIds)
+        if (ids.size === 0) return {}
+        // mixed selections lock rather than unlock: the safer of the two
+        const anyUnlocked = state.profiles.some((p) => ids.has(p.id) && !p.locked)
+          || state.connectors.some((c) => ids.has(c.id) && !c.locked)
+        return {
+          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          future: [],
+          profiles: state.profiles.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
+          connectors: state.connectors.map((c) => ids.has(c.id) ? { ...c, locked: anyUnlocked } : c),
         }
       }),
 
