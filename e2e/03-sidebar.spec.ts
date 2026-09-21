@@ -97,8 +97,10 @@ test.describe('BOM, project files, clear', () => {
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByText('导出物料清单').click()])
     const path = await dl.path()
     const csv = fs.readFileSync(path!, 'utf8')
-    expect(csv).toContain('Profile,2020,600,2')
-    expect(csv).toContain('Bracket(recommended)')
+    expect(csv.split('\n')[0]).toContain('Category,Item,Spec,Cut length (mm),Quantity')
+    expect(csv).toContain('Profile,2020,2020,600,2')
+    expect(csv).toContain('Suggested,')
+    expect(csv).toContain('Summary,Total cut length (mm)')
   })
 
   test('save then open a project round-trips the document', async ({ page }) => {

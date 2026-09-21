@@ -27,6 +27,8 @@ export interface ProfileData {
 export interface ConnectorData {
   id: string
   type: string
+  /** extrusion series the part is made for; older files default to the 20 series */
+  series?: 20 | 30 | 40
   position: [number, number, number]
   quaternion: [number, number, number, number]
 }

@@ -98,10 +98,11 @@ test.describe('Free rotation about any axis', () => {
     await clickWorld(page, [600, 10, 0])
     const c0 = (await store(page)).connectors[0]
     expect((await store(page)).selectedIds).toEqual([c0.id])
-    await expect(page.getByTestId('connector-orientation')).toHaveText('0 / 0 / 0')
+    // it lands oriented to the member it was dropped on, so compare against that, not identity
+    const placed = await page.getByTestId('connector-orientation').textContent()
 
     await page.getByTestId('rot-x-plus').click()
-    await expect(page.getByTestId('connector-orientation')).toHaveText('90 / 0 / 0')
+    await expect(page.getByTestId('connector-orientation')).not.toHaveText(placed!)
     await page.getByTestId('rot-z-plus').click()
     let quat = (await store(page)).connectors[0].quaternion
     expect(quat.some((v: number) => Math.abs(v) > 0.01)).toBe(true)

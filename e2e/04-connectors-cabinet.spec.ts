@@ -87,3 +87,80 @@ test.describe('Cabinet build', () => {
     await page.screenshot({ path: 'test-results/cabinet.png' })
   })
 })
+
+test.describe('Connectors land the right way round', () => {
+  test.beforeEach(async ({ page }) => { await openApp(page); await setView(page, [1500, 1200, 1800], [300, 300, 200]) })
+
+  const axisOf = (q: number[], local: [number, number, number]) => {
+    const [x, y, z, w] = q
+    const [vx, vy, vz] = local
+    // quaternion rotation of a unit axis, rounded for comparison
+    const ix = w * vx + y * vz - z * vy
+    const iy = w * vy + z * vx - x * vz
+    const iz = w * vz + x * vy - y * vx
+    const iw = -x * vx - y * vy - z * vz
+    return [
+      ix * w + iw * -x + iy * -z - iz * -y,
+      iy * w + iw * -y + iz * -x - ix * -z,
+      iz * w + iw * -z + ix * -y - iy * -x,
+    ].map((v) => (Math.round(v * 100) / 100) || 0)
+  }
+
+  test('an L-bracket dropped in a corner points along both members', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawExact(page, [0, 0, 0], [0, 300, 0], 600)     // upright
+    await drawMember(page, [0, 10, 0], [600, 10, 0])       // rail off its base
+    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await clickWorld(page, [0, 10, 0])
+    const c = (await store(page)).connectors[0]
+    expect(c.series).toBe(20)
+    const arms = [axisOf(c.quaternion, [1, 0, 0]), axisOf(c.quaternion, [0, 1, 0])].map((v) => v.map(Math.round).join(','))
+    expect(arms).toContain('0,1,0')                        // one arm up the post
+    expect(arms).toContain('1,0,0')                        // the other out along the rail
+  })
+
+  test('an end cap points out of the end it caps', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await page.getByRole('button', { name: '端盖', exact: true }).click()
+    await clickWorld(page, [600, 10, 0])
+    const c = (await store(page)).connectors[0]
+    expect(axisOf(c.quaternion, [0, 0, 1])).toEqual([1, 0, 0])
+  })
+
+  test('the part takes the series of the member it lands on', async ({ page }) => {
+    await enterDraw(page, '4040')
+    await drawMember(page, [0, 0, 0], [600, 20, 0])
+    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await clickWorld(page, [600, 20, 0])
+    expect((await store(page)).connectors[0].series).toBe(40)
+  })
+
+  test('the BOM lists connectors by series and derives the fasteners', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawExact(page, [0, 0, 0], [0, 300, 0], 600)
+    await drawMember(page, [0, 10, 0], [600, 10, 0])
+    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await clickWorld(page, [0, 10, 0])
+    await clickWorld(page, [600, 10, 0])
+    const table = page.getByTestId('bom-table')
+    await expect(table).toContainText('L型角码')
+    await expect(page.getByTestId('bom-fasteners')).toBeVisible()
+    await expect(table).toContainText('螺栓 M5×10')
+    await expect(table).toContainText('T型螺母 M5')
+    // two L-brackets at two bolts each
+    await expect(table.locator('div', { hasText: '螺栓 M5×10' }).last()).toContainText('×4')
+  })
+
+  test('suggestions drop as the real parts are placed', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawExact(page, [0, 0, 0], [0, 300, 0], 600)
+    await drawMember(page, [0, 10, 0], [600, 10, 0])
+    await expect(page.getByTestId('bom-suggested')).toBeVisible()
+    const before = await page.getByTestId('bom-table').textContent()
+    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await clickWorld(page, [0, 10, 0])
+    const after = await page.getByTestId('bom-table').textContent()
+    expect(after).not.toEqual(before)
+  })
+})

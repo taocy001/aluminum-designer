@@ -9,6 +9,8 @@ import { pickPoint, resolveAxisEnd, type MeshHit } from '../utils/pickUtils'
 import SnapMarker from './SnapMarker'
 import { floorY, tryAddProfile, placeConnector } from '../utils/profileFactory'
 import { specDims } from '../utils/specUtils'
+import { fitConnector } from '../utils/connectorFit'
+import Connector from './Connector'
 import { translations } from '../utils/translations'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -16,7 +18,7 @@ const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3
 const ORBIT_SLOP_PX = 5
 
 const DrawingHandler: React.FC = () => {
-  const { isDrawing, startPoint, currentPoint, snapPoint, snapKind, placementMode, activeSpec, viewMode, drawAxis, alignGuides } = useToolStore()
+  const { isDrawing, startPoint, currentPoint, snapPoint, snapKind, placementMode, activeSpec, activeConnectorType, viewMode, drawAxis, alignGuides } = useToolStore()
   const { camera, size, scene } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
 
@@ -34,6 +36,8 @@ const DrawingHandler: React.FC = () => {
   const lastRay = useRef<THREE.Ray | null>(null)
   const lastCursor = useRef<THREE.Vector2 | null>(null)
   const rightDownRef = useRef<{ x: number; y: number } | null>(null)
+  /** surface the pointer is over, so a face-mounted part knows which side it was dropped on */
+  const hoverNormal = useRef<THREE.Vector3 | null>(null)
   /** left press in draw mode: a click places a point, a press-and-drag orbits the camera */
   const leftDownRef = useRef<{ x: number; y: number; ray: THREE.Ray; cursor: THREE.Vector2; orbiting: boolean } | null>(null)
 
@@ -132,6 +136,7 @@ const DrawingHandler: React.FC = () => {
     }
     const profiles = useStore.getState().profiles
     const pick = pickPoint(ray, cursor, camera, size, profiles, hitMember(ray))
+    hoverNormal.current = pick.normal ?? null
     if (pick.kind === 'none') { ts.setHover(null, null); ts.updateDraw({ alignGuides: [] }); return }
     const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
     ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null)
@@ -164,7 +169,7 @@ const DrawingHandler: React.FC = () => {
       if (!ts.activeConnectorType) return
       const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray))
       if (pick.kind === 'none') return
-      placeConnector(pick.point, ts.activeConnectorType)
+      placeConnector(pick.point, ts.activeConnectorType, pick.normal ?? null)
       return
     }
 
@@ -202,6 +207,15 @@ const DrawingHandler: React.FC = () => {
 
   const { hh } = specDims(activeSpec)
 
+  // the preview follows the same rule the placement will use, normal included
+  const connectorPreview = useMemo(() => {
+    if (placementMode !== 'connector' || !activeConnectorType || !currentPoint) {
+      return { quaternion: [0, 0, 0, 1] as [number, number, number, number], series: 20 as 20 | 30 | 40 }
+    }
+    const fit = fitConnector(activeConnectorType, currentPoint, useStore.getState().profiles, hoverNormal.current)
+    return { quaternion: fit.quaternion, series: fit.series }
+  }, [placementMode, activeConnectorType, currentPoint])
+
   return (
     <>
       {/* Invisible catcher sphere — receives pointer events regardless of camera angle */}
@@ -227,8 +241,12 @@ const DrawingHandler: React.FC = () => {
         </mesh>
       )}
 
-      {/* Snap indicator (endpoint / centerline / alignment) — constant screen size */}
-      {viewMode === 'draw' && snapPoint && <SnapMarker position={snapPoint} kind={snapKind ?? 'endpoint'} />}
+      {/* Snap indicator (endpoint / centerline / alignment) — constant screen size.
+          While placing a connector the ghost itself shows the spot, and the marker would
+          sit right on top of a part that is only a few tens of millimetres across. */}
+      {viewMode === 'draw' && snapPoint && placementMode !== 'connector' && (
+        <SnapMarker position={snapPoint} kind={snapKind ?? 'endpoint'} />
+      )}
 
       {/* Hover cursor on the floor when not snapped */}
       {viewMode === 'draw' && !isDrawing && currentPoint && !snapPoint && (
@@ -243,14 +261,15 @@ const DrawingHandler: React.FC = () => {
         <Line key={i} points={[g.from, g.to]} color="#a78bfa" lineWidth={1} dashed dashSize={8} gapSize={5} />
       ))}
 
-      {/* Connector preview */}
-      {viewMode === 'draw' && placementMode === 'connector' && currentPoint && (
-        <group position={currentPoint} raycast={() => null}>
-          <mesh>
-            <boxGeometry args={[20, 4, 20]} />
-            <meshStandardMaterial color="#10b981" transparent opacity={0.6} />
-          </mesh>
-        </group>
+      {/* Connector preview: the real part, oriented the way it would land */}
+      {viewMode === 'draw' && placementMode === 'connector' && activeConnectorType && currentPoint && (
+        <Connector
+          type={activeConnectorType}
+          series={connectorPreview.series}
+          position={currentPoint.toArray() as [number, number, number]}
+          quaternion={connectorPreview.quaternion}
+          preview
+        />
       )}
     </>
   )

@@ -5,26 +5,13 @@ import { useStore, ProfileSpec, type ProfileData, type ConnectorData } from '../
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
 import { computeFrameBounds } from '../utils/jointUtils'
+import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel } from '../utils/connectorCatalog'
+import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
 import { ALL_SPECS } from '../utils/specUtils'
-import { directionLabel, duplicateSelected, flipProfile, orientationDegrees, rotateSelected, setConnectorPosition, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
+import { directionLabel, duplicateSelected, flipProfile, orientationDegrees, rotateSelected, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
-export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = [
-  { type: 'bracket',       labelZh: 'L型角码',   labelEn: 'L-Bracket' },
-  { type: 'inside-corner', labelZh: '内角码',     labelEn: 'Inside Corner' },
-  { type: 'gusset',        labelZh: '加强筋',     labelEn: 'Gusset' },
-  { type: 'flat-plate',    labelZh: '直连板',     labelEn: 'Flat Plate' },
-  { type: 't-bracket',     labelZh: 'T型角码',    labelEn: 'T-Bracket' },
-  { type: 'cross-bracket', labelZh: '十字连接板', labelEn: 'Cross Plate' },
-  { type: 'corner-3way',   labelZh: '三维角码',   labelEn: '3-Way Corner' },
-  { type: 'joining-plate', labelZh: '对接板',     labelEn: 'Joining Plate' },
-  { type: 'end-cap',       labelZh: '端盖',       labelEn: 'End Cap' },
-  { type: 't-nut',         labelZh: '滑块螺母',   labelEn: 'T-Nut' },
-  { type: 'hinge',         labelZh: '合页',       labelEn: 'Hinge' },
-  { type: 'pivot',         labelZh: '轴承座',     labelEn: 'Pivot' },
-  { type: 'caster-mount',  labelZh: '脚轮座',     labelEn: 'Caster Mount' },
-  { type: 'foot',          labelZh: '调节脚',     labelEn: 'Leveling Foot' },
-]
+export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
 
 function downloadText(filename: string, text: string, mime: string) {
   const blob = new Blob([text], { type: mime })
@@ -137,25 +124,9 @@ const Sidebar: React.FC = () => {
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
   const selTrim = selectedProfile ? trims.get(selectedProfile.id) : undefined
 
-  // BOM: group by spec + cut length
-  const bom = useMemo(() => {
-    const map = new Map<string, { spec: string; cut: number; qty: number }>()
-    for (const p of profiles) {
-      const cut = Math.round(trims.get(p.id)?.cutLength ?? p.length)
-      const key = `${p.spec}-${cut}`
-      const row = map.get(key) ?? { spec: p.spec, cut, qty: 0 }
-      row.qty++
-      map.set(key, row)
-    }
-    return [...map.values()].sort((a, b) => a.spec.localeCompare(b.spec) || b.cut - a.cut)
-  }, [profiles, trims])
-  const connectorBom = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const c of connectors) map.set(c.type, (map.get(c.type) ?? 0) + 1)
-    return [...map.entries()]
-  }, [connectors])
-  const totalCut = useMemo(() => profiles.reduce((s, p) => s + (trims.get(p.id)?.cutLength ?? p.length), 0), [profiles, trims])
-  const buttEnds = useMemo(() => [...trims.values()].reduce((n, tr) => n + (tr.start.butt ? 1 : 0) + (tr.end.butt ? 1 : 0), 0), [trims])
+  const bom = useMemo(() => buildBom(profiles, connectors, trims, language), [profiles, connectors, trims, language])
+  const totalCut = bom.totalCutLength
+  const buttEnds = bom.buttEnds
   const bounds = useMemo(() => computeFrameBounds(profiles, trims), [profiles, trims])
   const overall = bounds ? bounds.getSize(new THREE.Vector3()) : null
 
@@ -181,11 +152,8 @@ const Sidebar: React.FC = () => {
     showToast(t.toastLog, 'info')
   }
   const handleExportBOM = () => {
-    const lines = [t.bomHeader]
-    for (const r of bom) lines.push(`Profile,${r.spec},${r.cut},${r.qty}`)
-    for (const [type, qty] of connectorBom) lines.push(`Connector,${type},,${qty}`)
-    lines.push(`Bracket(recommended),corner-bracket,,${buttEnds}`)
-    downloadText('BOM.csv', '﻿' + lines.join('\n'), 'text/csv;charset=utf-8;')
+    const dims = overall ? `${Math.round(overall.x)}x${Math.round(overall.z)}x${Math.round(overall.y)}` : ''
+    downloadText('BOM.csv', '﻿' + bomToCsv(bom, dims), 'text/csv;charset=utf-8;')
   }
   const handleExportJSON = () => {
     const doc = { version: 1, savedAt: new Date().toISOString(), profiles, connectors }
@@ -322,8 +290,28 @@ const Sidebar: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.connectorProps}</span>
-                  <span className="text-emerald-400 font-mono">
-                    {CONNECTOR_LIST.find((x) => x.type === selectedConnector.type)?.[language === 'zh' ? 'labelZh' : 'labelEn'] ?? selectedConnector.type}
+                  <span className="text-emerald-400 font-mono">{connectorLabel(selectedConnector.type, language)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500">{t.series}</span>
+                  <select
+                    value={selectedConnector.series ?? 20}
+                    data-testid="connector-series"
+                    onChange={(e) => setConnectorSeries(selectedConnector.id, Number(e.target.value) as 20 | 30 | 40)}
+                    className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-emerald-400 outline-none"
+                  >
+                    {[20, 30, 40].map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">{t.fasteners}</span>
+                  <span className="font-mono text-slate-300" data-testid="connector-fasteners">
+                    {(() => {
+                      const r = connectorEntry(selectedConnector.type)?.fasteners
+                      if (!r || (!r.bolts && !r.nuts)) return '—'
+                      const series = (selectedConnector.series ?? 20) as 20 | 30 | 40
+                      return `${r.bolts}× ${boltLabel(series, language)} · ${r.nuts}× ${nutLabel(series, language)}`
+                    })()}
                   </span>
                 </div>
                 <div className="space-y-1">
@@ -426,16 +414,32 @@ const Sidebar: React.FC = () => {
             <span className="font-mono" data-testid="bom-penetrations">{conflicts.length ? t.penetrationsCount(conflicts.length) : t.penetrationsOk}</span>
           </button>
         )}
-        {bom.length > 0 && (
-          <div className="max-h-28 overflow-y-auto rounded-lg border border-white/5 text-[10px] font-mono" data-testid="bom-table">
-            {bom.map((r) => (
-              <div key={`${r.spec}-${r.cut}`} className="flex justify-between px-2 py-1 odd:bg-white/5">
-                <span className="text-slate-400">{r.spec}</span><span className="text-slate-200">{r.cut} mm</span><span className="text-blue-400">×{r.qty}</span>
+        {(bom.profiles.length > 0 || bom.connectors.length > 0) && (
+          <div className="max-h-44 overflow-y-auto rounded-lg border border-white/5 text-[10px] font-mono" data-testid="bom-table">
+            {bom.profiles.map((r) => (
+              <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
+                <span className="text-slate-400">{r.label}</span><span className="text-slate-200">{r.length} mm</span><span className="text-blue-400">×{r.qty}</span>
               </div>
             ))}
-            {connectorBom.map(([type, qty]) => (
-              <div key={type} className="flex justify-between px-2 py-1 odd:bg-white/5">
-                <span className="text-slate-400">{CONNECTOR_LIST.find((c) => c.type === type)?.[language === 'zh' ? 'labelZh' : 'labelEn'] ?? type}</span><span /><span className="text-emerald-400">×{qty}</span>
+            {bom.connectors.map((r) => (
+              <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
+                <span className="text-slate-400 truncate">{r.label}</span><span className="text-slate-500">{r.spec}</span><span className="text-emerald-400">×{r.qty}</span>
+              </div>
+            ))}
+            {bom.fasteners.length > 0 && (
+              <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-fasteners">{t.fasteners}</div>
+            )}
+            {bom.fasteners.map((r) => (
+              <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
+                <span className="text-slate-400 truncate">{r.label}</span><span /><span className="text-amber-400">×{r.qty}</span>
+              </div>
+            ))}
+            {bom.suggested.length > 0 && (
+              <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-suggested">{t.suggested}</div>
+            )}
+            {bom.suggested.map((r) => (
+              <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
+                <span className="text-slate-500 truncate">{r.label}</span><span /><span className="text-slate-400">×{r.qty}</span>
               </div>
             ))}
           </div>
