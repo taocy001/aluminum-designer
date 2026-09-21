@@ -417,6 +417,22 @@ export function setProfilePosition(id: string, position: [number, number, number
   return applyProfiles([{ ...p, position: position.map(round3) as [number, number, number] }])
 }
 
+/**
+ * Move a member's far endpoint while keeping its start fixed.
+ * Each coordinate commits independently; zero-length results are rejected.
+ */
+export function setProfileEnd(id: string, end: [number, number, number]): boolean {
+  const p = useStore.getState().profiles.find((q) => q.id === id)
+  if (!p) return false
+  if (p.locked) { toast(t().toastLocked); return false }
+  if (end.some((v) => !isFinite(v))) return false
+  const { start } = getProfileEndpoints(p)
+  const target = new THREE.Vector3(...end)
+  const rebuilt = buildProfile(start, target, p.spec)
+  if (!rebuilt) { toast(t().toastTooShort); return false }
+  return applyProfiles([{ ...p, length: rebuilt.length, position: rebuilt.position, quaternion: rebuilt.quaternion }])
+}
+
 export function setProfileSpec(id: string, spec: ProfileSpec): boolean {
   const p = useStore.getState().profiles.find((q) => q.id === id)
   if (!p) return false

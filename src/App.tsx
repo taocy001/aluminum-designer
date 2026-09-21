@@ -8,7 +8,7 @@ import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X, Crosshair } from 'lucide-react'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X, Crosshair, Layers } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -20,15 +20,33 @@ function App() {
     held, putDown, triggerCameraReset, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
     pivotMode, cyclePivotMode, quickMenuAt, openQuickMenu, closeQuickMenu,
+    workPlaneY, setWorkPlaneY,
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
     toasts, showToast, dragConflict, hoverProfileId, snapGuides, gizmoHover,
-    dragMoved, resize,
+    dragMoved, resize, hoverCandidates,
   } = useToolStore()
   const t = translations[language]
 
   // Exact-length input while drawing
+  const [workPlaneText, setWorkPlaneText] = useState('0')
+  // the highest point of whatever is selected, so the work plane can be put on top of it
+  const selectionTopY = useStore((st) => {
+    const ids = new Set(st.selectedIds)
+    if (ids.size === 0) return null
+    let top = -Infinity
+    for (const p of st.profiles) {
+      if (!ids.has(p.id)) continue
+      const [x, y, z, w] = p.quaternion
+      const dy = 2 * (y * z - w * x)
+      top = Math.max(top, p.position[1], p.position[1] + dy * p.length)
+    }
+    for (const c of st.connectors) if (ids.has(c.id)) top = Math.max(top, c.position[1])
+    for (const b of st.panels) if (ids.has(b.id)) top = Math.max(top, b.position[1] + b.height / 2)
+    return isFinite(top) ? Math.round(top) : null
+  })
+
   const [preciseInput, setPreciseInput] = useState('')
   const preciseInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => { if (!isDrawing) setPreciseInput('') }, [isDrawing])
@@ -226,11 +244,30 @@ function App() {
             </div>
           )}
 
+          {/* how many parts share these pixels, and which one is highlighted */}
+          {!isDragging && !isDrawing && hoverCandidates.count > 1 && (
+            <div data-testid="stacked-hud"
+              className="absolute top-[124px] left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-900/90 border border-white/15 text-[10px] font-bold text-slate-300 shadow-lg pointer-events-none z-10">
+              {t.stacked(hoverCandidates.index + 1, hoverCandidates.count)}
+            </div>
+          )}
+
           {/* what the drag has locked onto right now */}
           {isDragging && snapGuides.length > 0 && (
             <div data-testid="snap-hud"
               className="absolute top-[88px] left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/50 text-[11px] font-bold text-cyan-200 shadow-lg pointer-events-none z-10">
               {[...new Set(snapGuides.map((g) => t.snapAlign[g.kind] ?? g.kind))].join(' · ')}
+            </div>
+          )}
+
+          {/* Before the first click: what the start point would attach to. A click that finds
+              nothing lands on the work plane, and that used to be invisible until the member
+              appeared somewhere else entirely. */}
+          {held !== null && !isDrawing && !isDragging && (
+            <div data-testid="start-hud"
+              className={`absolute top-[88px] left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full border text-[11px] font-bold shadow-lg pointer-events-none z-10 ${
+                snapKind ? 'bg-slate-900/90 border-cyan-400/50 text-cyan-200' : 'bg-slate-900/90 border-white/15 text-slate-400'}`}>
+              {t.startsOn}：{snapKind ? (t.snapNames[snapKind] ?? snapKind) : t.startsOnPlane(workPlaneY)}
             </div>
           )}
 
@@ -325,6 +362,20 @@ function App() {
                 ? <><Pencil size={13} />{heldName}<X size={11} className="opacity-60" /></>
                 : <><Hand size={13} />{t.emptyHand}</>}
             </button>
+            {/* The height a click falls to when nothing is under it. It used to be the floor,
+                silently; a member aimed at a post top then landed metres away. */}
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg" title={t.workPlaneHint}>
+              <Layers size={13} className={workPlaneY > 0 ? 'text-amber-400' : 'text-slate-400'} />
+              <span className="text-[11px] font-bold text-slate-400">{t.workPlane}</span>
+              <input type="number" step={10} min={0} value={workPlaneText} data-testid="work-plane"
+                onChange={(e) => { setWorkPlaneText(e.target.value); setWorkPlaneY(parseFloat(e.target.value)) }}
+                className={`w-14 bg-slate-950 border rounded px-1.5 py-0.5 text-[11px] font-mono outline-none ${
+                  workPlaneY > 0 ? 'border-amber-500/40 text-amber-300' : 'border-white/10 text-slate-300'}`} />
+              <button data-testid="work-plane-from-selection" title={t.workPlaneFromSelection}
+                disabled={selectionTopY === null}
+                onClick={() => { if (selectionTopY !== null) { setWorkPlaneY(selectionTopY); setWorkPlaneText(String(selectionTopY)) } }}
+                className="px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:bg-white/10 disabled:opacity-30">↥</button>
+            </div>
             <div className="w-px h-5 bg-white/10 mx-0.5" />
             <button data-testid="select-toggle" onClick={() => { putDown(); setSelectMode(!selectMode) }}
               className={toolBtn(selectMode, 'bg-violet-600/30 text-violet-400 border border-violet-500/30')}>

@@ -105,7 +105,8 @@ export function modelPointFromHit(hit: MeshHit, profiles: ProfileData[], ray?: T
  *  4. the floor grid.
  */
 export function pickPoint(
-  ray: THREE.Ray, cursor: THREE.Vector2, camera: THREE.Camera, size: ScreenSize, profiles: ProfileData[], meshHit?: MeshHit | null,
+  ray: THREE.Ray, cursor: THREE.Vector2, camera: THREE.Camera, size: ScreenSize, profiles: ProfileData[],
+  meshHit?: MeshHit | null, planeY = 0,
 ): PickResult {
   // 1. a nearby endpoint on screen — but never one hidden behind the body under the cursor:
   //    it must belong to the hit member or be closer to the camera than the hit point
@@ -139,9 +140,12 @@ export function pickPoint(
   }
   if (best) return best
 
+  // Nothing to attach to: the point lands on the work plane, which is the floor by default
+  // but can be raised so a rail can be started in mid-air at a known height.
+  const plane = planeY === 0 ? GROUND : new THREE.Plane(new THREE.Vector3(0, 1, 0), -planeY)
   const hit = new THREE.Vector3()
-  if (ray.intersectPlane(GROUND, hit)) {
-    hit.y = 0
+  if (ray.intersectPlane(plane, hit)) {
+    hit.y = planeY
     // Align the floor point with existing endpoint X / Z coordinates (independently), like CAD alignment snaps
     const guides: { from: THREE.Vector3; to: THREE.Vector3 }[] = []
     let bestX: { v: number; from: THREE.Vector3 } | null = null, bestXPx = ALIGN_PX
@@ -149,10 +153,10 @@ export function pickPoint(
     for (const p of profiles) {
       const { start, end } = getProfileEndpoints(p)
       for (const ep of [start, end]) {
-        const ax = new THREE.Vector3(ep.x, 0, hit.z)
+        const ax = new THREE.Vector3(ep.x, planeY, hit.z)
         const pxX = toScreen(ax, camera, size).distanceTo(cursor)
         if (pxX < bestXPx) { bestXPx = pxX; bestX = { v: ep.x, from: ep.clone() } }
-        const az = new THREE.Vector3(hit.x, 0, ep.z)
+        const az = new THREE.Vector3(hit.x, planeY, ep.z)
         const pxZ = toScreen(az, camera, size).distanceTo(cursor)
         if (pxZ < bestZPx) { bestZPx = pxZ; bestZ = { v: ep.z, from: ep.clone() } }
       }
