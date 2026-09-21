@@ -1,0 +1,115 @@
+import type { ProfileSpec } from '../store/useStore'
+import { specDims } from './specUtils'
+
+/** Extrusion series a connector is made for: 20, 30 or 40 */
+export type ConnectorSeries = 20 | 30 | 40
+
+/**
+ * How a connector wants to sit on the frame. Each part is modelled in its own way, so the
+ * fit also records which of the part's own axes carries the meaning — guessing a convention
+ * and hoping the geometry matches is how parts end up mounted edge-on.
+ *
+ *  - 'corner': two arms run back along two members meeting at a point
+ *  - 'inline': one axis runs along a single member, pointing outward
+ *  - 'face':   a plate lies against a member, its normal out of the mounting face
+ *  - 'free':   no inference, placed as dropped
+ */
+export type ConnectorFit = 'corner' | 'inline' | 'face' | 'free'
+
+/** A local axis of the modelled part */
+export type LocalAxis = 'x' | 'y' | 'z' | '-x' | '-y' | '-z'
+
+export interface FitAxes {
+  /** corner: the two arms. inline: [alongMember]. face: [plateNormal, alongMember?] */
+  primary: LocalAxis
+  secondary?: LocalAxis
+  /**
+   * inline parts only: does the primary axis point out of the member's end, or back into it?
+   * An end cap faces out; a levelling foot's stem goes up into the post it stands under.
+   */
+  towards?: 'out' | 'in'
+}
+
+export interface FastenerRecipe {
+  /** bolts per connector, with the thread that matches the series */
+  bolts: number
+  /** T-slot nuts per connector */
+  nuts: number
+}
+
+export interface ConnectorSpecEntry {
+  type: string
+  labelZh: string
+  labelEn: string
+  fit: ConnectorFit
+  /** how the modelled geometry is laid out, read off Connector.tsx */
+  axes: FitAxes
+  fasteners: FastenerRecipe
+  /** a bracket in the sense of "what a butt joint needs" */
+  isCornerBracket?: boolean
+}
+
+export const CONNECTOR_CATALOG: ConnectorSpecEntry[] = [
+  // arms along +X and +Y
+  { type: 'bracket',       labelZh: 'L型角码',   labelEn: 'L-Bracket',     fit: 'corner', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 }, isCornerBracket: true },
+  { type: 'inside-corner', labelZh: '内角码',     labelEn: 'Inside Corner', fit: 'corner', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 }, isCornerBracket: true },
+  { type: 'gusset',        labelZh: '加强筋',     labelEn: 'Gusset',        fit: 'corner', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 } },
+  // the T's crossbar lies along X on the through member, the stem along Y on the branch
+  { type: 't-bracket',     labelZh: 'T型角码',    labelEn: 'T-Bracket',     fit: 'corner', axes: { primary: 'y', secondary: 'x' }, fasteners: { bolts: 3, nuts: 3 }, isCornerBracket: true },
+  { type: 'corner-3way',   labelZh: '三维角码',   labelEn: '3-Way Corner',  fit: 'corner', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 3, nuts: 3 }, isCornerBracket: true },
+  // plates that bridge two members end to end: the long side runs along the member
+  { type: 'flat-plate',    labelZh: '直连板',     labelEn: 'Flat Plate',    fit: 'inline', axes: { primary: 'x' }, fasteners: { bolts: 4, nuts: 4 } },
+  { type: 'joining-plate', labelZh: '对接板',     labelEn: 'Joining Plate', fit: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 2, nuts: 2 } },
+  { type: 'end-cap',       labelZh: '端盖',       labelEn: 'End Cap',       fit: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 0, nuts: 0 } },
+  // parts that stand under a post: their own axis is Y, pointing back up into the member
+  { type: 'caster-mount',  labelZh: '脚轮座',     labelEn: 'Caster Mount',  fit: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 4, nuts: 4 } },
+  { type: 'foot',          labelZh: '调节脚',     labelEn: 'Leveling Foot', fit: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 1, nuts: 1 } },
+  // plates lying against a face: `primary` is the plate normal
+  { type: 'cross-bracket', labelZh: '十字连接板', labelEn: 'Cross Plate',   fit: 'face',   axes: { primary: 'z' }, fasteners: { bolts: 4, nuts: 4 } },
+  { type: 't-nut',         labelZh: '滑块螺母',   labelEn: 'T-Nut',         fit: 'face',   axes: { primary: 'y' }, fasteners: { bolts: 1, nuts: 0 } },
+  { type: 'hinge',         labelZh: '合页',       labelEn: 'Hinge',         fit: 'face',   axes: { primary: 'x', secondary: 'z' }, fasteners: { bolts: 4, nuts: 4 } },
+  { type: 'pivot',         labelZh: '轴承座',     labelEn: 'Pivot',         fit: 'face',   axes: { primary: 'y' }, fasteners: { bolts: 2, nuts: 2 } },
+]
+
+const BY_TYPE = new Map(CONNECTOR_CATALOG.map((c) => [c.type, c]))
+
+export function connectorEntry(type: string): ConnectorSpecEntry | undefined {
+  return BY_TYPE.get(type)
+}
+
+export function connectorLabel(type: string, language: 'zh' | 'en'): string {
+  const e = BY_TYPE.get(type)
+  if (!e) return type
+  return language === 'zh' ? e.labelZh : e.labelEn
+}
+
+/** The series a profile spec belongs to: 2020 and 2040 are 20 series, 4040 is 40 */
+export function seriesOf(spec: ProfileSpec): ConnectorSeries {
+  const { w, h } = specDims(spec)
+  const base = Math.min(w, h)
+  return base >= 40 ? 40 : base >= 30 ? 30 : 20
+}
+
+/** Connector geometry is drawn for the 20 series and scaled from there */
+export function connectorScale(series: ConnectorSeries): number {
+  return series / 20
+}
+
+/** Thread that goes with a series, the way suppliers pair them */
+export function boltThread(series: ConnectorSeries): string {
+  return series === 40 ? 'M8' : series === 30 ? 'M6' : 'M5'
+}
+
+/** Typical bolt length for the outside-bracket case */
+export function boltLength(series: ConnectorSeries): number {
+  return series === 40 ? 16 : series === 30 ? 12 : 10
+}
+
+export function boltLabel(series: ConnectorSeries, language: 'zh' | 'en'): string {
+  const name = `${boltThread(series)}×${boltLength(series)}`
+  return language === 'zh' ? `螺栓 ${name}` : `Bolt ${name}`
+}
+
+export function nutLabel(series: ConnectorSeries, language: 'zh' | 'en'): string {
+  return language === 'zh' ? `T型螺母 ${boltThread(series)}` : `T-nut ${boltThread(series)}`
+}

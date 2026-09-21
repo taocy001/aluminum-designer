@@ -201,6 +201,14 @@ export function setProfileSpec(id: string, spec: ProfileSpec): boolean {
   return applyProfiles([cand])
 }
 
+/** Change which extrusion series a connector is made for */
+export function setConnectorSeries(id: string, series: 20 | 30 | 40): boolean {
+  const c = useStore.getState().connectors.find((q) => q.id === id)
+  if (!c) return false
+  useStore.getState().commitTransform({ connectors: [{ id, updates: { series } }] })
+  return true
+}
+
 export function setConnectorPosition(id: string, position: [number, number, number]): boolean {
   const c = useStore.getState().connectors.find((q) => q.id === id)
   if (!c || position.some((v) => !isFinite(v))) return false

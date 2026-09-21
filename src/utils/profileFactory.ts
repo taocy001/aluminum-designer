@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { useStore, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
+import { fitConnector } from './connectorFit'
 import { specDims } from './specUtils'
 import { translations } from './translations'
 
@@ -71,11 +72,15 @@ export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: Pr
   return true
 }
 
-export function placeConnector(point: THREE.Vector3, type: string): void {
+/** Place a connector, oriented to the members it was dropped on */
+export function placeConnector(point: THREE.Vector3, type: string, surfaceNormal?: THREE.Vector3 | null): void {
+  const profiles = useStore.getState().profiles
+  const fit = fitConnector(type, point, profiles, surfaceNormal)
   useStore.getState().addConnector({
     id: nextId('c'),
     type,
+    series: fit.series,
     position: [clean(point.x), clean(point.y), clean(point.z)],
-    quaternion: [0, 0, 0, 1],
+    quaternion: fit.quaternion,
   })
 }

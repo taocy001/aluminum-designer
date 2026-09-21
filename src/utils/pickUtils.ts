@@ -70,6 +70,8 @@ export interface PickResult {
   point: THREE.Vector3
   kind: PickKind
   profileId?: string
+  /** outward normal of the surface the pointer was over, when a body was hit */
+  normal?: THREE.Vector3
   /** floor picks: guides to the endpoints whose X/Z the point was aligned with */
   guides?: { from: THREE.Vector3; to: THREE.Vector3 }[]
 }
@@ -86,13 +88,13 @@ export function modelPointFromHit(hit: MeshHit, profiles: ProfileData[], ray?: T
   const { start, end } = getProfileEndpoints(p)
   const dir = getProfileDir(p)
   const nd = hit.normal.dot(dir)
-  if (Math.abs(nd) > 0.9) return { point: (nd > 0 ? end : start).clone(), kind: 'endpoint', profileId: p.id }
+  if (Math.abs(nd) > 0.9) return { point: (nd > 0 ? end : start).clone(), kind: 'endpoint', profileId: p.id, normal: hit.normal.clone() }
   // side face: measure along the centerline where the sight line passes it (avoids the surface-depth offset)
   const tRay = ray ? closestParamLineToRay(start, dir, ray) : null
   const t = tRay !== null && tRay !== undefined ? THREE.MathUtils.clamp(tRay, 0, p.length) : hit.point.clone().sub(start).dot(dir)
   if (t <= END_ZONE) return { point: start.clone(), kind: 'endpoint', profileId: p.id }
   if (t >= p.length - END_ZONE) return { point: end.clone(), kind: 'endpoint', profileId: p.id }
-  return { point: start.clone().addScaledVector(dir, roundToGrid(t)), kind: 'segment', profileId: p.id }
+  return { point: start.clone().addScaledVector(dir, roundToGrid(t)), kind: 'segment', profileId: p.id, normal: hit.normal.clone() }
 }
 
 /**
