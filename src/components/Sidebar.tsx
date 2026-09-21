@@ -78,7 +78,7 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
 
 const Sidebar: React.FC = () => {
   const { profiles, connectors, selectedIds, removeSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
-  const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, placementMode, viewMode, setViewMode, language, showToast } = useToolStore()
+  const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -131,11 +131,11 @@ const Sidebar: React.FC = () => {
   const overall = bounds ? bounds.getSize(new THREE.Vector3()) : null
 
   const handleSpecClick = (spec: ProfileSpec) => {
-    if (placementMode === 'profile' && activeSpec === spec && viewMode === 'draw') setViewMode('navigate')
+    if (held === 'profile' && activeSpec === spec) putDown()
     else setActiveSpec(spec)
   }
   const handleConnectorClick = (type: string) => {
-    if (placementMode === 'connector' && activeConnectorType === type && viewMode === 'draw') setViewMode('navigate')
+    if (held === 'connector' && activeConnectorType === type) putDown()
     else setActiveConnector(type)
   }
   const handleClearAll = () => {
@@ -210,7 +210,7 @@ const Sidebar: React.FC = () => {
               {ALL_SPECS.map((spec) => (
                 <button key={spec} onClick={() => handleSpecClick(spec)} data-testid={`spec-${spec}`}
                   className={`px-1 py-2 rounded-lg text-[11px] font-bold transition-all ${
-                    placementMode === 'profile' && activeSpec === spec && viewMode === 'draw'
+                    held === 'profile' && activeSpec === spec
                       ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                   {spec}
                 </button>
@@ -221,9 +221,9 @@ const Sidebar: React.FC = () => {
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.connectors}</label>
             <div className="grid grid-cols-2 gap-1">
               {CONNECTOR_LIST.map(({ type, labelZh, labelEn }) => (
-                <button key={type} onClick={() => handleConnectorClick(type)}
+                <button key={type} onClick={() => handleConnectorClick(type)} data-testid={`connector-${type}`}
                   className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all text-left ${
-                    placementMode === 'connector' && activeConnectorType === type && viewMode === 'draw'
+                    held === 'connector' && activeConnectorType === type
                       ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                   {language === 'zh' ? labelZh : labelEn}
                 </button>

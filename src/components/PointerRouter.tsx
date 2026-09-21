@@ -79,7 +79,12 @@ const PointerRouter: React.FC = () => {
       })
     }
 
-    /** true when the pointer is close enough to an end of the single selected member to stretch it */
+    /**
+     * True when the pointer is close enough to an end of the single selected member for that
+     * end to own the press. What the end then does depends on the hand — stretch when it is
+     * empty, start a new member when it holds a profile — but either way the gizmo, which is
+     * centred on the member and reaches out over both ends, must step aside.
+     */
     const reachingForEnd = (cursor: THREE.Vector2, rect: DOMRect, ray: THREE.Ray): boolean => {
       const store = useStore.getState()
       if (store.selectedIds.length !== 1) return false
@@ -133,15 +138,16 @@ const PointerRouter: React.FC = () => {
           ts.setGizmoHover(null)
         }
       }
-      if (ts.viewMode === 'draw') {
-        // show what a press would grab, but only while no line is being drawn
-        const pick = ts.isDrawing || ts.placementMode !== 'profile' ? null : pickFor(e)
-        ts.setHoverProfile(pick?.kind === 'profile' ? pick.id : null)
-        ts.setHoverEnd(null)
-        return
-      }
-      const pick = pickFor(e)
+      // A half-drawn line owns the pointer, and a connector in hand is aimed at a surface
+      // rather than at a part; otherwise the hover works the same whatever is in hand.
+      const busy = ts.isDrawing || ts.held === 'connector'
+      const pick = busy ? null : pickFor(e)
       ts.setHoverProfile(pick?.kind === 'profile' ? pick.id : null)
+
+      // End faces mean two different things: with a profile in hand they are where the next
+      // member starts, with an empty hand they are the stretch grip. The hand decides, so
+      // the grip only offers itself when nothing is held.
+      if (ts.held !== null) { ts.setHoverEnd(null); return }
 
       // which end face is the pointer reaching for, if any
       const store = useStore.getState()
@@ -197,10 +203,10 @@ const PointerRouter: React.FC = () => {
         }
       }
 
-      // In draw mode a press on a member is a move, not a drawing click: the press is armed
-      // here and DrawingHandler skips placing a point once the drag has started.
-      if (ts.viewMode === 'draw') {
-        if (ts.isDrawing || ts.placementMode !== 'profile') return
+      // With a part in hand a press on a member is a move, not a drawing click: the press is
+      // armed here and DrawingHandler skips placing a point once the drag has started.
+      if (ts.held !== null) {
+        if (ts.isDrawing || ts.held !== 'profile') return
         const { cursor, rect } = cursorOf(e)
         const ray = rayOf(cursor, rect)
         const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height }, useStore.getState().profiles, [])
@@ -208,7 +214,6 @@ const PointerRouter: React.FC = () => {
         pendingDrawDrag.current = { x: e.clientX, y: e.clientY, id: hit.id, point: hit.point.clone(), shift: e.shiftKey, alt: e.altKey }
         return
       }
-      if (ts.viewMode !== 'navigate') return
       const { cursor: downCursor, rect: downRect } = cursorOf(e)
       const downRay = rayOf(downCursor, downRect)
       const pickHere = pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height }, useStore.getState().profiles, useStore.getState().connectors)

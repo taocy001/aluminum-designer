@@ -3,8 +3,8 @@ import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, dragWor
 
 async function toNavigate(page: Page) {
   await page.keyboard.press('Escape')
-  if ((await tool(page)).viewMode !== 'navigate') await page.keyboard.press('Escape')
-  expect((await tool(page)).viewMode).toBe('navigate')
+  if ((await tool(page)).held !== null) await page.keyboard.press('Escape')
+  expect((await tool(page)).held).toBe(null)
 }
 
 /** unit direction of a member, from its quaternion */

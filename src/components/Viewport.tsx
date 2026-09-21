@@ -100,6 +100,7 @@ const DevHook: React.FC = () => {
     const w = window as any
     w.__aluframe = w.__aluframe ?? {}
     w.__aluframe.camera = camera
+    w.__aluframe.controls = controls
     w.__aluframe.spriteCount = () => {
       let n = 0
       scene.traverse((o: THREE.Object3D) => { if ((o as THREE.Sprite).isSprite) n++ })
@@ -183,15 +184,14 @@ const SnapGuides: React.FC = () => {
 
 const Viewport: React.FC = () => {
   const { profiles, connectors, selectedIds } = useStore()
-  const { viewMode, isDragging, showDimensionLabels, selectMode } = useToolStore()
+  const { isDragging, showDimensionLabels, selectMode } = useToolStore()
   const { trims, conflicts, conflictIds } = useMemo(() => analyzeFrame(profiles), [profiles])
 
   const orbitEnabled = !isDragging && !selectMode
-  // Left button orbits in both modes; in draw mode a plain click (no travel) places a point
-  // instead, which DrawingHandler decides on release.
-  const mouseButtons = viewMode === 'draw'
-    ? { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE }
-    : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
+  // One mapping for the whole canvas, whatever is in hand: the buttons must not change
+  // meaning under the user. Left orbits unless the press turns out to be a click on
+  // something (DrawingHandler and PointerRouter decide that on release).
+  const mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
 
   return (
     <Canvas

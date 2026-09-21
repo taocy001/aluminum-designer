@@ -6,7 +6,8 @@ import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { duplicateSelected, nudgeSelected, rotateSelected } from './utils/editOps'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d } from 'lucide-react'
+import { connectorLabel } from './utils/connectorCatalog'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -15,7 +16,7 @@ function App() {
   const { clearSelection, removeSelected, undo, redo } = useStore()
   const {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind,
-    viewMode, setViewMode, triggerCameraReset, cancelDraw, activeSpec,
+    held, putDown, triggerCameraReset, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
@@ -60,7 +61,7 @@ function App() {
       if (e.key === 'Escape') {
         if (isDrawing) cancelDraw()
         else if (selectMode) setSelectMode(false)
-        else if (viewMode === 'draw') setViewMode('navigate')
+        else if (held !== null) putDown()
         else clearSelection()
         return
       }
@@ -93,7 +94,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, viewMode, selectMode, lockedAxis, cancelDraw, setViewMode, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset])
+  }, [isDrawing, held, selectMode, lockedAxis, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -120,10 +121,10 @@ function App() {
 
   const handleMainPointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).tagName !== 'CANVAS') return // toolbar / overlays
-    if (viewMode !== 'navigate' || e.button !== 0) return
+    if (held !== null || e.button !== 0) return
     // Plain selection and clearing are handled by PointerRouter (on release, so orbiting keeps it)
     if (selectMode) startFrameSelect(e.clientX, e.clientY)
-  }, [selectMode, viewMode, startFrameSelect])
+  }, [selectMode, held, startFrameSelect])
 
   const handleMainPointerMove = useCallback((e: React.PointerEvent) => {
     if (!isFrameSelecting) return
@@ -152,12 +153,16 @@ function App() {
   // What a press would do right now, so the pointer stops looking inert
   const viewportCursor = isDragging
     ? (dragConflict ? 'alias' : 'grabbing')
-    : viewMode === 'draw' ? 'crosshair'
+    : held !== null ? 'crosshair'
     : selectMode ? 'crosshair'
     : hoverProfileId ? 'grab'
     : 'default'
 
-  const guide = selectMode ? t.guideSelect : viewMode === 'draw' ? t.guideDraw : t.guideNavigate
+  const guide = selectMode ? t.guideSelect : held !== null ? t.guideDraw : t.guideNavigate
+  // the part in hand, named the way the sidebar names it
+  const heldName = held === 'connector'
+    ? (activeConnectorType ? connectorLabel(activeConnectorType, language) : '')
+    : activeSpec
   const toolBtn = (active: boolean, activeCls: string) =>
     `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
 
@@ -242,12 +247,20 @@ function App() {
 
           {/* Toolbar */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
-            <button data-testid="mode-toggle" onClick={() => setViewMode(viewMode === 'draw' ? 'navigate' : 'draw')} title="Esc"
-              className={toolBtn(viewMode === 'draw', 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/40')}>
-              {viewMode === 'draw' ? <><Pencil size={13} />{t.draw}</> : <><Hand size={13} />{t.navigate}</>}
+            {/* What is in hand, and the way to put it down. Not a mode switch: it only ever
+                empties the hand, because filling it is the sidebar's job. */}
+            {/* the label is the part's name, but the accessible name says what the button does,
+                so it is never confused with the sidebar button carrying the same name */}
+            <button data-testid="held-chip" onClick={() => { if (held !== null) putDown() }}
+              disabled={held === null} title={held !== null ? t.holdingHint : t.emptyHand}
+              aria-label={held !== null ? `${t.putDown} ${heldName}` : t.emptyHand}
+              className={toolBtn(held !== null, 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/40')}>
+              {held !== null
+                ? <><Pencil size={13} />{heldName}<X size={11} className="opacity-60" /></>
+                : <><Hand size={13} />{t.emptyHand}</>}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5" />
-            <button data-testid="select-toggle" onClick={() => { if (viewMode === 'draw') setViewMode('navigate'); setSelectMode(!selectMode) }}
+            <button data-testid="select-toggle" onClick={() => { putDown(); setSelectMode(!selectMode) }}
               className={toolBtn(selectMode, 'bg-violet-600/30 text-violet-400 border border-violet-500/30')}>
               <MousePointer2 size={13} />{t.selectMode}
             </button>
@@ -268,8 +281,8 @@ function App() {
 
           {/* Guide */}
           <div className="absolute bottom-6 left-6 pointer-events-none bg-slate-900/80 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 text-[10px] text-slate-400 space-y-1 shadow-2xl max-w-xs">
-            <p className={`font-bold ${selectMode ? 'text-violet-400' : viewMode === 'draw' ? 'text-blue-400' : 'text-slate-200'}`}>
-              {selectMode ? t.selectMode : viewMode === 'draw' ? `${t.draw} · ${activeSpec}` : t.navigate}
+            <p className={`font-bold ${selectMode ? 'text-violet-400' : held !== null ? 'text-blue-400' : 'text-slate-200'}`}>
+              {selectMode ? t.selectMode : held !== null ? `${t.draw} · ${heldName}` : t.emptyHand}
             </p>
             {guide.map((line, i) => <p key={i}>{line}</p>)}
           </div>
