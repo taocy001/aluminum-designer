@@ -5,7 +5,8 @@ import { useToolStore } from '../store/useToolStore'
 import { useStore, type ConnectorData, type ProfileData } from '../store/useStore'
 import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { closestParamLineToRay } from '../utils/pickUtils'
-import { computeDragSnap } from '../utils/dragSnap'
+import { computeDragSnap, alignThreshold, ALIGN_PX } from '../utils/dragSnap'
+import { pixelsToWorld } from './ResizeHandles'
 import { MIN_LENGTH } from '../utils/profileFactory'
 import { movingPartsConflict } from '../utils/analysis'
 import { lowestPointY } from '../utils/profileFactory'
@@ -180,8 +181,10 @@ const DragHandler: React.FC = () => {
       // An endpoint join is the more specific intent, so it is left alone.
       if (joinedAtEndpoint) {
         ts.setSnapRefs([endpointSnap.refId!])
+        ts.setSnapGuides([{ axis: 0, kind: 'endpoint', coord: 0, refId: endpointSnap.refId! }])
       } else if (ts.dragFree) {
         ts.setSnapRefs([])
+        ts.setSnapGuides([])
       } else {
         const proposed = new Map<string, [number, number, number]>()
         for (const p of dragged) {
@@ -189,10 +192,17 @@ const DragHandler: React.FC = () => {
           const np = origin.clone().add(groupDelta)
           proposed.set(p.id, [np.x, np.y, np.z])
         }
-        const snap = computeDragSnap(dragged, proposed, others)
+        // the pull reaches as far on screen as it does in the model, so it is felt at any zoom
+        const camDist = new THREE.Vector3(...(dragGroupOrigins[dragProfileId] ?? dragOriginPos.toArray()))
+          .distanceTo(new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld))
+        const threshold = alignThreshold(dragged, pixelsToWorld(ALIGN_PX, camDist, camera, size.height))
+        const snap = computeDragSnap(dragged, proposed, others, threshold)
+        // a vertical drag discards the horizontal pull, so it must not be announced either
+        const guides = dragVertical ? snap.guides.filter((g) => g.axis === 1) : snap.guides
         if (dragVertical) { snap.offset.x = 0; snap.offset.z = 0 }
         groupDelta.add(snap.offset)
-        ts.setSnapRefs(snap.offset.lengthSq() > 0 ? snap.refIds : [])
+        ts.setSnapRefs(guides.length ? snap.refIds : [])
+        ts.setSnapGuides(guides)
       }
 
       // keep the whole group on or above the floor, whatever each part's orientation is,

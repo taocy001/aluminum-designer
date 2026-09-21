@@ -7,6 +7,19 @@ async function toNavigate(page: Page) {
   expect((await tool(page)).viewMode).toBe('navigate')
 }
 const cam = (page: Page) => page.evaluate(() => (window as any).__aluframe.camera.position.toArray().map(Math.round))
+/** Screen position of a rotate button, read from the dev hook (they are sprites, not DOM) */
+async function rotateButton(page: Page, axis: 'x' | 'y' | 'z'): Promise<{ x: number; y: number } | null> {
+  await page.waitForFunction(() => ((window as any).__aluframe.rotateButtons?.() ?? []).length === 3, null, { timeout: 4000 }).catch(() => {})
+  const world = await page.evaluate((a) => {
+    const b = (window as any).__aluframe.rotateButtons().find((x: any) => x.axis === a)
+    return b ? b.position : null
+  }, axis)
+  if (!world) return null
+  return w2c(page, world as [number, number, number])
+}
+
+const round2 = (v: number) => Math.round(v * 100) / 100
+
 function dirOf(p: any): [number, number, number] {
   const [x, y, z, w] = p.quaternion
   return [2 * (x * z + w * y), 2 * (y * z - w * x), 1 - 2 * (x * x + y * y)]
@@ -121,44 +134,51 @@ test.describe('Stretching by the end face', () => {
 test.describe('Rotation handles on the canvas', () => {
   test.beforeEach(async ({ page }) => { await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200]) })
 
-  test('dragging a handle arc rotates the selection as one undo step', async ({ page }) => {
+  test('the rotate buttons turn the selection 90 degrees, four clicks make a full turn', async ({ page }) => {
     await enterDraw(page, '2020')
-    await drawExact(page, [300, 0, 0], [300, 300, 0], 600)
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
     await toNavigate(page)
-    await clickWorld(page, [300, 300, 0])
-    const before = dirOf((await store(page)).profiles[0])
-    const past = (await store(page)).past
+    await clickWorld(page, [300, 10, 0])
+    const before = dirOf((await store(page)).profiles[0]).map(round2)
 
-    // find a point on a handle arc by hovering only — a probe drag would orbit the camera
-    let hit: { x: number; y: number } | null = null
-    for (let angle = 0; angle < 360 && !hit; angle += 10) {
-      for (const radius of [30, 45, 60, 75, 90, 110, 130]) {
-        const pivot = await w2c(page, [300, 300, 0])   // re-projected: the camera may have moved
-        const x = pivot.x + Math.cos(angle * Math.PI / 180) * radius
-        const y = pivot.y + Math.sin(angle * Math.PI / 180) * radius
-        await page.mouse.move(x, y)
-        await page.waitForTimeout(25)
-        const onHandle = await page.evaluate(() => {
-          const t = (window as any).__aluframe.tool.getState()
-          return !t.hoverProfileId && !t.gizmoSuppressed && !!(window as any).__aluframe.gizmoAxis?.()
-        })
-        if (onHandle) { hit = { x, y }; break }
-      }
-    }
-    if (hit) {
-      await page.mouse.move(hit.x, hit.y)
-      await page.mouse.down()
-      await page.mouse.move(hit.x + 45, hit.y + 35); await page.waitForTimeout(30)
-      await page.mouse.move(hit.x + 90, hit.y + 70); await page.waitForTimeout(30)
-      await page.mouse.up()
-      await page.waitForTimeout(50)
-    }
-    expect(hit, 'a rotation handle was found and dragged').not.toBeNull()
-    expect(dirOf((await store(page)).profiles[0])).not.toEqual(before)
-    expect((await store(page)).past).toBe(past + 1)       // exactly one undo entry
-    await page.keyboard.press('Control+z')
-    expect(dirOf((await store(page)).profiles[0]).map((v) => Math.round(v * 100) / 100))
-      .toEqual(before.map((v) => Math.round(v * 100) / 100))
+    // the buttons float above the selection; find the Y one by probing that band
+    const y = await rotateButton(page, 'y')
+    expect(y, 'the Y rotate button is on screen').not.toBeNull()
+    await page.mouse.click(y!.x, y!.y)
+    await page.waitForTimeout(60)
+    expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual([0, 0, -1])
+
+    const past = (await store(page)).past
+    for (let i = 0; i < 3; i++) { await page.mouse.click(y!.x, y!.y); await page.waitForTimeout(50) }
+    expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual(before)   // back where it started
+    expect((await store(page)).past).toBe(past + 3)                              // one entry per click
+  })
+
+  test('Shift+click on a rotate button turns the other way', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await toNavigate(page)
+    await clickWorld(page, [300, 10, 0])
+    const y = await rotateButton(page, 'y')
+    expect(y).not.toBeNull()
+    await page.keyboard.down('Shift')
+    await page.mouse.click(y!.x, y!.y)
+    await page.keyboard.up('Shift')
+    await page.waitForTimeout(60)
+    expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual([0, 0, 1])
+  })
+
+  test('clicking a rotate button does not move or deselect the member', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await toNavigate(page)
+    await clickWorld(page, [300, 10, 0])
+    const id = (await store(page)).profiles[0].id
+    const x = await rotateButton(page, 'x')
+    expect(x).not.toBeNull()
+    await page.mouse.click(x!.x, x!.y)
+    await page.waitForTimeout(60)
+    expect((await store(page)).selectedIds).toEqual([id])
   })
 
   test('the handles can be switched off from the toolbar', async ({ page }) => {
@@ -339,5 +359,156 @@ test.describe('Stretch refinements from review', () => {
     const p = (await store(page)).profiles[0]
     expect(r(p.position[1])).toBe(0)                        // still on the floor
     expect(Math.abs(p.length - top)).toBeLessThanOrEqual(5) // the far end did not run away
+  })
+})
+
+test.describe('Snap feedback and reach', () => {
+  test.beforeEach(async ({ page }) => { await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200]) })
+
+  const seedRails = (page: Page) => page.evaluate(() => {
+    const s = (window as any).__aluframe.store.getState()
+    s.clearAll()
+    const q = [0, Math.SQRT1_2, 0, Math.SQRT1_2]
+    s.addProfiles([
+      { id: 'A', spec: '2020', length: 500, position: [0, 10, 0], quaternion: q, miterCuts: [], holes: [] },
+      { id: 'B', spec: '2020', length: 500, position: [0, 10, 300], quaternion: q, miterCuts: [], holes: [] },
+    ])
+  })
+  const zOf = (page: Page, id: string) => page.evaluate((i) => (window as any).__aluframe.store.getState().profiles.find((p: any) => p.id === i)?.position[2], id)
+
+  test('the pull reaches further than the profile width when zoomed out', async ({ page }) => {
+    await seedRails(page)
+    await setView(page, [3600, 2800, 4400], [250, 150, 150])   // far away: 20 mm is a couple of pixels
+    await dragWorld(page, [250, 10, 300], [250, 10, 70])        // 50 mm from flush
+    expect(r((await zOf(page, 'B')) as number)).toBe(20)
+  })
+
+  test('the pull still stops somewhere: far drops stay where they are dropped', async ({ page }) => {
+    await seedRails(page)
+    await dragWorld(page, [250, 10, 300], [250, 10, 400])
+    expect(Math.abs(((await zOf(page, 'B')) as number) - 400)).toBeLessThanOrEqual(5)
+  })
+
+  test('snapping names what it locked onto and draws while it holds', async ({ page }) => {
+    await seedRails(page)
+    const from = await w2c(page, [250, 10, 300])
+    const to = await w2c(page, [250, 10, 35])
+    await dragHold(page, from, to)
+    await expect(page.getByTestId('snap-hud')).toBeVisible()
+    await expect(page.getByTestId('snap-hud')).toContainText(/贴面|齐边|中线/)
+    const guides = await page.evaluate(() => (window as any).__aluframe.tool.getState().snapGuides.length)
+    expect(guides).toBeGreaterThan(0)
+    await page.mouse.up()
+    await expect(page.getByTestId('snap-hud')).toBeHidden()
+  })
+
+  test('Shift still switches the pull off completely', async ({ page }) => {
+    await seedRails(page)
+    await dragWorld(page, [250, 10, 300], [250, 10, 35], ['Shift'])
+    expect(r((await zOf(page, 'B')) as number)).toBe(35)
+  })
+})
+
+test.describe('End handles are quiet until reached for', () => {
+  test.beforeEach(async ({ page }) => { await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200]) })
+
+  test('the arrow appears only near an end of the selected member', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await toNavigate(page)
+    await clickWorld(page, [300, 10, 0])
+    const hoverEnd = () => page.evaluate(() => (window as any).__aluframe.tool.getState().hoverEnd)
+    await hoverWorld(page, [300, 10, 0])
+    expect(await hoverEnd()).toBeNull()          // middle of the member: nothing floats out
+    await hoverWorld(page, [598, 10, 0])
+    expect(await hoverEnd()).toBe('end')
+    await hoverWorld(page, [2, 10, 0])
+    expect(await hoverEnd()).toBe('start')
+    await page.keyboard.press('Escape')
+    await hoverWorld(page, [598, 10, 0])
+    expect(await hoverEnd()).toBeNull()          // nothing selected: no handles at all
+  })
+
+  test('the live length is shown while stretching', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await toNavigate(page)
+    await clickWorld(page, [300, 10, 0])
+    const from = await w2c(page, [598, 10, 0])
+    const to = await w2c(page, [700, 10, 0])
+    await dragHold(page, from, to)
+    const resizing = await page.evaluate(() => !!(window as any).__aluframe.tool.getState().resize)
+    expect(resizing).toBe(true)
+    await page.mouse.up()
+    expect(Math.abs((await store(page)).profiles[0].length - 700)).toBeLessThanOrEqual(10)
+  })
+})
+
+test.describe('Rotate buttons hold up under camera motion', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200])
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await toNavigate(page)
+    await clickWorld(page, [300, 10, 0])
+  })
+
+  test('the buttons follow the camera after an orbit', async ({ page }) => {
+    const before = await page.evaluate(() => (window as any).__aluframe.rotateButtons().map((b: any) => b.position))
+    const o = await w2c(page, [-700, 0, -700])
+    await dragHold(page, o, { x: o.x + 220, y: o.y + 70 })
+    await page.mouse.up()
+    await page.waitForTimeout(120)
+    const after = await page.evaluate(() => (window as any).__aluframe.rotateButtons().map((b: any) => b.position))
+    expect(after).not.toEqual(before)                 // they moved with the camera
+    const y = await rotateButton(page, 'y')
+    expect(y).not.toBeNull()
+    await page.mouse.click(y!.x, y!.y)                // and are still clickable where they are drawn
+    await page.waitForTimeout(60)
+    expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual([0, 0, -1])
+  })
+
+  test('deselecting mid-press leaves the pointer working', async ({ page }) => {
+    const y = await rotateButton(page, 'y')
+    await page.mouse.move(y!.x, y!.y)
+    await page.mouse.down()
+    await page.keyboard.press('Escape')               // selection gone while the button is held
+    await page.mouse.up()
+    await page.waitForTimeout(120)
+    expect((await store(page)).selectedIds).toEqual([])
+    expect(await page.evaluate(() => (window as any).__aluframe.gizmoBusy())).toBe(false)
+    // the pointer must still work: select the member again
+    await page.mouse.move(700, 700)          // leave the spot the button occupied
+    await clickWorld(page, [300, 10, 0])
+    expect((await store(page)).selectedIds).toHaveLength(1)
+  })
+
+  test('releasing over a button after an orbit does not rotate', async ({ page }) => {
+    const y = await rotateButton(page, 'y')
+    const before = dirOf((await store(page)).profiles[0]).map(round2)
+    const past = (await store(page)).past
+    const start = await w2c(page, [-700, 0, -700])
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move((start.x + y!.x) / 2, (start.y + y!.y) / 2); await page.waitForTimeout(30)
+    await page.mouse.move(y!.x, y!.y); await page.waitForTimeout(30)
+    await page.mouse.up()
+    await page.waitForTimeout(60)
+    expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual(before)
+    expect((await store(page)).past).toBe(past)
+  })
+
+  test('an Alt drag only reports the vertical snap', async ({ page }) => {
+    await drawMember(page, [0, 0, 300], [600, 10, 300])
+    await toNavigate(page)
+    await clickWorld(page, [300, 10, 300])
+    const from = await w2c(page, [300, 10, 300])
+    const to = await w2c(page, [300, 120, 300])
+    await page.keyboard.down('Alt')
+    await dragHold(page, from, to)
+    const guides = await page.evaluate(() => (window as any).__aluframe.tool.getState().snapGuides)
+    expect(guides.every((g: any) => g.axis === 1)).toBe(true)
+    await page.mouse.up()
+    await page.keyboard.up('Alt')
   })
 })
