@@ -18,7 +18,7 @@ const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3
 const ORBIT_SLOP_PX = 5
 
 const DrawingHandler: React.FC = () => {
-  const { isDrawing, startPoint, currentPoint, snapPoint, snapKind, placementMode, activeSpec, activeConnectorType, viewMode, drawAxis, alignGuides } = useToolStore()
+  const { isDrawing, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides } = useToolStore()
   const { camera, size, scene } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
 
@@ -168,7 +168,7 @@ const DrawingHandler: React.FC = () => {
   const placeAt = useCallback((ray: THREE.Ray, cursor: THREE.Vector2) => {
     const ts = useToolStore.getState()
 
-    if (ts.placementMode === 'connector') {
+    if (ts.held === 'connector') {
       if (!ts.activeConnectorType) return
       const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray))
       if (pick.kind === 'none') return
@@ -199,7 +199,7 @@ const DrawingHandler: React.FC = () => {
       leftDownRef.current = null
       if (!down) return
       const ts = useToolStore.getState()
-      if (ts.viewMode !== 'draw') return
+      if (!ts.held) return
       if (ts.isDragging || draggedThisPress.current) { draggedThisPress.current = false; return }  // the press moved a member
       const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y)
       if (down.orbiting || moved > ORBIT_SLOP_PX) return  // it was a camera move
@@ -214,17 +214,17 @@ const DrawingHandler: React.FC = () => {
 
   // the preview follows the same rule the placement will use, normal included
   const connectorPreview = useMemo(() => {
-    if (placementMode !== 'connector' || !activeConnectorType || !currentPoint) {
+    if (held !== 'connector' || !activeConnectorType || !currentPoint) {
       return { quaternion: [0, 0, 0, 1] as [number, number, number, number], series: 20 as 20 | 30 | 40 }
     }
     const fit = fitConnector(activeConnectorType, currentPoint, useStore.getState().profiles, hoverNormal.current)
     return { quaternion: fit.quaternion, series: fit.series }
-  }, [placementMode, activeConnectorType, currentPoint])
+  }, [held, activeConnectorType, currentPoint])
 
   return (
     <>
       {/* Invisible catcher sphere — receives pointer events regardless of camera angle */}
-      {viewMode === 'draw' && (
+      {held !== null && (
         <mesh onPointerDown={onPointerDown} onPointerMove={onPointerMove}>
           <sphereGeometry args={[50000, 8, 6]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.BackSide} />
@@ -241,7 +241,7 @@ const DrawingHandler: React.FC = () => {
 
       {/* Member preview: a neutral ghost. The axis colour lives on the centreline and the
           HUD instead, so a member being drawn along X is never mistaken for one flagged red. */}
-      {placementMode === 'profile' && xform && (
+      {held === 'profile' && xform && (
         <mesh position={xform.pos} quaternion={xform.quat} scale={[1, 1, xform.scale]} geometry={previewGeo} raycast={() => null}>
           <meshStandardMaterial color="#cbd5e1" metalness={0.2} roughness={0.7} transparent opacity={0.6} depthWrite={false} />
         </mesh>
@@ -250,12 +250,12 @@ const DrawingHandler: React.FC = () => {
       {/* Snap indicator (endpoint / centerline / alignment) — constant screen size.
           While placing a connector the ghost itself shows the spot, and the marker would
           sit right on top of a part that is only a few tens of millimetres across. */}
-      {viewMode === 'draw' && snapPoint && placementMode !== 'connector' && (
+      {held === 'profile' && snapPoint && (
         <SnapMarker position={snapPoint} kind={snapKind ?? 'endpoint'} />
       )}
 
       {/* Hover cursor on the floor when not snapped */}
-      {viewMode === 'draw' && !isDrawing && currentPoint && !snapPoint && (
+      {held !== null && !isDrawing && currentPoint && !snapPoint && (
         <mesh position={[currentPoint.x, currentPoint.y + 0.2, currentPoint.z]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
           <ringGeometry args={[hh * 0.6, hh * 0.9, 24]} />
           <meshBasicMaterial color="#94a3b8" transparent opacity={0.8} side={THREE.DoubleSide} />
@@ -268,7 +268,7 @@ const DrawingHandler: React.FC = () => {
       ))}
 
       {/* Connector preview: the real part, oriented the way it would land */}
-      {viewMode === 'draw' && placementMode === 'connector' && activeConnectorType && currentPoint && (
+      {held === 'connector' && activeConnectorType && currentPoint && (
         <Connector
           type={activeConnectorType}
           series={connectorPreview.series}

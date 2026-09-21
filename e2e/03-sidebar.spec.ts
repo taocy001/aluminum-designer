@@ -4,7 +4,7 @@ import fs from 'node:fs'
 
 async function toNavigate(page: any) {
   await page.keyboard.press('Escape')
-  if ((await tool(page)).viewMode !== 'navigate') await page.keyboard.press('Escape')
+  if ((await tool(page)).held !== null) await page.keyboard.press('Escape')
 }
 
 test.describe('Sidebar properties', () => {

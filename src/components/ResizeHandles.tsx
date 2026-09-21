@@ -52,7 +52,7 @@ function arrowTexture(): THREE.CanvasTexture {
 const ResizeHandles: React.FC = () => {
   const selectedIds = useStore((s) => s.selectedIds)
   const profiles = useStore((s) => s.profiles)
-  const viewMode = useToolStore((s) => s.viewMode)
+  const held = useToolStore((s) => s.held)
   const resize = useToolStore((s) => s.resize)
   const hoverEnd = useToolStore((s) => s.hoverEnd)
   const { camera, size } = useThree()
@@ -79,7 +79,7 @@ const ResizeHandles: React.FC = () => {
     sprite.current.scale.set(world, world, 1)
   })
 
-  if (!target || !geometry || viewMode !== 'navigate' || !shownEnd) return null
+  if (!target || !geometry || held !== null || !shownEnd) return null
   const { start, end, dir, section } = geometry
   const at = shownEnd === 'start' ? start : end
   const out = shownEnd === 'start' ? dir.clone().negate() : dir.clone()

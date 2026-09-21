@@ -72,7 +72,7 @@ test.describe('Drawing', () => {
     expect(ps).toHaveLength(2)
     // select it and read the cut length: 390 centerline − 10 (rail half height) = 380
     await page.keyboard.press('Escape')
-    expect((await tool(page)).viewMode).toBe('navigate')
+    expect((await tool(page)).held).toBe(null)
     await clickWorld(page, [300, 200, 0])
     expect((await store(page)).selectedIds).toHaveLength(1)
     await expect(page.getByTestId('cut-length')).toHaveText('380 mm')
@@ -124,9 +124,9 @@ test.describe('Drawing', () => {
     expect((await tool(page)).isDrawing).toBe(true)
     await page.keyboard.press('Escape')
     expect((await tool(page)).isDrawing).toBe(false)
-    expect((await tool(page)).viewMode).toBe('draw')
+    expect((await tool(page)).held).not.toBe(null)
     await page.keyboard.press('Escape')
-    expect((await tool(page)).viewMode).toBe('navigate')
+    expect((await tool(page)).held).toBe(null)
   })
 
   test('every spec draws and lifts by its own half height', async ({ page }) => {

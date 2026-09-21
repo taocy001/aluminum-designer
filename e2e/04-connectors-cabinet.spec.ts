@@ -11,7 +11,7 @@ test.describe('Connectors', () => {
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     for (let i = 0; i < CONNECTORS.length; i++) {
       await page.getByRole('button', { name: CONNECTORS[i], exact: true }).click()
-      expect((await tool(page)).viewMode).toBe('draw')
+      expect((await tool(page)).held).not.toBe(null)
       // alternate between the two rail ends so we can see they snap
       const target: [number, number, number] = i % 2 === 0 ? [603, 10, 2] : [-2, 10, 3]
       await hoverWorld(page, target)
@@ -24,7 +24,7 @@ test.describe('Connectors', () => {
     await expect(page.getByTestId('bom-table')).toContainText('L型角码')
     // select one connector in navigate mode and delete it
     await page.keyboard.press('Escape')
-    expect((await tool(page)).viewMode).toBe('navigate')
+    expect((await tool(page)).held).toBe(null)
     const c0 = (await store(page)).connectors[0]
     await clickWorld(page, [600, 22, 0])
     const sel = (await store(page)).selectedIds
@@ -37,11 +37,11 @@ test.describe('Connectors', () => {
     expect((await store(page)).connectors[0].id).toBe(c0.id)
   })
 
-  test('clicking the active connector again returns to navigate', async ({ page }) => {
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
-    expect((await tool(page)).viewMode).toBe('draw')
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
-    expect((await tool(page)).viewMode).toBe('navigate')
+  test('clicking the active connector again empties the hand', async ({ page }) => {
+    await page.getByTestId('connector-bracket').click()
+    expect((await tool(page)).held).toBe('connector')
+    await page.getByTestId('connector-bracket').click()
+    expect((await tool(page)).held).toBe(null)
   })
 })
 

@@ -3,8 +3,8 @@ import * as THREE from 'three'
 import { ProfileSpec } from './useStore'
 import type { Axis } from '../utils/jointUtils'
 
-export type PlacementMode = 'profile' | 'connector'
-export type ViewMode = 'draw' | 'navigate'
+/** The profile or connector held for placement, reflected by the sidebar selection and preview. */
+export type HeldKind = 'profile' | 'connector'
 export type Language = 'en' | 'zh'
 export type ToastKind = 'info' | 'error' | 'success'
 
@@ -12,8 +12,8 @@ export interface Toast { id: number; message: string; kind: ToastKind }
 export interface AlignGuide { from: [number, number, number]; to: [number, number, number] }
 
 interface ToolState {
-  placementMode: PlacementMode
-  viewMode: ViewMode
+  /** Part held for placement, or null for selection mode. */
+  held: HeldKind | null
   activeSpec: ProfileSpec
   activeConnectorType: string | null
   language: Language
@@ -88,10 +88,12 @@ interface ToolState {
   frameSelectCurrent: { x: number; y: number } | null
   frameSelectRect: { x1: number; y1: number; x2: number; y2: number } | null
 
-  setPlacementMode: (mode: PlacementMode) => void
-  setViewMode: (mode: ViewMode) => void
+  /** pick a profile up: it is now what a click on the canvas draws */
   setActiveSpec: (spec: ProfileSpec) => void
+  /** pick a connector up, or pass null to drop it */
   setActiveConnector: (type: string | null) => void
+  /** empty the hand and abandon any half-drawn line */
+  putDown: () => void
   setLanguage: (lang: Language) => void
   triggerCameraReset: () => void
 
@@ -135,8 +137,7 @@ interface ToolState {
 let toastSeq = 1
 
 export const useToolStore = create<ToolState>((set, get) => ({
-  placementMode: 'profile',
-  viewMode: 'navigate',
+  held: null,
   activeSpec: '2020',
   activeConnectorType: null,
   language: 'zh',
@@ -184,13 +185,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
   frameSelectCurrent: null,
   frameSelectRect: null,
 
-  setPlacementMode: (placementMode) => set({ placementMode }),
-  setViewMode: (viewMode) => set({
-    viewMode, isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
+  putDown: () => set({
+    held: null, isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
     snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null, selectMode: false,
   }),
-  setActiveSpec: (spec) => set({ activeSpec: spec, placementMode: 'profile', viewMode: 'draw', selectMode: false }),
-  setActiveConnector: (type) => set({ activeConnectorType: type, placementMode: 'connector', viewMode: 'draw', selectMode: false }),
+  setActiveSpec: (spec) => set({ activeSpec: spec, held: 'profile', selectMode: false }),
+  setActiveConnector: (type) => set({
+    activeConnectorType: type, held: type ? 'connector' : null, selectMode: false,
+    ...(type ? {} : { isDrawing: false, startPoint: null, currentPoint: null, snapPoint: null }),
+  }),
   setLanguage: (language) => set({ language }),
   triggerCameraReset: () => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1 })),
 

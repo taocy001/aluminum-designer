@@ -3,8 +3,8 @@ import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, hoverWo
 
 async function toNavigate(page: Page) {
   await page.keyboard.press('Escape')
-  if ((await tool(page)).viewMode !== 'navigate') await page.keyboard.press('Escape')
-  expect((await tool(page)).viewMode).toBe('navigate')
+  if ((await tool(page)).held !== null) await page.keyboard.press('Escape')
+  expect((await tool(page)).held).toBe(null)
 }
 const cam = (page: Page) => page.evaluate(() => (window as any).__aluframe.camera.position.toArray().map(Math.round))
 /** Screen position of a gizmo handle, read from the dev hook (they are meshes, not DOM) */
@@ -523,7 +523,7 @@ test.describe('Draw mode: press a member to move it', () => {
   })
 
   test('pressing a member and dragging moves it, without drawing anything', async ({ page }) => {
-    expect((await tool(page)).viewMode).toBe('draw')
+    expect((await tool(page)).held).not.toBe(null)
     const before = (await store(page)).profiles[0].position.map(r)
     const from = await w2c(page, [300, 10, 0])
     const to = await w2c(page, [300, 10, 250])
@@ -568,7 +568,7 @@ test.describe('Selected member handles', () => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await page.keyboard.press('Escape')
-    if ((await tool(page)).viewMode !== 'navigate') await page.keyboard.press('Escape')
+    if ((await tool(page)).held !== null) await page.keyboard.press('Escape')
     await clickWorld(page, [300, 10, 0])
   })
 
@@ -650,7 +650,7 @@ test.describe('Move arrows', () => {
 
   test('the arrows are available while drawing too', async ({ page }) => {
     await enterDraw(page, '2020')
-    expect((await tool(page)).viewMode).toBe('draw')
+    expect((await tool(page)).held).not.toBe(null)
     const h = await gizmoHandle(page, 'move', 'y')
     expect(h).not.toBeNull()
     const before = (await store(page)).profiles[0].position.map(r)

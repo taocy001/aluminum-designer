@@ -58,7 +58,7 @@ export async function tool(page: Page) {
   return page.evaluate(() => {
     const t = (window as any).__aluframe.tool.getState()
     return {
-      viewMode: t.viewMode as string, isDrawing: t.isDrawing as boolean, drawAxis: t.drawAxis as string | null,
+      held: (t.held ?? null) as string | null, hoverEnd: (t.hoverEnd ?? null) as string | null, isDrawing: t.isDrawing as boolean, drawAxis: t.drawAxis as string | null,
       selectMode: t.selectMode as boolean, isDragging: t.isDragging as boolean,
       start: t.startPoint ? (t.startPoint.toArray() as number[]).map((v: number) => Math.round(v) || 0) : null,
       cur: t.currentPoint ? (t.currentPoint.toArray() as number[]).map((v: number) => Math.round(v) || 0) : null,
@@ -70,7 +70,7 @@ export async function tool(page: Page) {
 
 export async function enterDraw(page: Page, spec = '2020') {
   await page.getByTestId(`spec-${spec}`).click()
-  expect((await tool(page)).viewMode).toBe('draw')
+  expect((await tool(page)).held).not.toBe(null)
 }
 
 export async function clickWorld(page: Page, p: V3, opts: { button?: 'left' | 'right'; modifiers?: ('Control' | 'Shift' | 'Meta')[] } = {}) {
