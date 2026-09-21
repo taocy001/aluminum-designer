@@ -74,6 +74,8 @@ interface ToolState {
   showGizmo: boolean
   /** what the selection turns about: its centre, or one end of a single member */
   pivotMode: PivotMode
+  /** where the Space quick menu is open, in client pixels, or null when it is closed */
+  quickMenuAt: { x: number; y: number } | null
   selectMode: boolean
   toasts: Toast[]
   /** member under the cursor in navigate mode (screen-space pick) */
@@ -128,6 +130,8 @@ interface ToolState {
   toggleGizmo: () => void
   setPivotMode: (mode: PivotMode) => void
   cyclePivotMode: () => void
+  openQuickMenu: (x: number, y: number) => void
+  closeQuickMenu: () => void
   setSelectMode: (on: boolean) => void
   showToast: (message: string, kind?: ToastKind) => void
   dismissToast: (id: number) => void
@@ -179,6 +183,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   showDimensionLabels: true,
   showGizmo: true,
   pivotMode: 'center',
+  quickMenuAt: null,
   selectMode: false,
   toasts: [],
   hoverProfileId: null,
@@ -252,6 +257,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
   setPivotMode: (pivotMode) => set({ pivotMode }),
+  openQuickMenu: (x, y) => set({ quickMenuAt: { x, y } }),
+  closeQuickMenu: () => set({ quickMenuAt: null }),
   cyclePivotMode: () => set((s) => ({
     pivotMode: s.pivotMode === 'center' ? 'start' : s.pivotMode === 'start' ? 'end' : 'center',
   })),

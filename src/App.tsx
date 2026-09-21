@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import Viewport from './components/Viewport'
 import Sidebar from './components/Sidebar'
+import QuickMenu from './components/QuickMenu'
 import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
@@ -18,7 +19,7 @@ function App() {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind,
     held, putDown, triggerCameraReset, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
-    pivotMode, cyclePivotMode,
+    pivotMode, cyclePivotMode, quickMenuAt, openQuickMenu, closeQuickMenu,
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
@@ -41,6 +42,8 @@ function App() {
   // read from the key handler, which must not be rebuilt on every frame of a drag
   const exactGestureRef = useRef(exactGesture)
   exactGestureRef.current = exactGesture
+  const quickMenuOpenRef = useRef(false)
+  quickMenuOpenRef.current = quickMenuAt !== null
   useEffect(() => { if (!exactGesture) setExactInput('') }, [exactGesture])
 
   const confirmExact = useCallback(() => {
@@ -76,7 +79,15 @@ function App() {
       if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return }
       if (isInInput) return
 
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault()
+        if (quickMenuOpenRef.current) closeQuickMenu()
+        else if (useStore.getState().selectedIds.length > 0) openQuickMenu(cursorRef.current.x, cursorRef.current.y)
+        return
+      }
+
       if (e.key === 'Escape') {
+        if (quickMenuOpenRef.current) { closeQuickMenu(); return }
         if (isDrawing) cancelDraw()
         else if (selectMode) setSelectMode(false)
         else if (held !== null) putDown()
@@ -122,7 +133,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, held, selectMode, lockedAxis, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected])
+  }, [isDrawing, held, selectMode, lockedAxis, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -154,7 +165,11 @@ function App() {
     if (selectMode) startFrameSelect(e.clientX, e.clientY)
   }, [selectMode, held, startFrameSelect])
 
+  // the last pointer position on the canvas, so Space opens the menu under the cursor
+  const cursorRef = useRef({ x: 0, y: 0 })
+
   const handleMainPointerMove = useCallback((e: React.PointerEvent) => {
+    cursorRef.current = { x: e.clientX, y: e.clientY }
     if (!isFrameSelecting) return
     if (isDragging) { endFrameSelect(e.clientX, e.clientY); return }
     updateFrameSelect(e.clientX, e.clientY)
@@ -357,6 +372,7 @@ function App() {
           </div>
         </main>
       </div>
+      <QuickMenu />
     </div>
   )
 }
