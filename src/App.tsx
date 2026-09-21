@@ -20,7 +20,7 @@ function App() {
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
-    toasts, showToast, dragConflict, hoverProfileId,
+    toasts, showToast, dragConflict, hoverProfileId, snapGuides,
   } = useToolStore()
   const t = translations[language]
 
@@ -170,6 +170,14 @@ function App() {
         </h1>
 
         <div className="ml-auto flex items-center gap-3">
+          {/* what the drag has locked onto right now */}
+          {isDragging && snapGuides.length > 0 && (
+            <div data-testid="snap-hud"
+              className="absolute top-[88px] left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/50 text-[11px] font-bold text-cyan-200 shadow-lg pointer-events-none z-10">
+              {[...new Set(snapGuides.map((g) => t.snapAlign[g.kind] ?? g.kind))].join(' · ')}
+            </div>
+          )}
+
           {isDrawing && (
             <div className="flex items-center gap-2" data-testid="draw-hud" data-keep-draw>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-bold border"

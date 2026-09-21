@@ -43,23 +43,31 @@ const PointerRouter: React.FC = () => {
 
     const onPointerMove = (e: PointerEvent) => {
       const ts = useToolStore.getState()
-      if (gizmoState.busy) return   // a rotation is in progress; leave the handles alone
+      if (gizmoState.busy) return   // a rotation button is pressed; leave the handles alone
       if (ts.viewMode !== 'navigate' || ts.isDragging || ts.selectMode) {
         ts.setHoverProfile(null)
-        ts.setGizmoSuppressed(false)
+        ts.setHoverEnd(null)
         return
       }
       const pick = pickFor(e)
       ts.setHoverProfile(pick?.kind === 'profile' ? pick.id : null)
-      // A part under the cursor always wins over the rotation handles: grabbing a member
-      // must never turn into a rotation just because a ring happens to cross it.
-      ts.setGizmoSuppressed(!!pick)
+
+      // which end face is the pointer reaching for, if any
+      const store = useStore.getState()
+      const only = store.selectedIds.length === 1 ? store.profiles.find((p) => p.id === store.selectedIds[0]) : undefined
+      if (!only || !pick || pick.id !== only.id) { ts.setHoverEnd(null) } else {
+        const { start, end } = getProfileEndpoints(only)
+        const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
+        const zone = endGrabRadius(only.length, pick.point.distanceTo(camPos), camera, size.height)
+        const ds = pick.point.distanceTo(start), de = pick.point.distanceTo(end)
+        ts.setHoverEnd(ds < zone ? 'start' : de < zone ? 'end' : null)
+      }
     }
 
     const onPointerLeave = () => {
       const ts = useToolStore.getState()
       ts.setHoverProfile(null)
-      ts.setGizmoSuppressed(false)
+      ts.setHoverEnd(null)
     }
 
     const onPointerDown = (e: PointerEvent) => {
@@ -68,8 +76,7 @@ const PointerRouter: React.FC = () => {
       const { cursor: downCursor, rect: downRect } = cursorOf(e)
       const downRay = rayOf(downCursor, downRect)
       const pickHere = pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height }, useStore.getState().profiles, useStore.getState().connectors)
-      ts.setGizmoSuppressed(!!pickHere)
-      if (gizmoState.busy || (!pickHere && gizmoOwnsRay(downRay))) return   // the handles own this press
+      if (gizmoState.busy || gizmoOwnsRay(downRay)) return   // a rotation button owns this press
       const multi = e.ctrlKey || e.metaKey
       const pick = pickHere   // already resolved above; picking twice per press is wasted work
 
@@ -101,9 +108,9 @@ const PointerRouter: React.FC = () => {
         const { start, end } = getProfileEndpoints(profile)
         const nearStart = pick.point.distanceTo(start)
         const nearEnd = pick.point.distanceTo(end)
-        // the zone grows with the drawn handle, and never swallows a short member whole
+        // the zone matches the on-screen affordance, and never swallows a short member whole
         const camDist = pick.point.distanceTo(new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld))
-        const zone = Math.min(endGrabRadius(camDist), profile.length / 3)
+        const zone = endGrabRadius(profile.length, camDist, camera, size.height)
         const grabEnd = nearStart < zone ? 'start' : nearEnd < zone ? 'end' : null
         if (grabEnd && store.selectedIds.includes(pick.id) && store.selectedIds.length === 1) {
           // the length the press itself implies, so the member does not jump by the

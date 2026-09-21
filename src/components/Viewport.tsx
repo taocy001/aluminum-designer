@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, Grid } from '@react-three/drei'
+import { OrbitControls, Grid, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
@@ -148,6 +148,34 @@ const ConflictMarkers: React.FC<{ conflicts: Conflict[] }> = ({ conflicts }) => 
   </>
 )
 
+/** Dashed lines through the coordinate a drag has just snapped to */
+const SnapGuides: React.FC = () => {
+  const guides = useToolStore((s) => s.snapGuides)
+  const isDragging = useToolStore((s) => s.isDragging)
+  const profiles = useStore((s) => s.profiles)
+  if (!isDragging || guides.length === 0) return null
+
+  return (
+    <>
+      {guides.filter((g) => g.kind !== 'endpoint').map((g, i) => {
+        const ref = profiles.find((p) => p.id === g.refId)
+        if (!ref) return null
+        const { start, end } = getProfileEndpoints(ref)
+        const mid = start.clone().lerp(end, 0.5)
+        const span = Math.max(start.distanceTo(end), 400) * 1.6
+        // a long line lying on the shared coordinate, along the two axes it is not fixed on
+        const dirs: Array<[number, number, number]> = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        const along = dirs[(g.axis + 1) % 3]
+        const base = [mid.x, mid.y, mid.z]
+        base[g.axis] = g.coord
+        const a: [number, number, number] = [base[0] - along[0] * span, base[1] - along[1] * span, base[2] - along[2] * span]
+        const b: [number, number, number] = [base[0] + along[0] * span, base[1] + along[1] * span, base[2] + along[2] * span]
+        return <Line key={`${g.axis}-${i}`} points={[a, b]} color="#22d3ee" lineWidth={1.5} dashed dashSize={12} gapSize={8} depthTest={false} />
+      })}
+    </>
+  )
+}
+
 const Viewport: React.FC = () => {
   const { profiles, connectors, selectedIds } = useStore()
   const { viewMode, isDragging, showDimensionLabels, selectMode } = useToolStore()
@@ -185,6 +213,7 @@ const Viewport: React.FC = () => {
 
       {showDimensionLabels && <DimensionLabels trims={trims} />}
       <ConflictMarkers conflicts={conflicts} />
+      <SnapGuides />
 
       <DrawingHandler />
       <DragHandler />

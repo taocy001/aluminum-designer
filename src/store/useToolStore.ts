@@ -52,6 +52,8 @@ interface ToolState {
   dragFree: boolean
   /** members the current drag is aligning to, highlighted while it lasts */
   snapRefIds: string[]
+  /** what the drag snapped to, for the alignment lines and the HUD */
+  snapGuides: Array<{ axis: 0 | 1 | 2; kind: string; coord: number; refId: string }>
   dragMoved: boolean
   /** true while the dragged parts interfere with something — drives the cursor */
   dragConflict: boolean
@@ -73,8 +75,8 @@ interface ToolState {
   toasts: Toast[]
   /** member under the cursor in navigate mode (screen-space pick) */
   hoverProfileId: string | null
-  /** the cursor is over a part, so the rotation handles step aside and let it be grabbed */
-  gizmoSuppressed: boolean
+  /** end of the selected member the pointer is reaching for */
+  hoverEnd: 'start' | 'end' | null
 
   // Frame selection
   isFrameSelecting: boolean
@@ -102,13 +104,14 @@ interface ToolState {
   }) => void
   setDragFree: (free: boolean) => void
   setSnapRefs: (ids: string[]) => void
+  setSnapGuides: (guides: ToolState['snapGuides']) => void
   markDragMoved: () => void
   setDragConflict: (conflict: boolean) => void
   startResize: (args: NonNullable<ToolState['resize']>) => void
   stopResize: () => void
   stopDrag: () => void
   setHoverProfile: (id: string | null) => void
-  setGizmoSuppressed: (suppressed: boolean) => void
+  setHoverEnd: (end: 'start' | 'end' | null) => void
 
   toggleDimensionLabels: () => void
   toggleGizmo: () => void
@@ -156,6 +159,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   dragVertical: false,
   dragFree: false,
   snapRefIds: [],
+  snapGuides: [],
   dragMoved: false,
   dragConflict: false,
   resize: null,
@@ -165,7 +169,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   selectMode: false,
   toasts: [],
   hoverProfileId: null,
-  gizmoSuppressed: false,
+  hoverEnd: null,
 
   isFrameSelecting: false,
   frameSelectStart: null,
@@ -198,12 +202,18 @@ export const useToolStore = create<ToolState>((set, get) => ({
   startDrag: ({ id, kind = 'profile', hit, origin, groupOrigins, plane, vertical, free = false }) => set({
     isDragging: true, dragKind: kind, dragProfileId: id, dragStartHit: hit, dragOriginPos: origin,
     dragGroupOrigins: groupOrigins, dragPlane: plane, dragVertical: vertical, dragFree: free,
-    dragMoved: false, dragConflict: false, snapRefIds: [],
+    dragMoved: false, dragConflict: false, snapRefIds: [], snapGuides: [],
   }),
   setDragFree: (free) => { if (get().dragFree !== free) set({ dragFree: free }) },
   setSnapRefs: (ids) => {
     const cur = get().snapRefIds
     if (cur.length !== ids.length || ids.some((id, i) => cur[i] !== id)) set({ snapRefIds: ids })
+  },
+  setSnapGuides: (guides) => {
+    const cur = get().snapGuides
+    const same = cur.length === guides.length && guides.every((g, i) =>
+      cur[i].axis === g.axis && cur[i].kind === g.kind && Math.abs(cur[i].coord - g.coord) < 0.01 && cur[i].refId === g.refId)
+    if (!same) set({ snapGuides: guides })
   },
   markDragMoved: () => { if (!get().dragMoved) set({ dragMoved: true }) },
   setDragConflict: (conflict) => { if (get().dragConflict !== conflict) set({ dragConflict: conflict }) },
@@ -212,10 +222,10 @@ export const useToolStore = create<ToolState>((set, get) => ({
   stopDrag: () => set({
     isDragging: false, dragKind: 'profile', dragProfileId: null, dragStartHit: null, dragOriginPos: null,
     dragGroupOrigins: {}, dragPlane: null, dragVertical: false, dragFree: false,
-    dragMoved: false, dragConflict: false, snapRefIds: [],
+    dragMoved: false, dragConflict: false, snapRefIds: [], snapGuides: [],
   }),
   setHoverProfile: (id) => { if (get().hoverProfileId !== id) set({ hoverProfileId: id }) },
-  setGizmoSuppressed: (suppressed) => { if (get().gizmoSuppressed !== suppressed) set({ gizmoSuppressed: suppressed }) },
+  setHoverEnd: (end) => { if (get().hoverEnd !== end) set({ hoverEnd: end }) },
 
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),

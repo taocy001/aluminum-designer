@@ -23,14 +23,35 @@ export function memberBox(p: ProfileData, position: [number, number, number] = p
   return box
 }
 
-/** How close (mm) an edge has to be before it is pulled into alignment */
-export function alignThreshold(profiles: ProfileData[]): number {
+/** Never pull from further than this, however far the camera is zoomed out (mm) */
+export const ALIGN_MAX_MM = 60
+/** The pull reaches at least this far on screen, so it feels the same at any zoom */
+export const ALIGN_PX = 18
+
+/**
+ * How close an edge has to be before it is pulled into alignment.
+ * The profile width is the floor (frames are built flush at that scale) and the on-screen
+ * distance is the other half: a 20 mm window is only a few pixels on a zoomed-out frame,
+ * which is why the pull was there but could not be felt.
+ */
+export function alignThreshold(profiles: ProfileData[], screenWorld = 0): number {
   let t = 20
   for (const p of profiles) {
     const { w, h } = specDims(p.spec)
     t = Math.max(t, Math.max(w, h))
   }
-  return t
+  return Math.min(ALIGN_MAX_MM, Math.max(t, screenWorld))
+}
+
+export type AlignKind = 'face' | 'edge' | 'center'
+const CANDIDATE_KIND: AlignKind[] = ['face', 'face', 'edge', 'edge', 'center']
+
+export interface SnapGuide {
+  axis: Axis3
+  kind: AlignKind
+  /** the coordinate both parts share on that axis, for drawing the alignment line */
+  coord: number
+  refId: string
 }
 
 export interface SnapResult {
@@ -40,6 +61,8 @@ export interface SnapResult {
   refIds: string[]
   /** which axes actually snapped */
   axes: Axis3[]
+  /** what engaged, for the alignment lines and the HUD */
+  guides: SnapGuide[]
 }
 
 const AXIS_KEYS = ['x', 'y', 'z'] as const
@@ -62,7 +85,8 @@ export function computeDragSnap(
   const offset = new THREE.Vector3()
   const refIds = new Set<string>()
   const axes: Axis3[] = []
-  if (moving.length === 0 || others.length === 0) return { offset, refIds: [], axes }
+  const guides: SnapGuide[] = []
+  if (moving.length === 0 || others.length === 0) return { offset, refIds: [], axes, guides }
 
   const movingBoxes = moving.map((p) => memberBox(p, proposed.get(p.id) ?? p.position))
   const group = new THREE.Box3()
@@ -73,27 +97,33 @@ export function computeDragSnap(
     const key = AXIS_KEYS[axis]
     const mMin = group.min[key], mMax = group.max[key], mMid = (mMin + mMax) / 2
 
-    let best: { delta: number; id: string } | null = null
+    let best: { delta: number; id: string; kind: AlignKind; coord: number } | null = null
     for (const s of staticBoxes) {
       const sMin = s.box.min[key], sMax = s.box.max[key], sMid = (sMin + sMax) / 2
       const candidates = [
-        sMin - mMax,   // our far face against their near face (touching)
-        sMax - mMin,   // our near face against their far face
-        sMin - mMin,   // flush on the low side
-        sMax - mMax,   // flush on the high side
-        sMid - mMid,   // shared centreline
+        { delta: sMin - mMax, coord: sMin },   // our far face against their near face
+        { delta: sMax - mMin, coord: sMax },   // our near face against their far face
+        { delta: sMin - mMin, coord: sMin },   // flush on the low side
+        { delta: sMax - mMax, coord: sMax },   // flush on the high side
+        { delta: sMid - mMid, coord: sMid },   // shared centreline
       ]
-      for (const delta of candidates) {
-        if (Math.abs(delta) > threshold) continue
-        if (!best || Math.abs(delta) < Math.abs(best.delta) - 0.001) best = { delta, id: s.id }
-      }
+      candidates.forEach((c, idx) => {
+        if (Math.abs(c.delta) > threshold) return
+        if (!best || Math.abs(c.delta) < Math.abs(best.delta) - 0.001) {
+          best = { delta: c.delta, id: s.id, kind: CANDIDATE_KIND[idx], coord: c.coord }
+        }
+      })
     }
-    if (best && Math.abs(best.delta) > 1e-6) {
-      offset[key] = Math.round(best.delta * 1000) / 1000
-      refIds.add(best.id)
+    if (best) {
+      const hit = best as { delta: number; id: string; kind: AlignKind; coord: number }
+      // an axis that was already aligned is not news: only report a pull that actually happened
+      if (Math.abs(hit.delta) <= 1e-6) continue
+      offset[key] = Math.round(hit.delta * 1000) / 1000
+      refIds.add(hit.id)
       axes.push(axis as Axis3)
+      guides.push({ axis: axis as Axis3, kind: hit.kind, coord: hit.coord, refId: hit.id })
     }
   }
 
-  return { offset, refIds: [...refIds], axes }
+  return { offset, refIds: [...refIds], axes, guides }
 }

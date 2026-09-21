@@ -1,64 +1,70 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { TransformControls } from '@react-three/drei'
-import { useStore, type ConnectorData, type ProfileData } from '../store/useStore'
+import { useFrame, useThree } from '@react-three/fiber'
+import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { selectionPivot } from '../utils/editOps'
-import { lowestPointY } from '../utils/profileFactory'
+import { rotateSelected, selectionPivot, type RotAxis } from '../utils/editOps'
 
 /**
- * Shared handle state so PointerRouter can tell a press on the rotation handles from a
- * press on the model. `axis` is read straight off the controls at press time — polling a
- * cached flag goes stale as soon as the pointer leaves a handle without another event.
+ * Where the rotate buttons are right now, so PointerRouter can leave presses on them alone.
+ * They are sprites, so there is no DOM element to hit-test against.
  */
 export const gizmoState = {
   busy: false,
-  enabled: true,
-  instance: null as { axis: string | null } | null,
-  /** the gizmo's own pick geometry — PointerRouter ray-tests it instead of trusting event order */
-  picker: null as THREE.Object3D | null,
+  buttons: [] as Array<{ axis: RotAxis; position: THREE.Vector3; radius: number }>,
 }
 
-/** true when the ray would land on a rotation handle */
+/** true when the ray passes through one of the rotate buttons */
 export function gizmoOwnsRay(ray: THREE.Ray): boolean {
-  if (!gizmoState.enabled || !gizmoState.picker) return false
-  const raycaster = new THREE.Raycaster()
-  raycaster.ray.copy(ray)
-  return raycaster.intersectObject(gizmoState.picker, true).length > 0
-}
-
-/**
- * three's rotate gizmo ships an invisible ball ("XYZE"/"E" pickers) for free rotation that
- * covers everything inside the rings. It would swallow every click on the model behind it,
- * so the ball is removed and only the three axis arcs stay grabbable.
- */
-function trimFreeRotationPicker(controls: Record<string, any>): void {
-  const gizmo = controls._gizmo ?? controls.gizmo
-  const rotate = gizmo?.picker?.rotate
-  if (!rotate) return
-  for (const child of [...rotate.children]) {
-    if (child.name === 'XYZE' || child.name === 'E') rotate.remove(child)
+  for (const b of gizmoState.buttons) {
+    // the sprite is square, so its corners reach a little past the inscribed circle
+    if (ray.distanceSqToPoint(b.position) <= (b.radius * 1.42) ** 2) return true
   }
-  gizmoState.picker = rotate
+  return false
 }
 
-interface Snapshot {
-  pivot: THREE.Vector3
-  startQuat: THREE.Quaternion
-  profiles: ProfileData[]
-  connectors: ConnectorData[]
+const AXES: RotAxis[] = ['x', 'y', 'z']
+const AXIS_COLOR: Record<RotAxis, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
+/** on-screen size of a button, as a fraction of the viewport height */
+const BUTTON_SCREEN = 0.055
+const BUTTON_GAP = 1.35
+
+/** A circular arrow drawn into a canvas texture, so it stays crisp and camera-facing */
+function arrowTexture(color: string, reverse: boolean): THREE.CanvasTexture {
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = size; c.height = size
+  const ctx = c.getContext('2d')!
+  ctx.fillStyle = 'rgba(15,23,42,0.88)'
+  ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = color; ctx.lineWidth = 9; ctx.lineCap = 'round'
+  const r = size * 0.28
+  const from = Math.PI * 1.35
+  const to = Math.PI * 0.75
+  ctx.beginPath(); ctx.arc(size / 2, size / 2, r, from, to, reverse); ctx.stroke()
+  // the head sits at the end the arc stops at, which swaps when the sweep is reversed
+  const head = reverse ? from : to
+  const hx = size / 2 + Math.cos(head) * r
+  const hy = size / 2 + Math.sin(head) * r
+  const tangent = head + (reverse ? -Math.PI / 2 : Math.PI / 2)
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(hx + Math.cos(tangent) * 16, hy + Math.sin(tangent) * 16)
+  ctx.lineTo(hx + Math.cos(tangent + 2.4) * 14, hy + Math.sin(tangent + 2.4) * 14)
+  ctx.lineTo(hx + Math.cos(tangent - 2.4) * 14, hy + Math.sin(tangent - 2.4) * 14)
+  ctx.closePath(); ctx.fill()
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
 }
 
 /**
- * On-canvas rotation handles for the current selection, the way CAD tools do it:
- * select a part, drag an arc to turn it. Snapping is 5° unless Shift is held.
+ * Rotation buttons floating next to the selection: one click turns it 90° about that world
+ * axis, four clicks come back to where it started; Shift reverses. Frames are built on right
+ * angles, so a free-rotation gizmo only got in the way of picking the model.
  */
 const RotateGizmo: React.FC = () => {
-  const [anchorObj, setAnchorObj] = useState<THREE.Object3D | null>(null)
-  const anchor = useRef<THREE.Object3D | null>(null)
-  const controls = useRef<{ axis: string | null } | null>(null)
-  const snapshot = useRef<Snapshot | null>(null)
-  const committed = useRef(false)
+  const { camera } = useThree()
   const selectedIds = useStore((s) => s.selectedIds)
   const profiles = useStore((s) => s.profiles)
   const connectors = useStore((s) => s.connectors)
@@ -66,7 +72,20 @@ const RotateGizmo: React.FC = () => {
   const selectMode = useToolStore((s) => s.selectMode)
   const isDragging = useToolStore((s) => s.isDragging)
   const showGizmo = useToolStore((s) => s.showGizmo)
-  const suppressed = useToolStore((s) => s.gizmoSuppressed)
+
+  const group = useRef<THREE.Group>(null)
+  const sprites = useRef<Array<THREE.Sprite | null>>([])
+  const pressedOn = useRef<RotAxis | null>(null)
+  const [shiftHeld, setShiftHeld] = React.useState(false)
+
+  const textures = useMemo(() => {
+    const map = {} as Record<RotAxis, { cw: THREE.CanvasTexture; ccw: THREE.CanvasTexture }>
+    for (const a of AXES) map[a] = { cw: arrowTexture(AXIS_COLOR[a], false), ccw: arrowTexture(AXIS_COLOR[a], true) }
+    return map
+  }, [])
+  useEffect(() => () => {
+    for (const a of AXES) { textures[a].cw.dispose(); textures[a].ccw.dispose() }
+  }, [textures])
 
   const selection = useMemo(() => {
     const ids = new Set(selectedIds)
@@ -76,115 +95,80 @@ const RotateGizmo: React.FC = () => {
     }
   }, [selectedIds, profiles, connectors])
 
-  const pivot = useMemo(
-    () => selectionPivot(selection.profiles, selection.connectors),
-    [selection],
-  )
-
+  const anchor = useMemo(() => selectionPivot(selection.profiles, selection.connectors), [selection])
   const active = showGizmo && viewMode === 'navigate' && !selectMode && !isDragging && selectedIds.length > 0
 
-  // Holding Ctrl/Cmd is a selection gesture, so the handles step aside and let the click through
-  const [modifierHeld, setModifierHeld] = useState(false)
+  // Shift shows the reversed arrows, so the modifier is visible before the click
   useEffect(() => {
-    const sync = (e: KeyboardEvent) => setModifierHeld(e.ctrlKey || e.metaKey)
+    const sync = (e: KeyboardEvent) => setShiftHeld(e.shiftKey)
     window.addEventListener('keydown', sync)
     window.addEventListener('keyup', sync)
     return () => { window.removeEventListener('keydown', sync); window.removeEventListener('keyup', sync) }
   }, [])
-  const handlesLive = !modifierHeld && !suppressed
-  useEffect(() => { gizmoState.enabled = handlesLive }, [handlesLive])
 
-  // keep the anchor at the selection centre while idle
-  useEffect(() => {
-    if (!anchor.current || snapshot.current) return
-    anchor.current.position.copy(pivot)
-    anchor.current.quaternion.identity()
-  }, [pivot, active])
-
+  // the gizmo can disappear mid-press (Escape, Delete, mode switch): never leave `busy` latched
   useEffect(() => {
     if (active) return
-    // only clear when the handles are actually gone; the ref callback owns the live values
     gizmoState.busy = false
-    gizmoState.instance = null
-    gizmoState.picker = null
+    gizmoState.buttons = []
+    pressedOn.current = null
   }, [active])
+  useEffect(() => () => { gizmoState.busy = false; gizmoState.buttons = [] }, [])
 
-  const onMouseDown = useCallback(() => {
-    gizmoState.busy = true
-    const store = useStore.getState()
-    const ids = new Set(store.selectedIds)
-    snapshot.current = {
-      pivot: pivot.clone(),
-      startQuat: anchor.current ? anchor.current.quaternion.clone() : new THREE.Quaternion(),
-      profiles: store.profiles.filter((p) => ids.has(p.id)).map((p) => ({ ...p })),
-      connectors: store.connectors.filter((c) => ids.has(c.id)).map((c) => ({ ...c })),
-    }
-    committed.current = false   // history entry waits for the first real turn
-  }, [pivot])
+  // Positions follow the camera every frame: orbiting or zooming must not leave the buttons
+  // (or their hit regions) behind, and React does not re-render on camera motion.
+  useFrame(() => {
+    if (!active || !group.current) return
+    const persp = camera as THREE.PerspectiveCamera
+    const dist = anchor.distanceTo(camera.position)
+    const viewHeight = 2 * Math.tan(THREE.MathUtils.degToRad(persp.fov ?? 45) / 2) * dist
+    const worldSize = viewHeight * BUTTON_SCREEN
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).normalize()
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).normalize()
+    const base = anchor.clone().addScaledVector(up, worldSize * 2.1)
 
-  const onObjectChange = useCallback(() => {
-    const snap = snapshot.current
-    if (!snap || !anchor.current) return
-    const delta = anchor.current.quaternion.clone().multiply(snap.startQuat.clone().invert())
-    if (Math.abs(delta.w) > 0.999999) return            // the handle was touched but not turned
-    if (!committed.current) { committed.current = true; useStore.getState().snapshotHistory() }
-    const spin = (pos: [number, number, number], quat: [number, number, number, number]) => {
-      const p = new THREE.Vector3(...pos).sub(snap.pivot).applyQuaternion(delta).add(snap.pivot)
-      const q = delta.clone().multiply(new THREE.Quaternion(...quat)).normalize()
-      return { position: [p.x, p.y, p.z] as [number, number, number], quaternion: [q.x, q.y, q.z, q.w] as [number, number, number, number] }
-    }
+    gizmoState.buttons = AXES.map((axis, i) => {
+      const pos = base.clone().addScaledVector(right, (i - 1) * worldSize * BUTTON_GAP)
+      const sprite = sprites.current[i]
+      if (sprite) {
+        sprite.position.copy(pos)
+        sprite.scale.set(worldSize, worldSize, 1)
+      }
+      return { axis, position: pos, radius: worldSize * 0.5 }
+    })
+  })
 
-    const profileUpdates = snap.profiles.map((p) => ({ id: p.id, updates: spin(p.position, p.quaternion) }))
-    const connectorUpdates = snap.connectors.map((c) => ({ id: c.id, updates: spin(c.position, c.quaternion) }))
-
-    // never turn the selection into the ground — connectors included
-    let sink = 0
-    snap.profiles.forEach((p, i) => { sink = Math.min(sink, lowestPointY({ ...p, ...profileUpdates[i].updates })) })
-    connectorUpdates.forEach((u) => { sink = Math.min(sink, u.updates.position[1]) })
-    if (sink < 0) {
-      for (const u of [...profileUpdates, ...connectorUpdates]) u.updates.position[1] -= sink
-    }
-
-    const store = useStore.getState()
-    store.updateProfiles(profileUpdates)
-    for (const u of connectorUpdates) store.updateConnector(u.id, u.updates)
-  }, [])
-
-  const onMouseUp = useCallback(() => {
+  const onRelease = useCallback((axis: RotAxis, e: any) => {
     gizmoState.busy = false
-    snapshot.current = null
-    const store = useStore.getState()
-    const ids = new Set(store.selectedIds)
-    if (anchor.current) {
-      anchor.current.position.copy(selectionPivot(
-        store.profiles.filter((p) => ids.has(p.id)),
-        store.connectors.filter((c) => ids.has(c.id)),
-      ))
-      anchor.current.quaternion.identity()
-    }
+    if (pressedOn.current !== axis) return   // the press started somewhere else: not our click
+    pressedOn.current = null
+    e.stopPropagation()
+    e.nativeEvent?.stopPropagation?.()
+    rotateSelected(axis, e.nativeEvent?.shiftKey ? -90 : 90)
   }, [])
+
+  if (!active) return null
 
   return (
-    <>
-      <object3D ref={(o) => { anchor.current = o; setAnchorObj(o) }} />
-      {active && anchorObj && (
-        <TransformControls
-          ref={(c) => {
-            controls.current = c as unknown as { axis: string | null } | null
-            gizmoState.instance = controls.current
-            if (c) trimFreeRotationPicker(c as unknown as Record<string, any>)
+    <group ref={group} renderOrder={30}>
+      {AXES.map((axis, i) => (
+        <sprite
+          key={axis}
+          ref={(s) => { sprites.current[i] = s }}
+          renderOrder={30}
+          onPointerDown={(e) => {
+            gizmoState.busy = true
+            pressedOn.current = axis
+            e.stopPropagation()
+            e.nativeEvent?.stopPropagation?.()
           }}
-          object={anchorObj}
-          mode="rotate"
-          enabled={handlesLive}
-          size={0.45}
-          rotationSnap={THREE.MathUtils.degToRad(5)}
-          onMouseDown={onMouseDown}
-          onMouseUp={onMouseUp}
-          onObjectChange={onObjectChange}
-        />
-      )}
-    </>
+          onPointerUp={(e) => onRelease(axis, e)}
+          onPointerOut={() => { gizmoState.busy = false; pressedOn.current = null }}
+        >
+          <spriteMaterial map={shiftHeld ? textures[axis].ccw : textures[axis].cw} transparent depthTest={false} sizeAttenuation />
+        </sprite>
+      ))}
+    </group>
   )
 }
 

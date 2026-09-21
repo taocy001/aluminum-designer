@@ -12,7 +12,8 @@ if (import.meta.env.DEV) {
   ;(window as any).__aluframe = {
     store: useStore, tool: useToolStore,
     trims: () => Object.fromEntries(analyzeFrame(useStore.getState().profiles).trims),
-    gizmoAxis: () => gizmoState.instance?.axis ?? null,
+    rotateButtons: () => gizmoState.buttons.map((b) => ({ axis: b.axis, position: b.position.toArray() })),
+    gizmoBusy: () => gizmoState.busy,
     conflicts: () => {
       const { conflicts, conflictIds } = analyzeFrame(useStore.getState().profiles)
       return { conflicts: conflicts.map((c) => ({ a: c.a, b: c.b, depth: c.depth })), ids: [...conflictIds] }
