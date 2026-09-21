@@ -65,6 +65,7 @@ const TransformGizmo: React.FC = () => {
   const selectMode = useToolStore((s) => s.selectMode)
   const isDragging = useToolStore((s) => s.isDragging)
   const showGizmo = useToolStore((s) => s.showGizmo)
+  const pivotMode = useToolStore((s) => s.pivotMode)
   const hoverPart = useToolStore((s) => s.gizmoHover)
 
   const group = useRef<THREE.Group>(null)
@@ -79,8 +80,11 @@ const TransformGizmo: React.FC = () => {
     }
   }, [selectedIds, profiles, connectors])
 
-  const anchor = useMemo(() => selectionPivot(selection.profiles, selection.connectors), [selection])
-  const active = showGizmo && !selectMode && !isDragging && selectedIds.length > 0
+  // the widget sits on the pivot, so where it turns about is something you can see
+  const anchor = useMemo(() => selectionPivot(selection.profiles, selection.connectors, pivotMode), [selection, pivotMode])
+  // a fully locked selection has nothing the gizmo could do
+  const anyMovable = selection.profiles.some((p) => !p.locked) || selection.connectors.some((c) => !c.locked)
+  const active = showGizmo && !selectMode && !isDragging && selectedIds.length > 0 && anyMovable
 
   // one world size for the whole widget, refreshed every frame so zoom and orbit keep it steady
   useFrame(() => {

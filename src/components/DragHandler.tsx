@@ -107,6 +107,7 @@ const DragHandler: React.FC = () => {
         if (Math.hypot(e.clientX - rs.downX, e.clientY - rs.downY) <= RESIZE_SLOP_PX) return true
         resizingId.current = rs.id
         store.snapshotHistory()
+        ts.markDragMoved()   // the gesture now owns a history entry; an exact commit must not add a second
       }
 
       const signed = rs.end === 'start' ? -t : t

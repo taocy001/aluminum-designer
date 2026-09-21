@@ -8,6 +8,7 @@ import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { endGrabRadius } from './ResizeHandles'
 import { gizmoState, gizmoHandleAt } from './TransformGizmo'
 import { rotateSelected } from '../utils/editOps'
+import { translations } from '../utils/translations'
 
 const CLICK_SLOP_PX = 5
 
@@ -113,7 +114,7 @@ const PointerRouter: React.FC = () => {
         if (Math.hypot(e.clientX - armed.x, e.clientY - armed.y) > CLICK_SLOP_PX) {
           const store = useStore.getState()
           const profile = store.profiles.find((p) => p.id === armed.id)
-          if (profile) {
+          if (profile && !profile.locked) {
             store.selectItem(armed.id, false)
             beginMove(profile.id, armed.point, new THREE.Vector3(...profile.position), { [profile.id]: [...profile.position] as [number, number, number] }, armed, e)
           }
@@ -187,8 +188,9 @@ const PointerRouter: React.FC = () => {
           const groupOrigins: Record<string, [number, number, number]> = {}
           for (const sid of store.selectedIds) {
             const part2 = store.profiles.find((p) => p.id === sid) ?? store.connectors.find((c) => c.id === sid)
-            if (part2) groupOrigins[sid] = [part2.position[0], part2.position[1], part2.position[2]]
+            if (part2 && !part2.locked) groupOrigins[sid] = [part2.position[0], part2.position[1], part2.position[2]]
           }
+          if (Object.keys(groupOrigins).length === 0) return   // everything selected is locked
           const anchorPoint = new THREE.Vector3(...lead.position)
           beginMove(lead.id, anchorPoint, anchorPoint.clone(), groupOrigins,
             { shift: e.shiftKey, alt: false }, e,
@@ -253,7 +255,7 @@ const PointerRouter: React.FC = () => {
         const camDist = pick.point.distanceTo(new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld))
         const zone = endGrabRadius(profile.length, camDist, camera, size.height)
         const grabEnd = nearStart < zone ? 'start' : nearEnd < zone ? 'end' : null
-        if (grabEnd && store.selectedIds.includes(pick.id) && store.selectedIds.length === 1) {
+        if (grabEnd && !profile.locked && store.selectedIds.includes(pick.id) && store.selectedIds.length === 1) {
           // the length the press itself implies, so the member does not jump by the
           // distance between the press point and the end face
           const dir = getProfileDir(profile)
@@ -270,12 +272,14 @@ const PointerRouter: React.FC = () => {
           return
         }
       }
-      // dragging any selected part moves the whole selection, members and connectors alike
+      // dragging any selected part moves the whole selection, members and connectors alike.
+      // Locked parts drop out of the group instead of blocking the drag: the rest still moves.
+      if ('locked' in item && item.locked) { useToolStore.getState().showToast(translations[useToolStore.getState().language].toastLocked, 'info'); return }
       const dragGroup = store.selectedIds.includes(pick.id) ? store.selectedIds : [pick.id]
       const groupOrigins: Record<string, [number, number, number]> = {}
       for (const sid of dragGroup) {
         const part = store.profiles.find((q) => q.id === sid) ?? store.connectors.find((q) => q.id === sid)
-        if (part) groupOrigins[sid] = [part.position[0], part.position[1], part.position[2]]
+        if (part && !part.locked) groupOrigins[sid] = [part.position[0], part.position[1], part.position[2]]
       }
 
       beginMove(pick.id, pick.point, new THREE.Vector3(...item.position), groupOrigins, { shift: e.shiftKey, alt: e.altKey }, e, pick.kind)

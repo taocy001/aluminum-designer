@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -77,7 +77,7 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, selectedIds, removeSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
+  const { profiles, connectors, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
@@ -123,6 +123,10 @@ const Sidebar: React.FC = () => {
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
   const selTrim = selectedProfile ? trims.get(selectedProfile.id) : undefined
+  // the lock button reads locked only when everything selected is locked, matching the toggle
+  const selectionLocked = selectedIds.length > 0
+    && profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
+    && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
 
   const bom = useMemo(() => buildBom(profiles, connectors, trims, language), [profiles, connectors, trims, language])
   const totalCut = bom.totalCutLength
@@ -244,7 +248,14 @@ const Sidebar: React.FC = () => {
           <div className="bg-slate-900/50 rounded-xl p-3 border border-white/5 space-y-3 shadow-xl" data-testid="properties">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <span className="text-[10px] font-black uppercase text-slate-400">{t.properties}</span>
-              <button onClick={removeSelected} title={t.delete} className="text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg"><Trash2 size={14} /></button>
+              <div className="flex items-center gap-1">
+                <button onClick={toggleLockSelected} title={t.lockHint} data-testid="lock-toggle"
+                  className={`p-1.5 rounded-lg ${selectionLocked ? 'text-amber-400 bg-amber-400/10' : 'text-slate-400 hover:bg-white/5'}`}>
+                  {selectionLocked ? <Lock size={14} /> : <LockOpen size={14} />}
+                </button>
+                <button onClick={removeSelected} disabled={selectionLocked} data-testid="delete-selected" title={selectionLocked ? t.toastLocked : t.delete}
+                  className="text-red-400 hover:bg-red-400/10 disabled:opacity-30 p-1.5 rounded-lg"><Trash2 size={14} /></button>
+              </div>
             </div>
             {selectedProfile && (
               <div className="space-y-3">

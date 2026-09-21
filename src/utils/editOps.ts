@@ -18,16 +18,18 @@ function t() { return translations[useToolStore.getState().language] }
 function toast(msg: string, kind: 'error' | 'info' | 'success' = 'error') { useToolStore.getState().showToast(msg, kind) }
 const round3 = (v: number) => { const r = Math.round(v * 1000) / 1000; return r === 0 ? 0 : r }
 
-function selectedProfiles(): ProfileData[] {
+// Locked parts stay in the selection — they can still be inspected, copied and used as a
+// snapping reference — but every operation that would move them skips them.
+function selectedProfiles(includeLocked = false): ProfileData[] {
   const { profiles, selectedIds } = useStore.getState()
   const ids = new Set(selectedIds)
-  return profiles.filter((p) => ids.has(p.id))
+  return profiles.filter((p) => ids.has(p.id) && (includeLocked || !p.locked))
 }
 
-function selectedConnectors(): ConnectorData[] {
+function selectedConnectors(includeLocked = false): ConnectorData[] {
   const { connectors, selectedIds } = useStore.getState()
   const ids = new Set(selectedIds)
-  return connectors.filter((c) => ids.has(c.id))
+  return connectors.filter((c) => ids.has(c.id) && (includeLocked || !c.locked))
 }
 
 /**
@@ -50,6 +52,7 @@ function conflictPairsNow(): Set<string> {
 /** Apply edited profiles (same ids) as one undoable step */
 function applyProfiles(cands: ProfileData[]): boolean {
   if (cands.length === 0) return false
+  if (cands.some((c) => c.locked)) { toast(t().toastLocked); return false }
   const before = conflictPairsNow()
   useStore.getState().commitProfilesEdit(cands.map((c) => ({ id: c.id, updates: c })))
   warnIfNewConflicts(before)
@@ -97,19 +100,19 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
 
 /** Duplicate the selection (profiles and connectors) and select the copies */
 export function duplicateSelected(): boolean {
-  const profiles = selectedProfiles()
-  const connectors = selectedConnectors()
+  const profiles = selectedProfiles(true)
+  const connectors = selectedConnectors(true)
   if (profiles.length === 0 && connectors.length === 0) return false
   const axis = profiles[0] ? getProfileAxis(profiles[0]) : 'y'
   const d: [number, number, number] = axis === 'x' ? [0, 0, 50] : [50, 0, 0]
   const before = conflictPairsNow()
   const store = useStore.getState()
   const newProfiles = profiles.map((p) => ({
-    ...p, id: nextId('p'),
+    ...p, id: nextId('p'), locked: false,
     position: [p.position[0] + d[0], p.position[1] + d[1], p.position[2] + d[2]] as [number, number, number],
   }))
   const newConnectors = connectors.map((c) => ({
-    ...c, id: nextId('c'),
+    ...c, id: nextId('c'), locked: false,
     position: [c.position[0] + d[0], c.position[1] + d[1], c.position[2] + d[2]] as [number, number, number],
   }))
   store.addItems(newProfiles, newConnectors, true)
@@ -118,8 +121,23 @@ export function duplicateSelected(): boolean {
   return true
 }
 
-/** Centre of the current selection, used as the default rotation pivot */
-export function selectionPivot(profiles: ProfileData[], connectors: ConnectorData[]): THREE.Vector3 {
+/**
+ * Where the selection turns about.
+ *
+ * The centre is the obvious default but rarely the useful one: a rail turned about its
+ * middle throws both ends out and has to be dragged back. Frames are built from corners,
+ * so turning about the end that is already joined leaves that joint alone. `start` and
+ * `end` only mean something for a single member; anything else falls back to the centre.
+ */
+export type PivotMode = 'center' | 'start' | 'end'
+
+export function selectionPivot(
+  profiles: ProfileData[], connectors: ConnectorData[], mode: PivotMode = 'center',
+): THREE.Vector3 {
+  if (mode !== 'center' && profiles.length === 1 && connectors.length === 0) {
+    const { start, end } = getProfileEndpoints(profiles[0])
+    return mode === 'start' ? start : end
+  }
   const pts: THREE.Vector3[] = []
   for (const p of profiles) {
     const { start, end } = getProfileEndpoints(p)
@@ -131,6 +149,11 @@ export function selectionPivot(profiles: ProfileData[], connectors: ConnectorDat
   return sum.divideScalar(pts.length)
 }
 
+/** True when `start`/`end` actually apply: one member, nothing else */
+export function pivotApplies(profiles: ProfileData[], connectors: ConnectorData[]): boolean {
+  return profiles.length === 1 && connectors.length === 0
+}
+
 /**
  * Rotate the whole selection by any angle about a world axis, around the selection centre.
  * Profiles and connectors alike — nothing is restricted to 90° steps or to the Y axis.
@@ -140,7 +163,7 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   const connectors = selectedConnectors()
   if (profiles.length === 0 && connectors.length === 0) return false
   if (!isFinite(degrees) || degrees % 360 === 0) return false
-  const pivot = selectionPivot(profiles, connectors)
+  const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode)
   const rot = new THREE.Quaternion().setFromAxisAngle(AXES[axis], THREE.MathUtils.degToRad(degrees))
   const spin = (pos: [number, number, number], quat: [number, number, number, number]) => {
     const p = new THREE.Vector3(...pos).sub(pivot).applyQuaternion(rot).add(pivot)
@@ -164,6 +187,77 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   const before = conflictPairsNow()
   useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors })
   warnIfNewConflicts(before)
+  return true
+}
+
+/**
+ * Finish the move in progress at an exact distance.
+ *
+ * Dragging gets a part roughly where it belongs; frames are built to the millimetre. The
+ * direction is the one the drag is already going — along the locked axis when a gizmo arrow
+ * owns the drag, otherwise straight from where the part started to where it is now — so the
+ * number only has to answer "how far", which is the part the mouse is bad at.
+ */
+export function commitExactMove(distance: number): boolean {
+  const ts = useToolStore.getState()
+  const store = useStore.getState()
+  if (!ts.isDragging || !ts.dragMoved || !ts.dragProfileId) return false
+  if (!isFinite(distance)) return false
+
+  const origins = ts.dragGroupOrigins
+  const leadOrigin = origins[ts.dragProfileId] ?? ts.dragOriginPos?.toArray() as [number, number, number] | undefined
+  if (!leadOrigin) return false
+  const lead = store.profiles.find((p) => p.id === ts.dragProfileId)
+    ?? store.connectors.find((c) => c.id === ts.dragProfileId)
+  if (!lead) return false
+
+  const travelled = new THREE.Vector3(...lead.position).sub(new THREE.Vector3(...leadOrigin))
+  if (ts.dragAxis) {
+    const keep = { x: 0, y: 1, z: 2 }[ts.dragAxis]
+    travelled.set(keep === 0 ? travelled.x : 0, keep === 1 ? travelled.y : 0, keep === 2 ? travelled.z : 0)
+  }
+  if (travelled.length() < 0.5) { toast(t().toastNeedDirection, 'info'); return false }
+  const delta = travelled.normalize().multiplyScalar(distance)
+
+  const profiles = store.profiles.filter((p) => origins[p.id])
+  const sink = sinkBelowFloor(profiles.map((p) => ({ ...p, position: origins[p.id] })), [delta.x, delta.y, delta.z])
+  if (sink < 0) delta.y -= sink
+
+  const at = (id: string, fallback: [number, number, number]): [number, number, number] => {
+    const o = origins[id] ?? fallback
+    return [round3(o[0] + delta.x), round3(o[1] + delta.y), round3(o[2] + delta.z)]
+  }
+  store.updateParts({
+    profiles: profiles.map((p) => ({ id: p.id, updates: { position: at(p.id, p.position) } })),
+    connectors: store.connectors.filter((c) => origins[c.id])
+      .map((c) => ({ id: c.id, updates: { position: at(c.id, c.position) } })),
+  })
+  ts.stopDrag()
+  return true
+}
+
+/** Finish the stretch in progress at an exact length, the fixed end staying put */
+export function commitExactLength(length: number): boolean {
+  const ts = useToolStore.getState()
+  const rs = ts.resize
+  if (!rs) return false
+  const store = useStore.getState()
+  const profile = store.profiles.find((p) => p.id === rs.id)
+  if (!profile) return false
+  if (!isFinite(length) || length < 10) { toast(t().toastTooShort); return false }
+
+  const dir = getProfileDir(profile)
+  const origin = new THREE.Vector3(...rs.origin)
+  const fixed = rs.end === 'start' ? origin.clone().addScaledVector(dir, rs.length) : origin.clone()
+  const position: [number, number, number] = rs.end === 'start'
+    ? [round3(fixed.x - dir.x * length), round3(fixed.y - dir.y * length), round3(fixed.z - dir.z * length)]
+    : [round3(fixed.x), round3(fixed.y), round3(fixed.z)]
+
+  // the pointer may never have travelled, so this gesture may have no history entry yet
+  if (!ts.dragMoved) store.snapshotHistory()
+  store.updateProfile(rs.id, { length: Math.round(length * 100) / 100, position })
+  ts.stopResize()
+  ts.setDragConflict(false)
   return true
 }
 
@@ -212,6 +306,7 @@ export function setConnectorSeries(id: string, series: 20 | 30 | 40): boolean {
 export function setConnectorPosition(id: string, position: [number, number, number]): boolean {
   const c = useStore.getState().connectors.find((q) => q.id === id)
   if (!c || position.some((v) => !isFinite(v))) return false
+  if (c.locked) { toast(t().toastLocked); return false }
   const before = conflictPairsNow()
   useStore.getState().commitTransform({ connectors: [{ id, updates: { position: position.map(round3) as [number, number, number] } }] })
   warnIfNewConflicts(before)

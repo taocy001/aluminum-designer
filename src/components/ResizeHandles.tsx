@@ -79,7 +79,7 @@ const ResizeHandles: React.FC = () => {
     sprite.current.scale.set(world, world, 1)
   })
 
-  if (!target || !geometry || held !== null || !shownEnd) return null
+  if (!target || !geometry || held !== null || target.locked || !shownEnd) return null
   const { start, end, dir, section } = geometry
   const at = shownEnd === 'start' ? start : end
   const out = shownEnd === 'start' ? dir.clone().negate() : dir.clone()
