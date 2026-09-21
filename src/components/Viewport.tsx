@@ -9,6 +9,7 @@ import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/j
 import { analyzeFrame, type Conflict } from '../utils/analysis'
 import Profile from './Profile'
 import Connector from './Connector'
+import Panel from './Panel'
 import DrawingHandler from './DrawingHandler'
 import DragHandler from './DragHandler'
 import PointerRouter from './PointerRouter'
@@ -183,7 +184,7 @@ const SnapGuides: React.FC = () => {
 }
 
 const Viewport: React.FC = () => {
-  const { profiles, connectors, selectedIds } = useStore()
+  const { profiles, connectors, panels, selectedIds } = useStore()
   const { isDragging, showDimensionLabels, selectMode } = useToolStore()
   const { trims, conflicts, conflictIds } = useMemo(() => analyzeFrame(profiles), [profiles])
 
@@ -214,6 +215,10 @@ const Viewport: React.FC = () => {
 
       {connectors.map((c) => (
         <Connector key={c.id} {...c} isSelected={selectedIds.includes(c.id)} />
+      ))}
+
+      {panels.map((b) => (
+        <Panel key={b.id} {...b} isSelected={selectedIds.includes(b.id)} />
       ))}
 
       {showDimensionLabels && <DimensionLabels trims={trims} />}
