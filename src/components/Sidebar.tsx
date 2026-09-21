@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3 } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -9,7 +9,7 @@ import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel 
 import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
 import { ALL_SPECS } from '../utils/specUtils'
-import { directionLabel, duplicateSelected, flipProfile, orientationDegrees, rotateSelected, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
+import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
 
@@ -94,6 +94,8 @@ const Sidebar: React.FC = () => {
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
   const [rotAngleText, setRotAngleText] = useState('90')
+  const [arrayCountText, setArrayCountText] = useState('1')
+  const [arraySpacingText, setArraySpacingText] = useState('300')
   const [collapsed, setCollapsed] = useState(false)
   // section state is remembered per browser, and selecting something opens the properties
   const [open, setOpen] = useState<Record<SectionKey, boolean>>(() => {
@@ -120,6 +122,8 @@ const Sidebar: React.FC = () => {
   })
   const rotAngle = parseFloat(rotAngleText)
   const rotAngleValid = isFinite(rotAngle) && rotAngle % 360 !== 0
+  const arrayValid = isFinite(parseFloat(arrayCountText)) && parseFloat(arrayCountText) >= 1
+    && isFinite(parseFloat(arraySpacingText)) && Math.abs(parseFloat(arraySpacingText)) >= 1
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
   const selTrim = selectedProfile ? trims.get(selectedProfile.id) : undefined
@@ -373,6 +377,42 @@ const Sidebar: React.FC = () => {
                   <span className="font-mono text-slate-300" data-testid="profile-orientation">{orientationDegrees(selectedProfile.quaternion).join(' / ')}</span>
                 </div>
               )}
+            </div>
+
+            {/* Symmetry and repetition: the two moves a cabinet is mostly made of */}
+            <div className="space-y-1 pt-1 border-t border-white/5" data-testid="repeat-block">
+              <span className="text-[10px] text-slate-500 uppercase font-bold">{t.mirror} / {t.array}</span>
+              <div className="grid grid-cols-3 gap-1">
+                {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
+                  <button key={ax} data-testid={`mirror-${ax}`} onClick={() => mirrorSelected(ax)}
+                    className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold font-mono">
+                    <FlipHorizontal2 size={11} />{ax.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
+                  <span className="text-[9px] text-slate-500 font-bold">{t.arrayCount}</span>
+                  <input type="number" min={1} step={1} value={arrayCountText} data-testid="array-count"
+                    onChange={(e) => setArrayCountText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
+                    className="w-full bg-transparent py-1 text-xs font-mono outline-none" />
+                </label>
+                <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
+                  <span className="text-[9px] text-slate-500 font-bold">{t.arraySpacing}</span>
+                  <input type="number" step={10} value={arraySpacingText} data-testid="array-spacing"
+                    onChange={(e) => setArraySpacingText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
+                    className="w-full bg-transparent py-1 text-xs font-mono outline-none" />
+                </label>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
+                  <button key={ax} data-testid={`array-${ax}`} disabled={!arrayValid}
+                    onClick={() => arraySelected(ax, parseFloat(arrayCountText), parseFloat(arraySpacingText))}
+                    className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold font-mono">
+                    <Rows3 size={11} />{ax.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
             {selectedIds.length > 1 && (
               <div className="text-[10px] text-slate-400 pt-1 border-t border-white/5">{t.selected(selectedIds.length)}</div>

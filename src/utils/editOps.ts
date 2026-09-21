@@ -4,7 +4,7 @@ import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from './geometryCore'
 import { getProfileAxis, getProfileDir } from './jointUtils'
 import { analyzeFrame } from './analysis'
-import { floorY, lowestPointY, nextId } from './profileFactory'
+import { buildProfile, floorY, lowestPointY, nextId } from './profileFactory'
 import { translations } from './translations'
 
 export type RotAxis = 'x' | 'y' | 'z'
@@ -117,6 +117,113 @@ export function duplicateSelected(): boolean {
   }))
   store.addItems(newProfiles, newConnectors, true)
   toast(t().toastDuplicated(newProfiles.length + newConnectors.length), 'success')
+  warnIfNewConflicts(before)
+  return true
+}
+
+/** Centre of everything in the document, which is the plane a mirror reflects across */
+function documentCentre(): THREE.Vector3 {
+  const { profiles, connectors } = useStore.getState()
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity)
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity)
+  const add = (v: THREE.Vector3) => { min.min(v); max.max(v) }
+  for (const p of profiles) { const { start, end } = getProfileEndpoints(p); add(start); add(end) }
+  for (const c of connectors) add(new THREE.Vector3(...c.position))
+  if (!isFinite(min.x)) return new THREE.Vector3()
+  return min.add(max).multiplyScalar(0.5)
+}
+
+/**
+ * Mirror the selection across the plane through the centre of the whole frame.
+ *
+ * The plane is the frame's, not the selection's: building a cabinet means drawing one side
+ * and mirroring it to get the other, and a plane through the selection's own centre would
+ * only drop the copy back on top of it. With everything selected the two coincide, which
+ * turns the gesture into flipping the whole frame — also a reasonable reading.
+ *
+ * A reflection is not a rotation, so members are rebuilt from their reflected endpoints
+ * rather than having their quaternion flipped; the sections are symmetric, nothing is lost.
+ */
+export function mirrorSelected(axis: RotAxis = 'x'): boolean {
+  const profiles = selectedProfiles(true)
+  const connectors = selectedConnectors(true)
+  if (profiles.length === 0 && connectors.length === 0) return false
+
+  const centre = documentCentre()
+  const k = { x: 0, y: 1, z: 2 }[axis] as 0 | 1 | 2
+  const c = [centre.x, centre.y, centre.z][k]
+  const flip = (v: THREE.Vector3) => {
+    const out = v.clone()
+    if (k === 0) out.x = 2 * c - v.x
+    else if (k === 1) out.y = 2 * c - v.y
+    else out.z = 2 * c - v.z
+    return out
+  }
+
+  const before = conflictPairsNow()
+  const copies: ProfileData[] = []
+  for (const p of profiles) {
+    const { start, end } = getProfileEndpoints(p)
+    const built = buildProfile(flip(start), flip(end), p.spec)
+    if (built) copies.push({ ...built, miterCuts: p.miterCuts, holes: p.holes })
+  }
+  // A connector's own orientation cannot be mirrored without turning it inside out, so the
+  // copy is placed mirrored and left facing the way the original does; a quarter turn in
+  // the panel fixes the rare case where that is wrong.
+  const connectorCopies: ConnectorData[] = connectors.map((c2) => {
+    const at = flip(new THREE.Vector3(...c2.position))
+    return { ...c2, id: nextId('c'), locked: false, position: [round3(at.x), round3(at.y), round3(at.z)] as [number, number, number] }
+  })
+  if (copies.length === 0 && connectorCopies.length === 0) return false
+
+  useStore.getState().addItems(copies, connectorCopies, true)
+  toast(t().toastMirrored(copies.length + connectorCopies.length), 'success')
+  warnIfNewConflicts(before)
+  return true
+}
+
+/**
+ * Repeat the selection along a world axis: `count` copies, `spacing` millimetres apart.
+ * Shelves, uprights and drawer rails are all this move, and doing it by hand means placing
+ * the same part five times and getting one of them wrong.
+ */
+export function arraySelected(axis: RotAxis, count: number, spacing: number): boolean {
+  const profiles = selectedProfiles(true)
+  const connectors = selectedConnectors(true)
+  if (profiles.length === 0 && connectors.length === 0) return false
+  if (!isFinite(count) || count < 1 || !isFinite(spacing) || Math.abs(spacing) < 1) return false
+  const n = Math.min(Math.floor(count), 50)   // a slip of the keyboard must not make 5000 parts
+
+  const step = new THREE.Vector3(
+    axis === 'x' ? spacing : 0, axis === 'y' ? spacing : 0, axis === 'z' ? spacing : 0,
+  )
+  const before = conflictPairsNow()
+  const copies: ProfileData[] = []
+  const connectorCopies: ConnectorData[] = []
+  for (let i = 1; i <= n; i++) {
+    const d = step.clone().multiplyScalar(i)
+    for (const p of profiles) {
+      copies.push({
+        ...p, id: nextId('p'), locked: false,
+        position: [round3(p.position[0] + d.x), round3(p.position[1] + d.y), round3(p.position[2] + d.z)],
+      })
+    }
+    for (const c of connectors) {
+      connectorCopies.push({
+        ...c, id: nextId('c'), locked: false,
+        position: [round3(c.position[0] + d.x), round3(c.position[1] + d.y), round3(c.position[2] + d.z)],
+      })
+    }
+  }
+  // the whole array is lifted as one, so the copies stay in line instead of being clamped apart
+  const sink = sinkBelowFloor(copies, [0, 0, 0])
+  if (sink < 0) {
+    for (const p of copies) p.position = [p.position[0], round3(p.position[1] - sink), p.position[2]]
+    for (const c of connectorCopies) c.position = [c.position[0], round3(c.position[1] - sink), c.position[2]]
+  }
+
+  useStore.getState().addItems(copies, connectorCopies, true)
+  toast(t().toastArrayed(copies.length + connectorCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
