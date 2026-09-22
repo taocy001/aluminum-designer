@@ -228,6 +228,9 @@ function App() {
   const heldName = held === 'connector'
     ? (activeConnectorType ? connectorLabel(activeConnectorType, language) : '')
     : activeSpec
+  /** the toolbar is icons: the name lives in the tooltip and the accessible name */
+  const iconBtn = (active: boolean, activeCls: string) =>
+    `flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
   const toolBtn = (active: boolean, activeCls: string) =>
     `flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
 
@@ -373,43 +376,43 @@ function App() {
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="select-toggle" onClick={() => { putDown(); setSelectMode(!selectMode) }}
-              title={t.selectMode}
-              className={toolBtn(selectMode, 'bg-violet-600/30 text-violet-400')}>
-              <MousePointer2 size={13} />{t.selectMode}
+              title={t.selectMode} aria-label={t.selectMode}
+              className={iconBtn(selectMode, 'bg-violet-600/30 text-violet-400')}>
+              <MousePointer2 size={14} />
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* One switch for every measurement on the drawing: the cut length on each member
                 and the overall size around it are the same question asked at two scales. */}
             <button onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labelsHint}
-              className={toolBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
-              <Ruler size={13} />{t.labels}
+              aria-label={t.labels} className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
+              <Ruler size={14} />
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
-              className={toolBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
-              <Rotate3d size={13} />{t.rotate3d}
+              aria-label={t.rotate3d} className={iconBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
+              <Rotate3d size={14} />
             </button>
             {/* Where the selection turns about. The gizmo moves onto it, so the choice is visible. */}
             <button data-testid="pivot-toggle" onClick={cyclePivotMode} title={t.pivotHint}
               aria-label={t.pivotHint}
-              className={toolBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
-              <Crosshair size={13} />{t.pivot}·{pivotMode === 'center' ? t.pivotCenter : pivotMode === 'start' ? t.pivotStart : t.pivotEnd}
+              className={iconBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
+              <Crosshair size={14} />
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (Shift+F)`}
-              className={toolBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
-              {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}{t.fullscreen}
+              aria-label={t.fullscreen} className={iconBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
+              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* The wheel already does this; the buttons are for trackpads and for anyone who
                 would rather press something than learn a gesture. */}
             <button data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
-              className={toolBtn(false, '')}><Minus size={14} /></button>
+              className={iconBtn(false, '')}><Minus size={14} /></button>
             <button data-testid="zoom-in" onClick={() => zoomBy(1)} title={t.zoomIn} aria-label={t.zoomIn}
-              className={toolBtn(false, '')}><Plus size={14} /></button>
+              className={iconBtn(false, '')}><Plus size={14} /></button>
             <button data-testid="fit-view" onClick={triggerCameraReset} title={`${t.fitView} (F)`}
-              className={toolBtn(false, '')}>
-              <Home size={13} />{t.fitView}
+              aria-label={t.fitView} className={iconBtn(false, '')}>
+              <Home size={14} />
             </button>
           </div>
 
