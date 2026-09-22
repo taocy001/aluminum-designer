@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { ProfileData } from '../store/useStore'
 import { specDims } from './specUtils'
-import { getProfileEndpoints, getProfileDir, getProfileAxis, crossExtentAlong, round3, endContactsBody, JOINT_EPS, type Axis } from './geometryCore'
+import { getProfileEndpoints, getProfileDir, getProfileAxis, crossExtentAlong, round3, endContactsBody, closestOnSegment, JOINT_EPS, type Axis } from './geometryCore'
 
 export type { Axis }
 export { getProfileDir, getProfileAxis, crossExtentAlong }
@@ -47,12 +47,25 @@ export interface ProfileTrims {
   cutLength: number
 }
 
+/** how far along `d` this end sits from the near face of `r`'s body: + cut back, − extend */
+function faceTrimAgainst(endPt: THREE.Vector3, d: THREE.Vector3, r: ProfileData): number {
+  const { start, end } = getProfileEndpoints(r)
+  const { point } = closestOnSegment(endPt, start, end)
+  const along = endPt.clone().sub(point).dot(d)
+  return round3(along + crossExtentAlong(r, d))
+}
+
+/** a corner is shared when two members reach for the same end of the same post */
+const CORNER_TOL = 45
+
 function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | null, others: ProfileData[]): EndJoint {
   let buttTrim = -Infinity
   let anyButt = false
   let extend = 0
   let partners = 0
   let continues = false
+  /** the corner points we would run out over, so the space there can be contested */
+  const cornersClaimed: THREE.Vector3[] = []
 
   for (const q of others) {
     const qAxis = getProfileAxis(q)
@@ -73,7 +86,31 @@ function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | nul
     const qPri = qAxis ? table[qAxis] : 0
     const weButt = !c.atQEnd || qPri > pPri   // T-joint, or corner where Q has priority
     if (weButt) { anyButt = true; buttTrim = Math.max(buttTrim, toNearFace) }
-    else if (pPri > qPri) extend = Math.max(extend, toFarFace)
+    else if (pPri > qPri) {
+      extend = Math.max(extend, toFarFace)
+      const { start: qs, end: qe } = getProfileEndpoints(q)
+      cornersClaimed.push(endPt.distanceTo(qs) <= endPt.distanceTo(qe) ? qs : qe)
+    }
+  }
+
+  // Three members meet at a corner post, and every one that outranks the post wants to run
+  // out to its far face — but only one can have that space. Their own ends never touch each
+  // other, so the contact test above cannot see the contest: what gives it away is that they
+  // reach for the same corner. The one the rule ranks highest runs through; we stop at its
+  // face, which is a cut back on one side of the post and no extension at all on the other.
+  if (!anyButt && cornersClaimed.length > 0 && pAxis) {
+    const table = PRIORITY[throughRule]
+    const pPri = table[pAxis]
+    let cornerTrim = -Infinity
+    for (const r of others) {
+      const rAxis = getProfileAxis(r)
+      if (!rAxis || rAxis === pAxis || table[rAxis] <= pPri) continue
+      const { start: rs, end: re } = getProfileEndpoints(r)
+      const shares = cornersClaimed.some((c) => c.distanceTo(rs) <= CORNER_TOL || c.distanceTo(re) <= CORNER_TOL)
+      if (!shares) continue
+      cornerTrim = Math.max(cornerTrim, faceTrimAgainst(endPt, pDir, r))
+    }
+    if (isFinite(cornerTrim)) return { trim: cornerTrim, partners, butt: cornerTrim > 0, continues }
   }
 
   // A butt against a perpendicular partner still applies when a coaxial member carries on

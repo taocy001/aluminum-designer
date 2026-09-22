@@ -3,6 +3,7 @@ import { useStore, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong, round3 } from './geometryCore'
 import { bracketNormal, flushFace, sharedEdge } from './specCompat'
+import { specDims } from './specUtils'
 import { translations } from './translations'
 
 const JOINT_TOL = 30
@@ -53,6 +54,37 @@ function shiftForJoint(a: ProfileData, b: ProfileData, at: THREE.Vector3): Shift
 }
 
 /**
+ * Turn the section a quarter turn if that makes more of its joints flush than leaving it.
+ * Returns the turned member, or null when turning is no help or there is nothing to turn.
+ */
+function tryRoll(candidate: ProfileData, others: ProfileData[]): ProfileData | null {
+  const { w, h } = specDims(candidate.spec)
+  if (w === h) return null                      // square: nothing to turn
+
+  const flushCount = (p: ProfileData) => {
+    const { start, end } = getProfileEndpoints(p)
+    let n = 0
+    for (const b of others) {
+      const eb = getProfileEndpoints(b)
+      const touch = [start, end]
+        .map((pt) => ({ pt, d: closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) }))
+        .sort((x, y) => x.d - y.d)[0]
+      if (touch.d > JOINT_TOL) continue
+      if (!sharedEdge(p.spec, b.spec)) continue
+      if (flushFace(p, b, touch.pt)) n++
+    }
+    return n
+  }
+
+  const asIs = flushCount(candidate)
+  const axis = getProfileDir(candidate)
+  const spin = new THREE.Quaternion().setFromAxisAngle(axis, Math.PI / 2)
+  const q = spin.multiply(new THREE.Quaternion(...candidate.quaternion)).normalize()
+  const turned: ProfileData = { ...candidate, quaternion: [q.x, q.y, q.z, q.w] }
+  return flushCount(turned) > asIs ? turned : null
+}
+
+/**
  * Slide a freshly drawn member sideways so the faces its brackets will sit on line up with
  * whatever it landed on.
  *
@@ -67,6 +99,14 @@ function shiftForJoint(a: ProfileData, b: ProfileData, at: THREE.Vector3): Shift
  */
 export function faceAlignOnCreate(candidate: ProfileData, others: ProfileData[]): ProfileData {
   if (others.length === 0) return candidate
+
+  // A rectangular section has two edges to offer. A 2040 turned so its 40 side faces a 4040
+  // is flush with it where it stands; turned the other way it has to be pushed 10 mm off the
+  // line to reach the same plane. Turning costs nothing, so try that first — it is why a
+  // 2040 goes with everything, and why reaching for a heavier section instead was wrong.
+  const rolled = tryRoll(candidate, others)
+  if (rolled) return rolled
+
   const { start, end } = getProfileEndpoints(candidate)
   const votes: THREE.Vector3[] = []
 

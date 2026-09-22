@@ -221,3 +221,51 @@ describe('interference check', () => {
     expect(pen[0].depth).toBeGreaterThan(10)
   })
 })
+
+/**
+ * A corner where a big post meets two rails of a smaller section. Both rails outrank the
+ * post under the `rails` arrangement, so both want to run out to its far face — but the
+ * space out there is one block, and only one of them can have it.
+ */
+describe('a corner post is covered once, not twice', () => {
+  beforeEach(() => setThroughRule('rails'))
+
+  /** 4040 post at the origin; a 2040 rail along X and another along Z, each flush with its outside */
+  function corner(): ProfileData[] {
+    return [
+      P(0, 20, 10, 0, 900, 10, '4040'),          // the post, x ∈ [-20,20], z ∈ [-10,30]
+      P(0, 20, 0, 3600, 20, 0, '2040'),          // X rail, outside face at z = -10
+      P(-10, 20, 10, -10, 20, 610, '2040'),      // Z rail, outside face at x = -20
+    ]
+  }
+
+  it('leaves nothing overlapping at the corner', () => {
+    const f = corner()
+    expect(findConflicts(f, computeAllTrims(f))).toEqual([])
+  })
+
+  it('runs the X rail out over the post', () => {
+    const f = corner()
+    expect(computeTrims(f[1], f).start.trim).toBe(-20)
+  })
+
+  it('stops the Z rail at the X rail rather than running it out too', () => {
+    const f = corner()
+    expect(computeTrims(f[2], f).start.trim).toBe(0)
+  })
+
+  it('cuts the Z rail back where it would otherwise bury itself in the far rail', () => {
+    // a second X rail at z = 600 closes the box; the Z rail's far end has to give way to it
+    const f = [...corner(), P(0, 20, 600, 3600, 20, 600, '2040'), P(0, 20, 610, 0, 900, 610, '4040')]
+    expect(computeTrims(f[2], f).end.trim).toBe(20)
+    expect(findConflicts(f, computeAllTrims(f))).toEqual([])
+  })
+
+  it('still lets the top-ranked rail through when the rule is reversed', () => {
+    setThroughRule('posts')
+    const f = corner()
+    // with posts running through, the post is no longer something to reach past
+    expect(computeTrims(f[1], f).start.trim).toBeGreaterThanOrEqual(0)
+    expect(findConflicts(f, computeAllTrims(f))).toEqual([])
+  })
+})

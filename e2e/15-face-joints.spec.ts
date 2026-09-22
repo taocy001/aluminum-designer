@@ -22,7 +22,7 @@ test.describe('A new member lines its faces up with what it lands on', () => {
     await setView(page, [1800, 1300, 2200], [400, 400, 200])
   })
 
-  test('a 2040 rail landing on a 4040 post steps aside so their faces meet', async ({ page }) => {
+  test('a 2040 rail landing on a 4040 post turns rather than steps aside', async ({ page }) => {
     await enterDraw(page, '4040')
     await drawMember(page, [0, 0, 0], [0, 800, 0])
     await enterDraw(page, '2040')
@@ -30,10 +30,18 @@ test.describe('A new member lines its faces up with what it lands on', () => {
     await emptyHand(page)
     const all = await profiles(page)
     expect(all.length).toBe(2)
-    // the rail is 20 across where the post is 40: it moves 10 so one pair of faces is shared
+    // a 2040 has a 40 side to offer the post: turning it costs nothing and keeps the rail
+    // on the line it was drawn on, where pushing it 10 mm aside would not have
     const rail = all.find((p: any) => p.spec === '2040')!
-    expect(Math.abs(Math.round(rail.position[2]))).toBe(10)
+    expect(Math.round(rail.position[2])).toBe(0)
     expect(await unflush(page)).toBe(0)
+    const facing = await page.evaluate(() => {
+      const p = (window as any).__aluframe.store.getState().profiles.find((q: any) => q.spec === '2040')
+      const [x, y, z, w] = p.quaternion
+      // the section's local Y is its 40 side; where does it point?
+      return [2 * (x * y - w * z), 1 - 2 * (x * x + z * z), 2 * (y * z + w * x)].map((v) => Math.round(v))
+    })
+    expect(Math.abs(facing[2])).toBe(1)   // the 40 side faces the post, along Z
   })
 
   test('two members of the same section are left where they were put', async ({ page }) => {
@@ -286,5 +294,87 @@ test.describe('Everything under the cursor lights up, not only members', () => {
     await page.waitForTimeout(200)
     const cursor = await page.getByTestId('viewport').evaluate((el) => getComputedStyle(el as HTMLElement).cursor)
     expect(cursor).toBe('grab')
+  })
+})
+
+test.describe('A drawer is a box that slides', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page)
+    await setView(page, [1500, 1100, 1800], [300, 400, 300])
+    await page.evaluate(() => {
+      const up = { quaternion: [-0.7071067811865475, 0, 0, 0.7071067811865476], miterCuts: [], holes: [] }
+      const alongX = { quaternion: [0, 0.7071067811865475, 0, 0.7071067811865476], miterCuts: [], holes: [] }
+      const alongZ = { quaternion: [0, 0, 0, 1], miterCuts: [], holes: [] }
+      ;(window as any).__aluframe.store.getState().loadDocument({
+        profiles: [
+          { id: 'u1', spec: '2020', length: 800, position: [0, 0, 0], ...up },
+          { id: 'u2', spec: '2020', length: 800, position: [600, 0, 0], ...up },
+          { id: 'u3', spec: '2020', length: 800, position: [0, 0, 600], ...up },
+          { id: 'u4', spec: '2020', length: 800, position: [600, 0, 600], ...up },
+          { id: 'r1', spec: '2020', length: 600, position: [0, 10, 0], ...alongX },
+          { id: 'r2', spec: '2020', length: 600, position: [0, 10, 0], ...alongZ },
+          { id: 'r3', spec: '2020', length: 600, position: [600, 10, 0], ...alongZ },
+        ],
+        connectors: [], panels: [],
+      })
+    })
+    await page.waitForTimeout(250)
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['u1', 'u2', 'u3', 'u4']))
+    await page.waitForTimeout(150)
+  })
+
+  test('the button appears once an opening is selected', async ({ page }) => {
+    await expect(page.getByTestId('add-drawer')).toBeVisible()
+  })
+
+  test('one drawer brings runner rails, a box and a front', async ({ page }) => {
+    const before = await store(page)
+    await page.getByTestId('drawer-height').fill('250')
+    await page.getByTestId('drawer-count').fill('1')
+    await page.getByTestId('add-drawer').click()
+    await page.waitForTimeout(300)
+    const after = await store(page)
+    expect(after.profiles.length).toBe(before.profiles.length + 2)   // a rail each side
+    expect(after.panels.length).toBe(6)                              // four sides, a base, a front
+  })
+
+  test('the box is narrower than the opening by the runners and the rails', async ({ page }) => {
+    await page.getByTestId('drawer-height').fill('250')
+    await page.getByTestId('add-drawer').click()
+    await page.waitForTimeout(300)
+    const boards = (await store(page)).panels
+    // the base tells the box size: opening 580, less two 20 rails, less 12.5 a side
+    const base = boards.find((b: any) => Math.round(b.height) === 560)!
+    expect(Math.round(base.width)).toBe(515)
+  })
+
+  test('the runner rails rest against the uprights, so a bracket reaches both', async ({ page }) => {
+    await page.getByTestId('add-drawer').click()
+    await page.waitForTimeout(300)
+    expect(await unflush(page)).toBe(0)
+    const conflicts = await page.evaluate(() => (window as any).__aluframe.conflicts().conflicts.length)
+    expect(conflicts).toBe(0)
+  })
+
+  test('two stacked drawers sit one above the other and do not touch', async ({ page }) => {
+    await page.getByTestId('drawer-height').fill('250')
+    await page.getByTestId('drawer-count').fill('2')
+    await page.getByTestId('add-drawer').click()
+    await page.waitForTimeout(400)
+    const s = await store(page)
+    expect(s.panels.length).toBe(12)
+    const fronts = s.panels.filter((b: any) => Math.round(b.width) === 574)
+    expect(fronts.length).toBe(2)
+    expect(Math.abs(fronts[0].position[1] - fronts[1].position[1])).toBeCloseTo(250, 0)
+    expect(await page.evaluate(() => (window as any).__aluframe.conflicts().conflicts.length)).toBe(0)
+  })
+
+  test('an opening too small for a box is refused', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['u1', 'u2']))
+    await page.getByTestId('drawer-height').fill('40')
+    await page.getByTestId('add-drawer').click()
+    await page.waitForTimeout(250)
+    // a 40 mm front leaves no box, but the runners and front are still real parts
+    expect((await store(page)).panels.length).toBeLessThanOrEqual(2)
   })
 })

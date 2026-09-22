@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type PanelMaterial } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -13,6 +13,7 @@ import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
+import { addDrawerFromSelection } from '../utils/drawerOps'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 /** "40 side faces ↑" and the like, so the roll is something you can read off the panel */
@@ -116,6 +117,8 @@ const Sidebar: React.FC = () => {
   const [arrayCountText, setArrayCountText] = useState('1')
   const [arraySpacingText, setArraySpacingText] = useState('300')
   const [workPlaneText, setWorkPlaneText] = useState('0')
+  const [drawerHeightText, setDrawerHeightText] = useState('200')
+  const [drawerCountText, setDrawerCountText] = useState('1')
   // the highest point of whatever is selected, so the work plane can be put on top of it
   const selectionTopY = useMemo(() => {
     const ids = new Set(selectedIds)
@@ -485,6 +488,33 @@ const Sidebar: React.FC = () => {
                     {PANEL_MATERIALS.map((m) => <option key={m} value={m}>{materialLabel(m, language)}</option>)}
                   </select>
                 </div>
+              </div>
+            )}
+
+            {/* A drawer is a box that slides, not a board across the hole: the runner takes
+                12.5 mm a side, so the box is 25 mm narrower than the opening and needs a rail
+                at each side to be screwed to. */}
+            {selectedProfileCount >= 2 && (
+              <div className="space-y-1" data-testid="drawer-block">
+                <div className="flex items-center gap-1">
+                  <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
+                    <span className="text-[9px] text-slate-500 font-bold">{t.drawerHeight}</span>
+                    <input type="number" step={10} value={drawerHeightText} data-testid="drawer-height"
+                      onChange={(e) => setDrawerHeightText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
+                      className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
+                  </label>
+                  <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 w-20 focus-within:border-blue-500">
+                    <span className="text-[9px] text-slate-500 font-bold">{t.drawerCount}</span>
+                    <input type="number" min={1} max={6} step={1} value={drawerCountText} data-testid="drawer-count"
+                      onChange={(e) => setDrawerCountText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
+                      className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
+                  </label>
+                </div>
+                <button onClick={() => addDrawerFromSelection(parseFloat(drawerHeightText), 0, parseFloat(drawerCountText))}
+                  data-testid="add-drawer" title={t.drawerHint}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-sky-600/80 hover:bg-sky-600 rounded-lg text-[10px] font-bold">
+                  <Archive size={12} />{t.drawer}
+                </button>
               </div>
             )}
 
