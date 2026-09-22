@@ -1,9 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Crosshair } from 'lucide-react'
+import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Crosshair, BoxSelect, Maximize, Ruler, Move3d } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
-import { duplicateSelected, mirrorSelected, rotateSelected, type RotAxis } from '../utils/editOps'
+import { duplicateSelected, mirrorSelected, rotateSelected, selectAll, type RotAxis } from '../utils/editOps'
 
 const AXIS_COLORS: Record<RotAxis, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 const MIN_WIDTH = 190
@@ -50,10 +50,11 @@ const QuickMenu: React.FC = () => {
     return () => window.removeEventListener('pointerdown', onDown, true)
   }, [at, closeQuickMenu])
 
-  if (!at || selectedIds.length === 0) return null
+  if (!at) return null
 
   const locked = profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
     && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
+  const hasSelection = selectedIds.length > 0
 
   const run = (fn: () => void) => () => { fn(); closeQuickMenu() }
   const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; danger?: boolean }> =
@@ -73,9 +74,20 @@ const QuickMenu: React.FC = () => {
       }}
       className="fixed z-40 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5">
       <div className="px-3 pt-1 pb-1.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
-        {t.quickMenu} · {selectedIds.length}
+        {t.quickMenu}{hasSelection ? ` · ${selectedIds.length}` : ''}
       </div>
-      {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
+
+      {/* With nothing selected the menu carries what applies to the whole drawing, so the
+          key always does something rather than sometimes nothing. */}
+      {!hasSelection && (
+        <>
+          <Item testId="quick-select-all" onClick={run(selectAll)}><BoxSelect size={12} />{t.selectAll}</Item>
+          <Item testId="quick-fit-view" onClick={run(useToolStore.getState().triggerCameraReset)}><Maximize size={12} />{t.fitView}</Item>
+          <Item testId="quick-labels" onClick={run(useToolStore.getState().toggleDimensionLabels)}><Ruler size={12} />{t.labels}</Item>
+          <Item testId="quick-dims" onClick={run(useToolStore.getState().toggleOverallDims)}><Move3d size={12} />{t.overallDims}</Item>
+        </>
+      )}
+      {hasSelection && (['x', 'y', 'z'] as RotAxis[]).map((ax) => (
         <div key={ax} className="flex items-center">
           <Item testId={`quick-rot-${ax}`} onClick={run(() => rotateSelected(ax, 90))}>
             <RotateCw size={12} style={{ color: AXIS_COLORS[ax] }} />{t.gizmoRotate(ax.toUpperCase())}
@@ -85,9 +97,9 @@ const QuickMenu: React.FC = () => {
             className="ml-auto mr-1 p-1.5 rounded-lg text-slate-400 hover:bg-white/10"><RotateCcw size={12} /></button>
         </div>
       ))}
-      <div className="h-px bg-white/10 my-1" />
-      <Item testId="quick-duplicate" onClick={run(duplicateSelected)}><Copy size={12} />{t.duplicate}</Item>
-      <div className="flex items-center gap-0.5 px-1.5 pb-0.5">
+      {hasSelection && <div className="h-px bg-white/10 my-1" />}
+      {hasSelection && <Item testId="quick-duplicate" onClick={run(duplicateSelected)}><Copy size={12} />{t.duplicate}</Item>}
+      {hasSelection && <div className="flex items-center gap-0.5 px-1.5 pb-0.5">
         <FlipHorizontal2 size={12} className="text-slate-400 mx-1.5" />
         {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
           <button key={ax} onClick={run(() => mirrorSelected(ax))} data-testid={`quick-mirror-${ax}`}
@@ -95,15 +107,15 @@ const QuickMenu: React.FC = () => {
             {ax.toUpperCase()}
           </button>
         ))}
-      </div>
-      <div className="h-px bg-white/10 my-1" />
-      <Item testId="quick-pivot" onClick={run(useToolStore.getState().cyclePivotMode)}>
+      </div>}
+      {hasSelection && <div className="h-px bg-white/10 my-1" />}
+      {hasSelection && <Item testId="quick-pivot" onClick={run(useToolStore.getState().cyclePivotMode)}>
         <Crosshair size={12} />{t.pivotCenter}/{t.pivotStart}/{t.pivotEnd}
-      </Item>
-      <Item testId="quick-lock" onClick={run(toggleLockSelected)}>
+      </Item>}
+      {hasSelection && <Item testId="quick-lock" onClick={run(toggleLockSelected)}>
         {locked ? <Lock size={12} className="text-amber-400" /> : <LockOpen size={12} />}{locked ? t.unlock : t.lock}
-      </Item>
-      <Item testId="quick-delete" danger onClick={run(removeSelected)}><Trash2 size={12} />{t.delete}</Item>
+      </Item>}
+      {hasSelection && <Item testId="quick-delete" danger onClick={run(removeSelected)}><Trash2 size={12} />{t.delete}</Item>}
     </div>
   )
 }

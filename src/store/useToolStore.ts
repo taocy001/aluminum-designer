@@ -75,6 +75,8 @@ interface ToolState {
 
   // UI
   showDimensionLabels: boolean
+  /** the frame's overall width, depth and height, drawn outside it */
+  showOverallDims: boolean
   /** on-canvas rotation handles for the selection */
   showGizmo: boolean
   /** what the selection turns about: its centre, or one end of a single member */
@@ -142,6 +144,7 @@ interface ToolState {
   setHoverCandidates: (count: number, index: number) => void
 
   toggleDimensionLabels: () => void
+  toggleOverallDims: () => void
   toggleGizmo: () => void
   setPivotMode: (mode: PivotMode) => void
   setWorkPlaneY: (y: number) => void
@@ -197,6 +200,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   resize: null,
 
   showDimensionLabels: true,
+  showOverallDims: true,
   showGizmo: true,
   pivotMode: 'center',
   workPlaneY: 0,
@@ -277,6 +281,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   },
 
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
+  toggleOverallDims: () => set((s) => ({ showOverallDims: !s.showOverallDims })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
   setPivotMode: (pivotMode) => set({ pivotMode }),
   setWorkPlaneY: (workPlaneY) => set({ workPlaneY: isFinite(workPlaneY) ? Math.max(0, Math.round(workPlaneY)) : 0 }),

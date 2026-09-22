@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { useStore, type ConnectorData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { getProfileEndpoints } from './geometryCore'
+import { closestOnSegment, getProfileEndpoints } from './geometryCore'
 import { getProfileAxis, getProfileDir } from './jointUtils'
 import { analyzeFrame } from './analysis'
 import { buildProfile, floorY, lowestPointY, nextId } from './profileFactory'
@@ -401,6 +401,50 @@ export function commitExactLength(length: number): boolean {
   store.updateProfile(rs.id, { length: Math.round(length * 100) / 100, position })
   ts.stopResize()
   ts.setDragConflict(false)
+  return true
+}
+
+/** Everything in the document, so Ctrl+A means what it means everywhere else */
+export function selectAll(): boolean {
+  const { profiles, connectors, panels, selectItems } = useStore.getState()
+  const ids = [...profiles.map((p) => p.id), ...connectors.map((c) => c.id), ...panels.map((b) => b.id)]
+  if (ids.length === 0) return false
+  selectItems(ids)
+  return true
+}
+
+/** how close two members have to be to count as joined, for walking a sub-assembly (mm) */
+const LINKED_TOL = 30
+
+/**
+ * The whole sub-assembly a member belongs to: everything reachable through its joints.
+ *
+ * A cabinet is not one part and it is not the whole drawing either. Double-clicking one rail
+ * and getting the carcass it belongs to is the difference between moving a cabinet and
+ * moving forty members one at a time.
+ */
+export function selectConnected(id: string): boolean {
+  const { profiles, selectItems } = useStore.getState()
+  const byId = new Map(profiles.map((p) => [p.id, p]))
+  if (!byId.has(id)) return false
+  const ends = new Map(profiles.map((p) => [p.id, getProfileEndpoints(p)]))
+  const joined = (a: string, b: string) => {
+    const ea = ends.get(a)!, eb = ends.get(b)!
+    return [ea.start, ea.end].some((pt) => closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) <= LINKED_TOL)
+      || [eb.start, eb.end].some((pt) => closestOnSegment(pt, ea.start, ea.end).point.distanceTo(pt) <= LINKED_TOL)
+  }
+
+  const seen = new Set([id])
+  const queue = [id]
+  while (queue.length) {
+    const cur = queue.shift()!
+    for (const p of profiles) {
+      if (seen.has(p.id) || !joined(cur, p.id)) continue
+      seen.add(p.id)
+      queue.push(p.id)
+    }
+  }
+  selectItems([...seen])
   return true
 }
 

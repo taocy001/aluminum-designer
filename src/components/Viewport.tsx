@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useRef } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
@@ -7,9 +7,11 @@ import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
 import { analyzeFrame, type Conflict } from '../utils/analysis'
+import type { SpecMismatch } from '../utils/specCompat'
 import Profile from './Profile'
 import Connector from './Connector'
 import Panel from './Panel'
+import FrameDimensions from './FrameDimensions'
 import DrawingHandler from './DrawingHandler'
 import DragHandler from './DragHandler'
 import PointerRouter from './PointerRouter'
@@ -102,6 +104,11 @@ const DevHook: React.FC = () => {
     w.__aluframe = w.__aluframe ?? {}
     w.__aluframe.camera = camera
     w.__aluframe.controls = controls
+    w.__aluframe.countByName = (name: string) => {
+      let n = 0
+      scene.traverse((o: THREE.Object3D) => { if (o.name === name) n++ })
+      return n
+    }
     w.__aluframe.spriteCount = () => {
       let n = 0
       scene.traverse((o: THREE.Object3D) => { if ((o as THREE.Sprite).isSprite) n++ })
@@ -149,6 +156,51 @@ const ConflictMarker: React.FC<{ conflict: Conflict }> = ({ conflict }) => {
   )
 }
 
+/**
+ * An amber ring at a joint whose two profiles cannot be bolted together. Interference is
+ * red and is about geometry; this is about buildability, so it reads differently on purpose.
+ */
+const MismatchMarker: React.FC<{ at: THREE.Vector3 }> = ({ at }) => {
+  const { camera, size } = useThree()
+  const ref = useRef<THREE.Sprite>(null)
+  const texture = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = c.height = 64
+    const g = c.getContext('2d')!
+    g.strokeStyle = '#fbbf24'
+    g.lineWidth = 8
+    g.beginPath(); g.arc(32, 32, 24, 0, Math.PI * 2); g.stroke()
+    g.beginPath(); g.moveTo(32, 20); g.lineTo(32, 36); g.moveTo(32, 42); g.lineTo(32, 44); g.stroke()
+    const tex = new THREE.CanvasTexture(c)
+    tex.needsUpdate = true
+    return tex
+  }, [])
+  useEffect(() => () => texture.dispose(), [texture])
+  useFrame(() => {
+    if (!ref.current) return
+    const dist = ref.current.position.distanceTo(camera.position)
+    const persp = camera as THREE.PerspectiveCamera
+    const world = 2 * Math.tan(THREE.MathUtils.degToRad(persp.fov ?? 45) / 2) * dist * (26 / size.height)
+    ref.current.scale.set(world, world, 1)
+  })
+  return (
+    <sprite ref={ref} position={at} renderOrder={8} raycast={() => null}>
+      <spriteMaterial map={texture} transparent depthTest={false} />
+    </sprite>
+  )
+}
+
+/**
+ * Only the joints that cannot be built get a marker. Crossing series is a note about which
+ * brackets to order, not a mistake — a 2040 on a 4040 is an everyday pairing — so marking
+ * every one of them would put warnings all over a perfectly good frame.
+ */
+const MismatchMarkers: React.FC<{ mismatches: SpecMismatch[] }> = ({ mismatches }) => (
+  <>
+    {mismatches.filter((m) => m.kind === 'edge').map((m) => <MismatchMarker key={`${m.a}-${m.b}`} at={m.at} />)}
+  </>
+)
+
 const ConflictMarkers: React.FC<{ conflicts: Conflict[] }> = ({ conflicts }) => (
   <>
     {conflicts.map((c, i) => <ConflictMarker key={`${c.a}-${c.b}-${i}`} conflict={c} />)}
@@ -186,7 +238,7 @@ const SnapGuides: React.FC = () => {
 const Viewport: React.FC = () => {
   const { profiles, connectors, panels, selectedIds } = useStore()
   const { isDragging, showDimensionLabels, selectMode } = useToolStore()
-  const { trims, conflicts, conflictIds } = useMemo(() => analyzeFrame(profiles), [profiles])
+  const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles), [profiles])
 
   const orbitEnabled = !isDragging && !selectMode
   // One mapping for the whole canvas, whatever is in hand: the buttons must not change
@@ -222,7 +274,9 @@ const Viewport: React.FC = () => {
       ))}
 
       {showDimensionLabels && <DimensionLabels trims={trims} />}
+      <FrameDimensions />
       <ConflictMarkers conflicts={conflicts} />
+      <MismatchMarkers mismatches={mismatches} />
       <SnapGuides />
 
       <DrawingHandler />

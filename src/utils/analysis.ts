@@ -4,6 +4,7 @@ import { computeAllTrims, computeTrims, type ProfileTrims } from './jointUtils'
 import { getProfileDir } from './geometryCore'
 import { specDims } from './specUtils'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
+import { findSpecMismatches, type SpecMismatch } from './specCompat'
 
 /** members closer than this are considered touching, not interfering (mm) */
 const TOUCH_TOL = 1
@@ -20,6 +21,9 @@ export interface FrameAnalysis {
   trims: Map<string, ProfileTrims>
   conflicts: Conflict[]
   conflictIds: Set<string>
+  /** joints whose two profiles cannot be bolted together as drawn */
+  mismatches: SpecMismatch[]
+  mismatchIds: Set<string>
 }
 
 /** As-built oriented box of a member (after joint trimming) */
@@ -94,7 +98,10 @@ export function analyzeFrame(profiles: ProfileData[]): FrameAnalysis {
   const conflicts = findConflicts(profiles, trims)
   const conflictIds = new Set<string>()
   for (const c of conflicts) { conflictIds.add(c.a); conflictIds.add(c.b) }
+  const mismatches = findSpecMismatches(profiles)
+  const mismatchIds = new Set<string>()
+  for (const m of mismatches) { mismatchIds.add(m.a); mismatchIds.add(m.b) }
   cacheKey = profiles
-  cacheValue = { trims, conflicts, conflictIds }
+  cacheValue = { trims, conflicts, conflictIds, mismatches, mismatchIds }
   return cacheValue
 }

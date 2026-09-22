@@ -6,9 +6,9 @@ import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
-import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength } from './utils/editOps'
+import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X, Crosshair, Layers } from 'lucide-react'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X, Crosshair, Layers, Move3d, Maximize, Minimize } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -18,7 +18,7 @@ function App() {
   const {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind,
     held, putDown, triggerCameraReset, cancelDraw, activeSpec, activeConnectorType,
-    isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
+    isDragging, showDimensionLabels, toggleDimensionLabels, showOverallDims, toggleOverallDims, showGizmo, toggleGizmo,
     pivotMode, cyclePivotMode, quickMenuAt, openQuickMenu, closeQuickMenu,
     workPlaneY, setWorkPlaneY,
     selectMode, setSelectMode,
@@ -31,6 +31,17 @@ function App() {
 
   // Exact-length input while drawing
   const [workPlaneText, setWorkPlaneText] = useState('0')
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement !== null)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+  const toggleFullscreen = useCallback(() => {
+    // the whole app goes full screen, panel included: the panel is where the numbers are
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    else document.documentElement.requestFullscreen().catch(() => showToast(t.toastFullscreenBlocked, 'error'))
+  }, [showToast, t])
   // the highest point of whatever is selected, so the work plane can be put on top of it
   const selectionTopY = useStore((st) => {
     const ids = new Set(st.selectedIds)
@@ -93,14 +104,22 @@ function App() {
       const isInInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
       const mod = e.ctrlKey || e.metaKey
 
+      if (mod && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        if (e.shiftKey) clearSelection()
+        else selectAll()
+        return
+      }
       if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return }
       if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return }
       if (isInInput) return
 
+      // Space always opens the menu; with nothing selected it carries the whole-document
+      // actions instead. One key that always does something beats one that sometimes does.
       if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault()
         if (quickMenuOpenRef.current) closeQuickMenu()
-        else if (useStore.getState().selectedIds.length > 0) openQuickMenu(cursorRef.current.x, cursorRef.current.y)
+        else openQuickMenu(cursorRef.current.x, cursorRef.current.y)
         return
       }
 
@@ -137,7 +156,10 @@ function App() {
       if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); return }
       if (e.key.toLowerCase() === 'r' && !mod) { rotateSelected('y', e.shiftKey ? -90 : 90); return }
-      if (e.key.toLowerCase() === 'f' && !mod) { triggerCameraReset(); return }
+      if (e.key.toLowerCase() === 'f' && !mod) {
+        if (e.shiftKey) toggleFullscreen(); else triggerCameraReset()
+        return
+      }
       if (e.key.toLowerCase() === 'p' && !mod) { cyclePivotMode(); return }
       if (e.key.toLowerCase() === 'l' && !mod) { toggleLockSelected(); return }
 
@@ -151,7 +173,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, held, selectMode, lockedAxis, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu])
+  }, [isDrawing, held, selectMode, lockedAxis, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -225,7 +247,10 @@ function App() {
     ? (activeConnectorType ? connectorLabel(activeConnectorType, language) : '')
     : activeSpec
   const toolBtn = (active: boolean, activeCls: string) =>
-    `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
+    `flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
+  /** the toggles: an icon and a tooltip, so nine of them still fit on one row */
+  const iconBtn = (active: boolean, activeCls: string) =>
+    `flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
 
   return (
     <div className="w-full h-full bg-[#0f172a] flex flex-col overflow-hidden">
@@ -349,7 +374,10 @@ function App() {
           )}
 
           {/* Toolbar */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
+          {/* One row, never wrapped: the toggles carry an icon and a tooltip, and only the
+              two things that change constantly — what is in hand and the work plane — keep
+              their words. A toolbar that wraps into a column is worse than a short label. */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-0.5 flex-nowrap whitespace-nowrap max-w-[calc(100%-2rem)] overflow-x-auto bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
             {/* What is in hand, and the way to put it down. Not a mode switch: it only ever
                 empties the hand, because filling it is the sidebar's job. */}
             {/* the label is the part's name, but the accessible name says what the button does,
@@ -364,9 +392,8 @@ function App() {
             </button>
             {/* The height a click falls to when nothing is under it. It used to be the floor,
                 silently; a member aimed at a post top then landed metres away. */}
-            <div className="flex items-center gap-1 px-2 py-1 rounded-lg" title={t.workPlaneHint}>
+            <div className="flex items-center gap-1 px-1.5 py-1 rounded-lg shrink-0" title={t.workPlaneHint}>
               <Layers size={13} className={workPlaneY > 0 ? 'text-amber-400' : 'text-slate-400'} />
-              <span className="text-[11px] font-bold text-slate-400">{t.workPlane}</span>
               <input type="number" step={10} min={0} value={workPlaneText} data-testid="work-plane"
                 onChange={(e) => { setWorkPlaneText(e.target.value); setWorkPlaneY(parseFloat(e.target.value)) }}
                 className={`w-14 bg-slate-950 border rounded px-1.5 py-0.5 text-[11px] font-mono outline-none ${
@@ -376,19 +403,25 @@ function App() {
                 onClick={() => { if (selectionTopY !== null) { setWorkPlaneY(selectionTopY); setWorkPlaneText(String(selectionTopY)) } }}
                 className="px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:bg-white/10 disabled:opacity-30">↥</button>
             </div>
-            <div className="w-px h-5 bg-white/10 mx-0.5" />
+            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="select-toggle" onClick={() => { putDown(); setSelectMode(!selectMode) }}
-              className={toolBtn(selectMode, 'bg-violet-600/30 text-violet-400 border border-violet-500/30')}>
-              <MousePointer2 size={13} />{t.selectMode}
+              title={t.selectMode} aria-label={t.selectMode}
+              className={iconBtn(selectMode, 'bg-violet-600/30 text-violet-400')}>
+              <MousePointer2 size={14} />
             </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5" />
-            <button onClick={toggleDimensionLabels} className={toolBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
-              <Ruler size={13} />{t.labels}
+            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            <button onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labels} aria-label={t.labels}
+              className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
+              <Ruler size={14} />
             </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5" />
-            <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
-              className={toolBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
-              <Rotate3d size={13} />{t.rotate3d}
+            <button onClick={toggleOverallDims} data-testid="overall-dims-toggle" title={t.overallDimsHint} aria-label={t.overallDims}
+              className={iconBtn(showOverallDims, 'bg-emerald-600/20 text-emerald-400')}>
+              <Move3d size={14} />
+            </button>
+            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint} aria-label={t.rotate3d}
+              className={iconBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
+              <Rotate3d size={14} />
             </button>
             {/* Where the selection turns about. The gizmo moves onto it, so the choice is visible. */}
             <button data-testid="pivot-toggle" onClick={cyclePivotMode} title={t.pivotHint}
@@ -396,9 +429,15 @@ function App() {
               className={toolBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
               <Crosshair size={13} />{pivotMode === 'center' ? t.pivotCenter : pivotMode === 'start' ? t.pivotStart : t.pivotEnd}
             </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5" />
-            <button data-testid="fit-view" onClick={triggerCameraReset} title="F" className={toolBtn(false, '')}>
-              <Home size={13} />{t.home}
+            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            <button data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (Shift+F)`}
+              aria-label={t.fullscreen} className={iconBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
+              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+            </button>
+            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            <button data-testid="fit-view" onClick={triggerCameraReset} title={`${t.fitView} (F)`} aria-label={t.fitView}
+              className={iconBtn(false, '')}>
+              <Home size={14} />
             </button>
           </div>
 

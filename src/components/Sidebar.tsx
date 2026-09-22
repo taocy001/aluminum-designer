@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type PanelMaterial } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -9,6 +9,7 @@ import { getProfileEndpoints } from '../utils/geometryCore'
 import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel } from '../utils/connectorCatalog'
 import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
+import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
@@ -91,7 +92,7 @@ const Sidebar: React.FC = () => {
     return () => clearTimeout(id)
   }, [confirmClear])
 
-  const { trims, conflicts, conflictIds } = useMemo(() => analyzeFrame(profiles), [profiles])
+  const { trims, conflicts, conflictIds, mismatches, mismatchIds } = useMemo(() => analyzeFrame(profiles), [profiles])
   const selectedIdsSignature = selectedIds.join(',')
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -140,9 +141,15 @@ const Sidebar: React.FC = () => {
     && profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
     && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
 
+  const edgeMismatches = mismatches.filter((m) => m.kind === 'edge')
+  const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
+
   const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels), [profiles, connectors, trims, language, panels])
   const totalCut = bom.totalCutLength
   const buttEnds = bom.buttEnds
+  // how many of the joints that want a bracket actually have one, so the headline stops
+  // reading "98 needed" after 48 have been fitted
+  const placedBrackets = connectors.filter((c) => connectorEntry(c.type)?.isCornerBracket).length
   const bounds = useMemo(() => computeFrameBounds(profiles, trims), [profiles, trims])
   const overall = bounds ? bounds.getSize(new THREE.Vector3()) : null
 
@@ -246,6 +253,14 @@ const Sidebar: React.FC = () => {
                 </button>
               ))}
             </div>
+            {/* The frame already knows where its joints are; this puts the part on all of them. */}
+            {held === 'connector' && activeConnectorType && (
+              <button onClick={() => autoConnect(activeConnectorType)} data-testid="auto-connect"
+                title={t.autoConnectHint} disabled={profiles.length === 0}
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 rounded-lg text-[10px] font-bold">
+                <Zap size={12} />{t.autoConnect}
+              </button>
+            )}
           </div>
         </div>
       </Section>
@@ -505,7 +520,7 @@ const Sidebar: React.FC = () => {
         <div className="grid grid-cols-3 gap-1.5 text-center">
           <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.totalProfiles}</div><div className="text-sm font-mono font-bold text-blue-400" data-testid="bom-count">{profiles.length}</div></div>
           <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.totalLength}</div><div className="text-sm font-mono font-bold text-blue-400">{(totalCut / 1000).toFixed(2)}m</div></div>
-          <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.brackets}</div><div className="text-sm font-mono font-bold text-amber-400" data-testid="bom-brackets">{buttEnds}</div></div>
+          <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.brackets}</div><div className="text-sm font-mono font-bold text-amber-400" data-testid="bom-brackets" title={t.bracketsHint}>{placedBrackets}<span className="text-slate-500">/{buttEnds}</span></div></div>
         </div>
         {overall && (
           <div className="text-[10px] text-slate-400 flex justify-between"><span>{t.overall}</span><span className="font-mono text-slate-200" data-testid="bom-overall">{Math.round(overall.x)}×{Math.round(overall.z)}×{Math.round(overall.y)}</span></div>
@@ -519,6 +534,24 @@ const Sidebar: React.FC = () => {
             <span className="flex items-center gap-1">{conflicts.length > 0 && <AlertTriangle size={11} />}{t.penetrations}</span>
             <span className="font-mono" data-testid="bom-penetrations">{conflicts.length ? t.penetrationsCount(conflicts.length) : t.penetrationsOk}</span>
           </button>
+        )}
+        {profiles.length > 1 && (
+          <button
+            onClick={() => { if (edgeMismatches.length) useStore.getState().selectItems(edgeMismatches.flatMap((m) => [m.a, m.b])) }}
+            disabled={edgeMismatches.length === 0}
+            className={`w-full text-[10px] flex justify-between items-center ${edgeMismatches.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
+          >
+            <span className="flex items-center gap-1">{edgeMismatches.length > 0 && <AlertTriangle size={11} />}{t.specMismatch}</span>
+            <span className="font-mono" data-testid="bom-mismatches">
+              {edgeMismatches.length ? t.specMismatchCount(edgeMismatches.length) : t.specMismatchOk}
+            </span>
+          </button>
+        )}
+        {seriesMismatches.length > 0 && (
+          <div className="w-full text-[10px] flex justify-between items-center text-slate-500">
+            <span>{t.crossSeries}</span>
+            <span className="font-mono" data-testid="bom-cross-series">{t.crossSeriesCount(seriesMismatches.length)}</span>
+          </div>
         )}
         {(bom.profiles.length > 0 || bom.connectors.length > 0) && (
           <div className="max-h-44 overflow-y-auto rounded-lg border border-white/5 text-[10px] font-mono" data-testid="bom-table">

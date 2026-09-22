@@ -114,7 +114,7 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     if (b.brackets !== '16') console.log('JOINTS A', JSON.stringify(await dumpJoints(page)))
     expect(b.count).toBe('12')
     expect(b.pen).toBe('无干涉')
-    expect(b.brackets).toBe('16')
+    expect(b.brackets).toBe('0/16')   // none fitted yet, sixteen joints want one
     expect(b.table).toContain(`${h + 10} mm×4`)
     expect(b.table).toContain(`${ax1 - ax0 - 20} mm×4`)
     expect(b.table).toContain(`${az1 - az0 - 20} mm×4`)
@@ -147,7 +147,7 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     if (b.brackets !== '16') console.log('JOINTS B', JSON.stringify(await dumpJoints(page)))
     expect(b.count).toBe('12')
     expect(b.pen).toBe('无干涉')
-    expect(b.brackets).toBe('16')
+    expect(b.brackets).toBe('0/16')   // none fitted yet, sixteen joints want one
     expect(b.table).toContain(`${h + 20} mm×4`)  // posts extended to both rail faces
     expect(b.table).toContain(`${x1 - x0 - 20} mm×4`)
     expect(b.table).toContain(`${z1 - z0 - 20} mm×4`)
@@ -175,7 +175,7 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     console.log('JOINTS C', JSON.stringify(await dumpJoints(page)))
     expect(b.count).toBe('17')
     expect(b.pen).toBe('无干涉')
-    expect(b.brackets).toBe('26')
+    expect(b.brackets).toBe('0/26')
     // 2040 upright along Y is 20 mm across X and 40 mm across Z → X rails lose 10 per end, Z rails lose 20 per end
     const cuts = (await dumpJoints(page)).map((j: any) => j.cut)
     expect(cuts.filter((c: number) => Math.abs(c - (bx - ax - 20)) < 0.01)).toHaveLength(7)   // 6 X rails + shelf rail (between 2020 side rails: −10 each end → same as bx-ax-20)

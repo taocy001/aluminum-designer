@@ -7,7 +7,7 @@ import { pickAtScreen, pickCandidatesAtScreen, type ScreenPick } from '../utils/
 import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { endGrabRadius } from './ResizeHandles'
 import { gizmoState, gizmoHandleAt } from './TransformGizmo'
-import { rotateSelected } from '../utils/editOps'
+import { rotateSelected, selectConnected } from '../utils/editOps'
 import { translations } from '../utils/translations'
 
 const CLICK_SLOP_PX = 5
@@ -194,6 +194,21 @@ const PointerRouter: React.FC = () => {
       candidates.current = { x: 0, y: 0, list: [], index: 0 }
     }
 
+    /**
+     * A double click reaches past the one part under the cursor: on a member it takes the
+     * whole sub-assembly, on empty space it frames the drawing. Both are the shortcut for
+     * "I meant the bigger thing", which is what a double click means everywhere.
+     */
+    const onDoubleClick = (e: MouseEvent) => {
+      const ts = useToolStore.getState()
+      if (ts.held !== null || ts.selectMode) return
+      const { cursor, rect } = cursorOf(e as unknown as PointerEvent)
+      const hit = pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height },
+        useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
+      if (hit?.kind === 'profile') selectConnected(hit.id)
+      else if (!hit) ts.triggerCameraReset()
+    }
+
     const onPointerDown = (e: PointerEvent) => {
       const ts = useToolStore.getState()
       if (e.button !== 0) return
@@ -364,12 +379,14 @@ const PointerRouter: React.FC = () => {
     }
     window.addEventListener('keydown', onKey)
 
+    canvas.addEventListener('dblclick', onDoubleClick)
     canvas.addEventListener('pointermove', onPointerMove)
     canvas.addEventListener('pointerdown', onPointerDown)
     canvas.addEventListener('pointerleave', onPointerLeave)
     window.addEventListener('pointerup', onPointerUp)
     return () => {
       window.removeEventListener('keydown', onKey)
+      canvas.removeEventListener('dblclick', onDoubleClick)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointerleave', onPointerLeave)

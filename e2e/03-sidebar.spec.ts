@@ -83,7 +83,7 @@ test.describe('BOM, project files, clear', () => {
     await drawMember(page, [200, 10, 0], [200, 10, 400])
     await drawMember(page, [400, 10, 0], [400, 10, 400])
     await expect(page.getByTestId('bom-count')).toHaveText('4')
-    await expect(page.getByTestId('bom-brackets')).toHaveText('4')
+    await expect(page.getByTestId('bom-brackets')).toHaveText('0/4')   // none fitted yet, four joints want one
     await expect(page.getByTestId('bom-table')).toContainText('600 mm')
     await expect(page.getByTestId('bom-table')).toContainText('380 mm')
     await expect(page.getByTestId('bom-table').locator('div', { hasText: '380 mm' }).first()).toContainText('×2')
@@ -94,7 +94,7 @@ test.describe('BOM, project files, clear', () => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await drawMember(page, [0, 0, 400], [600, 10, 400])
-    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByText('导出物料清单').click()])
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-bom').click()])
     const path = await dl.path()
     const csv = fs.readFileSync(path!, 'utf8')
     expect(csv.split('\n')[0]).toContain('Category,Item,Spec,Cut length (mm),Quantity')
@@ -145,7 +145,7 @@ test.describe('BOM, project files, clear', () => {
   test('language toggle switches labels', async ({ page }) => {
     await page.getByText('English').click()
     await expect(page.getByText('ALUFRAME DESIGNER')).toBeVisible()
-    await expect(page.getByText('Fit view')).toBeVisible()
+    await expect(page.getByTestId('held-chip')).toContainText('Empty hand')
     await page.getByText('中文').click()
     await expect(page.getByText('铝型材框架设计器')).toBeVisible()
   })

@@ -74,28 +74,47 @@ export async function enterDraw(page: Page, spec = '2020') {
   expect((await tool(page)).held).not.toBe(null)
 }
 
+/**
+ * Wait for the scene to have drawn, rather than for a number of milliseconds.
+ *
+ * Hover state is computed in a pointer handler and consumed on the next render, so a fixed
+ * sleep is a bet on how loaded the machine is. Two frames is the same wait every time.
+ */
+export async function settle(page: Page) {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  }))
+}
+
 export async function clickWorld(page: Page, p: V3, opts: { button?: 'left' | 'right'; modifiers?: ('Control' | 'Shift' | 'Meta')[] } = {}) {
   const c = await w2c(page, p)
   await page.mouse.move(c.x, c.y)
-  await page.waitForTimeout(30)
+  await settle(page)
   for (const m of opts.modifiers ?? []) await page.keyboard.down(m)
   await page.mouse.click(c.x, c.y, { button: opts.button ?? 'left' })
   for (const m of opts.modifiers ?? []) await page.keyboard.up(m)
-  await page.waitForTimeout(30)
+  await settle(page)
 }
 
 export async function hoverWorld(page: Page, p: V3) {
   const c = await w2c(page, p)
   await page.mouse.move(c.x, c.y)
-  await page.waitForTimeout(40)
+  await settle(page)
 }
 
 /** Draw a member by clicking its start and end in the scene (draw mode must be active) */
 export async function drawMember(page: Page, from: V3, to: V3) {
   const before = (await store(page)).profiles.length
   await clickWorld(page, from)
+  // the first click has to have opened a line before the second one can close it
+  await page.waitForFunction(() => (window as any).__aluframe.tool.getState().isDrawing, null, { timeout: 5000 }).catch(() => {})
   await hoverWorld(page, to)
   await clickWorld(page, to)
+  await page.waitForFunction(
+    (n) => (window as any).__aluframe.store.getState().profiles.length > n
+      || !(window as any).__aluframe.tool.getState().isDrawing,
+    before, { timeout: 5000 },
+  ).catch(() => {})
   return (await store(page)).profiles.length - before
 }
 
