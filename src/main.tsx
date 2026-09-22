@@ -6,6 +6,7 @@ import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { analyzeFrame } from './utils/analysis'
 import { gizmoState } from './components/TransformGizmo'
+import { countUnflush, rollProfile } from './utils/faceAlign'
 
 // Dev-only hook for end-to-end tests: window.__aluframe.{store,tool}
 if (import.meta.env.DEV) {
@@ -17,6 +18,8 @@ if (import.meta.env.DEV) {
       return { kind: h.part.kind, axis: h.part.axis, position: [world.x, world.y, world.z] }
     }),
     gizmoBusy: () => gizmoState.busy,
+    rollProfile,
+    unflush: () => countUnflush(useStore.getState().profiles),
     conflicts: () => {
       const { conflicts, conflictIds } = analyzeFrame(useStore.getState().profiles)
       return { conflicts: conflicts.map((c) => ({ a: c.a, b: c.b, depth: c.depth })), ids: [...conflictIds] }

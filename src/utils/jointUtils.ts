@@ -11,7 +11,24 @@ export { getProfileDir, getProfileAxis, crossExtentAlong }
  * X beams run through Z beams. Lower-priority members butt against
  * higher-priority ones and are trimmed back to the partner's face.
  */
-const AXIS_PRIORITY: Record<Axis, number> = { y: 3, x: 2, z: 1 }
+/**
+ * Which member runs through a corner and which one butts into it.
+ *
+ * Only corners need this — where an end lands mid-span the answer is obvious. Two ways are
+ * both built every day and they are not equivalent: a rail sitting on top of a post carries
+ * its load straight down the post in compression, while a post running past the rail leaves
+ * the rail hanging on its bolts. `rails` is the first, `posts` the second.
+ */
+export type ThroughRule = 'rails' | 'posts'
+
+const PRIORITY: Record<ThroughRule, Record<Axis, number>> = {
+  posts: { y: 3, x: 2, z: 1 },
+  rails: { x: 3, z: 2, y: 1 },
+}
+
+let throughRule: ThroughRule = 'rails'
+export function setThroughRule(rule: ThroughRule) { throughRule = rule }
+export function getThroughRule(): ThroughRule { return throughRule }
 
 export interface EndJoint {
   /** positive → this end is cut back (butt joint); negative → extended to the far face */
@@ -51,8 +68,9 @@ function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | nul
     const toNearFace = round3(c.along + c.extentAlong)   // cut back so our end sits on Q's near face
     const toFarFace = round3(c.extentAlong - c.along)    // extend so our end reaches Q's far face
 
-    const pPri = pAxis ? AXIS_PRIORITY[pAxis] : 0
-    const qPri = qAxis ? AXIS_PRIORITY[qAxis] : 0
+    const table = PRIORITY[throughRule]
+    const pPri = pAxis ? table[pAxis] : 0
+    const qPri = qAxis ? table[qAxis] : 0
     const weButt = !c.atQEnd || qPri > pPri   // T-joint, or corner where Q has priority
     if (weButt) { anyButt = true; buttTrim = Math.max(buttTrim, toNearFace) }
     else if (pPri > qPri) extend = Math.max(extend, toFarFace)

@@ -1,9 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
-import { computeTrims, computeAllTrims, computeFrameBounds } from '../utils/jointUtils'
+import { setThroughRule, computeTrims, computeAllTrims, computeFrameBounds } from '../utils/jointUtils'
 import { analyzeFrame, findConflicts } from '../utils/analysis'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
+
+/**
+ * Which member runs through a corner changes every trim, so each suite says which
+ * arrangement it is describing rather than leaning on whatever the default happens to be.
+ */
+beforeEach(() => setThroughRule('posts'))
+afterAll(() => setThroughRule('rails'))
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 function P(sx: number, sy: number, sz: number, ex: number, ey: number, ez: number, spec: ProfileSpec = '2020'): ProfileData {

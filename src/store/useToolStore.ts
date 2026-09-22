@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import * as THREE from 'three'
 import { ProfileSpec } from './useStore'
-import type { Axis } from '../utils/jointUtils'
+import type { Axis, ThroughRule } from '../utils/jointUtils'
+import { getThroughRule, setThroughRule as applyThroughRule } from '../utils/jointUtils'
 import type { PivotMode } from '../utils/editOps'
 
 /** The profile or connector held for placement, reflected by the sidebar selection and preview. */
@@ -19,6 +20,8 @@ interface ToolState {
   activeConnectorType: string | null
   language: Language
   cameraResetTrigger: number
+  /** +1 closer, -1 further; the viewport consumes it and resets to 0 */
+  zoomStep: number
 
   // Drawing
   isDrawing: boolean
@@ -69,13 +72,14 @@ interface ToolState {
   } | null
 
   // UI
+  /** every measurement on the drawing: the cut length on each member and the overall size */
   showDimensionLabels: boolean
-  /** the frame's overall width, depth and height, drawn outside it */
-  showOverallDims: boolean
   /** on-canvas rotation handles for the selection */
   showGizmo: boolean
   /** what the selection turns about: its centre, or one end of a single member */
   pivotMode: PivotMode
+  /** at a corner, which member runs through: the rails over the posts, or the posts past the rails */
+  throughRule: ThroughRule
   /** Height of the work plane used when a drawing click finds no attachment. */
   workPlaneY: number
   /** where the Space quick menu is open, in client pixels, or null when it is closed */
@@ -84,6 +88,8 @@ interface ToolState {
   toasts: Toast[]
   /** member under the cursor in navigate mode (screen-space pick) */
   hoverProfileId: string | null
+  /** whatever is under the cursor, of any kind: a bracket with no highlight reads as unclickable */
+  hoverPartId: string | null
   /** end of the selected member the pointer is reaching for */
   hoverEnd: 'start' | 'end' | null
   /** how many parts are stacked under the cursor, and which one Tab has stepped to */
@@ -107,6 +113,8 @@ interface ToolState {
   putDown: () => void
   setLanguage: (lang: Language) => void
   triggerCameraReset: () => void
+  zoomBy: (step: number) => void
+  clearZoom: () => void
 
   beginDraw: (origin: THREE.Vector3) => void
   updateDraw: (patch: Partial<Pick<ToolState, 'startPoint' | 'currentPoint' | 'snapPoint' | 'drawAxis' | 'alignGuides' | 'snapKind' | 'hoverTargetId'>>) => void
@@ -129,14 +137,15 @@ interface ToolState {
   stopResize: () => void
   stopDrag: () => void
   setHoverProfile: (id: string | null) => void
+  setHoverPart: (id: string | null) => void
   setHoverEnd: (end: 'start' | 'end' | null) => void
   setGizmoHover: (part: ToolState['gizmoHover']) => void
   setHoverCandidates: (count: number, index: number) => void
 
   toggleDimensionLabels: () => void
-  toggleOverallDims: () => void
   toggleGizmo: () => void
   setPivotMode: (mode: PivotMode) => void
+  setThroughRule: (rule: ThroughRule) => void
   setWorkPlaneY: (y: number) => void
   cyclePivotMode: () => void
   openQuickMenu: (x: number, y: number) => void
@@ -160,6 +169,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   activeConnectorType: null,
   language: 'zh',
   cameraResetTrigger: 0,
+  zoomStep: 0,
 
   isDrawing: false,
   drawOrigin: null,
@@ -190,14 +200,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
   resize: null,
 
   showDimensionLabels: true,
-  showOverallDims: true,
   showGizmo: true,
   pivotMode: 'center',
+  throughRule: getThroughRule(),
   workPlaneY: 0,
   quickMenuAt: null,
   selectMode: false,
   toasts: [],
   hoverProfileId: null,
+  hoverPartId: null,
   hoverEnd: null,
   hoverCandidates: { count: 0, index: 0 },
   gizmoHover: null,
@@ -219,6 +230,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   }),
   setLanguage: (language) => set({ language }),
   triggerCameraReset: () => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1 })),
+  zoomBy: (step) => set((s) => ({ zoomStep: s.zoomStep + step })),
+  clearZoom: () => set({ zoomStep: 0 }),
 
   beginDraw: (origin) => set({
     isDrawing: true, drawOrigin: origin.clone(), startPoint: origin.clone(), currentPoint: origin.clone(),
@@ -260,6 +273,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
     dragMoved: false, dragConflict: false, snapRefIds: [], snapGuides: [],
   }),
   setHoverProfile: (id) => { if (get().hoverProfileId !== id) set({ hoverProfileId: id }) },
+  setHoverPart: (id) => { if (get().hoverPartId !== id) set({ hoverPartId: id }) },
   setHoverEnd: (end) => { if (get().hoverEnd !== end) set({ hoverEnd: end }) },
   setHoverCandidates: (count, index) => {
     const cur = get().hoverCandidates
@@ -271,9 +285,9 @@ export const useToolStore = create<ToolState>((set, get) => ({
   },
 
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
-  toggleOverallDims: () => set((s) => ({ showOverallDims: !s.showOverallDims })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
   setPivotMode: (pivotMode) => set({ pivotMode }),
+  setThroughRule: (rule) => { applyThroughRule(rule); set({ throughRule: rule }) },
   setWorkPlaneY: (workPlaneY) => set({ workPlaneY: isFinite(workPlaneY) ? Math.max(0, Math.round(workPlaneY)) : 0 }),
   openQuickMenu: (x, y) => set({ quickMenuAt: { x, y } }),
   closeQuickMenu: () => set({ quickMenuAt: null }),

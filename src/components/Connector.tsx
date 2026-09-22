@@ -1,6 +1,7 @@
 import React from 'react'
 import * as THREE from 'three'
 import { connectorScale } from '../utils/connectorCatalog'
+import { useToolStore } from '../store/useToolStore'
 
 interface ConnectorProps {
   id?: string
@@ -39,6 +40,7 @@ const MeshPart: React.FC<MeshPartProps & { opacity?: number }> = ({ geom, args, 
 )
 
 const Connector: React.FC<ConnectorProps> = ({
+  id,
   type,
   series = 20,
   position,
@@ -46,7 +48,8 @@ const Connector: React.FC<ConnectorProps> = ({
   isSelected,
   preview = false,
 }) => {
-  const c = preview ? '#10b981' : isSelected ? '#3b82f6' : '#94a3b8'
+  const hovered = useToolStore((s) => !s.isDragging && s.hoverPartId === id)
+  const c = preview ? '#10b981' : isSelected ? '#3b82f6' : hovered ? '#e2e8f0' : '#94a3b8'
   const opacity = preview ? 0.55 : 1
   const scale = connectorScale(series)
 

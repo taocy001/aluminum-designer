@@ -145,7 +145,8 @@ test.describe('BOM, project files, clear', () => {
   test('language toggle switches labels', async ({ page }) => {
     await page.getByText('English').click()
     await expect(page.getByText('ALUFRAME DESIGNER')).toBeVisible()
-    await expect(page.getByTestId('held-chip')).toContainText('Empty hand')
+    // the empty hand is an icon now, so its language shows in the accessible name
+    await expect(page.getByTestId('held-chip')).toHaveAttribute('aria-label', 'Empty hand')
     await page.getByText('中文').click()
     await expect(page.getByText('铝型材框架设计器')).toBeVisible()
   })
