@@ -2,11 +2,11 @@ import * as THREE from 'three'
 import { useStore, type ConnectorData, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
-import { connectorEntry, seriesOf } from './connectorCatalog'
+import { connectorEntry, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector } from './connectorFit'
-import { closestOnSegment, getProfileDir, getProfileEndpoints } from './geometryCore'
+import { closestOnSegment, getProfileEndpoints } from './geometryCore'
 import { flushFace } from './specCompat'
-import { specDims } from './specUtils'
+import { seatBracket } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
 
@@ -72,7 +72,6 @@ export function autoConnect(type: string): AutoConnectResult {
   // part rather than sitting inside the first.
   const existing = connectors.map((c) => new THREE.Vector3(...c.position))
   const isFree = (v: THREE.Vector3) => !existing.some((p) => p.distanceTo(v) <= OCCUPIED_MM)
-  const placedAt: THREE.Vector3[] = []
 
   const made: ConnectorData[] = []
   let skipped = 0
@@ -88,24 +87,33 @@ export function autoConnect(type: string): AutoConnectResult {
       wanted.push(at.clone())
       if (!isFree(at)) { skipped++; continue }
 
-      // Sit the bracket on the faces it would actually be bolted to, not on the centreline
-      // the joint is recorded at — a plate buried inside the profile is a marker, not a part.
+      // Where the part goes is a question about bolts, not about points. `seatBracket` puts
+      // the back on the face the two members share and each hole on a slot line; a part
+      // dropped on the centreline is a marker, not something that can be fitted.
       const partner = partnerAt(at, p, profiles)
-      const face = partner ? flushFace(p, partner, at) : null
-      const spot = at.clone()
-      if (face) spot.addScaledVector(face.normal, face.offset)
-      // step back along this member for each part already sitting on the same point
-      const crowd = placedAt.filter((v) => v.distanceTo(at) <= OCCUPIED_MM).length
-      if (crowd > 0) spot.addScaledVector(getProfileDir(p), (where === tr.start ? 1 : -1) * crowd * specDims(p.spec).w)
-      const placement = fitConnector(type, at, profiles, null)
-      made.push({
-        id: nextId('c'),
-        type,
-        series: placement.series ?? seriesOf(p.spec),
-        position: [spot.x, spot.y, spot.z],
-        quaternion: placement.quaternion,
-      })
-      placedAt.push(at.clone())
+      const seat = entry.isCornerBracket && partner ? seatBracket(p, partner, at) : null
+      let position: [number, number, number]
+      let quaternion: [number, number, number, number]
+      let series: ConnectorSeries
+      if (seat) {
+        position = seat.position
+        quaternion = seat.quaternion
+        series = seat.series
+      } else {
+        // caps, feet and the like sit on an end, where there is no second member to line up to
+        const face = partner ? flushFace(p, partner, at) : null
+        const spot = at.clone()
+        if (face) spot.addScaledVector(face.normal, face.offset)
+        const placement = fitConnector(type, at, profiles, null)
+        position = [spot.x, spot.y, spot.z]
+        quaternion = placement.quaternion
+        series = placement.series ?? seriesOf(p.spec)
+      }
+      // Two rails butting into the same post used to be stepped apart along their own
+      // members so they did not draw inside each other. They do not need it: their planes
+      // are the cross products of two different pairs of axes, so they already land on
+      // different faces of the post. The step only pushed them off their slots.
+      made.push({ id: nextId('c'), type, series, position, quaternion })
     }
   }
 

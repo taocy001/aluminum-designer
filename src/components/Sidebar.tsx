@@ -14,6 +14,7 @@ import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
 import { addDrawerFromSelection } from '../utils/drawerOps'
+import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 /** "40 side faces ↑" and the like, so the roll is something you can read off the panel */
@@ -179,6 +180,7 @@ const Sidebar: React.FC = () => {
     && profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
     && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
 
+  const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors])
   const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
@@ -678,6 +680,21 @@ const Sidebar: React.FC = () => {
             <span className="flex items-center gap-1">{edgeMismatches.length > 0 && <AlertTriangle size={11} />}{t.specMismatch}</span>
             <span className="font-mono" data-testid="bom-mismatches">
               {edgeMismatches.length ? t.specMismatchCount(edgeMismatches.length) : t.specMismatchOk}
+            </span>
+          </button>
+        )}
+        {/* A bracket beside a joint renders exactly like one bolted to it, and the cut list
+            counts it either way — so the only way to know is to ask. */}
+        {connectors.length > 0 && (
+          <button
+            onClick={() => { if (bracketFaults.length) useStore.getState().selectItems(bracketFaults.map((f) => f.id)) }}
+            title={t.hintBracketSeating}
+            disabled={bracketFaults.length === 0}
+            className={`w-full text-[10px] flex justify-between items-center ${bracketFaults.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
+          >
+            <span className="flex items-center gap-1">{bracketFaults.length > 0 && <AlertTriangle size={11} />}{t.bracketSeating}</span>
+            <span className="font-mono" data-testid="bom-bracket-seating">
+              {bracketFaults.length ? t.bracketSeatingBad(bracketFaults.length) : t.bracketSeatingOk}
             </span>
           </button>
         )}

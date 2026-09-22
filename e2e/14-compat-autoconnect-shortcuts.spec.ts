@@ -200,24 +200,47 @@ test.describe('The shortcuts people already know', () => {
     expect((await store(page)).selectedIds.length).toBe(0)
   })
 
-  test('double-clicking a member takes the sub-assembly it belongs to', async ({ page }) => {
+  test('the quick menu takes the sub-assembly a member belongs to', async ({ page }) => {
     const c = await w2c(page, [300, 10, 0])
-    await page.mouse.dblclick(c.x, c.y)
+    await page.mouse.click(c.x, c.y)
+    expect((await store(page)).selectedIds.length).toBe(1)
+    await page.mouse.move(c.x, c.y)
+    await page.keyboard.press('Space')
+    await page.getByTestId('quick-connected').click()
+    await page.waitForTimeout(200)
     const ids = (await store(page)).selectedIds
     expect(ids.length).toBe(2)          // the two that meet at the corner, not the lone one
   })
 
-  test('double-clicking the lone member takes only itself', async ({ page }) => {
+  /**
+   * A double click means "this, closer in" wherever it lands. It used to mean that only over
+   * empty space and something else entirely over a member, so whether it came closer depended
+   * on whether you had hit metal — which is the thing you were trying to get closer to.
+   * Taking the whole joined-up structure moved to the quick menu.
+   */
+  test('double-clicking a member comes in on it rather than selecting', async ({ page }) => {
+    const before = await page.evaluate(() => (window as any).__aluframe.camera.position.toArray().map(Math.round))
     const c = await w2c(page, [1500, 400, 0])
     await page.mouse.dblclick(c.x, c.y)
-    expect((await store(page)).selectedIds.length).toBe(1)
+    await page.waitForTimeout(250)
+    expect(await page.evaluate(() => (window as any).__aluframe.camera.position.toArray().map(Math.round))).not.toEqual(before)
   })
 
-  test('double-clicking empty space frames the drawing', async ({ page }) => {
+  test('double-clicking empty space comes in too', async ({ page }) => {
     const before = await page.evaluate(() => (window as any).__aluframe.camera.position.toArray().map(Math.round))
     await page.mouse.dblclick(1200, 820)
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(250)
     expect(await page.evaluate(() => (window as any).__aluframe.camera.position.toArray().map(Math.round))).not.toEqual(before)
+  })
+
+  test('a lone member’s sub-assembly is just itself', async ({ page }) => {
+    const c = await w2c(page, [1500, 400, 0])
+    await page.mouse.click(c.x, c.y)
+    await page.mouse.move(c.x, c.y)
+    await page.keyboard.press('Space')
+    await page.getByTestId('quick-connected').click()
+    await page.waitForTimeout(200)
+    expect((await store(page)).selectedIds.length).toBe(1)
   })
 
   test('Space works with nothing selected too', async ({ page }) => {

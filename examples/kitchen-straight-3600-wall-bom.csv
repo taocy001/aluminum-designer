@@ -10,12 +10,9 @@ Profile,2040,2040,3580,1
 Profile,2040,2040,580,2
 Profile,2040,2040,560,4
 Profile,4040,4040,850,4
-Connector,"L型角码",20 系列,,124
-Connector,"L型角码",40 系列,,13
-Fastener,"螺栓 M5×10",20,,248
-Fastener,"螺栓 M8×16",40,,26
-Fastener,"T型螺母 M5",20,,248
-Fastener,"T型螺母 M8",40,,26
+Connector,"L型角码",20 系列,,137
+Fastener,"螺栓 M5×10",20,,274
+Fastener,"T型螺母 M5",20,,274
 Board,"515 × 354 mm","多层板 15mm",,4
 Board,"560 × 354 mm","多层板 15mm",,4
 Board,"560 × 515 mm","多层板 15mm",,2

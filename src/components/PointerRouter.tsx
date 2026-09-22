@@ -9,6 +9,14 @@ import { endGrabRadius } from './ResizeHandles'
 import { gizmoState, gizmoHandleAt } from './TransformGizmo'
 import { rotateSelected, selectConnected } from '../utils/editOps'
 import { translations } from '../utils/translations'
+import { memberBox } from '../utils/dragSnap'
+
+/** Where a ray meets a level plane at height `y`, or null when it runs parallel to it */
+function planeHit(ray: THREE.Ray, y: number): THREE.Vector3 | null {
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -y)
+  const at = new THREE.Vector3()
+  return ray.intersectPlane(plane, at) ? at : null
+}
 
 const CLICK_SLOP_PX = 5
 
@@ -200,26 +208,82 @@ const PointerRouter: React.FC = () => {
      * A double click on a member takes the whole sub-assembly it belongs to; on empty space
      * it brings the camera in on the point under the cursor. Both read as "this, closer in".
      */
+    /**
+     * A double click means "this, closer in", and it has to mean that everywhere.
+     *
+     * It used to mean two things: closer in over empty space, and take-the-sub-assembly over
+     * a member — so whether it zoomed depended on whether you had happened to land on metal,
+     * which is exactly the part you were trying to get closer to. Now it always comes in, at
+     * whatever the pointer is over. Where the ray finds nothing it falls back to the work
+     * plane, and only then to the floor, so a double click while looking at wall units does
+     * not send the camera off to a point on the ground metres below them.
+     */
     const onDoubleClick = (e: MouseEvent) => {
       const ts = useToolStore.getState()
       if (ts.held !== null || ts.selectMode) return
       const { cursor, rect } = cursorOf(e as unknown as PointerEvent)
-      const hit = pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height },
+      const ray = rayOf(cursor, rect)
+      const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
         useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
-      if (hit?.kind === 'profile') selectConnected(hit.id)
-      else {
-        // nothing under it: come closer to whatever the cursor is over, rather than
-        // reframing the whole drawing, which is what the Home button is for
-        const floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
-        const at = new THREE.Vector3()
-        const ray = rayOf(cursor, rect)
-        if (ray.intersectPlane(floor, at)) ts.zoomToPoint([at.x, at.y, at.z])
+      let target = hit?.point?.clone() ?? null
+      if (!target) {
+        // Nothing under the pointer. Falling through to the floor sends the camera off to
+        // a spot metres below whatever you were looking at, which is why this used to feel
+        // like it had missed. Stay at the depth you are already looking at instead, so the
+        // view comes in on the sky beside a wall unit rather than on the ground under it.
+        const orbit3 = orbit as any
+        const dir = camera.getWorldDirection(new THREE.Vector3())
+        const depth = orbit3?.target ? orbit3.target.clone().sub(camera.position).dot(dir) : 0
+        target = depth > 1
+          ? ray.origin.clone().addScaledVector(ray.direction, depth / Math.max(0.1, ray.direction.dot(dir)))
+          : planeHit(ray, ts.workPlaneY) ?? planeHit(ray, 0)
       }
+      if (target) ts.zoomToPoint([target.x, target.y, target.z])
+    }
+
+    /**
+     * Put the orbit pivot at the depth of whatever is in the middle of the screen.
+     *
+     * OrbitControls turns about a fixed target, which after a pan or a zoom is somewhere
+     * behind you or off to the side — so a small turn swings the model across the screen and
+     * you have to chase it back. What you actually want to turn about is the thing you are
+     * looking at. Moving the target *along the sight line* does that without altering the
+     * picture at all: the target stays on the ray through the middle of the screen, so
+     * nothing moves until you start turning, and then it turns about the right point.
+     */
+    const aimPivot = () => {
+      const orbit2 = orbit as any
+      if (!orbit2?.target) return
+      const rect = gl.domElement.getBoundingClientRect()
+      const middle = new THREE.Vector2(0, 0)
+      const ray = new THREE.Raycaster()
+      ray.setFromCamera(middle, camera)
+      const store = useStore.getState()
+      const hit = pickAtScreen(
+        new THREE.Vector2(rect.width / 2, rect.height / 2), ray.ray, camera,
+        { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels,
+      )
+      const dir = camera.getWorldDirection(new THREE.Vector3())
+      let depth: number | null = null
+      if (hit?.point) {
+        depth = hit.point.clone().sub(camera.position).dot(dir)
+      } else {
+        // nothing dead ahead: use the middle of what is actually on screen
+        const box = new THREE.Box3()
+        for (const p of store.profiles) box.union(memberBox(p))
+        for (const b of store.panels) box.expandByPoint(new THREE.Vector3(...b.position))
+        if (!box.isEmpty()) depth = box.getCenter(new THREE.Vector3()).sub(camera.position).dot(dir)
+      }
+      if (depth === null || !isFinite(depth) || depth < 1) return
+      orbit2.target.copy(camera.position.clone().addScaledVector(dir, depth))
+      orbit2.update()
     }
 
     const onPointerDown = (e: PointerEvent) => {
       const ts = useToolStore.getState()
       if (e.button !== 0) return
+      // a press on empty space is about to become an orbit: pivot on what is being looked at
+      if (!ts.selectMode && ts.held === null) aimPivot()
 
       // a press on a move arrow slides the selection along that axis, in either mode.
       // Ctrl/Cmd (add to selection) and Alt (plane drag) are gestures aimed at the model,

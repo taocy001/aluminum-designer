@@ -54,9 +54,9 @@ const Connector: React.FC<ConnectorProps> = ({
   preview = false,
 }) => {
   const hovered = useToolStore((s) => !s.isDragging && s.hoverPartId === id)
-  const c = preview ? '#10b981' : isSelected ? '#60a5fa' : hovered ? '#fbbf24' : '#94a3b8'
-  const glow = isSelected ? '#1d4ed8' : hovered ? '#a16207' : undefined
-  const opacity = preview ? 0.55 : 1
+  const c = preview ? '#34d399' : isSelected ? '#60a5fa' : hovered ? '#fbbf24' : '#94a3b8'
+  const glow = preview ? '#059669' : isSelected ? '#1d4ed8' : hovered ? '#a16207' : undefined
+  const opacity = preview ? 0.92 : 1
   const scale = connectorScale(series)
 
   const renderParts = () => {

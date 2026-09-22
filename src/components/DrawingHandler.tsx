@@ -9,7 +9,7 @@ import { pickPoint, resolveAxisEnd, type MeshHit } from '../utils/pickUtils'
 import SnapMarker from './SnapMarker'
 import { floorY, tryAddProfile, placeConnector } from '../utils/profileFactory'
 import { specDims } from '../utils/specUtils'
-import { fitConnector } from '../utils/connectorFit'
+import { connectorSeatAt } from '../utils/bracketSeat'
 import Connector from './Connector'
 import { translations } from '../utils/translations'
 
@@ -212,13 +212,12 @@ const DrawingHandler: React.FC = () => {
 
   const { hh } = specDims(activeSpec)
 
-  // the preview follows the same rule the placement will use, normal included
+  // The ghost asks the placement the same question it will ask on the click, so the part
+  // does not jump when the button goes down — near a corner it lands on the joint, seated
+  // on its slots, which is some way from wherever the pointer happens to be.
   const connectorPreview = useMemo(() => {
-    if (held !== 'connector' || !activeConnectorType || !currentPoint) {
-      return { quaternion: [0, 0, 0, 1] as [number, number, number, number], series: 20 as 20 | 30 | 40 }
-    }
-    const fit = fitConnector(activeConnectorType, currentPoint, useStore.getState().profiles, hoverNormal.current)
-    return { quaternion: fit.quaternion, series: fit.series }
+    if (held !== 'connector' || !activeConnectorType || !currentPoint) return null
+    return connectorSeatAt(activeConnectorType, currentPoint, useStore.getState().profiles, hoverNormal.current)
   }, [held, activeConnectorType, currentPoint])
 
   return (
@@ -267,15 +266,27 @@ const DrawingHandler: React.FC = () => {
         <Line key={i} points={[g.from, g.to]} color="#a78bfa" lineWidth={1} dashed dashSize={8} gapSize={5} />
       ))}
 
-      {/* Connector preview: the real part, oriented the way it would land */}
-      {held === 'connector' && activeConnectorType && currentPoint && (
-        <Connector
-          type={activeConnectorType}
-          series={connectorPreview.series}
-          position={currentPoint.toArray() as [number, number, number]}
-          quaternion={connectorPreview.quaternion}
-          preview
-        />
+      {/* Connector preview: the real part, where it would land.
+          A bracket is twenty millimetres on a frame metres across — at any useful zoom it is
+          a few pixels, and a few translucent pixels are none. So it comes with a ring that
+          keeps its size on screen whatever the zoom, and a line back to the pointer when the
+          part has settled onto a joint some way off. */}
+      {held === 'connector' && activeConnectorType && currentPoint && connectorPreview && (
+        <>
+          <Connector
+            type={activeConnectorType}
+            series={connectorPreview.series}
+            position={connectorPreview.position}
+            quaternion={connectorPreview.quaternion}
+            preview
+          />
+          <SnapMarker position={connectorPreview.position} kind={connectorPreview.seated ? 'seat' : 'loose'} size={0.055} />
+          {connectorPreview.seated
+            && currentPoint.distanceTo(new THREE.Vector3(...connectorPreview.position)) > 8 && (
+            <Line points={[currentPoint.toArray(), connectorPreview.position]}
+              color="#34d399" lineWidth={1.5} dashed dashSize={6} gapSize={4} />
+          )}
+        </>
       )}
     </>
   )

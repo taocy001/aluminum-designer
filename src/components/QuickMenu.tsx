@@ -1,9 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Crosshair, BoxSelect, Maximize, Ruler } from 'lucide-react'
+import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Crosshair, BoxSelect, Maximize, Ruler, Waypoints } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
-import { duplicateSelected, mirrorSelected, rotateSelected, selectAll, type RotAxis } from '../utils/editOps'
+import { duplicateSelected, mirrorSelected, rotateSelected, selectAll, selectConnected, type RotAxis } from '../utils/editOps'
 
 const AXIS_COLORS: Record<RotAxis, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 const MIN_WIDTH = 190
@@ -99,6 +99,12 @@ const QuickMenu: React.FC = () => {
         </div>
       ))}
       {hasSelection && <div className="h-px bg-white/10 my-1" />}
+      {/* Double click zooms in now — always, on whatever is under it — so taking the whole
+          joined-up structure lives here instead. */}
+      {hasSelection && <Item testId="quick-connected" tip={t.hintSelectConnected}
+        onClick={run(() => { const id = selectedIds[0]; if (id) selectConnected(id) })}>
+        <Waypoints size={12} />{t.selectConnected}
+      </Item>}
       {hasSelection && <Item testId="quick-duplicate" tip={t.hintDuplicate} onClick={run(duplicateSelected)}><Copy size={12} />{t.duplicate}</Item>}
       {hasSelection && <div className="flex items-center gap-0.5 px-1.5 pb-0.5">
         <FlipHorizontal2 size={12} className="text-slate-400 mx-1.5" />

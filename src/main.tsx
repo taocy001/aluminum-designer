@@ -5,6 +5,7 @@ import './index.css'
 import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { analyzeFrame } from './utils/analysis'
+import { auditBrackets } from './utils/bracketSeat'
 import { gizmoState } from './components/TransformGizmo'
 import { countUnflush, rollProfile } from './utils/faceAlign'
 
@@ -20,6 +21,10 @@ if (import.meta.env.DEV) {
     gizmoBusy: () => gizmoState.busy,
     rollProfile,
     unflush: () => countUnflush(useStore.getState().profiles),
+    bracketFaults: () => {
+      const s = useStore.getState()
+      return auditBrackets(s.profiles, s.connectors).map((f) => ({ id: f.id, off: f.off, reason: f.reason }))
+    },
     conflicts: () => {
       const { conflicts, conflictIds } = analyzeFrame(useStore.getState().profiles)
       return { conflicts: conflicts.map((c) => ({ a: c.a, b: c.b, depth: c.depth })), ids: [...conflictIds] }

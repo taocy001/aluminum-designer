@@ -78,18 +78,27 @@ test.describe('Free rotation about any axis', () => {
     expect((await store(page)).profiles.map((p) => p.position.map(r))).toEqual(before)
   })
 
-  test('R rotates 90° about Y, Shift+R the other way', async ({ page }) => {
+  // R asks which axis; X/Y/Z answers. It used to mean Y without saying so.
+  test('R then Y turns 90° about Y, Shift+R then Y the other way', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await toNavigate(page)
     await clickWorld(page, [300, 10, 0])
     await page.keyboard.press('r')
+    await expect(page.getByTestId('rotate-axis-hud')).toBeVisible()
+    await page.keyboard.press('y')
     expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual([0, 0, -1])
     await page.keyboard.press('Shift+R')
+    await page.keyboard.press('y')
     expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual([1, 0, 0])
   })
 
-  test('a connector rotates about every axis and can be dragged', async ({ page }) => {
+  /**
+   * A connector used to turn and slide like anything else. It does not any more: between two
+   * aligned members there is one bracket that fits and one way it goes on, so every one of
+   * those gestures could only take it off the joint.
+   */
+  test('a connector stays where the joint put it, whatever is pressed', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await page.getByRole('button', { name: 'L型角码', exact: true }).click()
@@ -98,39 +107,25 @@ test.describe('Free rotation about any axis', () => {
     await clickWorld(page, [600, 10, 0])
     const c0 = (await store(page)).connectors[0]
     expect((await store(page)).selectedIds).toEqual([c0.id])
-    // it lands oriented to the member it was dropped on, so compare against that, not identity
-    const placed = await page.getByTestId('connector-orientation').textContent()
 
     await page.getByTestId('rot-x-plus').click()
-    await expect(page.getByTestId('connector-orientation')).not.toHaveText(placed!)
     await page.getByTestId('rot-z-plus').click()
-    let quat = (await store(page)).connectors[0].quaternion
-    expect(quat.some((v: number) => Math.abs(v) > 0.01)).toBe(true)
-    await page.getByTestId('rotate-angle').fill('45')
-    await page.getByTestId('rot-y-minus').click()
-    quat = (await store(page)).connectors[0].quaternion
-    expect(quat.every((v: number) => isFinite(v))).toBe(true)
+    expect((await store(page)).connectors[0].quaternion).toEqual(c0.quaternion)
 
-    // and it can be moved with the mouse
     const before = (await store(page)).connectors[0].position.map(r)
     await dragWorld(page, [600, 10, 0], [600, 10, 200])
-    const after = (await store(page)).connectors[0].position.map(r)
-    expect(after).not.toEqual(before)
-    expect(Math.abs(after[2] - 200)).toBeLessThanOrEqual(10)
-    await page.keyboard.press('Control+z')
     expect((await store(page)).connectors[0].position.map(r)).toEqual(before)
   })
 
-  test('connector position fields move it precisely', async ({ page }) => {
+  test('a connector shows where it is but has no field to move it', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await page.getByRole('button', { name: '端盖', exact: true }).click()
     await clickWorld(page, [600, 10, 0])
     await toNavigate(page)
     await clickWorld(page, [600, 10, 0])
-    const inputs = page.getByTestId('properties').locator('input[type=number]')
-    await inputs.nth(0).fill('120'); await inputs.nth(0).press('Enter')
-    expect((await store(page)).connectors[0].position.map(r)).toEqual([120, 10, 0])
+    await expect(page.getByTestId('connector-position')).toBeVisible()
+    await expect(page.getByTestId('connector-position').locator('input')).toHaveCount(0)
   })
 })
 
@@ -250,7 +245,7 @@ test.describe('Floor and group rules after the rule change', () => {
     expect(ys).toEqual([10, 10])
   })
 
-  test('a connector selected with members moves with them', async ({ page }) => {
+  test('a connector does not ride along when the members it sits on move', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await page.getByRole('button', { name: 'L型角码', exact: true }).click()
@@ -262,15 +257,9 @@ test.describe('Floor and group rules after the rule change', () => {
     const beforeP = (await store(page)).profiles[0].position.map(r)
     const beforeC = (await store(page)).connectors[0].position.map(r)
     await page.keyboard.press('ArrowRight')
+    // the member moves, the bracket stays on the joint it was fitted to
     expect((await store(page)).profiles[0].position.map(r)).toEqual([beforeP[0] + 5, beforeP[1], beforeP[2]])
-    expect((await store(page)).connectors[0].position.map(r)).toEqual([beforeC[0] + 5, beforeC[1], beforeC[2]])
-    // and dragging any part of the selection takes the whole group, connector included
-    // (grabbed away from the gizmo arrows, which own the pixels they are drawn on)
-    await dragWorld(page, [150, 10, 0], [150, 10, 150])
-    const movedP = (await store(page)).profiles[0].position.map(r)
-    const movedC = (await store(page)).connectors[0].position.map(r)
-    expect(movedP[2] - beforeP[2]).toBe(movedC[2] - beforeC[2])
-    expect(movedP[2]).toBeGreaterThan(100)
+    expect((await store(page)).connectors[0].position.map(r)).toEqual(beforeC)
   })
 
   test('a new conflict between already flagged members is still reported', async ({ page }) => {
