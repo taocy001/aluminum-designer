@@ -3,7 +3,7 @@ import { useStore, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
 import { faceAlignOnCreate } from './faceAlign'
-import { fitConnector } from './connectorFit'
+import { connectorSeatAt } from './bracketSeat'
 import { specDims } from './specUtils'
 import { translations } from './translations'
 
@@ -79,12 +79,13 @@ export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: Pr
 /** Place a connector, oriented to the members it was dropped on */
 export function placeConnector(point: THREE.Vector3, type: string, surfaceNormal?: THREE.Vector3 | null): void {
   const profiles = useStore.getState().profiles
-  const fit = fitConnector(type, point, profiles, surfaceNormal)
+  // the part goes where it can be bolted, which near a corner is not where the pointer is
+  const seat = connectorSeatAt(type, point, profiles, surfaceNormal)
   useStore.getState().addConnector({
     id: nextId('c'),
     type,
-    series: fit.series,
-    position: [clean(point.x), clean(point.y), clean(point.z)],
-    quaternion: fit.quaternion,
+    series: seat.series,
+    position: seat.position,
+    quaternion: seat.quaternion,
   })
 }
