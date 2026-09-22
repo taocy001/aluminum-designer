@@ -16,8 +16,22 @@ import { toScreen } from '../utils/pickUtils'
 /** endpoint snapping while dragging: generous on screen, capped in world units */
 const SNAP_PX = 24
 const SNAP_MAX_MM = 60
-/** always snap within this world distance, however far the camera is zoomed in */
-const SNAP_MIN_MM = 20
+/**
+ * Always snap within this world distance, however far the camera is zoomed out.
+ *
+ * It has to stay well under the smallest move anybody makes on purpose. At 20 mm it was
+ * exactly the size of a deliberate nudge, so a rail asked to come down 20 mm landed back on
+ * the endpoint it started from and the move looked impossible.
+ */
+const SNAP_MIN_MM = 6
+
+/**
+ * An arrow drag is a measured adjustment, not a placement: the axis is already chosen and
+ * the distance is the whole point. Snapping stays, but only close enough to catch a part
+ * that is nearly there, never far enough to swallow the move.
+ */
+const AXIS_SNAP_PX = 10
+const AXIS_SNAP_MAX_MM = 12
 /** a press near an end face only starts a stretch once the pointer travels this far */
 const RESIZE_SLOP_PX = 4
 
@@ -28,14 +42,17 @@ const RESIZE_SLOP_PX = 4
  */
 function snapProfilePosition(
   p: ProfileData, newStart: THREE.Vector3, others: ProfileData[],
-  camera: THREE.Camera, size: { width: number; height: number },
+  camera: THREE.Camera, size: { width: number; height: number }, tight = false,
 ): { position: THREE.Vector3; refId: string | null } {
+  const maxMm = tight ? AXIS_SNAP_MAX_MM : SNAP_MAX_MM
+  const minMm = tight ? 2 : SNAP_MIN_MM
+  const maxPx = tight ? AXIS_SNAP_PX : SNAP_PX
   const { start, end } = getProfileEndpoints({ ...p, position: [newStart.x, newStart.y, newStart.z] })
   const offset = end.clone().sub(start)
   const dir = getProfileDir(p)
   let best: THREE.Vector3 | null = null
   let bestRef: string | null = null
-  let bestPx = SNAP_PX
+  let bestPx = maxPx
   for (const o of others) {
     // Endpoints join members that meet at an angle. Two parallel members side by side are a
     // different intent — they belong face to face, which the alignment snap handles.
@@ -45,9 +62,9 @@ function snapProfilePosition(
       const epPx = toScreen(ep, camera, size)
       for (const [corner, candidate] of [[start, ep], [end, ep.clone().sub(offset)]] as const) {
         const world = ep.distanceTo(corner)
-        if (world > SNAP_MAX_MM) continue
+        if (world > maxMm) continue
         const px = epPx.distanceTo(toScreen(corner, camera, size))
-        const effective = world <= SNAP_MIN_MM ? Math.min(px, SNAP_PX - 1) : px
+        const effective = world <= minMm ? Math.min(px, maxPx - 1) : px
         if (effective < bestPx) { bestPx = effective; best = candidate.clone(); bestRef = o.id }
       }
     }
@@ -172,7 +189,7 @@ const DragHandler: React.FC = () => {
       const leadNew = leadOrigin.clone().add(delta)
       leadNew.x = roundToGrid(leadNew.x); leadNew.y = roundToGrid(leadNew.y); leadNew.z = roundToGrid(leadNew.z)
       const endpointSnap = single && lead && dragKind === 'profile' && !ts.dragFree
-        ? snapProfilePosition(lead, leadNew, others, camera, size)
+        ? snapProfilePosition(lead, leadNew, others, camera, size, ts.dragAxis !== null)
         : { position: leadNew, refId: null }
       const snapped = endpointSnap.position
       const joinedAtEndpoint = endpointSnap.refId !== null
@@ -199,7 +216,10 @@ const DragHandler: React.FC = () => {
         // the pull reaches as far on screen as it does in the model, so it is felt at any zoom
         const camDist = new THREE.Vector3(...(dragGroupOrigins[dragProfileId] ?? dragOriginPos.toArray()))
           .distanceTo(new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld))
-        const threshold = alignThreshold(dragged, pixelsToWorld(ALIGN_PX, camDist, camera, size.height))
+        // an axis drag is measured, so the alignment pull is tight enough to leave it alone
+        const threshold = ts.dragAxis !== null
+          ? AXIS_SNAP_MAX_MM
+          : alignThreshold(dragged, pixelsToWorld(ALIGN_PX, camDist, camera, size.height))
         const snap = computeDragSnap(dragged, proposed, others, threshold)
         // an axis-locked move only takes the pull on its own axis; announcing the others
         // would point at alignments the part was never allowed to make

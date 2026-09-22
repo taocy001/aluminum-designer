@@ -67,11 +67,13 @@ test.describe('Rotation pivot', () => {
     expect(await pivot(page)).toBe('center')
   })
 
-  test('the toolbar button cycles it too and says which one is active', async ({ page }) => {
-    await expect(page.getByTestId('pivot-toggle')).toContainText('中心')
+  test('the toolbar button cycles it too', async ({ page }) => {
+    // the toolbar is icons: the button carries no text, only the state behind it
+    expect(await pivot(page)).toBe('center')
     await page.getByTestId('pivot-toggle').click()
-    await expect(page.getByTestId('pivot-toggle')).toContainText('起点')
     expect(await pivot(page)).toBe('start')
+    await page.getByTestId('pivot-toggle').click()
+    expect(await pivot(page)).toBe('end')
   })
 
   test('turning about the start leaves the start where it was', async ({ page }) => {

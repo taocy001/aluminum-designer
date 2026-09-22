@@ -6,7 +6,7 @@ import { panelCorners } from './panelOps'
 
 /** Extra pixels of slack around a member's rendered body, so thin beams stay easy to hit */
 export const PICK_SLACK_PX = 7
-const CONNECTOR_RADIUS_PX = 14
+const CONNECTOR_RADIUS_PX = 20
 /** Prefer connectors over member endpoints at comparable depth. */
 const CONNECTOR_DEPTH_BIAS = 60
 /** anything nearer than this to the camera plane cannot be projected meaningfully */
