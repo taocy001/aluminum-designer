@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import Viewport from './components/Viewport'
 import Sidebar from './components/Sidebar'
 import QuickMenu from './components/QuickMenu'
+import Tooltip from './components/Tooltip'
 import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X, Crosshair, Maximize, Minimize, Plus, Minus } from 'lucide-react'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -25,6 +26,7 @@ function App() {
     startFrameSelect, updateFrameSelect, endFrameSelect,
     toasts, showToast, dragConflict, hoverPartId, snapGuides, gizmoHover,
     dragMoved, resize, hoverCandidates, workPlaneY,
+    pendingRotate, setPendingRotate,
   } = useToolStore()
   const t = translations[language]
 
@@ -105,6 +107,8 @@ function App() {
       }
 
       if (e.key === 'Escape') {
+        // a turn waiting for its axis is the innermost thing Escape can back out of
+        if (pendingRotate) { setPendingRotate(null); return }
         if (quickMenuOpenRef.current) { closeQuickMenu(); return }
         if (isDrawing) cancelDraw()
         else if (selectMode) setSelectMode(false)
@@ -136,11 +140,29 @@ function App() {
 
       if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); return }
-      if (e.key.toLowerCase() === 'r' && !mod) { rotateSelected('y', e.shiftKey ? -90 : 90); return }
-      if (e.key.toLowerCase() === 'f' && !mod) {
-        if (e.shiftKey) toggleFullscreen(); else triggerCameraReset()
+      // R requests a rotation axis; X/Y/Z supplies it.
+      if (pendingRotate) {
+        const k = e.key.toLowerCase()
+        if (k === 'x' || k === 'y' || k === 'z') {
+          e.preventDefault()
+          rotateSelected(k as 'x' | 'y' | 'z', pendingRotate.degrees)
+          setPendingRotate(null)
+          return
+        }
+        setPendingRotate(null)
+      }
+      if (e.key.toLowerCase() === 'r' && !mod) {
+        if (useStore.getState().selectedIds.length === 0) { showToast(t.toastRotateNeedsSelection, 'info'); return }
+        setPendingRotate({ degrees: e.shiftKey ? -90 : 90 })
         return
       }
+      // F frames what is selected, which is what F does everywhere else; with nothing
+      // selected there is only one thing it could mean, so it frames the drawing.
+      if (e.key.toLowerCase() === 'f' && !mod) {
+        triggerCameraReset(useStore.getState().selectedIds.length > 0 ? 'selection' : 'all')
+        return
+      }
+      if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return }
       if (e.key.toLowerCase() === 'p' && !mod) { cyclePivotMode(); return }
       if (e.key.toLowerCase() === 'l' && !mod) { toggleLockSelected(); return }
 
@@ -154,7 +176,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, held, selectMode, lockedAxis, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen])
+  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -277,6 +299,18 @@ function App() {
             </div>
           )}
 
+          {/* R asked for an axis: say so, and colour the three letters the way the gizmo does */}
+          {pendingRotate && (
+            <div data-testid="rotate-axis-hud"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full border border-amber-400/50 bg-slate-900/90 text-[11px] font-bold shadow-lg pointer-events-none z-10 text-amber-200 flex items-center gap-1.5">
+              <RotateCw size={12} />
+              {pendingRotate.degrees > 0 ? '+90°' : '−90°'} ·
+              {(['x', 'y', 'z'] as const).map((a) => (
+                <kbd key={a} className="px-1.5 py-0.5 rounded bg-white/10 uppercase" style={{ color: AXIS_COLORS[a] }}>{a}</kbd>
+              ))}
+            </div>
+          )}
+
           {isDrawing && (
             <div className="flex items-center gap-2" data-testid="draw-hud" data-keep-draw>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-bold border"
@@ -298,7 +332,7 @@ function App() {
                   }}
                   placeholder={t.exactMm}
                   className="w-28 bg-transparent px-3 py-1.5 text-xs font-mono text-white outline-none placeholder:text-slate-500" />
-                <button onClick={confirmPreciseLength} disabled={!preciseInput}
+                <button onClick={confirmPreciseLength} disabled={!preciseInput} title={t.hintConfirmLength}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-[11px] font-bold text-white">↵</button>
               </div>
             </div>
@@ -321,12 +355,12 @@ function App() {
                   }}
                   placeholder={t.exactMm}
                   className="w-28 bg-transparent px-3 py-1.5 text-xs font-mono text-white outline-none placeholder:text-slate-500" />
-                <button onClick={confirmExact} disabled={!exactInput} data-testid="exact-confirm"
+                <button onClick={confirmExact} disabled={!exactInput} data-testid="exact-confirm" title={t.hintConfirmMove}
                   className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-[11px] font-bold text-white">↵</button>
               </div>
             </div>
           )}
-          <button onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+          <button onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')} title={t.hintLanguage}
             className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-full text-xs font-bold shadow-lg active:scale-95">
             <Languages size={14} />{language === 'en' ? '中文' : 'English'}
           </button>
@@ -398,7 +432,7 @@ function App() {
               <Crosshair size={14} />
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (Shift+F)`}
+            <button data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (F11)`}
               aria-label={t.fullscreen} className={iconBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
               {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
             </button>
@@ -409,7 +443,7 @@ function App() {
               className={iconBtn(false, '')}><Minus size={14} /></button>
             <button data-testid="zoom-in" onClick={() => zoomBy(1)} title={t.zoomIn} aria-label={t.zoomIn}
               className={iconBtn(false, '')}><Plus size={14} /></button>
-            <button data-testid="fit-view" onClick={triggerCameraReset} title={`${t.fitView} (F)`}
+            <button data-testid="fit-view" onClick={() => triggerCameraReset('all')} title={`${t.fitView} (F)`}
               aria-label={t.fitView} className={iconBtn(false, '')}>
               <Home size={14} />
             </button>
@@ -437,6 +471,7 @@ function App() {
         </main>
       </div>
       <QuickMenu />
+      <Tooltip />
     </div>
   )
 }
