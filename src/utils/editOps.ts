@@ -26,10 +26,18 @@ function selectedProfiles(includeLocked = false): ProfileData[] {
   return profiles.filter((p) => ids.has(p.id) && (includeLocked || !p.locked))
 }
 
-function selectedConnectors(includeLocked = false): ConnectorData[] {
-  const { connectors, selectedIds } = useStore.getState()
-  const ids = new Set(selectedIds)
-  return connectors.filter((c) => ids.has(c.id) && (includeLocked || !c.locked))
+/**
+ * Connectors are never transformed, so this is always empty.
+ *
+ * Once two members are aligned there is exactly one bracket that fits and exactly one way
+ * it goes on: astride the joint, on the face the two share. Moving or turning it can only
+ * make it wrong, and a wrong bracket is worse than a missing one because it still looks
+ * fitted. So a connector can be placed and it can be deleted, and that is the whole set.
+ * The signature is kept so the transforms keep reading as "and the connectors" — they just
+ * never get any.
+ */
+function selectedConnectors(_includeLocked = false): ConnectorData[] {
+  return []
 }
 
 function selectedPanels(includeLocked = false): PanelData[] {
@@ -510,16 +518,6 @@ export function setConnectorSeries(id: string, series: 20 | 30 | 40): boolean {
   const c = useStore.getState().connectors.find((q) => q.id === id)
   if (!c) return false
   useStore.getState().commitTransform({ connectors: [{ id, updates: { series } }] })
-  return true
-}
-
-export function setConnectorPosition(id: string, position: [number, number, number]): boolean {
-  const c = useStore.getState().connectors.find((q) => q.id === id)
-  if (!c || position.some((v) => !isFinite(v))) return false
-  if (c.locked) { toast(t().toastLocked); return false }
-  const before = conflictPairsNow()
-  useStore.getState().commitTransform({ connectors: [{ id, updates: { position: position.map(round3) as [number, number, number] } }] })
-  warnIfNewConflicts(before)
   return true
 }
 

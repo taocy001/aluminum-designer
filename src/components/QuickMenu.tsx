@@ -57,9 +57,11 @@ const QuickMenu: React.FC = () => {
   const hasSelection = selectedIds.length > 0
 
   const run = (fn: () => void) => () => { fn(); closeQuickMenu() }
-  const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; danger?: boolean }> =
-    ({ onClick, children, testId, danger }) => (
-      <button onClick={onClick} data-testid={testId}
+  // Every row says what it does when the pointer rests on it. The label on the row is its
+  // name; the hint is what happens when you press it, which is a different question.
+  const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; danger?: boolean; tip?: string }> =
+    ({ onClick, children, testId, danger, tip }) => (
+      <button onClick={onClick} data-testid={testId} title={tip}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap ${
           danger ? 'text-red-400 hover:bg-red-400/10' : 'text-slate-200 hover:bg-white/10'}`}>
         {children}
@@ -81,40 +83,41 @@ const QuickMenu: React.FC = () => {
           key always does something rather than sometimes nothing. */}
       {!hasSelection && (
         <>
-          <Item testId="quick-select-all" onClick={run(selectAll)}><BoxSelect size={12} />{t.selectAll}</Item>
-          <Item testId="quick-fit-view" onClick={run(useToolStore.getState().triggerCameraReset)}><Maximize size={12} />{t.fitView}</Item>
-          <Item testId="quick-labels" onClick={run(useToolStore.getState().toggleDimensionLabels)}><Ruler size={12} />{t.labels}</Item>
+          <Item testId="quick-select-all" tip={t.hintSelectAll} onClick={run(selectAll)}><BoxSelect size={12} />{t.selectAll}</Item>
+          <Item testId="quick-fit-view" tip={t.hintFitView} onClick={run(() => useToolStore.getState().triggerCameraReset('all'))}><Maximize size={12} />{t.fitView}</Item>
+          <Item testId="quick-labels" tip={t.hintLabels} onClick={run(useToolStore.getState().toggleDimensionLabels)}><Ruler size={12} />{t.labels}</Item>
         </>
       )}
       {hasSelection && (['x', 'y', 'z'] as RotAxis[]).map((ax) => (
         <div key={ax} className="flex items-center">
-          <Item testId={`quick-rot-${ax}`} onClick={run(() => rotateSelected(ax, 90))}>
+          <Item testId={`quick-rot-${ax}`} tip={t.hintRotateFwd(ax.toUpperCase())} onClick={run(() => rotateSelected(ax, 90))}>
             <RotateCw size={12} style={{ color: AXIS_COLORS[ax] }} />{t.gizmoRotate(ax.toUpperCase())}
           </Item>
           <button onClick={run(() => rotateSelected(ax, -90))} data-testid={`quick-rot-${ax}-back`}
-            title={`${t.gizmoRotate(ax.toUpperCase())} −`}
+            title={t.hintRotateBack(ax.toUpperCase())}
             className="ml-auto mr-1 p-1.5 rounded-lg text-slate-400 hover:bg-white/10"><RotateCcw size={12} /></button>
         </div>
       ))}
       {hasSelection && <div className="h-px bg-white/10 my-1" />}
-      {hasSelection && <Item testId="quick-duplicate" onClick={run(duplicateSelected)}><Copy size={12} />{t.duplicate}</Item>}
+      {hasSelection && <Item testId="quick-duplicate" tip={t.hintDuplicate} onClick={run(duplicateSelected)}><Copy size={12} />{t.duplicate}</Item>}
       {hasSelection && <div className="flex items-center gap-0.5 px-1.5 pb-0.5">
         <FlipHorizontal2 size={12} className="text-slate-400 mx-1.5" />
         {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
           <button key={ax} onClick={run(() => mirrorSelected(ax))} data-testid={`quick-mirror-${ax}`}
+            title={t.hintMirror(ax.toUpperCase())}
             className="flex-1 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold font-mono text-slate-200">
             {ax.toUpperCase()}
           </button>
         ))}
       </div>}
       {hasSelection && <div className="h-px bg-white/10 my-1" />}
-      {hasSelection && <Item testId="quick-pivot" onClick={run(useToolStore.getState().cyclePivotMode)}>
+      {hasSelection && <Item testId="quick-pivot" tip={t.hintPivot} onClick={run(useToolStore.getState().cyclePivotMode)}>
         <Crosshair size={12} />{t.pivotCenter}/{t.pivotStart}/{t.pivotEnd}
       </Item>}
-      {hasSelection && <Item testId="quick-lock" onClick={run(toggleLockSelected)}>
+      {hasSelection && <Item testId="quick-lock" tip={t.lockHint} onClick={run(toggleLockSelected)}>
         {locked ? <Lock size={12} className="text-amber-400" /> : <LockOpen size={12} />}{locked ? t.unlock : t.lock}
       </Item>}
-      {hasSelection && <Item testId="quick-delete" danger onClick={run(removeSelected)}><Trash2 size={12} />{t.delete}</Item>}
+      {hasSelection && <Item testId="quick-delete" danger tip={t.hintDelete} onClick={run(removeSelected)}><Trash2 size={12} />{t.delete}</Item>}
     </div>
   )
 }

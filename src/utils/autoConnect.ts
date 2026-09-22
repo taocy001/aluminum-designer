@@ -32,6 +32,8 @@ export interface AutoConnectResult {
   placed: number
   /** joints that already had something on them */
   skipped: number
+  /** parts of this type left stranded by a member that moved, cleared away */
+  removed?: number
   /** why nothing was placed, when nothing was */
   reason?: 'no-frame' | 'needs-a-surface' | 'nothing-open'
 }
@@ -58,6 +60,11 @@ export function autoConnect(type: string): AutoConnectResult {
     return { placed: 0, skipped: 0, reason: 'needs-a-surface' }
   }
 
+  // Every joint of this kind the frame has, whether or not something sits on it. Moving a
+  // member leaves its bracket behind in mid-air, and since a bracket cannot be dragged back
+  // this is where it gets cleared: one press puts the hardware back where the frame is now.
+  const wanted: THREE.Vector3[] = []
+
   const { trims } = analyzeFrame(profiles)
   // Only parts that were already there block a joint. Two rails butting into the same post
   // is two joints and takes two brackets, one on each rail — deduping by point would order
@@ -76,8 +83,9 @@ export function autoConnect(type: string): AutoConnectResult {
     for (const [where, at] of [[tr.start, start], [tr.end, end]] as const) {
       // a corner bracket goes where an end butts into something; a cap or a foot where
       // nothing is attached at all
-      const wanted = entry.fit === 'corner' ? where.butt : where.partners === 0
-      if (!wanted) continue
+      const wantsOne = entry.fit === 'corner' ? where.butt : where.partners === 0
+      if (!wantsOne) continue
+      wanted.push(at.clone())
       if (!isFree(at)) { skipped++; continue }
 
       // Sit the bracket on the faces it would actually be bolted to, not on the centreline
@@ -101,11 +109,22 @@ export function autoConnect(type: string): AutoConnectResult {
     }
   }
 
-  if (made.length === 0) {
+  // A part of this type sitting at no joint at all is left over from a member that has since
+  // moved. Other types are somebody's deliberate choice and are not ours to remove.
+  const stale = connectors
+    .filter((c) => c.type === type && !c.locked)
+    .filter((c) => {
+      const v = new THREE.Vector3(...c.position)
+      return !wanted.some((w) => w.distanceTo(v) <= OCCUPIED_MM * 2)
+    })
+    .map((c) => c.id)
+
+  if (made.length === 0 && stale.length === 0) {
     useToolStore.getState().showToast(t.toastAutoNothingOpen, 'info')
     return { placed: 0, skipped, reason: 'nothing-open' }
   }
-  store.addItems([], made, false)
-  useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped), 'success')
-  return { placed: made.length, skipped }
+  if (stale.length > 0) store.removeConnectors(stale, made.length === 0)
+  if (made.length > 0) store.addItems([], made, false)
+  useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, stale.length), 'success')
+  return { placed: made.length, skipped, removed: stale.length }
 }

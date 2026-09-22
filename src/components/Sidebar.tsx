@@ -14,7 +14,7 @@ import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
 import { addDrawerFromSelection } from '../utils/drawerOps'
-import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
+import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 /** "40 side faces ↑" and the like, so the roll is something you can read off the panel */
 function facingLabel(p: ProfileData): string {
@@ -49,12 +49,15 @@ const Section: React.FC<{
   open: boolean
   onToggle: () => void
   children: React.ReactNode
-}> = ({ id, title, badge, open, onToggle, children }) => (
+}> = ({ id, title, badge, open, onToggle, children }) => {
+  const t = translations[useToolStore.getState().language]
+  return (
   <div className="flex flex-col border-b border-white/5">
     <button
       onClick={onToggle}
       data-testid={`section-${id}`}
       aria-expanded={open}
+      title={t.hintSection(title)}
       className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 hover:text-white hover:bg-white/5 shrink-0"
     >
       <ChevronRight size={13} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
@@ -63,7 +66,8 @@ const Section: React.FC<{
     </button>
     {open && <div className="px-4 pb-4" data-testid={`section-${id}-body`}>{children}</div>}
   </div>
-)
+  )
+}
 
 /** Numeric field that commits on Enter / blur and re-syncs from props otherwise */
 /** the same red / green / blue the gizmo arrows use, so a field and an axis read as one thing */
@@ -267,6 +271,7 @@ const Sidebar: React.FC = () => {
             <div className="grid grid-cols-5 gap-1">
               {ALL_SPECS.map((spec) => (
                 <button key={spec} onClick={() => handleSpecClick(spec)} data-testid={`spec-${spec}`}
+                  title={t.hintSpec(spec)}
                   className={`px-1 py-2 rounded-lg text-[11px] font-bold transition-all ${
                     held === 'profile' && activeSpec === spec
                       ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
@@ -281,6 +286,7 @@ const Sidebar: React.FC = () => {
             <div className="grid grid-cols-2 gap-1" title={t.throughRuleHint}>
               {([['rails', t.throughRails], ['posts', t.throughPosts]] as const).map(([rule, label]) => (
                 <button key={rule} onClick={() => setThroughRule(rule)} data-testid={`through-${rule}`}
+                  title={t.throughRuleHint}
                   className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
                     throughRule === rule ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                   {label}
@@ -317,6 +323,7 @@ const Sidebar: React.FC = () => {
             <div className="grid grid-cols-2 gap-1">
               {CONNECTOR_LIST.map(({ type, labelZh, labelEn }) => (
                 <button key={type} onClick={() => handleConnectorClick(type)} data-testid={`connector-${type}`}
+                  title={t.hintConnectorPick(language === 'zh' ? labelZh : labelEn)}
                   className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all text-left ${
                     held === 'connector' && activeConnectorType === type
                       ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
@@ -394,6 +401,7 @@ const Sidebar: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-slate-300 text-[11px]">{facingLabel(selectedProfile)}</span>
                       <button onClick={() => rollProfile(selectedProfile.id)} data-testid="roll-section"
+                        title={t.hintRoll}
                         className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold">
                         {t.rollQuarter}
                       </button>
@@ -454,17 +462,19 @@ const Sidebar: React.FC = () => {
                     })()}
                   </span>
                 </div>
-                <div className="space-y-1">
+                {/* Read-only: a bracket's place is decided by the joint, not by typing into
+                    a box. Where it is, is still worth seeing. */}
+                <div className="space-y-1" title={t.hintConnectorFixed}>
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.position}</span>
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="grid grid-cols-3 gap-1" data-testid="connector-position">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
-                      <NumField key={ax} label={ax} value={selectedConnector.position[i]} onCommit={(v) => {
-                        const pos = [...selectedConnector.position] as [number, number, number]
-                        pos[i] = v
-                        setConnectorPosition(selectedConnector.id, pos)
-                      }} />
+                      <div key={ax} className="flex items-center gap-1 bg-slate-950/60 border border-white/5 rounded-lg px-2 py-1">
+                        <span className="text-[9px] font-black" style={{ color: AXIS_COLOR[ax] }}>{ax}</span>
+                        <span className="text-xs font-mono text-slate-400">{Math.round(selectedConnector.position[i])}</span>
+                      </div>
                     ))}
                   </div>
+                  <p className="text-[9px] text-slate-600 leading-snug pt-0.5">{t.hintConnectorFixed}</p>
                 </div>
                 <div className="flex justify-between items-center text-[11px]">
                   <span className="text-slate-500">{t.orientation}</span>
@@ -550,9 +560,11 @@ const Sidebar: React.FC = () => {
               <div className="grid grid-cols-6 gap-1">
                 {(['x', 'y', 'z'] as RotAxis[]).flatMap((ax) => [
                   <button key={`${ax}+`} data-testid={`rot-${ax}-plus`} disabled={!rotAngleValid} onClick={() => rotateSelected(ax, rotAngle)}
+                    title={t.hintRotateFwd(ax.toUpperCase())}
                     style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
                     className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold font-mono">{ax.toUpperCase()}+</button>,
                   <button key={`${ax}-`} data-testid={`rot-${ax}-minus`} disabled={!rotAngleValid} onClick={() => rotateSelected(ax, -rotAngle)}
+                    title={t.hintRotateBack(ax.toUpperCase())}
                     style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
                     className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold font-mono">{ax.toUpperCase()}−</button>,
                 ])}
@@ -571,6 +583,7 @@ const Sidebar: React.FC = () => {
               <div className="grid grid-cols-3 gap-1">
                 {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
                   <button key={ax} data-testid={`mirror-${ax}`} onClick={() => mirrorSelected(ax)}
+                    title={t.hintMirror(ax.toUpperCase())}
                     style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
                     className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold font-mono">
                     <FlipHorizontal2 size={11} />{ax.toUpperCase()}
@@ -595,6 +608,7 @@ const Sidebar: React.FC = () => {
                 {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
                   <button key={ax} data-testid={`array-${ax}`} disabled={!arrayValid}
                     onClick={() => arraySelected(ax, parseFloat(arrayCountText), parseFloat(arraySpacingText))}
+                    title={t.hintArray(ax.toUpperCase())}
                     style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
                     className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold font-mono">
                     <Rows3 size={11} />{ax.toUpperCase()}
@@ -646,6 +660,7 @@ const Sidebar: React.FC = () => {
         {profiles.length > 1 && (
           <button
             onClick={() => { if (conflicts.length) useStore.getState().selectItems([...conflictIds]) }}
+            title={t.hintConflicts}
             disabled={conflicts.length === 0}
             className={`w-full text-[10px] flex justify-between items-center ${conflicts.length ? 'text-red-400 hover:text-red-300' : 'text-slate-500 cursor-default'}`}
           >
@@ -656,6 +671,7 @@ const Sidebar: React.FC = () => {
         {profiles.length > 1 && (
           <button
             onClick={() => { if (edgeMismatches.length) useStore.getState().selectItems(edgeMismatches.flatMap((m) => [m.a, m.b])) }}
+            title={t.hintMismatches}
             disabled={edgeMismatches.length === 0}
             className={`w-full text-[10px] flex justify-between items-center ${edgeMismatches.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
           >
@@ -710,17 +726,17 @@ const Sidebar: React.FC = () => {
           </div>
         )}
 
-        <button onClick={handleExportBOM} disabled={profiles.length === 0} data-testid="export-bom" className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
+        <button onClick={handleExportBOM} disabled={profiles.length === 0} data-testid="export-bom" title={t.hintExportBOM} className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
           <Download size={14} /> {t.exportBOM}
         </button>
         <div className="grid grid-cols-2 gap-2">
           <button onClick={handleExportJSON} data-testid="export-project" className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold"><Save size={13} /> {t.exportJSON}</button>
-          <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold"><Upload size={13} /> {t.importJSON}</button>
+          <button onClick={() => fileRef.current?.click()} title={t.hintImport} className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold"><Upload size={13} /> {t.importJSON}</button>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportJSON(f); e.target.value = '' }} />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <button onClick={handleLogDebug} className="flex items-center justify-center gap-2 py-2 bg-amber-600/20 hover:bg-amber-600/40 text-amber-500 border border-amber-600/30 rounded-lg text-[10px] font-bold"><Bug size={14} /> LOG</button>
-          <button onClick={handleClearAll} data-testid="clear-all"
+          <button onClick={handleClearAll} data-testid="clear-all" title={t.hintClearAll}
             className={`flex items-center justify-center gap-2 py-2 border rounded-lg text-[10px] font-bold transition-all ${confirmClear ? 'bg-red-600 text-white border-red-500' : 'bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-400 border-white/5'}`}>
             <Eraser size={14} /> {confirmClear ? t.clearConfirm : t.clear}
           </button>

@@ -28,6 +28,7 @@ const ZOOM_STEP = 0.2
 const CameraController: React.FC = () => {
   const { camera, controls } = useThree()
   const cameraResetTrigger = useToolStore((s) => s.cameraResetTrigger)
+  const cameraFitScope = useToolStore((s) => s.cameraFitScope)
   const zoomStep = useToolStore((s) => s.zoomStep)
   const zoomAt = useToolStore((s) => s.zoomAt)
   const clearZoom = useToolStore((s) => s.clearZoom)
@@ -65,7 +66,23 @@ const CameraController: React.FC = () => {
     if (cameraResetTrigger === prevTrigger.current) return
     prevTrigger.current = cameraResetTrigger
     const orbit = controls as any
-    const bounds = computeFrameBounds(useStore.getState().profiles)
+    // F frames the selection, the Home button frames everything. When only boards are
+    // selected there is still something to look at, so panels count too.
+    const doc = useStore.getState()
+    let subject = doc.profiles
+    let bounds: THREE.Box3 | null = null
+    if (cameraFitScope === 'selection' && doc.selectedIds.length > 0) {
+      const ids = new Set(doc.selectedIds)
+      subject = doc.profiles.filter((p) => ids.has(p.id))
+      bounds = subject.length > 0 ? computeFrameBounds(subject) : null
+      for (const b of doc.panels) {
+        if (!ids.has(b.id)) continue
+        const half = Math.max(b.width, b.height, b.thickness) / 2
+        const c = new THREE.Vector3(...b.position)
+        ;(bounds ??= new THREE.Box3()).expandByPoint(c.clone().addScalar(half)).expandByPoint(c.clone().addScalar(-half))
+      }
+    }
+    bounds ??= computeFrameBounds(doc.profiles)
     let target = new THREE.Vector3(0, 0, 0)
     let pos = DEFAULT_CAM.clone()
     if (bounds) {
@@ -77,7 +94,7 @@ const CameraController: React.FC = () => {
     }
     camera.position.copy(pos)
     if (orbit) { orbit.target.copy(target); orbit.update() } else camera.lookAt(target)
-  }, [cameraResetTrigger, camera, controls])
+  }, [cameraResetTrigger, cameraFitScope, camera, controls])
 
   return null
 }

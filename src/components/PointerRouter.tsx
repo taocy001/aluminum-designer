@@ -232,19 +232,19 @@ const PointerRouter: React.FC = () => {
         if (part?.kind === 'move') {
           const store = useStore.getState()
           const lead = store.profiles.find((p) => store.selectedIds.includes(p.id))
-            ?? store.connectors.find((c) => store.selectedIds.includes(c.id))
             ?? store.panels.find((b) => store.selectedIds.includes(b.id))
           if (!lead) return
           const groupOrigins: Record<string, [number, number, number]> = {}
           for (const sid of store.selectedIds) {
             const part2 = partById(store, sid)
-            if (part2 && !part2.locked) groupOrigins[sid] = [part2.position[0], part2.position[1], part2.position[2]]
+            if (!part2 || part2.locked) continue
+            if (store.connectors.some((c) => c.id === sid)) continue   // brackets stay on their joints
+            groupOrigins[sid] = [part2.position[0], part2.position[1], part2.position[2]]
           }
           if (Object.keys(groupOrigins).length === 0) return   // everything selected is locked
           const anchorPoint = new THREE.Vector3(...lead.position)
           beginMove(lead.id, anchorPoint, anchorPoint.clone(), groupOrigins,
-            { shift: e.shiftKey, alt: false }, e,
-            store.profiles.some((p) => p.id === lead.id) ? 'profile' : 'connector', part.axis)
+            { shift: e.shiftKey, alt: false }, e, 'profile', part.axis)
           return
         }
         if (part?.kind === 'rotate') {
@@ -327,14 +327,22 @@ const PointerRouter: React.FC = () => {
           return
         }
       }
-      // dragging any selected part moves the whole selection, members and connectors alike.
+      // A connector is not draggable. Between two aligned members there is one bracket that
+      // fits and one way it goes on, so dragging it can only move it off the joint — and a
+      // bracket sitting next to a joint still looks fitted, which is worse than none at all.
+      // A press still selects it, which is what deleting one needs.
+      if (pick.kind === 'connector') return
+
+      // dragging any selected part moves the whole selection, members and boards alike.
       // Locked parts drop out of the group instead of blocking the drag: the rest still moves.
       if ('locked' in item && item.locked) { useToolStore.getState().showToast(translations[useToolStore.getState().language].toastLocked, 'info'); return }
       const dragGroup = store.selectedIds.includes(pick.id) ? store.selectedIds : [pick.id]
       const groupOrigins: Record<string, [number, number, number]> = {}
       for (const sid of dragGroup) {
         const part = partById(store, sid)
-        if (part && !part.locked) groupOrigins[sid] = [part.position[0], part.position[1], part.position[2]]
+        if (part && !part.locked && !store.connectors.some((c) => c.id === sid)) {
+          groupOrigins[sid] = [part.position[0], part.position[1], part.position[2]]
+        }
       }
 
       // a board moves the same way a connector does: position only, no snapping to endpoints

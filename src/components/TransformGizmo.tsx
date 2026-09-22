@@ -72,6 +72,8 @@ const TransformGizmo: React.FC = () => {
   const handleRefs = useRef<Map<string, THREE.Object3D>>(new Map())
   const probeRefs = useRef<Map<string, THREE.Object3D>>(new Map())
 
+  // A connector goes on one way and stays there, so the widget has nothing to offer it:
+  // it counts towards where the pivot sits but never towards what can be moved.
   const selection = useMemo(() => {
     const ids = new Set(selectedIds)
     return {
@@ -83,7 +85,7 @@ const TransformGizmo: React.FC = () => {
   // the widget sits on the pivot, so where it turns about is something you can see
   const anchor = useMemo(() => selectionPivot(selection.profiles, selection.connectors, pivotMode), [selection, pivotMode])
   // a fully locked selection has nothing the gizmo could do
-  const anyMovable = selection.profiles.some((p) => !p.locked) || selection.connectors.some((c) => !c.locked)
+  const anyMovable = selection.profiles.some((p) => !p.locked)
   const active = showGizmo && !selectMode && !isDragging && selectedIds.length > 0 && anyMovable
 
   // one world size for the whole widget, refreshed every frame so zoom and orbit keep it steady

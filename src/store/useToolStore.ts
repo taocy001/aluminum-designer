@@ -25,6 +25,10 @@ interface ToolState {
   activeConnectorType: string | null
   language: Language
   cameraResetTrigger: number
+  /** what the next camera fit should frame: everything, or just what is selected */
+  cameraFitScope: 'all' | 'selection'
+  /** R was pressed and is waiting for an axis key; null when no turn is pending */
+  pendingRotate: null | { degrees: number }
   /** +1 closer, -1 further; the viewport consumes it and resets to 0 */
   zoomStep: number
   /** a point to pull the camera toward, consumed by the viewport */
@@ -124,7 +128,8 @@ interface ToolState {
   /** empty the hand and abandon any half-drawn line */
   putDown: () => void
   setLanguage: (lang: Language) => void
-  triggerCameraReset: () => void
+  triggerCameraReset: (scope?: 'all' | 'selection') => void
+  setPendingRotate: (p: null | { degrees: number }) => void
   zoomBy: (step: number) => void
   zoomToPoint: (at: [number, number, number]) => void
   clearZoom: () => void
@@ -182,6 +187,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   activeConnectorType: null,
   language: 'zh',
   cameraResetTrigger: 0,
+  cameraFitScope: 'all',
+  pendingRotate: null,
   zoomStep: 0,
   zoomAt: null,
 
@@ -243,7 +250,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
     ...(type ? {} : { isDrawing: false, startPoint: null, currentPoint: null, snapPoint: null }),
   }),
   setLanguage: (language) => set({ language }),
-  triggerCameraReset: () => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1 })),
+  triggerCameraReset: (scope = 'all') => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1, cameraFitScope: scope })),
+  setPendingRotate: (pendingRotate) => set({ pendingRotate }),
   zoomBy: (step) => set((s) => ({ zoomStep: s.zoomStep + step })),
   clearZoom: () => set({ zoomStep: 0, zoomAt: null }),
   zoomToPoint: (at) => set({ zoomAt: at }),

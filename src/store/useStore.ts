@@ -87,6 +87,8 @@ interface State {
   clearAll: () => void
   addConnector: (connector: ConnectorData) => void
   removeConnector: (id: string) => void
+  /** drop several connectors in one history step */
+  removeConnectors: (ids: string[], pushHistory?: boolean) => void
   selectItem: (id: string, multi?: boolean) => void
   selectItems: (ids: string[]) => void
   clearSelection: () => void
@@ -221,6 +223,16 @@ export const useStore = create<State>()(
         future: [],
         connectors: [...state.connectors, connector],
       })),
+
+      removeConnectors: (ids, pushHistory = true) => set((state) => {
+        const drop = new Set(ids)
+        if (drop.size === 0) return {}
+        return {
+          ...(pushHistory ? { past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)], future: [] } : {}),
+          connectors: state.connectors.filter((c) => !drop.has(c.id)),
+          selectedIds: state.selectedIds.filter((s) => !drop.has(s)),
+        }
+      }),
 
       removeConnector: (id) => set((state) => ({
         past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
