@@ -272,7 +272,7 @@ function App() {
               appeared somewhere else entirely. */}
           {held !== null && !isDrawing && !isDragging && (
             <div data-testid="start-hud"
-              className={`absolute top-[88px] left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full border text-[11px] font-bold shadow-lg pointer-events-none z-10 ${
+              className={`absolute bottom-6 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full border text-[11px] font-bold shadow-lg pointer-events-none z-10 ${
                 snapKind ? 'bg-slate-900/90 border-cyan-400/50 text-cyan-200' : 'bg-slate-900/90 border-white/15 text-slate-400'}`}>
               {t.startsOn}：{snapKind ? (t.snapNames[snapKind] ?? snapKind) : t.startsOnPlane(workPlaneY)}
             </div>

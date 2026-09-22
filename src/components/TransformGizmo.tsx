@@ -45,7 +45,7 @@ const AXIS_VECTOR: Record<RotAxis, THREE.Vector3> = {
 const AXIS_COLOR: Record<RotAxis, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 const HOVER_COLOR = '#fde047'
 /** the gizmo spans this fraction of the viewport height, whatever the zoom */
-const GIZMO_SCREEN = 0.085
+const GIZMO_SCREEN = 0.115
 /** the arc spans the middle of its quadrant, so its ends stay off the two arrows */
 const ARC_START = 0.34
 const ARC_SWEEP = Math.PI / 2 - 0.68
@@ -142,7 +142,9 @@ const TransformGizmo: React.FC = () => {
               </mesh>
               {/* an invisible sleeve makes the thin arrow comfortable to grab */}
               <mesh ref={register(`move:${axis}`)} position={[0, 0.1, 0]} visible={false}>
-                <cylinderGeometry args={[0.06, 0.06, 1.0, 8]} />
+                {/* the sleeve you actually hit, three times the drawn shaft: aiming at a
+                    two-pixel arrow is not aiming, it is luck */}
+                <cylinderGeometry args={[0.12, 0.12, 1.06, 8]} />
                 <meshBasicMaterial />
               </mesh>
               <object3D ref={registerProbe(`move:${axis}`)} position={[0, 0.25, 0]} />
@@ -157,7 +159,7 @@ const TransformGizmo: React.FC = () => {
                   <meshBasicMaterial color={colorFor('rotate', axis)} depthTest={false} transparent opacity={0.95} />
                 </mesh>
                 <mesh ref={register(`rotate:${axis}`)} rotation={[0, 0, ARC_START]} visible={false}>
-                  <torusGeometry args={[ARC_RADIUS, 0.055, 6, 20, ARC_SWEEP]} />
+                  <torusGeometry args={[ARC_RADIUS, 0.1, 6, 20, ARC_SWEEP]} />
                   <meshBasicMaterial />
                 </mesh>
               </group>

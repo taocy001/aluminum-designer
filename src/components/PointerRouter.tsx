@@ -197,9 +197,8 @@ const PointerRouter: React.FC = () => {
     }
 
     /**
-     * A double click reaches past the one part under the cursor: on a member it takes the
-     * whole sub-assembly, on empty space it frames the drawing. Both are the shortcut for
-     * "I meant the bigger thing", which is what a double click means everywhere.
+     * A double click on a member takes the whole sub-assembly it belongs to; on empty space
+     * it brings the camera in on the point under the cursor. Both read as "this, closer in".
      */
     const onDoubleClick = (e: MouseEvent) => {
       const ts = useToolStore.getState()
@@ -208,7 +207,14 @@ const PointerRouter: React.FC = () => {
       const hit = pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height },
         useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
       if (hit?.kind === 'profile') selectConnected(hit.id)
-      else if (!hit) ts.triggerCameraReset()
+      else {
+        // nothing under it: come closer to whatever the cursor is over, rather than
+        // reframing the whole drawing, which is what the Home button is for
+        const floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+        const at = new THREE.Vector3()
+        const ray = rayOf(cursor, rect)
+        if (ray.intersectPlane(floor, at)) ts.zoomToPoint([at.x, at.y, at.z])
+      }
     }
 
     const onPointerDown = (e: PointerEvent) => {

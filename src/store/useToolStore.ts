@@ -27,6 +27,8 @@ interface ToolState {
   cameraResetTrigger: number
   /** +1 closer, -1 further; the viewport consumes it and resets to 0 */
   zoomStep: number
+  /** a point to pull the camera toward, consumed by the viewport */
+  zoomAt: [number, number, number] | null
 
   // Drawing
   isDrawing: boolean
@@ -124,6 +126,7 @@ interface ToolState {
   setLanguage: (lang: Language) => void
   triggerCameraReset: () => void
   zoomBy: (step: number) => void
+  zoomToPoint: (at: [number, number, number]) => void
   clearZoom: () => void
 
   beginDraw: (origin: THREE.Vector3) => void
@@ -180,6 +183,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   language: 'zh',
   cameraResetTrigger: 0,
   zoomStep: 0,
+  zoomAt: null,
 
   isDrawing: false,
   drawOrigin: null,
@@ -241,7 +245,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setLanguage: (language) => set({ language }),
   triggerCameraReset: () => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1 })),
   zoomBy: (step) => set((s) => ({ zoomStep: s.zoomStep + step })),
-  clearZoom: () => set({ zoomStep: 0 }),
+  clearZoom: () => set({ zoomStep: 0, zoomAt: null }),
+  zoomToPoint: (at) => set({ zoomAt: at }),
 
   beginDraw: (origin) => set({
     isDrawing: true, drawOrigin: origin.clone(), startPoint: origin.clone(), currentPoint: origin.clone(),

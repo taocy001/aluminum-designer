@@ -6,7 +6,7 @@ import { panelCorners } from './panelOps'
 
 /** Extra pixels of slack around a member's rendered body, so thin beams stay easy to hit */
 export const PICK_SLACK_PX = 7
-const CONNECTOR_RADIUS_PX = 14
+const CONNECTOR_RADIUS_PX = 20
 /**
  * Connectors sit exactly on member endpoints, so they share the member's depth.
  * Bias them forward, otherwise the member always wins and they can never be picked.

@@ -65,6 +65,9 @@ const Section: React.FC<{
 )
 
 /** Numeric field that commits on Enter / blur and re-syncs from props otherwise */
+/** the same red / green / blue the gizmo arrows use, so a field and an axis read as one thing */
+const AXIS_COLOR: Record<string, string> = { X: '#ef4444', Y: '#22c55e', Z: '#3b82f6' }
+
 const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: number; className?: string; label?: string }> = ({ value, onCommit, step = 5, className = '', label }) => {
   const [text, setText] = useState(String(Math.round(value * 100) / 100))
   const [focused, setFocused] = useState(false)
@@ -76,7 +79,9 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
   }
   return (
     <label className={`flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500 ${className}`}>
-      {label && <span className="text-[9px] text-slate-500 font-bold w-3">{label}</span>}
+      {label && (
+        <span className="text-[9px] font-bold w-3" style={{ color: AXIS_COLOR[label] ?? '#64748b' }}>{label}</span>
+      )}
       <input
         type="number" step={step} value={text}
         onFocus={() => setFocused(true)}
@@ -515,8 +520,10 @@ const Sidebar: React.FC = () => {
               <div className="grid grid-cols-6 gap-1">
                 {(['x', 'y', 'z'] as RotAxis[]).flatMap((ax) => [
                   <button key={`${ax}+`} data-testid={`rot-${ax}-plus`} disabled={!rotAngleValid} onClick={() => rotateSelected(ax, rotAngle)}
+                    style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
                     className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold font-mono">{ax.toUpperCase()}+</button>,
                   <button key={`${ax}-`} data-testid={`rot-${ax}-minus`} disabled={!rotAngleValid} onClick={() => rotateSelected(ax, -rotAngle)}
+                    style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
                     className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold font-mono">{ax.toUpperCase()}−</button>,
                 ])}
               </div>
@@ -534,6 +541,7 @@ const Sidebar: React.FC = () => {
               <div className="grid grid-cols-3 gap-1">
                 {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
                   <button key={ax} data-testid={`mirror-${ax}`} onClick={() => mirrorSelected(ax)}
+                    style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
                     className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold font-mono">
                     <FlipHorizontal2 size={11} />{ax.toUpperCase()}
                   </button>
@@ -557,6 +565,7 @@ const Sidebar: React.FC = () => {
                 {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
                   <button key={ax} data-testid={`array-${ax}`} disabled={!arrayValid}
                     onClick={() => arraySelected(ax, parseFloat(arrayCountText), parseFloat(arraySpacingText))}
+                    style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
                     className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold font-mono">
                     <Rows3 size={11} />{ax.toUpperCase()}
                   </button>
