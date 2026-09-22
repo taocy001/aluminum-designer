@@ -24,12 +24,12 @@ async function postAndRail(page: Page, post: string, rail: string) {
 test.describe('Joint compatibility', () => {
   test('a 2020 on a 4040 is called out: they share no edge', async ({ page }) => {
     await postAndRail(page, '4040', '2020')
-    await expect(page.getByTestId('bom-mismatches')).toContainText('无共同边')
+    await expect(page.getByTestId('bom-mismatches')).toContainText('贴不平')
   })
 
   test('a 2040 on a 4040 bolts up: they share the 40 side', async ({ page }) => {
     await postAndRail(page, '4040', '2040')
-    await expect(page.getByTestId('bom-mismatches')).not.toContainText('无共同边')
+    await expect(page.getByTestId('bom-mismatches')).not.toContainText('贴不平')
   })
 
   test('a 2020 on a 2040 bolts up: they share the 20 side', async ({ page }) => {
@@ -39,7 +39,7 @@ test.describe('Joint compatibility', () => {
 
   test('a 2020 on a 3030 is called out', async ({ page }) => {
     await postAndRail(page, '3030', '2020')
-    await expect(page.getByTestId('bom-mismatches')).toContainText('无共同边')
+    await expect(page.getByTestId('bom-mismatches')).toContainText('贴不平')
   })
 
   test('crossing series is a note, not a warning: it gets its own quiet line', async ({ page }) => {

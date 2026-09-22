@@ -48,6 +48,7 @@ test.describe('Connectors', () => {
 test.describe('Cabinet build', () => {
   test('a 600×400×800 cabinet frame with a shelf is buildable end-to-end', async ({ page }) => {
     await openApp(page)
+    await page.getByTestId('through-posts').click()   // this build is described posts-through
     await setView(page, [1900, 1500, 2300], [300, 400, 200])
     const W = 600, D = 400, H = 800
     await enterDraw(page, '2020')

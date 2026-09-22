@@ -45,6 +45,9 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
   test.beforeEach(async ({ page }) => {
     seed = 7 // same jitter sequence for every test regardless of run order
     await openApp(page)
+    // These cabinets are described with the posts running past the rails, which decides
+    // every trim and every butt end in them. The default is the other way round now.
+    await page.getByTestId('through-posts').click()
     await setView(page, [1900, 1500, 2300], [300, 400, 200])
   })
 
