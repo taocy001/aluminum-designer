@@ -40,7 +40,7 @@ test.describe('Selection', () => {
   test('toolbar clicks do not clear the selection', async ({ page }) => {
     const { A } = await scene(page)
     await clickWorld(page, [200, 10, 0])
-    await page.getByText('标注').click()
+    await page.getByTestId('labels-toggle').click()
     expect((await store(page)).selectedIds).toEqual([A.id])
   })
 

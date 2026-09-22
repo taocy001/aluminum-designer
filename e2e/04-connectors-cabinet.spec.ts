@@ -83,7 +83,7 @@ test.describe('Cabinet build', () => {
     await expect(table.locator('div', { hasText: '580 mm' }).first()).toContainText('×6')
     await expect(table.locator('div', { hasText: '380 mm' }).first()).toContainText('×6')
     // 12 rails × 2 butt ends = 24 brackets
-    await expect(page.getByTestId('bom-brackets')).toHaveText('24')
+    await expect(page.getByTestId('bom-brackets')).toHaveText('0/24')
     await page.screenshot({ path: 'test-results/cabinet.png' })
   })
 })

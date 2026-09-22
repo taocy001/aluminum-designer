@@ -44,12 +44,16 @@ test.describe('Quick menu', () => {
     expect((await store(page)).selectedIds.length).toBe(1)
   })
 
-  test('it does not open with nothing selected', async ({ page }) => {
+  test('with nothing selected it carries the whole-document actions instead', async ({ page }) => {
     await page.keyboard.press('Escape')
     expect((await store(page)).selectedIds.length).toBe(0)
     await page.mouse.move(800, 400)
     await page.keyboard.press('Space')
-    await expect(page.getByTestId('quick-menu')).toHaveCount(0)
+    await expect(page.getByTestId('quick-menu')).toBeVisible()
+    await expect(page.getByTestId('quick-select-all')).toBeVisible()
+    await expect(page.getByTestId('quick-rot-y')).toHaveCount(0)   // nothing to turn
+    await page.getByTestId('quick-select-all').click()
+    expect((await store(page)).selectedIds.length).toBe(1)
   })
 
   test('it stays inside the window when opened near the edge', async ({ page }) => {
