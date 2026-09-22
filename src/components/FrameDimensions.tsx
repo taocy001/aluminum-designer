@@ -33,14 +33,14 @@ const Dim: React.FC<{ from: THREE.Vector3; to: THREE.Vector3; tick: THREE.Vector
 /**
  * The frame's overall width, depth and height, drawn just outside it.
  *
- * A drawing that does not say how big the thing is cannot be handed to anybody. The per
- * member cut lengths answer a different question — what to order — so this has its own
- * switch and the two can be read separately.
+ * A drawing that does not say how big the thing is cannot be handed to anybody. It shares
+ * the switch with the per-member cut lengths: both are measurements on the drawing, and two
+ * buttons for the same idea is one more than anybody wants to reason about.
  */
 const FrameDimensions: React.FC = () => {
   const profiles = useStore((s) => s.profiles)
   const panels = useStore((s) => s.panels)
-  const show = useToolStore((s) => s.showOverallDims)
+  const show = useToolStore((s) => s.showDimensionLabels)
   const { trims } = useMemo(() => analyzeFrame(profiles), [profiles])
 
   const bounds = useMemo(() => {

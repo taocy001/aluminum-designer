@@ -161,22 +161,23 @@ test.describe('Overall size', () => {
     expect((await store(page)).profiles.length).toBe(2)
   })
 
-  test('the size lines are on by default and can be switched off', async ({ page }) => {
+  test('the size lines are on by default and follow the labels switch', async ({ page }) => {
     // the scene is queried after it has drawn: a toggle is React state and the group only
     // leaves the graph on the next render
     const dims = async () => { await settle(page); return page.evaluate(() => (window as any).__aluframe.countByName('frame-dimensions')) }
     expect(await dims()).toBe(1)
-    await page.getByTestId('overall-dims-toggle').click()
+    await page.getByTestId('labels-toggle').click()
     expect(await dims()).toBe(0)
-    await page.getByTestId('overall-dims-toggle').click()
+    await page.getByTestId('labels-toggle').click()
     expect(await dims()).toBe(1)
   })
 
-  test('it is a separate switch from the per-member cut lengths', async ({ page }) => {
+  test('one switch covers both scales: the cut lengths and the overall size', async ({ page }) => {
+    const sprites = () => page.evaluate(() => (window as any).__aluframe.spriteCount())
+    const withLabels = await sprites()
     await page.getByTestId('labels-toggle').click()
     await settle(page)
-    const dims = await page.evaluate(() => (window as any).__aluframe.countByName('frame-dimensions'))
-    expect(dims).toBe(1)   // cut lengths off, overall size still on
+    expect(await sprites()).toBeLessThan(withLabels)
   })
 })
 

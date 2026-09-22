@@ -21,11 +21,30 @@ import TextSprite from './TextSprite'
 
 const DEFAULT_CAM = new THREE.Vector3(600, 500, 600)
 
+/** how much one press of the zoom buttons moves the camera, as a fraction of its distance */
+const ZOOM_STEP = 0.2
+
 // Fits the camera to the whole frame when triggered (or resets when empty)
 const CameraController: React.FC = () => {
   const { camera, controls } = useThree()
   const cameraResetTrigger = useToolStore((s) => s.cameraResetTrigger)
+  const zoomStep = useToolStore((s) => s.zoomStep)
+  const clearZoom = useToolStore((s) => s.clearZoom)
   const prevTrigger = useRef(0)
+
+  // The buttons do what the wheel does: move the camera along its own sight line, keeping
+  // what it is looking at in the middle. Within the same limits OrbitControls enforces.
+  useEffect(() => {
+    if (zoomStep === 0) return
+    const orbit = controls as any
+    const target = orbit?.target ?? new THREE.Vector3()
+    const toCam = camera.position.clone().sub(target)
+    const dist = toCam.length()
+    const next = THREE.MathUtils.clamp(dist * (1 - ZOOM_STEP * Math.sign(zoomStep)), 50, 30000)
+    camera.position.copy(target.clone().addScaledVector(toCam.normalize(), next))
+    orbit?.update()
+    clearZoom()
+  }, [zoomStep, camera, controls, clearZoom])
 
   useEffect(() => {
     if (cameraResetTrigger === prevTrigger.current) return
@@ -197,7 +216,7 @@ const MismatchMarker: React.FC<{ at: THREE.Vector3 }> = ({ at }) => {
  */
 const MismatchMarkers: React.FC<{ mismatches: SpecMismatch[] }> = ({ mismatches }) => (
   <>
-    {mismatches.filter((m) => m.kind === 'edge').map((m) => <MismatchMarker key={`${m.a}-${m.b}`} at={m.at} />)}
+    {mismatches.filter((m) => m.kind === 'face').map((m) => <MismatchMarker key={`${m.a}-${m.b}`} at={m.at} />)}
   </>
 )
 

@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { useStore, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
+import { faceAlignOnCreate } from './faceAlign'
 import { fitConnector } from './connectorFit'
 import { specDims } from './specUtils'
 import { translations } from './translations'
@@ -64,8 +65,11 @@ export function lowestPointY(p: ProfileData): number {
 export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec): boolean {
   const { showToast, language } = useToolStore.getState()
   const t = translations[language]
-  const candidate = buildProfile(start, end, spec)
-  if (!candidate) { showToast(t.toastTooShort, 'error'); return false }
+  const built = buildProfile(start, end, spec)
+  if (!built) { showToast(t.toastTooShort, 'error'); return false }
+  // a frame is assembled face to face, not centreline to centreline: nudge the new member
+  // sideways so the faces its brackets will sit on line up with what it landed on
+  const candidate = faceAlignOnCreate(built, useStore.getState().profiles)
   useStore.getState().addProfile(candidate)
   const { conflictIds } = analyzeFrame(useStore.getState().profiles)
   if (conflictIds.has(candidate.id)) showToast(t.toastOverlap, 'error')

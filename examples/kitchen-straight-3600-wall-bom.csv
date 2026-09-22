@@ -1,0 +1,29 @@
+﻿Category,Item,Spec,Cut length (mm),Quantity
+Profile,2020,2020,840,10
+Profile,2020,2020,660,14
+Profile,2020,2020,580,14
+Profile,2020,2020,330,20
+Profile,2040,2040,3640,3
+Profile,2040,2040,3620,4
+Profile,2040,2040,3560,1
+Profile,4040,4040,840,4
+Profile,4040,4040,580,4
+Profile,4040,4040,560,2
+Connector,"L型角码",20 系列,,126
+Connector,"L型角码",40 系列,,12
+Fastener,"螺栓 M5×10",20,,252
+Fastener,"螺栓 M8×16",40,,24
+Fastener,"T型螺母 M5",20,,252
+Fastener,"T型螺母 M8",40,,24
+Board,"580 × 350 mm","密度板 18mm",,4
+Board,"600 × 580 mm","密度板 18mm",,2
+Board,"610 × 570 mm","密度板 18mm",,2
+Board,"620 × 260 mm","密度板 18mm",,1
+Board,"620 × 380 mm","密度板 18mm",,2
+Board,"620 × 600 mm","密度板 18mm",,1
+Board,"680 × 620 mm","密度板 18mm",,2
+Board,"820 × 620 mm","密度板 18mm",,1
+Board,"820 × 630 mm","密度板 18mm",,1
+Summary,Overall WxDxH,3640x640x2220,,
+Summary,Total cut length (mm),,68120,
+Summary,Board area (m2),,5.08,

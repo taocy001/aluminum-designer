@@ -138,7 +138,7 @@ const PointerRouter: React.FC = () => {
       }
 
       if (gizmoState.busy) return   // a gizmo handle is pressed; leave the model alone
-      if (ts.isDragging || ts.selectMode) { ts.setHoverProfile(null); ts.setHoverEnd(null); ts.setGizmoHover(null); return }
+      if (ts.isDragging || ts.selectMode) { ts.setHoverProfile(null); ts.setHoverPart(null); ts.setHoverEnd(null); ts.setGizmoHover(null); return }
 
       // reaching for an end of the selected member wins over the gizmo, which is centred on
       // it and would otherwise cover the very ends the stretch handles live on
@@ -167,6 +167,7 @@ const PointerRouter: React.FC = () => {
       }
       const pick = list[candidates.current.index] ?? null
       ts.setHoverProfile(pick?.kind === 'profile' ? pick.id : null)
+      ts.setHoverPart(pick?.id ?? null)
       ts.setHoverCandidates(list.length, candidates.current.index)
 
       // End faces mean two different things: with a profile in hand they are where the next
@@ -189,6 +190,7 @@ const PointerRouter: React.FC = () => {
     const onPointerLeave = () => {
       const ts = useToolStore.getState()
       ts.setHoverProfile(null)
+      ts.setHoverPart(null)
       ts.setHoverEnd(null)
       ts.setHoverCandidates(0, 0)
       candidates.current = { x: 0, y: 0, list: [], index: 0 }
@@ -375,6 +377,7 @@ const PointerRouter: React.FC = () => {
       const pick = c.list[c.index]
       const ts = useToolStore.getState()
       ts.setHoverProfile(pick.kind === 'profile' ? pick.id : null)
+      ts.setHoverPart(pick.id)
       ts.setHoverCandidates(c.list.length, c.index)
     }
     window.addEventListener('keydown', onKey)

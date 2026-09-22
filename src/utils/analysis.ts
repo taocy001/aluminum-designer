@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { ProfileData } from '../store/useStore'
-import { computeAllTrims, computeTrims, type ProfileTrims } from './jointUtils'
+import { computeAllTrims, computeTrims, getThroughRule, type ProfileTrims } from './jointUtils'
 import { getProfileDir } from './geometryCore'
 import { specDims } from './specUtils'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
@@ -67,6 +67,7 @@ export function findConflicts(profiles: ProfileData[], trims: Map<string, Profil
 }
 
 let cacheKey: ProfileData[] | null = null
+let cacheRule: string | null = null
 let cacheValue: FrameAnalysis | null = null
 
 /**
@@ -93,7 +94,9 @@ export function movingPartsConflict(all: ProfileData[], movingIds: Set<string>):
 
 /** Trims + interference for the current document, memoised on the profiles array identity */
 export function analyzeFrame(profiles: ProfileData[]): FrameAnalysis {
-  if (cacheKey === profiles && cacheValue) return cacheValue
+  // the through rule changes every trim in the document, so it belongs in the cache key
+  const rule = getThroughRule()
+  if (cacheKey === profiles && cacheRule === rule && cacheValue) return cacheValue
   const trims = computeAllTrims(profiles)
   const conflicts = findConflicts(profiles, trims)
   const conflictIds = new Set<string>()
@@ -102,6 +105,7 @@ export function analyzeFrame(profiles: ProfileData[]): FrameAnalysis {
   const mismatchIds = new Set<string>()
   for (const m of mismatches) { mismatchIds.add(m.a); mismatchIds.add(m.b) }
   cacheKey = profiles
+  cacheRule = rule
   cacheValue = { trims, conflicts, conflictIds, mismatches, mismatchIds }
   return cacheValue
 }

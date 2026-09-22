@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Crosshair, BoxSelect, Maximize, Ruler, Move3d } from 'lucide-react'
+import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Crosshair, BoxSelect, Maximize, Ruler } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -84,7 +84,6 @@ const QuickMenu: React.FC = () => {
           <Item testId="quick-select-all" onClick={run(selectAll)}><BoxSelect size={12} />{t.selectAll}</Item>
           <Item testId="quick-fit-view" onClick={run(useToolStore.getState().triggerCameraReset)}><Maximize size={12} />{t.fitView}</Item>
           <Item testId="quick-labels" onClick={run(useToolStore.getState().toggleDimensionLabels)}><Ruler size={12} />{t.labels}</Item>
-          <Item testId="quick-dims" onClick={run(useToolStore.getState().toggleOverallDims)}><Move3d size={12} />{t.overallDims}</Item>
         </>
       )}
       {hasSelection && (['x', 'y', 'z'] as RotAxis[]).map((ax) => (

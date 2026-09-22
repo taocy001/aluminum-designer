@@ -18,13 +18,15 @@ const Panel: React.FC<PanelData & { isSelected?: boolean }> = ({
   id, width, height, thickness, position, quaternion, material, locked = false, isSelected = false,
 }) => {
   const isDraggingThis = useToolStore((s) => s.isDragging && (s.dragProfileId === id || id in s.dragGroupOrigins))
+  const hovered = useToolStore((s) => !s.isDragging && s.hoverPartId === id)
   const look = MATERIAL_LOOK[material]
 
   const geometry = useMemo(() => new THREE.BoxGeometry(width, height, thickness), [width, height, thickness])
   const edges = useMemo(() => new THREE.EdgesGeometry(geometry), [geometry])
   const quat = useMemo(() => new THREE.Quaternion(...quaternion).normalize(), [quaternion])
 
-  const color = isSelected ? '#3b82f6' : isDraggingThis ? '#f59e0b' : locked ? '#8b9aa6' : look.color
+  const color = isSelected ? '#3b82f6' : isDraggingThis ? '#f59e0b'
+    : hovered ? '#f5e6c8' : locked ? '#8b9aa6' : look.color
 
   return (
     <group position={position} quaternion={quat} userData={{ panelId: id }}>

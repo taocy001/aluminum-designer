@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
 import { fitConnector, membersAt } from '../utils/connectorFit'
 import { buildBom, bomToCsv } from '../utils/bom'
-import { computeAllTrims } from '../utils/jointUtils'
+import { computeAllTrims, setThroughRule } from '../utils/jointUtils'
 import { seriesOf, connectorEntry, boltThread } from '../utils/connectorCatalog'
 import type { ConnectorData, ProfileData, ProfileSpec } from '../store/useStore'
 
@@ -77,6 +77,9 @@ describe('placement fitting', () => {
     expect(fit.refIds).toEqual([])
   })
 })
+
+beforeEach(() => setThroughRule('posts'))
+afterAll(() => setThroughRule('rails'))
 
 describe('bill of materials', () => {
   const frame = () => {

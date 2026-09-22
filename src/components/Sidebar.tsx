@@ -10,9 +10,19 @@ import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel 
 import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
 import { autoConnect } from '../utils/autoConnect'
-import { ALL_SPECS } from '../utils/specUtils'
+import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
+import { rollProfile, sectionFacing } from '../utils/faceAlign'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorPosition, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
+
+/** "40 side faces ↑" and the like, so the roll is something you can read off the panel */
+function facingLabel(p: ProfileData): string {
+  const v = sectionFacing(p)
+  const axes: Array<[string, number]> = [['X', v.x], ['Y', v.y], ['Z', v.z]]
+  const [name, value] = axes.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0]
+  const long = Math.max(specDims(p.spec).w, specDims(p.spec).h)
+  return `${long} → ${value >= 0 ? '+' : '−'}${name}`
+}
 
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
 
@@ -81,7 +91,8 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
 
 const Sidebar: React.FC = () => {
   const { profiles, connectors, panels, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
-  const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast } = useToolStore()
+  const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
+    workPlaneY, setWorkPlaneY, throughRule, setThroughRule } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -99,6 +110,21 @@ const Sidebar: React.FC = () => {
   const [rotAngleText, setRotAngleText] = useState('90')
   const [arrayCountText, setArrayCountText] = useState('1')
   const [arraySpacingText, setArraySpacingText] = useState('300')
+  const [workPlaneText, setWorkPlaneText] = useState('0')
+  // the highest point of whatever is selected, so the work plane can be put on top of it
+  const selectionTopY = useMemo(() => {
+    const ids = new Set(selectedIds)
+    if (ids.size === 0) return null
+    let top = -Infinity
+    for (const p of profiles) {
+      if (!ids.has(p.id)) continue
+      const { start, end } = getProfileEndpoints(p)
+      top = Math.max(top, start.y, end.y)
+    }
+    for (const c of connectors) if (ids.has(c.id)) top = Math.max(top, c.position[1])
+    for (const b of panels) if (ids.has(b.id)) top = Math.max(top, b.position[1] + b.height / 2)
+    return isFinite(top) ? Math.round(top) : null
+  }, [selectedIds, profiles, connectors, panels])
   const [collapsed, setCollapsed] = useState(false)
   // section state is remembered per browser, and selecting something opens the properties
   const [open, setOpen] = useState<Record<SectionKey, boolean>>(() => {
@@ -141,7 +167,7 @@ const Sidebar: React.FC = () => {
     && profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
     && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
 
-  const edgeMismatches = mismatches.filter((m) => m.kind === 'edge')
+  const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
   const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels), [profiles, connectors, trims, language, panels])
@@ -241,6 +267,43 @@ const Sidebar: React.FC = () => {
               ))}
             </div>
           </div>
+          {/* How the frame is put together, which decides every trim in it */}
+          <div>
+            <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.throughRule}</label>
+            <div className="grid grid-cols-2 gap-1" title={t.throughRuleHint}>
+              {([['rails', t.throughRails], ['posts', t.throughPosts]] as const).map(([rule, label]) => (
+                <button key={rule} onClick={() => setThroughRule(rule)} data-testid={`through-${rule}`}
+                  className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                    throughRule === rule ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* A drawing setting, so it lives with the parts rather than among the view
+              toggles: it decides where a click lands when there is nothing to attach to. */}
+          <div>
+            <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.workPlane}</label>
+            <div className="flex items-center gap-1">
+              <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
+                <span className="text-[9px] text-slate-500 font-bold">Y</span>
+                <input type="number" step={10} min={0} value={workPlaneText} data-testid="work-plane"
+                  onChange={(e) => { setWorkPlaneText(e.target.value); setWorkPlaneY(parseFloat(e.target.value)) }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  className={`w-full bg-transparent py-1.5 text-xs font-mono outline-none ${workPlaneY > 0 ? 'text-amber-300' : ''}`} />
+                <span className="text-[9px] text-slate-500">mm</span>
+              </label>
+              <button data-testid="work-plane-from-selection" title={t.workPlaneFromSelection}
+                disabled={selectionTopY === null}
+                onClick={() => { if (selectionTopY !== null) { setWorkPlaneY(selectionTopY); setWorkPlaneText(String(selectionTopY)) } }}
+                className="px-2 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 text-[10px] font-bold whitespace-nowrap">
+                {t.workPlaneFromSelection}
+              </button>
+            </div>
+            <p className="text-[9px] text-slate-500 mt-1 leading-snug">{t.workPlaneHint}</p>
+          </div>
+
           <div>
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.connectors}</label>
             <div className="grid grid-cols-2 gap-1">
@@ -314,6 +377,22 @@ const Sidebar: React.FC = () => {
                     ))}
                   </div>
                 </div>
+                {/* A 2040 on edge and one lying flat are different parts: which way the long
+                    side of the section faces is a real property, and it decides whether a
+                    bracket can lie flat on the joints at either end. */}
+                {specDims(selectedProfile.spec).w !== specDims(selectedProfile.spec).h && (
+                  <div className="flex justify-between items-center text-xs" data-testid="section-roll">
+                    <span className="text-slate-500" title={t.sectionRollHint}>{t.sectionRoll}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-slate-300 text-[11px]">{facingLabel(selectedProfile)}</span>
+                      <button onClick={() => rollProfile(selectedProfile.id)} data-testid="roll-section"
+                        className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold">
+                        {t.rollQuarter}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* The far end, so a span can be given as "from A to B" instead of being
                     converted into a start and a length by hand every time. */}
                 <div className="space-y-1" data-testid="end-position">

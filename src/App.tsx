@@ -8,7 +8,7 @@ import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X, Crosshair, Layers, Move3d, Maximize, Minimize } from 'lucide-react'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, X, Crosshair, Maximize, Minimize, Plus, Minus } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -17,20 +17,18 @@ function App() {
   const { clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
   const {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind,
-    held, putDown, triggerCameraReset, cancelDraw, activeSpec, activeConnectorType,
-    isDragging, showDimensionLabels, toggleDimensionLabels, showOverallDims, toggleOverallDims, showGizmo, toggleGizmo,
+    held, putDown, triggerCameraReset, zoomBy, cancelDraw, activeSpec, activeConnectorType,
+    isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
     pivotMode, cyclePivotMode, quickMenuAt, openQuickMenu, closeQuickMenu,
-    workPlaneY, setWorkPlaneY,
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
     startFrameSelect, updateFrameSelect, endFrameSelect,
-    toasts, showToast, dragConflict, hoverProfileId, snapGuides, gizmoHover,
-    dragMoved, resize, hoverCandidates,
+    toasts, showToast, dragConflict, hoverPartId, snapGuides, gizmoHover,
+    dragMoved, resize, hoverCandidates, workPlaneY,
   } = useToolStore()
   const t = translations[language]
 
   // Exact-length input while drawing
-  const [workPlaneText, setWorkPlaneText] = useState('0')
   const [isFullscreen, setIsFullscreen] = useState(false)
   useEffect(() => {
     const onChange = () => setIsFullscreen(document.fullscreenElement !== null)
@@ -42,22 +40,6 @@ function App() {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     else document.documentElement.requestFullscreen().catch(() => showToast(t.toastFullscreenBlocked, 'error'))
   }, [showToast, t])
-  // the highest point of whatever is selected, so the work plane can be put on top of it
-  const selectionTopY = useStore((st) => {
-    const ids = new Set(st.selectedIds)
-    if (ids.size === 0) return null
-    let top = -Infinity
-    for (const p of st.profiles) {
-      if (!ids.has(p.id)) continue
-      const [x, y, z, w] = p.quaternion
-      const dy = 2 * (y * z - w * x)
-      top = Math.max(top, p.position[1], p.position[1] + dy * p.length)
-    }
-    for (const c of st.connectors) if (ids.has(c.id)) top = Math.max(top, c.position[1])
-    for (const b of st.panels) if (ids.has(b.id)) top = Math.max(top, b.position[1] + b.height / 2)
-    return isFinite(top) ? Math.round(top) : null
-  })
-
   const [preciseInput, setPreciseInput] = useState('')
   const preciseInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => { if (!isDrawing) setPreciseInput('') }, [isDrawing])
@@ -238,7 +220,7 @@ function App() {
     ? (dragConflict ? 'alias' : 'grabbing')
     : held !== null ? 'crosshair'
     : selectMode ? 'crosshair'
-    : hoverProfileId ? 'grab'
+    : hoverPartId ? 'grab'
     : 'default'
 
   const guide = selectMode ? t.guideSelect : held !== null ? t.guideDraw : t.guideNavigate
@@ -248,9 +230,6 @@ function App() {
     : activeSpec
   const toolBtn = (active: boolean, activeCls: string) =>
     `flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
-  /** the toggles: an icon and a tooltip, so nine of them still fit on one row */
-  const iconBtn = (active: boolean, activeCls: string) =>
-    `flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
 
   return (
     <div className="w-full h-full bg-[#0f172a] flex flex-col overflow-hidden">
@@ -385,59 +364,52 @@ function App() {
             <button data-testid="held-chip" onClick={() => { if (held !== null) putDown() }}
               disabled={held === null} title={held !== null ? t.holdingHint : t.emptyHand}
               aria-label={held !== null ? `${t.putDown} ${heldName}` : t.emptyHand}
-              className={toolBtn(held !== null, 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/40')}>
+              className={held !== null
+                ? toolBtn(true, 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/40')
+                : 'flex items-center justify-center w-8 h-8 rounded-lg shrink-0 text-slate-400'}>
               {held !== null
                 ? <><Pencil size={13} />{heldName}<X size={11} className="opacity-60" /></>
-                : <><Hand size={13} />{t.emptyHand}</>}
+                : <Hand size={14} />}
             </button>
-            {/* The height a click falls to when nothing is under it. It used to be the floor,
-                silently; a member aimed at a post top then landed metres away. */}
-            <div className="flex items-center gap-1 px-1.5 py-1 rounded-lg shrink-0" title={t.workPlaneHint}>
-              <Layers size={13} className={workPlaneY > 0 ? 'text-amber-400' : 'text-slate-400'} />
-              <input type="number" step={10} min={0} value={workPlaneText} data-testid="work-plane"
-                onChange={(e) => { setWorkPlaneText(e.target.value); setWorkPlaneY(parseFloat(e.target.value)) }}
-                className={`w-14 bg-slate-950 border rounded px-1.5 py-0.5 text-[11px] font-mono outline-none ${
-                  workPlaneY > 0 ? 'border-amber-500/40 text-amber-300' : 'border-white/10 text-slate-300'}`} />
-              <button data-testid="work-plane-from-selection" title={t.workPlaneFromSelection}
-                disabled={selectionTopY === null}
-                onClick={() => { if (selectionTopY !== null) { setWorkPlaneY(selectionTopY); setWorkPlaneText(String(selectionTopY)) } }}
-                className="px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:bg-white/10 disabled:opacity-30">↥</button>
-            </div>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="select-toggle" onClick={() => { putDown(); setSelectMode(!selectMode) }}
-              title={t.selectMode} aria-label={t.selectMode}
-              className={iconBtn(selectMode, 'bg-violet-600/30 text-violet-400')}>
-              <MousePointer2 size={14} />
+              title={t.selectMode}
+              className={toolBtn(selectMode, 'bg-violet-600/30 text-violet-400')}>
+              <MousePointer2 size={13} />{t.selectMode}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labels} aria-label={t.labels}
-              className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
-              <Ruler size={14} />
-            </button>
-            <button onClick={toggleOverallDims} data-testid="overall-dims-toggle" title={t.overallDimsHint} aria-label={t.overallDims}
-              className={iconBtn(showOverallDims, 'bg-emerald-600/20 text-emerald-400')}>
-              <Move3d size={14} />
+            {/* One switch for every measurement on the drawing: the cut length on each member
+                and the overall size around it are the same question asked at two scales. */}
+            <button onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labelsHint}
+              className={toolBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
+              <Ruler size={13} />{t.labels}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint} aria-label={t.rotate3d}
-              className={iconBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
-              <Rotate3d size={14} />
+            <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
+              className={toolBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
+              <Rotate3d size={13} />{t.rotate3d}
             </button>
             {/* Where the selection turns about. The gizmo moves onto it, so the choice is visible. */}
             <button data-testid="pivot-toggle" onClick={cyclePivotMode} title={t.pivotHint}
               aria-label={t.pivotHint}
               className={toolBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
-              <Crosshair size={13} />{pivotMode === 'center' ? t.pivotCenter : pivotMode === 'start' ? t.pivotStart : t.pivotEnd}
+              <Crosshair size={13} />{t.pivot}·{pivotMode === 'center' ? t.pivotCenter : pivotMode === 'start' ? t.pivotStart : t.pivotEnd}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (Shift+F)`}
-              aria-label={t.fullscreen} className={iconBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
-              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+              className={toolBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
+              {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}{t.fullscreen}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button data-testid="fit-view" onClick={triggerCameraReset} title={`${t.fitView} (F)`} aria-label={t.fitView}
-              className={iconBtn(false, '')}>
-              <Home size={14} />
+            {/* The wheel already does this; the buttons are for trackpads and for anyone who
+                would rather press something than learn a gesture. */}
+            <button data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
+              className={toolBtn(false, '')}><Minus size={14} /></button>
+            <button data-testid="zoom-in" onClick={() => zoomBy(1)} title={t.zoomIn} aria-label={t.zoomIn}
+              className={toolBtn(false, '')}><Plus size={14} /></button>
+            <button data-testid="fit-view" onClick={triggerCameraReset} title={`${t.fitView} (F)`}
+              className={toolBtn(false, '')}>
+              <Home size={13} />{t.fitView}
             </button>
           </div>
 
