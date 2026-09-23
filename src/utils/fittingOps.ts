@@ -11,6 +11,8 @@ import { translations } from './translations'
 
 /** the smallest opening worth fitting anything to (mm) */
 const MIN_OPENING = 60
+/** how far past an opening still counts as the same cabinet, across and up (mm) */
+const CARCASE_MARGIN = 120
 
 export interface FittingRequest {
   kind: FittingKind
@@ -72,6 +74,37 @@ function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
   return deep.clone().multiplyScalar(front <= back ? 1 : -1)
 }
 
+/**
+ * The cabinet this opening belongs to, as a box.
+ *
+ * Not the whole drawing: a run of base units and the wall units above them are different
+ * cabinets with different depths, and asking the whole frame how deep "the cabinet" is gets
+ * a door hinged a foot in front of the one it belongs to.
+ */
+function carcaseAround(chosen: ProfileData[]): THREE.Box3 {
+  const mine = new THREE.Box3()
+  for (const p of chosen) mine.union(memberBox(p))
+  // Expand the local query across X/Y, with an unrestricted Z range.
+  const near = new THREE.Box3().copy(mine).expandByVector(new THREE.Vector3(CARCASE_MARGIN, CARCASE_MARGIN, 1e5))
+  const box = new THREE.Box3()
+  for (const p of useStore.getState().profiles) {
+    const b = memberBox(p)
+    if (near.containsPoint(b.getCenter(new THREE.Vector3()))) box.union(b)
+  }
+  return box.isEmpty() ? mine : box
+}
+
+/** Reverse an inferred direction when more frame members lie ahead than behind the opening. */
+function openingOutward(out: THREE.Vector3, chosen: ProfileData[]): THREE.Vector3 {
+  const carcase = carcaseAround(chosen)
+  const mine = new THREE.Box3()
+  for (const p of chosen) mine.union(memberBox(p))
+  const away = mine.getCenter(new THREE.Vector3()).sub(carcase.getCenter(new THREE.Vector3()))
+  const along = away.dot(out)
+  // dead centre of its own cabinet says nothing; anything else settles it
+  return Math.abs(along) < 1 || along > 0 ? out : out.clone().negate()
+}
+
 /** Rotation that sends local +Z onto `out`, keeping Y up */
 function facing(out: THREE.Vector3): THREE.Quaternion {
   const z = out.clone().normalize()
@@ -103,7 +136,7 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
   ))
 
   const size = box.getSize(new THREE.Vector3())
-  const out = outwardAxis(chosen, section)
+  const out = openingOutward(outwardAxis(chosen, section), chosen)
   const quaternion = facing(out)
   const centre = box.getCenter(new THREE.Vector3())
   // across the opening and into it, in the fitting's own frame
@@ -112,9 +145,10 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
 
   // Infer depth from members behind a coplanar door opening.
   if (req.kind === 'door' && deep < MIN_OPENING) {
-    const whole = new THREE.Box3()
-    for (const p of store.profiles) whole.union(memberBox(p))
-    const run = whole.getSize(new THREE.Vector3())
+    // its own cabinet's depth, not the whole drawing's: wall units are shallower than the
+    // base units under them, and a door hung on the deeper figure swings about an axis a
+    // foot in front of the cabinet it belongs to
+    const run = carcaseAround(chosen).getSize(new THREE.Vector3())
     deep = Math.max(MIN_OPENING, Math.abs(out.z) > 0.5 ? run.z : run.x)
     // and it hangs on the face nearest the front, not in the middle of the cabinet
     const front = Math.abs(out.z) > 0.5 ? centre.z : centre.x
