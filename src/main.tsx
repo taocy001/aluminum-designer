@@ -14,7 +14,7 @@ const snapshotOf = (s: ReturnType<typeof useStore.getState>): Doc => ({
 })
 import { auditBrackets } from './utils/bracketSeat'
 import { gizmoState } from './components/TransformGizmo'
-import { countUnflush, rollProfile } from './utils/faceAlign'
+import { countUnflush, unflushPairs, rollProfile } from './utils/faceAlign'
 
 // Dev-only hook for end-to-end tests: window.__aluframe.{store,tool}
 if (import.meta.env.DEV) {
@@ -28,6 +28,11 @@ if (import.meta.env.DEV) {
     gizmoBusy: () => gizmoState.busy,
     rollProfile,
     unflush: () => countUnflush(useStore.getState().profiles),
+    unflushPairs: () => {
+      const s = useStore.getState()
+      const spec = (id: string) => s.profiles.find((p) => p.id === id)?.spec ?? '?'
+      return unflushPairs(s.profiles).map((u) => `${spec(u.a)} × ${spec(u.b)} @ ${u.at.map(Math.round)}`)
+    },
     opLog, clearOpLog, opLogText,
     bracketFaults: () => {
       const s = useStore.getState()

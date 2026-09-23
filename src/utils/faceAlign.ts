@@ -144,8 +144,13 @@ export function faceAlignOnCreate(candidate: ProfileData, others: ProfileData[])
  * declines to close is still a step.
  */
 export function countUnflush(profiles: ProfileData[]): number {
+  return unflushPairs(profiles).length
+}
+
+/** The same joints, named, so a drawing can be asked *which* ones rather than how many */
+export function unflushPairs(profiles: ProfileData[]): Array<{ a: string; b: string; at: [number, number, number] }> {
   const ends = new Map(profiles.map((p) => [p.id, getProfileEndpoints(p)]))
-  const seen = new Set<string>()
+  const seen = new Map<string, { a: string; b: string; at: [number, number, number] }>()
   for (const a of profiles) {
     const ea = ends.get(a.id)!
     for (const b of profiles) {
@@ -157,10 +162,11 @@ export function countUnflush(profiles: ProfileData[]): number {
       if (touch.d > JOINT_TOL) continue
       if (!bracketNormal(a, b)) continue
       if (sharedEdge(a.spec, b.spec) && flushFace(a, b, touch.pt)) continue
-      seen.add([a.id, b.id].sort().join('|'))
+      const key = [a.id, b.id].sort().join('|')
+      if (!seen.has(key)) seen.set(key, { a: a.id, b: b.id, at: touch.pt.toArray() as [number, number, number] })
     }
   }
-  return seen.size
+  return [...seen.values()]
 }
 
 /** Turn a member's section a quarter turn about its own axis (2040 on edge ↔ lying flat) */
