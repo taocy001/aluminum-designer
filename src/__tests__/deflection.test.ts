@@ -78,3 +78,40 @@ describe('how far a span bends', () => {
     expect(d.turnHelps).toBe(false)
   })
 })
+
+/**
+ * A rail running the length of a cabinet rests on every post it crosses, and what bends is
+ * the longest gap between two of them. Measured end to end instead, a kitchen wall rail on
+ * three intermediate posts was reported as a 2.7 m span dropping ninety millimetres.
+ */
+describe('what actually bends is the gap between supports', () => {
+  /** a 2700 rail on posts at 0, 600, 1200, 2100 and 2700 — the hood opening is the 900 */
+  const wallRun = (): ProfileData[] => {
+    const posts = [0, 600, 1200, 2100, 2700].map((x) => P(x, 0, 0, x, 700, 0))
+    return [...posts, P(0, 350, 0, 2700, 350, 0)]
+  }
+
+  it('takes the widest opening, not the whole length', () => {
+    const run = wallRun()
+    const d = deflect(run[run.length - 1], run, 10)!
+    expect(d.span).toBe(900)
+    expect(d.sag).toBeLessThan(5)
+  })
+
+  it('and removing a post makes the same rail much worse', () => {
+    const run = wallRun()
+    const thinner = run.filter((p, i) => i !== 1)      // drop the post at 600
+    const before = deflect(run[run.length - 1], run, 10)!
+    const after = deflect(thinner[thinner.length - 1], thinner, 10)!
+    expect(after.span).toBe(1200)
+    expect(after.sag).toBeGreaterThan(before.sag * 1.5)
+  })
+
+  it('an overhang past the last post is judged as the cantilever it is', () => {
+    const posts = [0, 600].map((x) => P(x, 0, 0, x, 700, 0))
+    const run = [...posts, P(0, 350, 0, 1100, 350, 0)]     // 500 hanging past the last post
+    const d = deflect(run[2], run, 10)!
+    expect(d.support).toBe('cantilever')
+    expect(d.span).toBe(500)
+  })
+})
