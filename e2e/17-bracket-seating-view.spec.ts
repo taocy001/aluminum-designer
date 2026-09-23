@@ -127,15 +127,21 @@ test.describe('Coming in, and turning about what you are looking at', () => {
 
   test('a double click on a member comes in on that member', async ({ page }) => {
     const c = await w2c(page, [300, 10, 0])
+    // the pointer really is over the rail before we ask what a double click does there
+    await expect.poll(async () => (await page.evaluate(([x, y]) =>
+      (window as any).__aluframe.pickAt(x, y).map((p: any) => p.id), [c.x, c.y]))[0]).toBe('rail')
     await page.mouse.dblclick(c.x, c.y)
     await page.waitForTimeout(350)
     const after = await cam(page)
-    // it comes in on the rail: how far along the rail it lands is the pick's business, so
-    // what matters is that the target is on the member and not somewhere else entirely
-    expect(after.target[0]).toBeGreaterThan(-30)
-    expect(after.target[0]).toBeLessThan(630)
-    expect(Math.abs(after.target[1] - 10)).toBeLessThan(60)
-    expect(Math.abs(after.target[2])).toBeLessThan(60)
+    // It comes in on the rail. Exactly where on it is not the promise: when the pick lands
+    // on the member the target is the point on its centreline under the pointer, and when
+    // it narrowly misses the target is the same depth along the same ray — a hand's breadth
+    // away on a rail this long, and the same thing to look at. What would be wrong is
+    // coming in somewhere else entirely, or diving to the floor.
+    const before = { pos: [2000, 1600, 2400], target: [300, 300, 200] }
+    const dist = (a: number[], b: number[]) => Math.hypot(...a.map((v, i) => v - b[i]))
+    expect(dist(after.pos, after.target)).toBeLessThan(dist(before.pos, before.target))
+    expect(dist(after.target, [300, 10, 0])).toBeLessThan(200)
   })
 
   test('a double click on empty sky stays at the depth you were looking at', async ({ page }) => {

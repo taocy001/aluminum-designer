@@ -282,8 +282,6 @@ const PointerRouter: React.FC = () => {
     const onPointerDown = (e: PointerEvent) => {
       const ts = useToolStore.getState()
       if (e.button !== 0) return
-      // a press on empty space is about to become an orbit: pivot on what is being looked at
-      if (!ts.selectMode && ts.held === null) aimPivot()
 
       // While looking, a press opens or shuts whatever it lands on and nothing else happens.
       // Turning the view still works, which is most of what looking is.
@@ -360,7 +358,15 @@ const PointerRouter: React.FC = () => {
         return
       }
 
-      if (!pick) { pendingClear.current = { x: e.clientX, y: e.clientY, keepSelection: multi }; return }
+      // Nothing under it, so this press is about to become an orbit: put the pivot at the
+      // depth of what is on screen. It has to wait until the pick has come back — aiming on
+      // every press moved the target while a member was being dragged, and OrbitControls
+      // then pulls the camera to keep its distance inside the limits.
+      if (!pick) {
+        if (!ts.selectMode && ts.held === null) aimPivot()
+        pendingClear.current = { x: e.clientX, y: e.clientY, keepSelection: multi }
+        return
+      }
       pendingClear.current = null
 
       const store = useStore.getState()

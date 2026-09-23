@@ -123,7 +123,11 @@ export function seatBracket(a: ProfileData, b: ProfileData, at: THREE.Vector3): 
   }
 }
 
-function round1(v: number): number { return Math.round(v * 10) / 10 }
+/** rounded to a tenth, and never negative zero: a coordinate of −0 is noise that compares unequal to 0 */
+function round1(v: number): number {
+  const r = Math.round(v * 10) / 10
+  return r === 0 ? 0 : r
+}
 
 /**
  * Where the part in hand would actually land, for both the ghost and the click.

@@ -158,3 +158,19 @@ export function endpoints(p: any): { start: V3; end: V3 } {
 }
 
 export const r = (v: number) => Math.round(v) || 0
+
+
+/**
+ * Make the project save fall back to a download.
+ *
+ * A native save dialog cannot be driven from a test — nothing can press "Save" in it. What
+ * these tests are about is whether a saved document comes back the same, which is the
+ * serialisation, not the dialog; so the dialog is taken away and the download path runs.
+ * That the dialog is preferred when it exists is checked on its own, by watching for the call.
+ */
+export async function useDownloadFallback(page: Page) {
+  await page.addInitScript(() => {
+    delete (window as unknown as Record<string, unknown>).showSaveFilePicker
+    delete (window as unknown as Record<string, unknown>).showOpenFilePicker
+  })
+}

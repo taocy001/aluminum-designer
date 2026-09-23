@@ -31,6 +31,10 @@ function park(el: HTMLElement): string | null {
   const title = el.getAttribute('title')
   if (title) {
     el.setAttribute('data-tip', title)
+    // A `title` also names the control for anything that cannot see it. Taking it away for
+    // the moment the pointer rests there must not take the name with it, so it moves to the
+    // attribute made for the job — and only when there is no name already.
+    if (!el.getAttribute('aria-label') && !el.textContent?.trim()) el.setAttribute('aria-label', title)
     el.removeAttribute('title')
     return title
   }

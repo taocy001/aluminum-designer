@@ -188,7 +188,8 @@ test.describe('Keyboard editing', () => {
     expect(s.selectedIds[0]).not.toBe(A.id)
     const copy = s.profiles.find((p) => p.id === s.selectedIds[0])!
     expect(copy.length).toBe(400)
-    await page.keyboard.press('r')
+    await page.keyboard.press('r')       // R asks which axis
+    await page.keyboard.press('y')       // ...and Y answers
     s = await store(page)
     const rotated = s.profiles.find((p) => p.id === copy.id)!
     const e = endpoints(rotated)

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, dragWorld, store, tool, conflicts, w2c, r } from './helpers'
+import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, dragWorld, store, tool, conflicts, w2c, r , useDownloadFallback } from './helpers'
 
 async function toNavigate(page: Page) {
   await page.keyboard.press('Escape')
@@ -174,6 +174,7 @@ test.describe('Interference is reported, never blocked', () => {
 
 test.describe('Rotated parts survive a save/open round trip', () => {
   test('orientation and conflicts are restored from a project file', async ({ page }) => {
+    await useDownloadFallback(page)
     await openApp(page)
     await setView(page, [1900, 1500, 2300], [300, 400, 200])
     await enterDraw(page, '2020')
@@ -186,7 +187,7 @@ test.describe('Rotated parts survive a save/open round trip', () => {
     const before = (await store(page)).profiles.map((p) => [p.position.map(r), p.quaternion.map((v: number) => Math.round(v * 1000))])
     const conflictsBefore = (await conflicts(page)).conflicts.length
 
-    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByText('保存工程').click()])
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click()])
     const path = await dl.path()
     await page.getByTestId('clear-all').click()
     await page.getByTestId('clear-all').click()
