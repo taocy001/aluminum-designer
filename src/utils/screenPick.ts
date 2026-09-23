@@ -3,6 +3,8 @@ import type { ProfileData, ConnectorData, PanelData, FittingData } from '../stor
 import { getProfileEndpoints, getProfileDir, crossExtentAlong } from './geometryCore'
 import { toScreen, closestParamLineToRay, type ScreenSize } from './pickUtils'
 import { panelCorners } from './panelOps'
+import { fittingObb } from './fittingGeometry'
+import { obbCorners } from './obb'
 
 /** Extra pixels of slack around a member's rendered body, so thin beams stay easy to hit */
 export const PICK_SLACK_PX = 7
@@ -12,6 +14,8 @@ const CONNECTOR_RADIUS_PX = 20
  * Bias them forward, otherwise the member always wins and they can never be picked.
  */
 const CONNECTOR_DEPTH_BIAS = 60
+/** a board seen edge-on is a sliver: this much slack makes it as clickable as it is visible */
+const PANEL_SLACK_PX = 4
 /** how much being under the pointer beats being nearer the camera, for parts a few pixels across */
 const CONNECTOR_AIM_WEIGHT = 40
 /**
@@ -48,6 +52,19 @@ function hull2d(pts: THREE.Vector2[]): THREE.Vector2[] {
     return out
   }
   return [...half(p), ...half([...p].reverse())]
+}
+
+/** How far outside an outline a point is, in pixels (0 when inside) */
+function distanceToOutline(poly: THREE.Vector2[], p: THREE.Vector2): number {
+  let best = Infinity
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length]
+    const ab = b.clone().sub(a)
+    const len2 = ab.lengthSq()
+    const t = len2 < 1e-9 ? 0 : Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / len2))
+    best = Math.min(best, a.clone().addScaledVector(ab, t).distanceTo(p))
+  }
+  return best
 }
 
 function insideQuad(q: THREE.Vector2[], p: THREE.Vector2): boolean {
@@ -150,13 +167,19 @@ export function pickCandidatesAtScreen(
 
   // A board is picked by its face: the cursor has to be inside the projected rectangle.
   // Boards sit behind the members they are screwed to, so they never steal a member's press.
+  // A board is a solid with a thickness, so it is picked by its whole outline. Testing one
+  // face meant a shelf seen nearly edge-on projected to a sliver and could only be clicked
+  // from directly in front of it — and a shelf is almost never looked at from in front.
+  // The slack carries the rest: a sliver two pixels wide is still a shelf you can see.
   for (const b of panels) {
     const centre = new THREE.Vector3(...b.position)
     if (centre.clone().sub(camPos).dot(fwd) <= NEAR_EPS) continue
-    const corners = panelCorners(b)
+    const face = panelCorners(b)
+    const normal = new THREE.Vector3(0, 0, b.thickness / 2).applyQuaternion(new THREE.Quaternion(...b.quaternion).normalize())
+    const corners = [...face.map((v) => v.clone().add(normal)), ...face.map((v) => v.clone().sub(normal))]
     if (corners.some((v) => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
-    const pts = corners.map((v) => toScreen(v, camera, size))
-    if (!insideQuad(pts, cursor)) continue
+    const outline = hull2d(corners.map((v) => toScreen(v, camera, size)))
+    if (!insideQuad(outline, cursor) && distanceToOutline(outline, cursor) > PANEL_SLACK_PX) continue
     const depth = centre.distanceTo(camPos)
     found.push({ score: depth, pick: { kind: 'panel', id: b.id, point: centre, depth } })
   }
@@ -166,19 +189,15 @@ export function pickCandidatesAtScreen(
   for (const f of fittings) {
     const centre = new THREE.Vector3(...f.position)
     if (centre.clone().sub(camPos).dot(fwd) <= NEAR_EPS) continue
-    const q = new THREE.Quaternion(...f.quaternion).normalize()
-    const half = new THREE.Vector3(f.width / 2, f.height / 2, f.depth / 2)
-    // Whichever of the two big faces is nearer, so it can be pressed from either side —
-    // which way round the cabinet was drawn is not something to make anyone think about.
-    const corners: THREE.Vector3[] = []
-    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
-      corners.push(new THREE.Vector3(sx * half.x, sy * half.y, sz * half.z).applyQuaternion(q).add(centre))
-    }
+    // where it is now, not where its opening is: an open door is out in the room
+    const corners = obbCorners(fittingObb(f))
     if (corners.some((v) => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
-    if (!insideQuad(hull2d(corners.map((v) => toScreen(v, camera, size))), cursor)) continue
+    const outline = hull2d(corners.map((v) => toScreen(v, camera, size)))
+    if (!insideQuad(outline, cursor) && distanceToOutline(outline, cursor) > PANEL_SLACK_PX) continue
+    const here = corners.reduce((a, v) => a.add(v), new THREE.Vector3()).multiplyScalar(1 / corners.length)
     found.push({
-      score: centre.distanceTo(camPos) + FITTING_DEPTH_PENALTY,
-      pick: { kind: 'fitting', id: f.id, point: centre, depth: centre.distanceTo(camPos) },
+      score: here.distanceTo(camPos) + FITTING_DEPTH_PENALTY,
+      pick: { kind: 'fitting', id: f.id, point: here, depth: here.distanceTo(camPos) },
     })
   }
 

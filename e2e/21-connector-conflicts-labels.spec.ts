@@ -157,3 +157,93 @@ test.describe('A board and a drawer say their size on the drawing', () => {
     expect((await store(page)).fittings[0].open).toBeCloseTo(1, 2)
   })
 })
+
+/**
+ * A part is where it is. An open door is out in the room, not in the hole it came out of,
+ * and a shelf seen edge-on is still a shelf you can see.
+ */
+test.describe('Clicking a part where it actually is', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page)
+    await page.evaluate(([up]) => {
+      ;(window as any).__aluframe.store.getState().loadDocument({
+        profiles: [
+          { id: 'u1', spec: '2020', length: 800, position: [0, 0, 0], quaternion: up, miterCuts: [], holes: [] },
+          { id: 'u2', spec: '2020', length: 800, position: [600, 0, 0], quaternion: up, miterCuts: [], holes: [] },
+        ],
+        connectors: [],
+        panels: [{ id: 'shelf', width: 560, height: 560, thickness: 18, position: [300, 400, 300],
+          quaternion: [0.7071067811865476, 0, 0, 0.7071067811865476], material: 'mdf' }],
+        fittings: [{ id: 'door', kind: 'door', position: [300, 400, 0], quaternion: [0, 0, 0, 1],
+          width: 580, height: 760, depth: 600, material: 'mdf', open: 0,
+          hinge: 'left', hingeType: 'cup', overlay: 'full', swing: 110 }],
+      })
+    }, [UP])
+    await settle(page)
+  })
+
+  const pickAt = (page: import('@playwright/test').Page, p: number[]) => page.evaluate(async (pt) => {
+    const w = (window as any).__aluframe
+    const c = w.worldToClient(pt[0], pt[1], pt[2])
+    return w.pickAt(c.x, c.y).map((h: { kind: string; id: string }) => h.id)
+  }, p)
+
+  const leafCentre = (page: import('@playwright/test').Page) => page.evaluate(() => {
+    const w = (window as any).__aluframe
+    const f = w.store.getState().fittings[0]
+    return w.leafObb(f, f.open ?? 0).center.toArray()
+  })
+
+  test('an open door is selected where it swung to', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().updateFitting('door', { open: 1 }, false))
+    await page.waitForTimeout(1200)
+    const leaf = await leafCentre(page)
+    await setView(page, [leaf[0] + 900, leaf[1] + 500, leaf[2] + 1200], leaf as [number, number, number])
+    await page.waitForTimeout(200)
+    expect(await pickAt(page, leaf)).toContain('door')
+  })
+
+  test('...and not in the hole it came out of', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().updateFitting('door', { open: 1 }, false))
+    await page.waitForTimeout(1200)
+    const leaf = await leafCentre(page)
+    await setView(page, [leaf[0] + 900, leaf[1] + 500, leaf[2] + 1200], leaf as [number, number, number])
+    await page.waitForTimeout(200)
+    expect(await pickAt(page, [300, 400, 0])).not.toContain('door')
+  })
+
+  test('a shut door is selected where it sits', async ({ page }) => {
+    await setView(page, [900, 900, 1400], [300, 400, 0])
+    await page.waitForTimeout(200)
+    expect(await pickAt(page, [300, 400, 0])).toContain('door')
+  })
+
+  test('a shelf can be clicked from any angle it can be seen from', async ({ page }) => {
+    for (const dy of [900, 400, 60, -300]) {
+      await setView(page, [800, 400 + dy, 1400], [300, 400, 300])
+      await page.waitForTimeout(250)
+      expect((await pickAt(page, [300, 400, 300]))[0]).toBe('shelf')
+    }
+  })
+
+  test('a drawer pulled out is selected where it is', async ({ page }) => {
+    await page.evaluate(() => {
+      const s = (window as any).__aluframe.store.getState()
+      s.loadDocument({
+        profiles: s.profiles, connectors: [], panels: [],
+        fittings: [{ id: 'dr', kind: 'drawer', position: [300, 200, 300], quaternion: [0, 0, 0, 1],
+          width: 580, height: 250, depth: 580, material: 'ply', open: 0 }],
+      })
+    })
+    await settle(page)
+    await page.evaluate(() => (window as any).__aluframe.store.getState().updateFitting('dr', { open: 1 }, false))
+    await page.waitForTimeout(1200)
+    const out = await page.evaluate(() => {
+      const w = (window as any).__aluframe
+      return w.fittingObb(w.store.getState().fittings[0]).center.toArray()
+    })
+    await setView(page, [out[0] + 900, out[1] + 600, out[2] + 1200], out as [number, number, number])
+    await page.waitForTimeout(200)
+    expect(await pickAt(page, out)).toContain('dr')
+  })
+})

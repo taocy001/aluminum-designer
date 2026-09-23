@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { pickCandidatesAtScreen } from '../utils/screenPick'
 import { connectorSeatAt, seatFor } from '../utils/bracketSeat'
-import { leafObb } from '../utils/fittingGeometry'
+import { fittingObb, leafObb } from '../utils/fittingGeometry'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
@@ -75,19 +75,13 @@ const CameraController: React.FC = () => {
    * waits for the document because the store hydrates from storage, and it only ever does
    * this once — after that, where the camera is, is where the person put it.
    */
-  const framedOnOpen = useRef(false)
   useEffect(() => {
-    if (framedOnOpen.current) return
-    const fitIfAny = (s: ReturnType<typeof useStore.getState>) => {
-      if (framedOnOpen.current) return true
-      if (s.profiles.length + s.panels.length + s.fittings.length === 0) return false
-      framedOnOpen.current = true
-      useToolStore.getState().triggerCameraReset('all')
-      return true
-    }
-    if (fitIfAny(useStore.getState())) return
-    const stop = useStore.subscribe((s) => { if (fitIfAny(s)) stop() })
-    return stop
+    // Only what was already there when the page opened. Waiting for the document to become
+    // non-empty instead meant that starting from nothing and drawing the first member
+    // reframed the camera mid-gesture, and everything aimed at after that was somewhere else.
+    const s = useStore.getState()
+    if (s.profiles.length + s.panels.length + s.fittings.length === 0) return
+    useToolStore.getState().triggerCameraReset('all')
   }, [])
 
   useEffect(() => {
@@ -182,15 +176,24 @@ const PartDimensions: React.FC<{
   const ay = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
   const az = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
   const mm = (v: number) => String(Math.round(v))
-  // clear of the part by a fixed amount, so the label reads as belonging to that edge
-  const OFF = 34
+  /**
+   * Inside the outline, just in from the edge each one measures.
+   *
+   * Outside, the labels float in the space around the part and belong to nothing in
+   * particular — three numbers in mid-air next to three other parts' numbers. In from the
+   * edge, each one is unmistakably on the part and on the side it is measuring, and the part
+   * keeps its own outline clear.
+   */
+  const IN = 26
   const at = (a: THREE.Vector3, d: number, b: THREE.Vector3, e: number) =>
-    centre.clone().addScaledVector(a, d).addScaledVector(b, e).toArray() as [number, number, number]
+    centre.clone().addScaledVector(a, d).addScaledVector(b, e)
+      .addScaledVector(az, t / 2 + 1).toArray() as [number, number, number]
+  const inset = (v: number, by: number) => Math.max(0, v / 2 - by)
   return (
     <>
-      <TextSprite text={`${wl} ${mm(w)}`} color={color} height={20} position={at(ay, -h / 2 - OFF, az, t / 2)} />
-      <TextSprite text={`${hl} ${mm(h)}`} color={color} height={20} position={at(ax, w / 2 + OFF, az, t / 2)} />
-      <TextSprite text={`${tl} ${mm(t)}`} color={color} height={20} position={at(ax, -w / 2 - OFF * 0.7, ay, h / 2 + OFF * 0.7)} />
+      <TextSprite text={`${wl} ${mm(w)}`} color={color} height={22} position={at(ay, -inset(h, IN), ax, 0)} />
+      <TextSprite text={`${hl} ${mm(h)}`} color={color} height={22} position={at(ax, inset(w, IN * 1.6), ay, 0)} />
+      <TextSprite text={`${tl} ${mm(t)}`} color={color} height={22} position={at(ax, -inset(w, IN * 1.6), ay, inset(h, IN))} />
     </>
   )
 }
@@ -247,6 +250,7 @@ const DevHook: React.FC = () => {
     w.__aluframe.THREE = THREE
     w.__aluframe.seatFor = seatFor
     w.__aluframe.leafObb = leafObb
+    w.__aluframe.fittingObb = fittingObb
     w.__aluframe.connectorSeatAt = connectorSeatAt
     w.__aluframe.pickAt = (clientX: number, clientY: number) => {
       camera.updateMatrixWorld()

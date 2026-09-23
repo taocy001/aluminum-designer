@@ -237,3 +237,21 @@ export function swingClashes(fittings: FittingData[]): Array<[string, string]> {
   }
   return out
 }
+
+/**
+ * Where the moving part of a fitting actually is, right now.
+ *
+ * A door that is open is not where its opening is — it is out in the room, turned about its
+ * hinge. Picking it by the opening means clicking the hole it came out of, which is not where
+ * anybody looks for it. A drawer is the same, translated rather than turned.
+ */
+export function fittingObb(f: FittingData): OBB {
+  if (f.kind === 'door') {
+    const leaf = leafObb(f, f.open ?? 0)
+    if (leaf) return leaf
+  }
+  const at = openTransform(f)
+  const world = new THREE.Quaternion(...f.quaternion).normalize()
+  const centre = at.position.clone().applyQuaternion(world).add(new THREE.Vector3(...f.position))
+  return makeOBB(centre, new THREE.Vector3(f.width / 2, f.height / 2, f.depth / 2), world.clone().multiply(at.quaternion))
+}

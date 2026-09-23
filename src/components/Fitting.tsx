@@ -27,15 +27,28 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
   const { id, material, isSelected, locked } = f
   const hovered = useToolStore((s) => !s.isDragging && s.hoverPartId === id)
   const parts = useMemo(() => fittingParts(f), [f])
-  const target = useMemo(() => openTransform(f), [f])
   const moving = useRef<THREE.Group>(null)
+  /** how far open it looks right now, which chases how far open it is */
+  const shown = useRef(f.open ?? 0)
 
+  /**
+   * Ease the angle, not the transform.
+   *
+   * A door's position and rotation are not independent: the position is exactly the offset
+   * that keeps the hinge edge still while the leaf turns. Easing them separately — sliding
+   * towards the final offset while turning towards the final angle — satisfies neither at any
+   * moment in between, and the hinge edge swings out into the room and back. One number is
+   * eased, and the pair is worked out from it every frame, so the hinge never moves at all.
+   */
   useFrame((_, dt) => {
     const g = moving.current
     if (!g) return
-    const k = 1 - Math.exp(-EASE * dt)
-    g.position.lerp(target.position, k)
-    g.quaternion.slerp(target.quaternion, k)
+    const want = Math.max(0, Math.min(1, f.open ?? 0))
+    if (Math.abs(shown.current - want) < 0.0005) shown.current = want
+    else shown.current += (want - shown.current) * (1 - Math.exp(-EASE * dt))
+    const at = openTransform({ ...f, open: shown.current })
+    g.position.copy(at.position)
+    g.quaternion.copy(at.quaternion)
   })
 
   const look = LOOK[material] ?? LOOK.ply
