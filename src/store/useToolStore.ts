@@ -24,6 +24,8 @@ interface ToolState {
   viewMode: boolean
   /** Visibility of the keyboard shortcut list. */
   helpOpen: boolean
+  /** measuring: null when not, then the first point once it is put down */
+  measuring: null | { from: THREE.Vector3 | null; to: THREE.Vector3 | null }
   /** Visibility of drawers and doors in the scene. */
   showFittings: boolean
   /** what the next camera fit should frame: everything, or just what is selected */
@@ -129,6 +131,9 @@ interface ToolState {
   setViewMode: (on: boolean) => void
   toggleHelp: () => void
   toggleFittings: () => void
+  startMeasuring: () => void
+  setMeasurePoint: (at: THREE.Vector3) => void
+  stopMeasuring: () => void
   zoomBy: (step: number) => void
   zoomToPoint: (at: [number, number, number]) => void
   clearZoom: () => void
@@ -190,6 +195,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   viewMode: false,
   helpOpen: false,
   showFittings: true,
+  measuring: null,
   pendingRotate: null,
   zoomStep: 0,
   zoomAt: null,
@@ -261,6 +267,14 @@ export const useToolStore = create<ToolState>((set, get) => ({
   }),
   toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
   toggleFittings: () => set((s) => ({ showFittings: !s.showFittings })),
+  // measuring puts down whatever is in hand: a click has to mean one thing at a time
+  startMeasuring: () => set({ measuring: { from: null, to: null }, held: null, activeConnectorType: null, isDrawing: false, selectMode: false }),
+  setMeasurePoint: (at) => set((s) => {
+    if (!s.measuring || !s.measuring.from) return { measuring: { from: at.clone(), to: null } }
+    if (!s.measuring.to) return { measuring: { from: s.measuring.from, to: at.clone() } }
+    return { measuring: { from: at.clone(), to: null } }     // a third click starts again
+  }),
+  stopMeasuring: () => set({ measuring: null }),
   zoomBy: (step) => set((s) => ({ zoomStep: s.zoomStep + step })),
   clearZoom: () => set({ zoomStep: 0, zoomAt: null }),
   zoomToPoint: (at) => set({ zoomAt: at }),
