@@ -145,3 +145,36 @@ describe('a repair may not solve a joint by walking away from it', () => {
     }
   })
 })
+
+import { countUnflush } from '../utils/faceAlign'
+
+/**
+ * The tool gave three answers to one question. On a wardrobe of 4040 posts and 2040 rails the
+ * repair said there was nothing to fix, the seating audit said every bracket was where it
+ * should be, and the joint count said eight joints could not be built. Each was right about
+ * its own question; only one of them was the question anybody asks.
+ */
+describe('one joint, one answer', () => {
+  const wardrobe = (): ProfileData[] => {
+    const out: ProfileData[] = []
+    for (const x of [0, 600, 1200]) for (const z of [0, 600]) out.push(P(x, 0, z, x, 2200, z, '4040'))
+    for (const y of [20, 2180]) {
+      for (const [a, b] of [[0, 600], [600, 1200]]) for (const z of [0, 600]) out.push(P(a, y, z, b, y, z, '2040'))
+      for (const x of [0, 600, 1200]) out.push(P(x, y, 0, x, y, 600, '2040'))
+    }
+    return out
+  }
+
+  it('what cannot be built, what cannot be repaired and what cannot be bolted agree', () => {
+    const frame = wardrobe()
+    const { profiles } = planRepair(frame)
+    expect(unbuildable(profiles).length).toBe(0)
+    expect(countUnflush(profiles)).toBe(0)
+  })
+
+  it('and a pairing no part is made for is still counted', () => {
+    // 2020 butted onto 4040: no common edge, so nothing in the catalogue joins them
+    const odd = [P(0, 0, 0, 0, 800, 0, '4040'), P(0, 400, 0, 600, 400, 0, '2020')]
+    expect(countUnflush(odd)).toBeGreaterThan(0)
+  })
+})
