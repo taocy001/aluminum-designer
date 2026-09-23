@@ -53,7 +53,9 @@ test.describe('Fitting a board', () => {
     expect(Math.round(list[0].width)).toBe(620)
     expect(Math.round(list[0].height)).toBe(810)
     expect(list[0].thickness).toBe(18)
-    expect(r3(list[0].position)).toEqual([300, 405, 0])
+    // ...and it lies *on* the frame rather than inside it: an 18 mm board centred on a 20 mm
+    // section is a board through the metal, which is what this used to ask for
+    expect(r3(list[0].position)).toEqual([300, 405, 19])
   })
 
   test('two parallel rails give a shelf lying flat', async ({ page }) => {

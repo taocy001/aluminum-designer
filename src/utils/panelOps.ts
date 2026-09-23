@@ -139,12 +139,26 @@ export function panelFromSelection(
   const m = new THREE.Matrix4().makeBasis(unit(uAxis), unit(vAxis), unit(normalAxis))
   const q = new THREE.Quaternion().setFromRotationMatrix(m)
 
+  // An overlay board lies *on* the frame; centred on it, an 18 mm board is inside a 20 mm
+  // post, which is not a place a board can be. Which side it lies on is the side away from
+  // the cabinet — the same answer for a door on the front and a back panel on the back.
+  const at = centre.clone()
+  if (fit === 'overlay') {
+    const own = connectedTo(chosen.map((p) => p.id), useStore.getState().profiles)
+    const cab = new THREE.Box3()
+    for (const p of useStore.getState().profiles) if (own.has(p.id)) cab.union(memberBox(p))
+    const k = (['x', 'y', 'z'] as const)[normalAxis]
+    const away = cab.isEmpty() || Math.abs(centre[k] - cab.getCenter(new THREE.Vector3())[k]) < 1e-6
+      ? 1 : Math.sign(centre[k] - cab.getCenter(new THREE.Vector3())[k])
+    at[k] += away * (size.getComponent(normalAxis) + thickness) / 2
+  }
+
   return {
     id: nextId('b'),
     width: Math.round(width * 10) / 10,
     height: Math.round(height * 10) / 10,
     thickness,
-    position: [centre.x, centre.y, centre.z],
+    position: [at.x, at.y, at.z],
     quaternion: [q.x, q.y, q.z, q.w],
     material,
   }

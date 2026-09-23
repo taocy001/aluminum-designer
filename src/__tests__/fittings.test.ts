@@ -175,3 +175,23 @@ describe('a door hangs on the front of the post, not inside it', () => {
     expect(findConflicts(s.profiles, computeAllTrims(s.profiles), [], [], s.fittings)).toEqual([])
   })
 })
+
+/**
+ * A board fitted over a frame lies on it. Centred on it, an 18 mm board is inside a 20 mm
+ * post, which is not a place a board can be — six back panels in an eleven-cabinet drawing
+ * were buried in the uprights they were meant to be screwed to.
+ */
+describe('an overlay board lies on the frame', () => {
+  it('sits clear of the members it covers', () => {
+    const box = cabinet(0, 600)
+    load(box)
+    const back = box.filter((p) => p.position[2] === 600 && p.length === 880)
+    useStore.getState().selectItems(back.map((p) => p.id))
+    const board = panelFromSelection('mdf', 18, 'overlay')!
+    expect(board).not.toBeNull()
+    const s = useStore.getState()
+    expect(findConflicts(s.profiles, computeAllTrims(s.profiles), [], [board])).toEqual([])
+    // and on the outside: further from the cabinet's middle than the posts are
+    expect(board.position[2]).toBeGreaterThan(610)
+  })
+})
