@@ -22,6 +22,7 @@ import { TEMPLATES, templateById } from '../utils/templates'
 import { COMFORTABLE_URL, encodeShareLink } from '../utils/shareLink'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { repairJoints } from '../utils/repairJoints'
+import { deflect, saggingMembers, SLENDER } from '../utils/deflection'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, beginLiveEdit, directionLabel, duplicateSelected, flipProfile, livePart, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
@@ -175,6 +176,8 @@ const Sidebar: React.FC = () => {
   const [savedName, setSavedName] = useState<string | null>(savedFileName())
   // the log lives outside React, so the panel listens for it rather than owning it
   const [stockText, setStockText] = useState('6000')
+  /** what a shelf is assumed to be carrying, for the sag figure (kg) */
+  const [loadText, setLoadText] = useState('20')
   const [log, setLog] = useState(opLog())
   useEffect(() => subscribeOpLog(() => setLog([...opLog()])), [])
   // the highest point of whatever is selected, so the work plane can be put on top of it
@@ -249,6 +252,12 @@ const Sidebar: React.FC = () => {
   const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors])
   const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
+
+  // A frame can be perfectly buildable and still sag. The load is the one number the tool
+  // cannot know, so it is asked for, and everything else follows from the drawing.
+  const loadKg = Math.max(0, parseFloat(loadText) || 0)
+  const sagging = useMemo(() => saggingMembers(profiles, loadKg), [profiles, loadKg])
+  const selectedSag = selectedProfile ? deflect(selectedProfile, profiles, loadKg) : null
 
   const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels, fittings), [profiles, connectors, trims, language, panels, fittings])
   const stockMm = Math.max(500, parseFloat(stockText) || 6000)
@@ -662,6 +671,23 @@ const Sidebar: React.FC = () => {
                   <div className="flex justify-between"><span className="text-slate-500">{t.cutLength}</span><span className="font-mono text-emerald-400 font-bold" data-testid="cut-length">{Math.round(selTrim?.cutLength ?? selectedProfile.length)} mm</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">{t.joints} A</span><span className="font-mono text-slate-300">{jointText(selTrim?.start)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">{t.joints} B</span><span className="font-mono text-slate-300">{jointText(selTrim?.end)}</span></div>
+                  {selectedSag && (
+                    <div className="flex justify-between items-center gap-1" data-testid="deflection">
+                      <span className="text-slate-500" title={t.hintDeflection}>{t.deflection}</span>
+                      <span className="flex items-center gap-1">
+                        <input type="number" min={0} step={5} value={loadText} data-testid="deflection-load"
+                          onChange={(e) => setLoadText(e.target.value)}
+                          className="w-12 bg-slate-950 border border-white/5 rounded px-1 py-0.5 text-[10px] font-mono text-slate-300 outline-none text-right" />
+                        <span className="text-slate-600 text-[10px]">kg</span>
+                        <span className={`font-mono font-bold ${selectedSag.ratio < SLENDER ? 'text-amber-400' : 'text-slate-300'}`}
+                          data-testid="deflection-sag">{selectedSag.sag.toFixed(1)} mm</span>
+                        <span className="text-slate-600 text-[10px]">L/{selectedSag.ratio === Infinity ? '∞' : selectedSag.ratio}</span>
+                      </span>
+                    </div>
+                  )}
+                  {selectedSag && selectedSag.turnHelps && (
+                    <div className="text-[10px] text-amber-400/80" data-testid="deflection-turn">{t.deflectionTurn}</div>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-1">
                   <button onClick={() => flipProfile(selectedProfile.id)} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
@@ -982,6 +1008,12 @@ const Sidebar: React.FC = () => {
           <div className="w-full text-[10px] flex justify-between items-center text-slate-500">
             <span>{t.crossSeries}</span>
             <span className="font-mono" data-testid="bom-cross-series">{t.crossSeriesCount(seriesMismatches.length)}</span>
+          </div>
+        )}
+        {sagging.length > 0 && (
+          <div className="w-full text-[10px] flex justify-between items-center text-amber-400/90">
+            <span title={t.hintDeflection}>{t.saggingSpans}</span>
+            <span className="font-mono" data-testid="bom-sagging">{t.saggingCount(sagging.length, loadKg)}</span>
           </div>
         )}
         {(bom.profiles.length > 0 || bom.connectors.length > 0) && (
