@@ -64,7 +64,7 @@ function warnIfNewConflicts(before: Set<string>): void {
 }
 
 function conflictPairsNow(): Set<string> {
-  const { conflicts } = analyzeFrame(useStore.getState().profiles)
+  const { conflicts } = analyzeFrame(useStore.getState().profiles, useStore.getState().connectors)
   return new Set(conflicts.map((c) => [c.a, c.b].sort().join('|')))
 }
 

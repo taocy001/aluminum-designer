@@ -128,3 +128,25 @@ export function boltLabel(series: ConnectorSeries, language: 'zh' | 'en'): strin
 export function nutLabel(series: ConnectorSeries, language: 'zh' | 'en'): string {
   return language === 'zh' ? `T型螺母 ${boltThread(series)}` : `T-nut ${boltThread(series)}`
 }
+
+/**
+ * The room a connector takes up, in its own axes.
+ *
+ * Approximate on purpose: it is used to say whether two parts are in each other's way, and
+ * for that a box round the part is the right amount of detail. The origin follows the seat —
+ * an angle bracket's is the inside vertex of its two flanges, so its box runs out along both
+ * of them; a plate's is where its two bolt lines cross, so its box is centred on that.
+ */
+export function connectorExtent(type: string): { centre: [number, number, number]; half: [number, number, number] } {
+  switch (connectorEntry(type)?.seat) {
+    case 'angle':
+      // two flanges reaching 30 out of the vertex, 18 across
+      return { centre: [15, 15, 0], half: [15, 15, 9] }
+    case 'plate':
+      return { centre: [10, 10, 2], half: [20, 20, 2] }
+    case 'inline':
+      return { centre: [0, 0, 0], half: [30, 10, 10] }
+    default:
+      return { centre: [0, 0, 0], half: [12, 12, 12] }
+  }
+}

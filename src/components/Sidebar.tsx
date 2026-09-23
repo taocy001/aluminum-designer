@@ -13,12 +13,12 @@ import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
-import { addFittingFromSelection } from '../utils/fittingOps'
+import { addFittingFromSelection, setFittingOpen } from '../utils/fittingOps'
 import { downloadText, openProject, saveProject, savedFileName } from '../utils/projectFile'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
-import { swingClashes } from '../utils/fittingGeometry'
+import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
@@ -96,7 +96,7 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, panels, fittings, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
+  const { profiles, connectors, panels, fittings, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
     workPlaneY, setWorkPlaneY, throughRule, setThroughRule, viewMode, setViewMode } = useToolStore()
   const t = translations[language]
@@ -109,7 +109,7 @@ const Sidebar: React.FC = () => {
     return () => clearTimeout(id)
   }, [confirmClear])
 
-  const { trims, conflicts, conflictIds, mismatches, mismatchIds } = useMemo(() => analyzeFrame(profiles), [profiles])
+  const { trims, conflicts, conflictIds, mismatches, mismatchIds } = useMemo(() => analyzeFrame(profiles, connectors), [profiles, connectors])
   const selectedIdsSignature = selectedIds.join(',')
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -185,6 +185,7 @@ const Sidebar: React.FC = () => {
     && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
 
   const clashes = useMemo(() => swingClashes(fittings), [fittings])
+  const selectedFitting = fittings.find((f) => selectedIds.includes(f.id))
   const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors])
   const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
@@ -474,7 +475,7 @@ const Sidebar: React.FC = () => {
         onToggle={() => toggle('properties')}
         badge={selectedIds.length > 0 ? <span className="text-[9px] font-mono text-blue-400">{selectedIds.length}</span> : undefined}
       >
-        {selectedProfile || selectedConnector || selectedPanel ? (
+        {selectedProfile || selectedConnector || selectedPanel || selectedFitting ? (
           <div className="bg-slate-900/50 rounded-xl p-3 border border-white/5 space-y-3 shadow-xl" data-testid="properties">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <span className="text-[10px] font-black uppercase text-slate-400">{t.properties}</span>
@@ -604,6 +605,46 @@ const Sidebar: React.FC = () => {
                   <span className="text-slate-500">{t.orientation}</span>
                   <span className="font-mono text-slate-300" data-testid="connector-orientation">{orientationDegrees(selectedConnector.quaternion).join(' / ')}</span>
                 </div>
+              </div>
+            )}
+
+            {/* A drawer and a door are one part each, so their size is three numbers, named
+                the same way they are named on the drawing: across, up, and into the cabinet. */}
+            {selectedFitting && (
+              <div className="space-y-2" data-testid="fitting-props">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500">{selectedFitting.kind === 'drawer' ? t.drawerKind : t.doorKind}</span>
+                  <span className="font-mono text-sky-400">{selectedFitting.kind === 'door'
+                    ? `${({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[selectedFitting.hinge ?? 'left']} · ${swingOf(selectedFitting)}°`
+                    : ''}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  <NumField label="W" value={selectedFitting.width} step={10}
+                    onCommit={(v) => updateFitting(selectedFitting.id, { width: Math.max(60, v) })} />
+                  <NumField label="H" value={selectedFitting.height} step={10}
+                    onCommit={(v) => updateFitting(selectedFitting.id, { height: Math.max(60, v) })} />
+                  <NumField label="D" value={selectedFitting.depth} step={10}
+                    onCommit={(v) => updateFitting(selectedFitting.id, { depth: Math.max(60, v) })} />
+                </div>
+                {selectedFitting.kind === 'door' && (
+                  <div className="grid grid-cols-5 gap-1">
+                    {HINGE_ANGLES.map((deg) => (
+                      <button key={deg} data-testid={`fitting-angle-${deg}`} title={t.hintHingeAngle}
+                        onClick={() => updateFitting(selectedFitting.id, { swing: deg })}
+                        className={`py-1 rounded-lg text-[9px] font-bold font-mono ${swingOf(selectedFitting) === deg ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                        {deg}°
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <label className="flex items-center gap-2 text-[11px]">
+                  <span className="text-slate-500 shrink-0">{t.openAmount}</span>
+                  <input type="range" min={0} max={100} step={1} data-testid="fitting-open"
+                    value={Math.round((selectedFitting.open ?? 0) * 100)}
+                    onChange={(e) => setFittingOpen(selectedFitting.id, parseFloat(e.target.value) / 100)}
+                    className="flex-1 accent-emerald-500" />
+                  <span className="font-mono text-slate-400 w-8 text-right">{Math.round((selectedFitting.open ?? 0) * 100)}%</span>
+                </label>
               </div>
             )}
 
