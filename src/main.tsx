@@ -39,7 +39,8 @@ if (import.meta.env.DEV) {
       return auditBrackets(s.profiles, s.connectors).map((f) => ({ id: f.id, off: f.off, reason: f.reason }))
     },
     conflicts: () => {
-      const { conflicts, conflictIds } = analyzeFrame(useStore.getState().profiles, useStore.getState().connectors)
+      const s = useStore.getState()
+      const { conflicts, conflictIds } = analyzeFrame(s.profiles, s.connectors, s.panels, s.fittings)
       return { conflicts: conflicts.map((c) => ({ a: c.a, b: c.b, depth: c.depth })), ids: [...conflictIds] }
     },
   }

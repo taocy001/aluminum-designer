@@ -78,11 +78,10 @@ export function autoConnect(type: string): AutoConnectResult {
 
   const { trims } = analyzeFrame(profiles)
   const metal = profiles.map((q) => trimmedOBB(q, trims.get(q.id)!))
-  // Only parts that were already there block a joint. Two rails butting into the same post
-  // is two joints and takes two brackets, one on each rail — deduping by point would order
-  // half the hardware. The second one is nudged along its own member so it reads as its own
-  // part rather than sitting inside the first.
-  const existing = connectors.map((c) => new THREE.Vector3(...c.position))
+  // Deduplicate against existing connectors of the requested type, preserving separate seats for distinct joints.
+  const existing = connectors
+    .filter((c) => connectorEntry(c.type)?.fit === entry.fit)
+    .map((c) => new THREE.Vector3(...c.position))
   const isFree = (v: THREE.Vector3) => !existing.some((p) => p.distanceTo(v) <= OCCUPIED_MM)
 
   const made: ConnectorData[] = []
@@ -98,6 +97,13 @@ export function autoConnect(type: string): AutoConnectResult {
       // nothing is attached at all
       const wantsOne = entry.fit === 'corner' ? where.butt : where.partners === 0
       if (!wantsOne) continue
+      // A foot goes on the floor. Fitting one to every free end put one on top of each post
+      // as well, which is an end cap's job, not a foot's.
+      if (entry.axes.towards === 'in') {
+        const outward = getProfileDir(p)
+        if (at.distanceTo(start) < at.distanceTo(end)) outward.negate()
+        if (outward.y > -0.9) continue
+      }
       wanted.push(at.clone())
       if (!isFree(at)) { skipped++; continue }
 

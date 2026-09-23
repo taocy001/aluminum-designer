@@ -1,11 +1,12 @@
 import * as THREE from 'three'
-import type { ConnectorData, ProfileData } from '../store/useStore'
+import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorExtent, connectorScale } from './connectorCatalog'
 import { computeAllTrims, computeTrims, getThroughRule, type ProfileTrims } from './jointUtils'
 import { getProfileDir } from './geometryCore'
 import { specDims } from './specUtils'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
 import { findSpecMismatches, type SpecMismatch } from './specCompat'
+import { fittingObb } from './fittingGeometry'
 
 /** members closer than this are considered touching, not interfering (mm) */
 const TOUCH_TOL = 1
@@ -15,6 +16,8 @@ const TOUCH_TOL = 1
  * members, which have no business touching at all.
  */
 const CONNECTOR_TOUCH_TOL = 3
+/** Tolerance for contact between profiles and boards or fittings. */
+const BOARD_TOUCH_TOL = 3
 
 export interface Conflict {
   a: string
@@ -52,6 +55,15 @@ function regionOf(a: OBB, b: OBB): THREE.Box3 {
 }
 
 /** Detect profile interference using trimmed oriented bounding boxes; edits remain permitted. */
+/** The room a board takes up */
+export function panelOBB(b: PanelData): OBB {
+  return makeOBB(
+    new THREE.Vector3(...b.position),
+    new THREE.Vector3(b.width / 2, b.height / 2, b.thickness / 2),
+    new THREE.Quaternion(...b.quaternion).normalize(),
+  )
+}
+
 /** The room a connector takes up, where it is */
 export function connectorOBB(c: ConnectorData): OBB {
   const quat = new THREE.Quaternion(...c.quaternion).normalize()
@@ -67,20 +79,22 @@ export function connectorOBB(c: ConnectorData): OBB {
 
 export function findConflicts(
   profiles: ProfileData[], trims: Map<string, ProfileTrims>, connectors: ConnectorData[] = [],
+  panels: PanelData[] = [], fittings: FittingData[] = [],
 ): Conflict[] {
   const boxes: Array<{ id: string; obb: OBB }> = profiles.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) }))
-  // A bracket buried in a member, or two of them on top of each other, is as much a thing
-  // that cannot be built as two members running through each other — and rather easier to
-  // draw by accident, because a twenty-millimetre part inside a rail is invisible.
-  // Its flanges lie *on* the metal, so the tolerance is what tells lying on from sunk into.
+  // Include connector, board and fitting boxes with contact tolerances.
   const members = boxes.length
   for (const c of connectors) boxes.push({ id: c.id, obb: connectorOBB(c) })
+  const parts = boxes.length
+  for (const b of panels) boxes.push({ id: b.id, obb: panelOBB(b) })
+  for (const f of fittings) boxes.push({ id: f.id, obb: fittingObb(f) })
 
   const out: Conflict[] = []
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
       const bothParts = i >= members && j >= members
-      const tol = i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL
+      const tol = i >= parts || j >= parts ? BOARD_TOUCH_TOL
+        : i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL
       const depth = obbPenetration(boxes[i].obb, boxes[j].obb, tol)
       if (depth <= 0) continue
       void bothParts
@@ -96,6 +110,8 @@ export function findConflicts(
 
 let cacheKey: ProfileData[] | null = null
 let cacheParts: ConnectorData[] | null = null
+let cacheBoards: PanelData[] | null = null
+let cacheFittings: FittingData[] | null = null
 let cacheRule: string | null = null
 let cacheValue: FrameAnalysis | null = null
 
@@ -122,12 +138,16 @@ export function movingPartsConflict(all: ProfileData[], movingIds: Set<string>):
 }
 
 /** Trims + interference for the current document, memoised on the arrays' identity */
-export function analyzeFrame(profiles: ProfileData[], connectors: ConnectorData[] = []): FrameAnalysis {
+export function analyzeFrame(
+  profiles: ProfileData[], connectors: ConnectorData[] = [],
+  panels: PanelData[] = [], fittings: FittingData[] = [],
+): FrameAnalysis {
   // the through rule changes every trim in the document, so it belongs in the cache key
   const rule = getThroughRule()
-  if (cacheKey === profiles && cacheParts === connectors && cacheRule === rule && cacheValue) return cacheValue
+  if (cacheKey === profiles && cacheParts === connectors && cacheBoards === panels
+    && cacheFittings === fittings && cacheRule === rule && cacheValue) return cacheValue
   const trims = computeAllTrims(profiles)
-  const conflicts = findConflicts(profiles, trims, connectors)
+  const conflicts = findConflicts(profiles, trims, connectors, panels, fittings)
   const conflictIds = new Set<string>()
   for (const c of conflicts) { conflictIds.add(c.a); conflictIds.add(c.b) }
   const mismatches = findSpecMismatches(profiles)
@@ -135,6 +155,8 @@ export function analyzeFrame(profiles: ProfileData[], connectors: ConnectorData[
   for (const m of mismatches) { mismatchIds.add(m.a); mismatchIds.add(m.b) }
   cacheKey = profiles
   cacheParts = connectors
+  cacheBoards = panels
+  cacheFittings = fittings
   cacheRule = rule
   cacheValue = { trims, conflicts, conflictIds, mismatches, mismatchIds }
   return cacheValue
