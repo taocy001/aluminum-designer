@@ -259,3 +259,62 @@ test.describe('Clicking a part where it actually is', () => {
     expect(await pickAt(page, out)).toContain('dr')
   })
 })
+
+/**
+ * A door opens away from the cabinet it is on. There is no arrangement where it does not,
+ * and a run of wall units above deeper base units is the arrangement that got it wrong:
+ * the wall run sits behind the middle of the whole drawing while being in front of its own
+ * carcase, so the front was read backwards and the doors swung into the shelves.
+ */
+test.describe('A door opens outward', () => {
+  const build = (page: import('@playwright/test').Page) => page.evaluate(() => {
+    const up = [-0.7071067811865475, 0, 0, 0.7071067811865476]
+    const P: unknown[] = []
+    for (const x of [0, 600, 1200]) for (const z of [0, 600]) {
+      P.push({ id: `b${x}_${z}`, spec: '2020', length: 880, position: [x, 0, z], quaternion: up, miterCuts: [], holes: [] })
+    }
+    for (const x of [0, 600, 1200]) for (const z of [0, 350]) {
+      P.push({ id: `w${x}_${z}`, spec: '2020', length: 700, position: [x, 1500, z], quaternion: up, miterCuts: [], holes: [] })
+    }
+    ;(window as any).__aluframe.store.getState().loadDocument({ profiles: P, connectors: [], panels: [], fittings: [] })
+  })
+
+  const travel = (page: import('@playwright/test').Page) => page.evaluate(() => {
+    const w = (window as any).__aluframe
+    const f = w.store.getState().fittings.at(-1)
+    const shut = w.leafObb({ ...f, open: 0 }, 0).center
+    const open = w.leafObb({ ...f, open: 1 }, 1).center
+    return { z: open.z - shut.z, depth: f.depth, at: f.position[2] }
+  })
+
+  test.beforeEach(async ({ page }) => { await openApp(page); await build(page); await settle(page) })
+
+  test('a base door swings out into the room', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['b0_600', 'b600_600']))
+    await settle(page)
+    await page.getByTestId('add-door').click()
+    await settle(page)
+    await page.waitForTimeout(250)
+    expect((await travel(page)).z).toBeGreaterThan(50)
+  })
+
+  test('a wall door above it swings out too, not back into the shelves', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['w0_350', 'w600_350']))
+    await settle(page)
+    await page.getByTestId('add-door').click()
+    await settle(page)
+    await page.waitForTimeout(250)
+    expect((await travel(page)).z).toBeGreaterThan(50)
+  })
+
+  test('a wall door is as deep as its own cabinet, not as the run below it', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['w0_350', 'w600_350']))
+    await settle(page)
+    await page.getByTestId('add-door').click()
+    await settle(page)
+    await page.waitForTimeout(250)
+    const t = await travel(page)
+    expect(t.depth).toBeLessThan(450)          // the wall units are 350 deep
+    expect(t.at + t.depth / 2).toBeCloseTo(350, -1)   // and its face is on their front
+  })
+})
