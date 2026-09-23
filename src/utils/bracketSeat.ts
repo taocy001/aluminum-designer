@@ -36,8 +36,8 @@ import { fitConnector, membersAt } from './connectorFit'
 const JOINT_TOL = 30
 /** how near a corner the pointer has to be for a bracket in hand to settle onto it (mm) */
 const REACH = 70
-/** half the thickness of the modelled part, so it rests on the face instead of in it (mm) */
-const HALF_THICK = 2
+/** the plate lies on the face, not in it: its back is at zero, so nothing to offset by */
+const HALF_THICK = 0
 
 export interface BracketSeat {
   position: [number, number, number]
@@ -70,7 +70,11 @@ export function seatBracket(a: ProfileData, b: ProfileData, at: THREE.Vector3): 
   const face = flushFace(a, b, at)
   if (!face) return null
 
-  const n = face.normal.clone()
+  // `flushFace` reports the shared plane as a signed distance along its normal, so the side
+  // the metal is on — and therefore the way the bracket's back must face — is the sign of
+  // that distance, not the normal itself. Taking the normal on trust seats every bracket on
+  // a negative-side face two millimetres inside the profile, back to front.
+  const n = face.normal.clone().multiplyScalar(face.offset < 0 ? -1 : 1)
   let legA = into(a, at)
   let legB = into(b, at)
   if (Math.abs(legA.dot(legB)) > 0.9) return null        // parallel: a plate's job, not a bracket's
@@ -85,7 +89,7 @@ export function seatBracket(a: ProfileData, b: ProfileData, at: THREE.Vector3): 
   const [memberX, memberY] = flipped ? [b, a] : [a, b]
 
   // The plane the legs lie in, and the two centrelines projected onto it
-  const planePoint = at.clone().addScaledVector(n, face.offset)
+  const planePoint = at.clone().addScaledVector(n, Math.abs(face.offset))
   const onPlane = (v: THREE.Vector3) => v.clone().addScaledVector(n, planePoint.clone().sub(v).dot(n))
   const axisB = closestOnSegment(at, ...(({ start, end }) => [start, end] as const)(getProfileEndpoints(b))).point
   const Pa = onPlane(at)          // a's centreline, at the joint

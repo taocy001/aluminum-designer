@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
+import { pickCandidatesAtScreen } from '../utils/screenPick'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
@@ -11,6 +12,7 @@ import type { SpecMismatch } from '../utils/specCompat'
 import Profile from './Profile'
 import Connector from './Connector'
 import Panel from './Panel'
+import Fitting from './Fitting'
 import FrameDimensions from './FrameDimensions'
 import DrawingHandler from './DrawingHandler'
 import DragHandler from './DragHandler'
@@ -155,6 +157,17 @@ const DevHook: React.FC = () => {
     w.__aluframe = w.__aluframe ?? {}
     w.__aluframe.camera = camera
     w.__aluframe.controls = controls
+    // what the pointer would find at a point on the canvas, for tests and for debugging
+    w.__aluframe.pickAt = (clientX: number, clientY: number) => {
+      const rect = gl.domElement.getBoundingClientRect()
+      const cursor = new THREE.Vector2(clientX - rect.left, clientY - rect.top)
+      const ndc = new THREE.Vector2((cursor.x / rect.width) * 2 - 1, -(cursor.y / rect.height) * 2 + 1)
+      const rc = new THREE.Raycaster()
+      rc.setFromCamera(ndc, camera)
+      const st = useStore.getState()
+      return pickCandidatesAtScreen(cursor, rc.ray, camera, { width: rect.width, height: rect.height },
+        st.profiles, st.connectors, st.panels, st.fittings).map((p) => ({ kind: p.kind, id: p.id }))
+    }
     w.__aluframe.countByName = (name: string) => {
       let n = 0
       scene.traverse((o: THREE.Object3D) => { if (o.name === name) n++ })
@@ -287,7 +300,7 @@ const SnapGuides: React.FC = () => {
 }
 
 const Viewport: React.FC = () => {
-  const { profiles, connectors, panels, selectedIds } = useStore()
+  const { profiles, connectors, panels, fittings, selectedIds } = useStore()
   const { isDragging, showDimensionLabels, selectMode } = useToolStore()
   const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles), [profiles])
 
@@ -322,6 +335,10 @@ const Viewport: React.FC = () => {
 
       {panels.map((b) => (
         <Panel key={b.id} {...b} isSelected={selectedIds.includes(b.id)} />
+      ))}
+
+      {fittings.map((f) => (
+        <Fitting key={f.id} {...f} isSelected={selectedIds.includes(f.id)} />
       ))}
 
       {showDimensionLabels && <DimensionLabels trims={trims} />}

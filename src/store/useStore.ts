@@ -51,18 +51,61 @@ export interface PanelData {
   locked?: boolean
 }
 
-type Snapshot = { profiles: ProfileData[]; connectors: ConnectorData[]; panels: PanelData[] }
+/**
+ * A drawer or door with a fixed opening and an open amount.
+ * Local axes: X across the opening, Y up, +Z outward; position is the opening centre.
+ */
+export type FittingKind = 'drawer' | 'door'
+/** which edge the door is hung on, looking at it from the front */
+export type HingeSide = 'left' | 'right' | 'top' | 'bottom'
+/**
+ * Three kinds, and they are not interchangeable.
+ *
+ *  - `cup`: the 35 mm concealed hinge every kitchen uses. Bored into the back of the door,
+ *    a plate on the carcase, adjustable in three directions, opens about 110°.
+ *  - `slot`: the two-leaf hinge made for extrusion. Bolts straight into the T-slots of the
+ *    profile and of the door frame, nothing bored, and it will go past 180°.
+ *  - `continuous`: a piano hinge down the whole edge, for a tall or heavy door, or a flap.
+ */
+export type HingeType = 'cup' | 'slot' | 'continuous'
+/** how the door sits on the opening: over it, half over it, or inside it */
+export type Overlay = 'full' | 'half' | 'inset'
+
+export interface FittingData {
+  id: string
+  kind: FittingKind
+  /** centre of the clear opening */
+  position: [number, number, number]
+  quaternion: [number, number, number, number]
+  /** the clear opening */
+  width: number
+  height: number
+  depth: number
+  material: PanelMaterial
+  /** Open amount: 0 closed, 1 fully open. */
+  open: number
+  hinge?: HingeSide
+  hingeType?: HingeType
+  overlay?: Overlay
+  locked?: boolean
+}
+
+type Snapshot = { profiles: ProfileData[]; connectors: ConnectorData[]; panels: PanelData[]; fittings: FittingData[] }
 
 const MAX_HISTORY = 50
 
-function takeSnapshot(state: Pick<State, 'profiles' | 'connectors' | 'panels'>): Snapshot {
-  return { profiles: [...state.profiles], connectors: [...state.connectors], panels: [...state.panels] }
+function takeSnapshot(state: Pick<State, 'profiles' | 'connectors' | 'panels' | 'fittings'>): Snapshot {
+  return {
+    profiles: [...state.profiles], connectors: [...state.connectors],
+    panels: [...state.panels], fittings: [...state.fittings],
+  }
 }
 
 interface State {
   profiles: ProfileData[]
   connectors: ConnectorData[]
   panels: PanelData[]
+  fittings: FittingData[]
   selectedIds: string[]
   past: Snapshot[]
   future: Snapshot[]
@@ -71,10 +114,12 @@ interface State {
   addProfiles: (profiles: ProfileData[], select?: boolean) => void
   addItems: (profiles: ProfileData[], connectors: ConnectorData[], select?: boolean) => void
   addPanels: (panels: PanelData[], select?: boolean) => void
+  addFittings: (fittings: FittingData[], select?: boolean) => void
+  updateFitting: (id: string, updates: Partial<FittingData>, pushHistory?: boolean) => void
   updatePanel: (id: string, updates: Partial<PanelData>) => void
   commitPanelEdit: (id: string, updates: Partial<PanelData>) => void
   /** Replace the whole document (import) */
-  loadDocument: (doc: { profiles: ProfileData[]; connectors: ConnectorData[]; panels?: PanelData[] }) => void
+  loadDocument: (doc: { profiles: ProfileData[]; connectors: ConnectorData[]; panels?: PanelData[]; fittings?: FittingData[] }) => void
   removeProfile: (id: string) => void
   removeSelected: () => void
   /** lock or unlock the selection; locked parts are protected from moves and deletion */
@@ -111,6 +156,7 @@ export const useStore = create<State>()(
       profiles: [],
       connectors: [],
       panels: [],
+      fittings: [],
       selectedIds: [],
       past: [],
       future: [],
@@ -136,6 +182,20 @@ export const useStore = create<State>()(
         selectedIds: select ? [...list.map((p) => p.id), ...conns.map((c) => c.id)] : state.selectedIds,
       })),
 
+      addFittings: (list, select = false) => set((state) => ({
+        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        future: [],
+        fittings: [...state.fittings, ...list],
+        ...(select ? { selectedIds: list.map((f) => f.id) } : {}),
+      })),
+
+      // How far open is a way of looking, not a change to the design, so it leaves no
+      // history entry: undo after opening a drawer should undo the last thing you built.
+      updateFitting: (id, updates, pushHistory = true) => set((state) => ({
+        ...(pushHistory ? { past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)], future: [] } : {}),
+        fittings: state.fittings.map((f) => f.id === id ? { ...f, ...updates } : f),
+      })),
+
       addPanels: (list, select = false) => set((state) => ({
         past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
         future: [],
@@ -159,6 +219,7 @@ export const useStore = create<State>()(
         profiles: doc.profiles,
         connectors: doc.connectors,
         panels: doc.panels ?? [],
+        fittings: doc.fittings ?? [],
         selectedIds: [],
       })),
 
@@ -174,16 +235,19 @@ export const useStore = create<State>()(
         if (ids.size === 0) return {}
         // a lock protects against deletion too, or it would only be half a lock
         const removable = (x: { id: string; locked?: boolean }) => ids.has(x.id) && !x.locked
-        if (!state.profiles.some(removable) && !state.connectors.some(removable) && !state.panels.some(removable)) return {}
+        if (!state.profiles.some(removable) && !state.connectors.some(removable)
+          && !state.panels.some(removable) && !state.fittings.some(removable)) return {}
         const stillLocked = (id: string) => state.profiles.some((p) => p.id === id && p.locked)
           || state.connectors.some((c) => c.id === id && c.locked)
           || state.panels.some((p) => p.id === id && p.locked)
+          || state.fittings.some((f) => f.id === id && f.locked)
         return {
           past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.filter((p) => !removable(p)),
           connectors: state.connectors.filter((c) => !removable(c)),
           panels: state.panels.filter((p) => !removable(p)),
+          fittings: state.fittings.filter((f) => !removable(f)),
           selectedIds: state.selectedIds.filter(stillLocked),
         }
       }),
@@ -201,6 +265,7 @@ export const useStore = create<State>()(
           profiles: state.profiles.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
           connectors: state.connectors.map((c) => ids.has(c.id) ? { ...c, locked: anyUnlocked } : c),
           panels: state.panels.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
+          fittings: state.fittings.map((f) => ids.has(f.id) ? { ...f, locked: anyUnlocked } : f),
         }
       }),
 
@@ -210,6 +275,7 @@ export const useStore = create<State>()(
         profiles: [],
         connectors: [],
         panels: [],
+        fittings: [],
         selectedIds: [],
       })),
 
@@ -320,6 +386,7 @@ export const useStore = create<State>()(
           profiles: prev.profiles,
           connectors: prev.connectors,
           panels: prev.panels ?? [],
+          fittings: prev.fittings ?? [],
           selectedIds: [],
         }
       }),
@@ -333,13 +400,14 @@ export const useStore = create<State>()(
           profiles: next.profiles,
           connectors: next.connectors,
           panels: next.panels ?? [],
+          fittings: next.fittings ?? [],
           selectedIds: [],
         }
       }),
     }),
     {
       name: 'aluminum-designer-store',
-      partialize: (state) => ({ profiles: state.profiles, connectors: state.connectors, panels: state.panels }),
+      partialize: (state) => ({ profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings }),
     }
   )
 )
