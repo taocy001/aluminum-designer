@@ -142,3 +142,64 @@ test.describe('Measuring', () => {
     expect(after.profiles.map((p: { position: number[] }) => p.position)).toEqual(before.profiles.map((p: { position: number[] }) => p.position))
   })
 })
+
+/**
+ * An open tool spreads by being sent to people, and a file attachment is not being sent to
+ * people — it is being asked to download something.
+ */
+test.describe('A drawing in a link', () => {
+  test('a link opens the drawing it carries, in a browser that has never seen it', async ({ browser }) => {
+    const sender = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] })
+    const a = await sender.newPage()
+    await a.goto('/')
+    await a.evaluate(() => localStorage.clear())
+    await a.goto('/')
+    await a.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
+    await a.getByTestId('template-shelving').click()
+    await a.getByTestId('template-place').click()
+    await a.waitForTimeout(400)
+    const sent = await a.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)
+    await a.getByTestId('share-link').click()
+    await a.waitForTimeout(400)
+    const link = await a.evaluate(() => navigator.clipboard.readText())
+    expect(link).toContain('#d=')
+
+    const receiver = await browser.newContext()
+    const b = await receiver.newPage()
+    await b.goto(link)
+    await b.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
+    await b.waitForTimeout(700)
+    expect(await b.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)).toBe(sent)
+
+    // the link is taken out of the bar, so a reload is not a reset to what was sent
+    expect(await b.evaluate(() => location.hash.includes('d='))).toBe(false)
+    await b.reload()
+    await b.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
+    await b.waitForTimeout(600)
+    expect(await b.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)).toBe(sent)
+
+    await sender.close()
+    await receiver.close()
+  })
+
+  test('a plain visit is an empty drawing, so what arrives really came from the link', async ({ browser }) => {
+    const c = await browser.newContext()
+    const p = await c.newPage()
+    await p.goto('/')
+    await p.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
+    await p.waitForTimeout(400)
+    expect(await p.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)).toBe(0)
+    await c.close()
+  })
+
+  test('a link we cannot read leaves the drawing alone', async ({ browser }) => {
+    const c = await browser.newContext()
+    const p = await c.newPage()
+    await p.goto('/#d=bm90b3Vycw')
+    await p.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
+    await p.waitForTimeout(600)
+    expect(await p.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)).toBe(0)
+    expect(await p.evaluate(() => location.hash.includes('d='))).toBe(false)
+    await c.close()
+  })
+})

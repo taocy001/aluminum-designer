@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode, Link2 } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, HINGE_ANGLES, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -19,6 +19,7 @@ import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
 import { TEMPLATES, templateById } from '../utils/templates'
+import { COMFORTABLE_URL, encodeShareLink } from '../utils/shareLink'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, beginLiveEdit, directionLabel, duplicateSelected, flipProfile, livePart, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
@@ -285,6 +286,14 @@ const Sidebar: React.FC = () => {
       '\ufeff' + nestingCsv(nesting, stockMm), 'text/csv;charset=utf-8')
   }
   // A screenshot is not a drawing: it cannot be measured and it cannot go on a machine.
+  // An open tool spreads by being sent to people, and a file attachment is not being sent to
+  // people — it is being asked to download something.
+  const handleShare = async () => {
+    const link = await encodeShareLink({ profiles, connectors, panels, fittings })
+    if (link.length > COMFORTABLE_URL * 8) { showToast(t.toastShareTooBig, 'error'); return }
+    await navigator.clipboard?.writeText(link)
+    showToast(t.toastShared(Math.max(1, Math.round(link.length / 1024))), 'success')
+  }
   const handleExportDxf = () => {
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.dxf`,
       buildDxf({ profiles, panels, fittings }), 'application/dxf')
@@ -1035,6 +1044,10 @@ const Sidebar: React.FC = () => {
           <button onClick={() => handleSaveProject(false)} data-testid="export-project" title={t.hintSave}
             className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
             <Save size={13} /> {savedName ?? t.exportJSON}
+          </button>
+          <button onClick={handleShare} title={t.hintShare} data-testid="share-link"
+            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
+            <Link2 size={13} /> {t.share}
           </button>
           <button onClick={handleOpenProject} title={t.hintImport} data-testid="import-project"
             className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">

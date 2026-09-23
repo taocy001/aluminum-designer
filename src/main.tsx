@@ -6,6 +6,8 @@ import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { analyzeFrame } from './utils/analysis'
 import { record, noteNext, opLog, clearOpLog, opLogText, type Doc } from './utils/opLog'
+import { decodeShare, takeShareLink } from './utils/shareLink'
+import { translations } from './utils/translations'
 
 const snapshotOf = (s: ReturnType<typeof useStore.getState>): Doc => ({
   profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings,
@@ -69,6 +71,23 @@ if (import.meta.env.DEV) {
     if (wasMid && !now) { noteNext('drag'); flush() }
     wasMid = now
   })
+}
+
+/**
+ * A link that carries a drawing opens that drawing.
+ *
+ * Before the first paint, so nothing of the previous session is ever on screen — arriving at
+ * somebody else's link and seeing your own cabinet for a frame would be alarming. The link is
+ * taken out of the address bar afterwards, so a reload is not a reset to what was sent.
+ */
+{
+  const payload = takeShareLink()
+  if (payload) {
+    decodeShare(payload).then((doc) => {
+      useStore.getState().loadDocument(doc)
+      useToolStore.getState().showToast(translations[useToolStore.getState().language].toastSharedOpened, 'success')
+    }).catch(() => { /* a link we cannot read is not a link for us */ })
+  }
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
