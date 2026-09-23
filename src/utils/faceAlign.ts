@@ -3,6 +3,7 @@ import { useStore, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong, round3 } from './geometryCore'
 import { bracketNormal, flushFace, sharedEdge } from './specCompat'
+import { seatFor } from './bracketSeat'
 import { specDims } from './specUtils'
 import { translations } from './translations'
 
@@ -125,11 +126,8 @@ export function faceAlignOnCreate(candidate: ProfileData, others: ProfileData[])
 }
 
 /**
- * Joints where a flat bracket still cannot lie, counted once per pair.
- *
- * This asks the question directly rather than through `shiftForJoint`, which only answers
- * "is there a correction we would make" — those are different, because a step this tool
- * declines to close is still a step.
+ * Count each inferred joint once when no supported connector type can seat there.
+ * Check seating directly, independently of whether shiftForJoint offers a correction.
  */
 export function countUnflush(profiles: ProfileData[]): number {
   return unflushPairs(profiles).length
@@ -149,7 +147,14 @@ export function unflushPairs(profiles: ProfileData[]): Array<{ a: string; b: str
         .sort((x, y) => x.d - y.d)[0]
       if (touch.d > JOINT_TOL) continue
       if (!bracketNormal(a, b)) continue
-      if (sharedEdge(a.spec, b.spec) && flushFace(a, b, touch.pt)) continue
+      if (!sharedEdge(a.spec, b.spec)) {
+        // no edge in common: no part joins these two, and the tool says so elsewhere as a
+        // section mismatch rather than counting it twice here
+        const key0 = [a.id, b.id].sort().join('|')
+        if (!seen.has(key0)) seen.set(key0, { a: a.id, b: b.id, at: touch.pt.toArray() as [number, number, number] })
+        continue
+      }
+      if (seatFor('bracket', a, b, touch.pt) || seatFor('gusset', a, b, touch.pt)) continue
       const key = [a.id, b.id].sort().join('|')
       if (!seen.has(key)) seen.set(key, { a: a.id, b: b.id, at: touch.pt.toArray() as [number, number, number] })
     }
