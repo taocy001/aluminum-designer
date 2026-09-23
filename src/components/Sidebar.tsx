@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode, Link2 } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode, Link2, Wrench } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, HINGE_ANGLES, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -21,6 +21,7 @@ import { buildDxf } from '../utils/dxf'
 import { TEMPLATES, templateById } from '../utils/templates'
 import { COMFORTABLE_URL, encodeShareLink } from '../utils/shareLink'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
+import { repairJoints } from '../utils/repairJoints'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, beginLiveEdit, directionLabel, duplicateSelected, flipProfile, livePart, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
@@ -935,6 +936,18 @@ const Sidebar: React.FC = () => {
             <span className="font-mono" data-testid="bom-mismatches">
               {edgeMismatches.length ? t.specMismatchCount(edgeMismatches.length) : t.specMismatchOk}
             </span>
+          </button>
+        )}
+        {/* Saying a joint cannot be bolted and offering nothing about it is half a check. */}
+        {profiles.length > 1 && (
+          <button data-testid="repair-joints" title={t.alignFacesHint}
+            onClick={() => {
+              const r = repairJoints()
+              showToast(r.steps.length ? t.toastRepaired(r.before - r.after, r.after) : t.toastRepairNothing,
+                r.steps.length ? 'success' : 'info')
+            }}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
+            <Wrench size={12} /> {t.alignFaces}
           </button>
         )}
         {/* A bracket beside a joint renders exactly like one bolted to it, and the cut list
