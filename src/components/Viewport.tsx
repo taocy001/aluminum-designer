@@ -4,6 +4,7 @@ import { OrbitControls, Grid, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { pickCandidatesAtScreen } from '../utils/screenPick'
+import { seatFor } from '../utils/bracketSeat'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
@@ -158,6 +159,8 @@ const DevHook: React.FC = () => {
     w.__aluframe.camera = camera
     w.__aluframe.controls = controls
     // what the pointer would find at a point on the canvas, for tests and for debugging
+    w.__aluframe.THREE = THREE
+    w.__aluframe.seatFor = seatFor
     w.__aluframe.pickAt = (clientX: number, clientY: number) => {
       camera.updateMatrixWorld()
       const rect = gl.domElement.getBoundingClientRect()

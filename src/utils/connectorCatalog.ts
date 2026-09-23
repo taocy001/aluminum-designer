@@ -16,6 +16,19 @@ export type ConnectorSeries = 20 | 30 | 40
  */
 export type ConnectorFit = 'corner' | 'inline' | 'face' | 'free'
 
+/**
+ * How a part meets the metal — the thing that decides where it actually goes.
+ *
+ *  - `angle`: two flanges at ninety degrees, sitting in the **inside** of the corner. One
+ *    flange lies on the face of A that looks towards B, the other on the face of B that looks
+ *    towards A. This is the ordinary cast corner bracket.
+ *  - `plate`: one flat plate lying across the **outside** face the two members share, both
+ *    bolts in that one plane. Needs a coplanar face; an angle bracket does not.
+ *  - `inline`: on the end of one member, along its axis.
+ *  - `surface`: flat against one face of one member, wherever it is put.
+ */
+export type SeatKind = 'angle' | 'plate' | 'inline' | 'surface'
+
 /** A local axis of the modelled part */
 export type LocalAxis = 'x' | 'y' | 'z' | '-x' | '-y' | '-z'
 
@@ -47,28 +60,30 @@ export interface ConnectorSpecEntry {
   fasteners: FastenerRecipe
   /** a bracket in the sense of "what a butt joint needs" */
   isCornerBracket?: boolean
+  /** how it meets the metal, which is what decides where it goes */
+  seat: SeatKind
 }
 
 export const CONNECTOR_CATALOG: ConnectorSpecEntry[] = [
   // arms along +X and +Y
-  { type: 'bracket',       labelZh: 'L型角码',   labelEn: 'L-Bracket',     fit: 'corner', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 }, isCornerBracket: true },
-  { type: 'inside-corner', labelZh: '内角码',     labelEn: 'Inside Corner', fit: 'corner', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 }, isCornerBracket: true },
-  { type: 'gusset',        labelZh: '加强筋',     labelEn: 'Gusset',        fit: 'corner', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 } },
+  { type: 'bracket',       labelZh: 'L型角码',   labelEn: 'L-Bracket',     fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 }, isCornerBracket: true },
+  { type: 'inside-corner', labelZh: '内角码',     labelEn: 'Inside Corner', fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 }, isCornerBracket: true },
+  { type: 'gusset',        labelZh: '加强筋',     labelEn: 'Gusset',        fit: 'corner', seat: 'plate', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 } },
   // the T's crossbar lies along X on the through member, the stem along Y on the branch
-  { type: 't-bracket',     labelZh: 'T型角码',    labelEn: 'T-Bracket',     fit: 'corner', axes: { primary: 'y', secondary: 'x' }, fasteners: { bolts: 3, nuts: 3 }, isCornerBracket: true },
-  { type: 'corner-3way',   labelZh: '三维角码',   labelEn: '3-Way Corner',  fit: 'corner', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 3, nuts: 3 }, isCornerBracket: true },
+  { type: 't-bracket',     labelZh: 'T型角码',    labelEn: 'T-Bracket',     fit: 'corner', seat: 'plate', axes: { primary: 'y', secondary: 'x' }, fasteners: { bolts: 3, nuts: 3 }, isCornerBracket: true },
+  { type: 'corner-3way',   labelZh: '三维角码',   labelEn: '3-Way Corner',  fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 3, nuts: 3 }, isCornerBracket: true },
   // plates that bridge two members end to end: the long side runs along the member
-  { type: 'flat-plate',    labelZh: '直连板',     labelEn: 'Flat Plate',    fit: 'inline', axes: { primary: 'x' }, fasteners: { bolts: 4, nuts: 4 } },
-  { type: 'joining-plate', labelZh: '对接板',     labelEn: 'Joining Plate', fit: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 2, nuts: 2 } },
-  { type: 'end-cap',       labelZh: '端盖',       labelEn: 'End Cap',       fit: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 0, nuts: 0 } },
+  { type: 'flat-plate',    labelZh: '直连板',     labelEn: 'Flat Plate',    fit: 'inline', seat: 'inline', axes: { primary: 'x' }, fasteners: { bolts: 4, nuts: 4 } },
+  { type: 'joining-plate', labelZh: '对接板',     labelEn: 'Joining Plate', fit: 'inline', seat: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 2, nuts: 2 } },
+  { type: 'end-cap',       labelZh: '端盖',       labelEn: 'End Cap',       fit: 'inline', seat: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 0, nuts: 0 } },
   // parts that stand under a post: their own axis is Y, pointing back up into the member
-  { type: 'caster-mount',  labelZh: '脚轮座',     labelEn: 'Caster Mount',  fit: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 4, nuts: 4 } },
-  { type: 'foot',          labelZh: '调节脚',     labelEn: 'Leveling Foot', fit: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 1, nuts: 1 } },
+  { type: 'caster-mount',  labelZh: '脚轮座',     labelEn: 'Caster Mount',  fit: 'inline', seat: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 4, nuts: 4 } },
+  { type: 'foot',          labelZh: '调节脚',     labelEn: 'Leveling Foot', fit: 'inline', seat: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 1, nuts: 1 } },
   // plates lying against a face: `primary` is the plate normal
-  { type: 'cross-bracket', labelZh: '十字连接板', labelEn: 'Cross Plate',   fit: 'face',   axes: { primary: 'z' }, fasteners: { bolts: 4, nuts: 4 } },
-  { type: 't-nut',         labelZh: '滑块螺母',   labelEn: 'T-Nut',         fit: 'face',   axes: { primary: 'y' }, fasteners: { bolts: 1, nuts: 0 } },
-  { type: 'hinge',         labelZh: '合页',       labelEn: 'Hinge',         fit: 'face',   axes: { primary: 'x', secondary: 'z' }, fasteners: { bolts: 4, nuts: 4 } },
-  { type: 'pivot',         labelZh: '轴承座',     labelEn: 'Pivot',         fit: 'face',   axes: { primary: 'y' }, fasteners: { bolts: 2, nuts: 2 } },
+  { type: 'cross-bracket', labelZh: '十字连接板', labelEn: 'Cross Plate',   fit: 'face',   seat: 'surface', axes: { primary: 'z' }, fasteners: { bolts: 4, nuts: 4 } },
+  { type: 't-nut',         labelZh: '滑块螺母',   labelEn: 'T-Nut',         fit: 'face',   seat: 'surface', axes: { primary: 'y' }, fasteners: { bolts: 1, nuts: 0 } },
+  { type: 'hinge',         labelZh: '合页',       labelEn: 'Hinge',         fit: 'face',   seat: 'surface', axes: { primary: 'x', secondary: 'z' }, fasteners: { bolts: 4, nuts: 4 } },
+  { type: 'pivot',         labelZh: '轴承座',     labelEn: 'Pivot',         fit: 'face',   seat: 'surface', axes: { primary: 'y' }, fasteners: { bolts: 2, nuts: 2 } },
 ]
 
 const BY_TYPE = new Map(CONNECTOR_CATALOG.map((c) => [c.type, c]))

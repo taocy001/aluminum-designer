@@ -178,11 +178,13 @@ const en = {
   rollQuarter: 'Turn 90°',
   autoConnect: 'Fit to every joint',
   autoConnectHint: 'Places the connector in hand on every joint that wants one and has not got one',
-  toastAutoConnected: (n: number, skipped: number, removed = 0) => [
+  toastAutoConnected: (n: number, skipped: number, removed = 0, unbolted = 0) => [
     `${n} placed`,
     skipped ? `${skipped} joints already had one` : '',
     removed ? `${removed} stranded ones cleared` : '',
+    unbolted ? `${unbolted} joints have nowhere to bolt it` : '',
   ].filter(Boolean).join(', '),
+  toastAutoUnbolted: (n: number) => `${n} joints want one, and none of them offers a line that is a slot on both members`,
   toastAutoNeedsSurface: 'This part goes on a flat face — which face is yours to pick',
   toastAutoNothingOpen: 'Every joint that wants this part already has one',
   specMismatch: 'Joint compatibility',
@@ -433,11 +435,13 @@ const zh: typeof en = {
   rollQuarter: '转 90°',
   autoConnect: '连接所有接头',
   autoConnectHint: '把手里的连接件放到所有需要、且尚未安装的接头上',
-  toastAutoConnected: (n: number, skipped: number, removed = 0) => [
+  toastAutoConnected: (n: number, skipped: number, removed = 0, unbolted = 0) => [
     `已放置 ${n} 个`,
     skipped ? `另有 ${skipped} 个接头已有连接件` : '',
     removed ? `清掉 ${removed} 个悬空的` : '',
+    unbolted ? `${unbolted} 处接头无处下螺栓，已跳过` : '',
   ].filter(Boolean).join('，'),
+  toastAutoUnbolted: (n: number) => `${n} 处接头需要它，但两根型材上找不到一条共同的槽线`,
   toastAutoNeedsSurface: '这类零件贴在型材表面上，贴哪个面需要你来指定',
   toastAutoNothingOpen: '需要这个零件的接头都已经装好了',
   specMismatch: '接头可装配性',
