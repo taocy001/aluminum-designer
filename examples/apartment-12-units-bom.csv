@@ -1,0 +1,105 @@
+﻿Category,Item,Spec,Cut length (mm),Quantity
+Profile,2020,2020,2000,12
+Profile,2020,2020,990,2
+Profile,2020,2020,900,6
+Profile,2020,2020,800,12
+Profile,2020,2020,780,6
+Profile,2020,2020,740,12
+Profile,2020,2020,710,8
+Profile,2020,2020,680,4
+Profile,2020,2020,640,6
+Profile,2020,2020,630,2
+Profile,2020,2020,600,1
+Profile,2020,2020,580,16
+Profile,2020,2020,550,6
+Profile,2020,2020,430,8
+Profile,2020,2020,420,8
+Profile,2020,2020,380,20
+Profile,2020,2020,360,28
+Profile,2020,2020,300,5
+Profile,2020,2020,280,9
+Profile,2040,2040,1180,4
+Profile,2040,2040,960,8
+Profile,2040,2040,950,4
+Profile,2040,2040,930,4
+Profile,2040,2040,910,4
+Profile,2040,2040,880,4
+Profile,2040,2040,810,8
+Profile,2040,2040,780,4
+Profile,2040,2040,760,6
+Profile,2040,2040,710,4
+Profile,2040,2040,680,4
+Profile,2040,2040,640,3
+Profile,2040,2040,630,16
+Profile,2040,2040,610,16
+Profile,2040,2040,580,18
+Profile,2040,2040,560,30
+Profile,2040,2040,480,4
+Profile,2040,2040,380,8
+Profile,2040,2040,300,16
+Profile,2040,2040,280,4
+Profile,4040,4040,2320,6
+Profile,4040,4040,2220,6
+Profile,4040,4040,2120,6
+Connector,"35 杯铰",,,59
+Connector,"内角码",20 系列,,568
+Connector,"抽屉滑轨 380mm",侧装一对,,3
+Connector,"抽屉滑轨 560mm",侧装一对,,2
+Connector,"抽屉滑轨 580mm",侧装一对,,2
+Connector,"抽屉滑轨 630mm",侧装一对,,2
+Connector,"调节脚",20 系列,,50
+Connector,"调节脚",40 系列,,18
+Fastener,"螺栓 M5×10",20,,1186
+Fastener,"螺栓 M8×16",40,,18
+Fastener,"T型螺母 M5",20,,1186
+Fastener,"T型螺母 M8",40,,18
+Board,"1125 × 124 mm","多层板 15mm",,6
+Board,"1125 × 330 mm","多层板 15mm",,3
+Board,"360 × 124 mm","多层板 15mm",,6
+Board,"425 × 154 mm","多层板 15mm",,4
+Board,"505 × 174 mm","多层板 15mm",,4
+Board,"510 × 505 mm","多层板 15mm",,2
+Board,"530 × 425 mm","多层板 15mm",,2
+Board,"540 × 174 mm","多层板 15mm",,4
+Board,"560 × 154 mm","多层板 15mm",,4
+Board,"610 × 304 mm","多层板 15mm",,4
+Board,"875 × 304 mm","多层板 15mm",,4
+Board,"875 × 580 mm","多层板 15mm",,2
+Board,"1210 × 180 mm","多层板 18mm",,3
+Board,"510 × 210 mm","多层板 18mm",,2
+Board,"590 × 230 mm","多层板 18mm",,2
+Board,"960 × 360 mm","多层板 18mm",,2
+Board,"1972 × 592 mm","密度板 18mm",,4
+Board,"2000 × 1220 mm","密度板 18mm",,2
+Board,"2150 × 590 mm","密度板 18mm",,2
+Board,"2200 × 1240 mm","密度板 18mm",,1
+Board,"2250 × 610 mm","密度板 18mm",,1
+Board,"2300 × 1610 mm","密度板 18mm",,1
+Board,"2350 × 990 mm","密度板 18mm",,2
+Board,"2400 × 2040 mm","密度板 18mm",,1
+Board,"430 × 380 mm","密度板 18mm",,1
+Board,"522 × 392 mm","密度板 18mm",,2
+Board,"560 × 560 mm","密度板 18mm",,2
+Board,"580 × 360 mm","密度板 18mm",,11
+Board,"580 × 380 mm","密度板 18mm",,3
+Board,"610 × 300 mm","密度板 18mm",,1
+Board,"610 × 580 mm","密度板 18mm",,3
+Board,"680 × 280 mm","密度板 18mm",,6
+Board,"680 × 300 mm","密度板 18mm",,1
+Board,"680 × 630 mm","密度板 18mm",,1
+Board,"752 × 292 mm","密度板 18mm",,1
+Board,"752 × 622 mm","密度板 18mm",,1
+Board,"752 × 692 mm","密度板 18mm",,1
+Board,"780 × 300 mm","密度板 18mm",,1
+Board,"792 × 752 mm","密度板 18mm",,1
+Board,"852 × 292 mm","密度板 18mm",,1
+Board,"852 × 622 mm","密度板 18mm",,1
+Board,"852 × 692 mm","密度板 18mm",,1
+Board,"852 × 792 mm","密度板 18mm",,1
+Board,"952 × 822 mm","密度板 18mm",,1
+Board,"960 × 560 mm","密度板 18mm",,3
+Suggested,"L型角码（按对接端推算）",,,50
+Suggested,"端盖 20 系列（按自由端推算）",20,,42
+Summary,Overall WxDxH,6720x16240x2400,,
+Summary,Total cut length (mm),,256360,
+Summary,Board area (m2),,52.26,
