@@ -24,6 +24,8 @@ interface ToolState {
   viewMode: boolean
   /** Visibility of the keyboard shortcut list. */
   helpOpen: boolean
+  /** Visibility of drawers and doors in the scene. */
+  showFittings: boolean
   /** what the next camera fit should frame: everything, or just what is selected */
   cameraFitScope: 'all' | 'selection'
   /** R was pressed and is waiting for an axis key; null when no turn is pending */
@@ -126,6 +128,7 @@ interface ToolState {
   setPendingRotate: (p: null | { degrees: number }) => void
   setViewMode: (on: boolean) => void
   toggleHelp: () => void
+  toggleFittings: () => void
   zoomBy: (step: number) => void
   zoomToPoint: (at: [number, number, number]) => void
   clearZoom: () => void
@@ -186,6 +189,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   cameraFitScope: 'all',
   viewMode: false,
   helpOpen: false,
+  showFittings: true,
   pendingRotate: null,
   zoomStep: 0,
   zoomAt: null,
@@ -256,6 +260,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
     ...(viewMode ? { held: null, activeConnectorType: null, isDrawing: false, selectMode: false, startPoint: null, currentPoint: null, pendingRotate: null } : {}),
   }),
   toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
+  toggleFittings: () => set((s) => ({ showFittings: !s.showFittings })),
   zoomBy: (step) => set((s) => ({ zoomStep: s.zoomStep + step })),
   clearZoom: () => set({ zoomStep: 0, zoomAt: null }),
   zoomToPoint: (at) => set({ zoomAt: at }),

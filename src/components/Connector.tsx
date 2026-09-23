@@ -241,6 +241,7 @@ const Connector: React.FC<ConnectorProps> = ({
       position={new THREE.Vector3(...position)}
       quaternion={new THREE.Quaternion(...quaternion).normalize()}
       scale={scale}
+      userData={{ connectorId: id }}
       raycast={preview ? () => null : undefined}
     >
       {renderParts()}
