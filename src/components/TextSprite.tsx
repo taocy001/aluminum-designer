@@ -8,13 +8,21 @@ interface Props {
   height?: number
   color?: string
   background?: string
+  /**
+   * Whether the label is hidden by what is in front of it.
+   *
+   * On by default: a drawing where every dimension floats over everything, including the
+   * dimensions of parts on the far side, is unreadable at the first glance that matters. A
+   * marker that has to be findable through the metal — a snap point, a fault — turns it off.
+   */
+  throughWalls?: boolean
 }
 
 /**
  * Camera-facing text label drawn into a 2D canvas texture.
  * No external fonts, no suspense — safe for offline / firewalled deployments.
  */
-const TextSprite: React.FC<Props> = ({ text, position, height = 26, color = '#e2e8f0', background = 'rgba(15,23,42,0.85)' }) => {
+const TextSprite: React.FC<Props> = ({ text, position, height = 26, color = '#e2e8f0', background = 'rgba(15,23,42,0.85)', throughWalls = false }) => {
   const { texture, aspect } = useMemo(() => {
     const scale = 4
     const fontPx = 16 * scale
@@ -49,7 +57,7 @@ const TextSprite: React.FC<Props> = ({ text, position, height = 26, color = '#e2
 
   return (
     <sprite position={position} scale={[height * aspect, height, 1]} renderOrder={10} raycast={() => null}>
-      <spriteMaterial map={texture} transparent depthTest={false} sizeAttenuation />
+      <spriteMaterial map={texture} transparent depthTest={!throughWalls} depthWrite={false} sizeAttenuation />
     </sprite>
   )
 }

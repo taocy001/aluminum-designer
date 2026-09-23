@@ -178,16 +178,24 @@ test.describe('Looking at it instead of building it', () => {
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().viewMode)).toBe(false)
   })
 
-  test('a press on a drawer pulls it out, and again puts it back', async ({ page }) => {
+  test('a press on a drawer pulls it out, and a press on it again puts it back', async ({ page }) => {
     await page.getByTestId('mode-toggle').click()
     await settle(page)
-    const f = (await fittings(page))[0]
-    const c = await page.evaluate((p) => (window as any).__aluframe.worldToClient(p[0], p[1], p[2]), f.position)
-    await page.mouse.click(c.x, c.y)
-    await page.waitForTimeout(300)
+    // where it is, each time: once it has slid out, where it used to be is an empty hole
+    const onIt = async () => page.evaluate(() => {
+      const w = (window as any).__aluframe
+      const c = w.fittingObb(w.store.getState().fittings[0]).center
+      return w.worldToClient(c.x, c.y, c.z)
+    })
+    const shut = await onIt()
+    await page.mouse.click(shut.x, shut.y)
+    await page.waitForTimeout(400)
     expect((await fittings(page))[0].open).toBe(1)
-    await page.mouse.click(c.x, c.y)
-    await page.waitForTimeout(300)
+
+    const out = await onIt()
+    expect(Math.hypot(out.x - shut.x, out.y - shut.y)).toBeGreaterThan(5)   // it really moved
+    await page.mouse.click(out.x, out.y)
+    await page.waitForTimeout(400)
     expect((await fittings(page))[0].open).toBe(0)
   })
 
