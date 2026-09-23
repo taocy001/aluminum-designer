@@ -1,8 +1,9 @@
+import { noteNext } from './opLog'
 import * as THREE from 'three'
 import { useStore, type ConnectorData, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
-import { connectorEntry, seriesOf, type ConnectorSeries } from './connectorCatalog'
+import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector } from './connectorFit'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
 import { flushFace } from './specCompat'
@@ -131,6 +132,7 @@ export function autoConnect(type: string): AutoConnectResult {
     useToolStore.getState().showToast(t.toastAutoNothingOpen, 'info')
     return { placed: 0, skipped, reason: 'nothing-open' }
   }
+  noteNext(`fit ${connectorLabel(type, useToolStore.getState().language)}`)
   if (stale.length > 0) store.removeConnectors(stale, made.length === 0)
   if (made.length > 0) store.addItems([], made, false)
   useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, stale.length), 'success')

@@ -15,6 +15,7 @@ import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
 import { addFittingFromSelection } from '../utils/fittingOps'
 import { downloadText, openProject, saveProject, savedFileName } from '../utils/projectFile'
+import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
@@ -31,7 +32,7 @@ export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[
 
 
 
-type SectionKey = 'components' | 'properties' | 'bom'
+type SectionKey = 'components' | 'properties' | 'bom' | 'log'
 
 /** Collapsible sidebar section with a sticky header */
 const Section: React.FC<{
@@ -119,6 +120,9 @@ const Sidebar: React.FC = () => {
   const [hingeType, setHingeType] = useState<HingeType>('cup')
   const [overlay, setOverlay] = useState<Overlay>('full')
   const [savedName, setSavedName] = useState<string | null>(savedFileName())
+  // the log lives outside React, so the panel listens for it rather than owning it
+  const [log, setLog] = useState(opLog())
+  useEffect(() => subscribeOpLog(() => setLog([...opLog()])), [])
   // the highest point of whatever is selected, so the work plane can be put on top of it
   const selectionTopY = useMemo(() => {
     const ids = new Set(selectedIds)
@@ -138,9 +142,9 @@ const Sidebar: React.FC = () => {
   const [open, setOpen] = useState<Record<SectionKey, boolean>>(() => {
     try {
       const saved = localStorage.getItem('aluminum-designer-sections')
-      if (saved) return { components: true, properties: true, bom: true, ...JSON.parse(saved) }
+      if (saved) return { components: true, properties: true, bom: true, log: false, ...JSON.parse(saved) }
     } catch { /* private mode or blocked storage */ }
-    return { components: true, properties: true, bom: true }
+    return { components: true, properties: true, bom: true, log: false }
   })
   useEffect(() => {
     if (selectedIdsRef.current.length === 0) return
@@ -831,6 +835,36 @@ const Sidebar: React.FC = () => {
             <Eraser size={14} /> {confirmClear ? t.clearConfirm : t.clear}
           </button>
         </div>
+        </div>
+      </Section>
+
+      {/* Undo remembers the last few states and forgets them when the page reloads, so
+          "why would this rail not move" had no answer the next morning. This has one. */}
+      <Section id="log" title={t.opLog} open={open.log} onToggle={() => toggle('log')}
+        badge={<span className="text-[9px] font-mono text-slate-600">{log.length || ''}</span>}>
+        <div className="space-y-2">
+          <div className="max-h-64 overflow-auto text-[10px] font-mono rounded-lg border border-white/5" data-testid="op-log">
+            {log.length === 0
+              ? <div className="px-2 py-3 text-slate-600 text-center">{t.opLogEmpty}</div>
+              : [...log].reverse().slice(0, 120).map((e, i) => (
+                <div key={log.length - i} className="flex gap-2 px-2 py-1 odd:bg-white/5 items-baseline">
+                  <span className="text-slate-600 shrink-0">{new Date(e.at).toTimeString().slice(0, 8)}</span>
+                  <span className="text-slate-300 shrink-0 font-bold">{e.label}</span>
+                  <span className="text-slate-500 truncate" title={e.detail}>{e.detail}</span>
+                </div>
+              ))}
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            <button data-testid="op-log-copy" title={t.hintOpLog} disabled={log.length === 0}
+              onClick={() => { navigator.clipboard?.writeText(opLogText()); showToast(t.toastOpLogCopied, 'success') }}
+              className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold text-slate-300">
+              {t.opLogCopy}
+            </button>
+            <button data-testid="op-log-clear" disabled={log.length === 0} onClick={() => clearOpLog()}
+              className="py-1.5 bg-slate-800 hover:bg-red-600/20 hover:text-red-400 disabled:opacity-40 rounded-lg text-[10px] font-bold text-slate-500">
+              {t.opLogClear}
+            </button>
+          </div>
         </div>
       </Section>
       </div>

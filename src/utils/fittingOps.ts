@@ -1,3 +1,4 @@
+import { noteNext } from './opLog'
 import * as THREE from 'three'
 import { useStore, type FittingData, type FittingKind, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
@@ -129,6 +130,7 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
   }
 
   if (made.length === 0) { useToolStore.getState().showToast(t.toastDrawerTooSmall, 'error'); return false }
+  noteNext(req.kind === 'drawer' ? `fit ${made.length} drawer${made.length > 1 ? 's' : ''}` : 'hang a door')
   store.addFittings(made, false)
   useToolStore.getState().showToast(
     req.kind === 'drawer' ? t.toastDrawerAdded(made.length, made.length) : t.toastDoorAdded(made.length), 'success')

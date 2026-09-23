@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { noteNext } from './opLog'
 import { useStore, type ConnectorData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
@@ -92,6 +93,7 @@ function sinkBelowFloor(profiles: ProfileData[], delta: [number, number, number]
  * so a group keeps its shape instead of individual members being clamped out of line.
  */
 export function nudgeSelected(delta: [number, number, number]): boolean {
+  noteNext('nudge')
   const profiles = selectedProfiles()
   const connectors = selectedConnectors()
   const panels = selectedPanels()
@@ -123,6 +125,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
 
 /** Duplicate the selection (profiles and connectors) and select the copies */
 export function duplicateSelected(): boolean {
+  noteNext('duplicate')
   const profiles = selectedProfiles(true)
   const connectors = selectedConnectors(true)
   const panels = selectedPanels(true)
@@ -175,6 +178,7 @@ function documentCentre(): THREE.Vector3 {
  * rather than having their quaternion flipped; the sections are symmetric, nothing is lost.
  */
 export function mirrorSelected(axis: RotAxis = 'x'): boolean {
+  noteNext(`mirror ${axis.toUpperCase()}`)
   const profiles = selectedProfiles(true)
   const connectors = selectedConnectors(true)
   const panels = selectedPanels(true)
@@ -224,6 +228,7 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
  * the same part five times and getting one of them wrong.
  */
 export function arraySelected(axis: RotAxis, count: number, spacing: number): boolean {
+  noteNext(`array ${axis.toUpperCase()} ×${count} @${spacing}`)
   const profiles = selectedProfiles(true)
   const connectors = selectedConnectors(true)
   const panels = selectedPanels(true)
@@ -307,6 +312,7 @@ export function pivotApplies(profiles: ProfileData[], connectors: ConnectorData[
  * Profiles and connectors alike — nothing is restricted to 90° steps or to the Y axis.
  */
 export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
+  noteNext(`turn ${axis.toUpperCase()} ${degrees}°`)
   const profiles = selectedProfiles()
   const connectors = selectedConnectors()
   const panels = selectedPanels()
