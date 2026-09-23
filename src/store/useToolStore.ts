@@ -35,6 +35,16 @@ interface ToolState {
   viewMode: boolean
   /** the full key list, opened from the corner rather than printed there */
   helpOpen: boolean
+  /**
+   * Whether drawers and doors are drawn.
+   *
+   * A door is a square metre of board across the front of a cabinet, so while it is there the
+   * frame behind it cannot be seen and therefore cannot be clicked — which is correct, and no
+   * use at all when the frame is what you are working on. Putting them away is the answer
+   * every drawing tool reaches for, rather than a picking rule that lets you click through
+   * what you can see.
+   */
+  showFittings: boolean
   /** what the next camera fit should frame: everything, or just what is selected */
   cameraFitScope: 'all' | 'selection'
   /** R was pressed and is waiting for an axis key; null when no turn is pending */
@@ -142,6 +152,7 @@ interface ToolState {
   setPendingRotate: (p: null | { degrees: number }) => void
   setViewMode: (on: boolean) => void
   toggleHelp: () => void
+  toggleFittings: () => void
   zoomBy: (step: number) => void
   zoomToPoint: (at: [number, number, number]) => void
   clearZoom: () => void
@@ -202,6 +213,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   cameraFitScope: 'all',
   viewMode: false,
   helpOpen: false,
+  showFittings: true,
   pendingRotate: null,
   zoomStep: 0,
   zoomAt: null,
@@ -272,6 +284,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
     ...(viewMode ? { held: null, activeConnectorType: null, isDrawing: false, selectMode: false, startPoint: null, currentPoint: null, pendingRotate: null } : {}),
   }),
   toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
+  toggleFittings: () => set((s) => ({ showFittings: !s.showFittings })),
   zoomBy: (step) => set((s) => ({ zoomStep: s.zoomStep + step })),
   clearZoom: () => set({ zoomStep: 0, zoomAt: null }),
   zoomToPoint: (at) => set({ zoomAt: at }),

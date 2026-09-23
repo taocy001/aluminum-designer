@@ -127,3 +127,114 @@ test.describe('Touch gestures', () => {
     await expect(page.getByTestId('quick-menu')).toHaveCount(0)
   })
 })
+
+/**
+ * A screen-space picker has to be generous — a member is a couple of pixels wide at any
+ * useful zoom — but being generous about near misses must not mean contradicting a direct
+ * hit. What is drawn at a pixel is what clicking there selects.
+ */
+test.describe('What you can see is what you click', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page)
+    await page.evaluate(() => {
+      const up = [-0.7071067811865475, 0, 0, 0.7071067811865476]
+      ;(window as any).__aluframe.store.getState().loadDocument({
+        profiles: [
+          { id: 'u1', spec: '2020', length: 800, position: [0, 0, 0], quaternion: up, miterCuts: [], holes: [] },
+          { id: 'u2', spec: '2020', length: 800, position: [600, 0, 0], quaternion: up, miterCuts: [], holes: [] },
+        ],
+        connectors: [],
+        panels: [{ id: 'shelf', width: 560, height: 560, thickness: 18, position: [300, 400, 300],
+          quaternion: [0.7071067811865476, 0, 0, 0.7071067811865476], material: 'mdf' }],
+        fittings: [{ id: 'door', kind: 'door', position: [300, 400, 0], quaternion: [0, 0, 0, 1],
+          width: 580, height: 760, depth: 600, material: 'mdf', open: 0,
+          hinge: 'left', hingeType: 'cup', overlay: 'full', swing: 110 }],
+      })
+    })
+    await settle(page)
+    await setView(page, [800, 900, 1500], [300, 400, 150])
+  })
+
+  const pickKinds = (page: import('@playwright/test').Page, p: number[]) => page.evaluate((pt) => {
+    const w = (window as any).__aluframe
+    const c = w.worldToClient(pt[0], pt[1], pt[2])
+    return w.pickAt(c.x, c.y).map((h: { kind: string }) => h.kind)
+  }, p)
+
+  test('the door in front wins where the door is drawn', async ({ page }) => {
+    expect((await pickKinds(page, [300, 400, 0]))[0]).toBe('fitting')
+  })
+
+  test('putting the doors away gets you at the frame behind them', async ({ page }) => {
+    await page.getByTestId('fittings-toggle').click()
+    await settle(page)
+    await page.waitForTimeout(250)
+    expect((await pickKinds(page, [300, 400, 300]))[0]).toBe('panel')
+  })
+
+  test('a door put away is not clickable either', async ({ page }) => {
+    await page.getByTestId('fittings-toggle').click()
+    await settle(page)
+    await page.waitForTimeout(250)
+    expect(await pickKinds(page, [300, 400, 0])).not.toContain('fitting')
+  })
+
+  test('and it comes back', async ({ page }) => {
+    await page.getByTestId('fittings-toggle').click()
+    await settle(page)
+    await page.getByTestId('fittings-toggle').click()
+    await settle(page)
+    await page.waitForTimeout(250)
+    expect((await pickKinds(page, [300, 400, 0]))[0]).toBe('fitting')
+  })
+})
+
+/** One arrow press is a whole edit; half a typed number is not a number */
+test.describe('Nudging a number', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page)
+    await page.evaluate(() => (window as any).__aluframe.store.getState().loadDocument({
+      profiles: [], connectors: [],
+      panels: [{ id: 'b', width: 500, height: 300, thickness: 18, position: [0, 400, 0], quaternion: [0, 0, 0, 1], material: 'mdf' }],
+      fittings: [],
+    }))
+    await settle(page)
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItem('b', false))
+    await settle(page)
+  })
+
+  const width = (page: import('@playwright/test').Page) =>
+    page.evaluate(() => (window as any).__aluframe.store.getState().panels[0].width)
+
+  test('an arrow key changes the drawing without waiting for Enter', async ({ page }) => {
+    const f = page.getByTestId('panel-props').locator('input[type=number]').first()
+    await f.click()
+    await f.press('ArrowUp')
+    await settle(page)
+    await page.waitForTimeout(150)
+    expect(await width(page)).toBe(510)
+  })
+
+  test('shift takes bigger steps', async ({ page }) => {
+    const f = page.getByTestId('panel-props').locator('input[type=number]').first()
+    await f.click()
+    await f.press('Shift+ArrowUp')
+    await settle(page)
+    await page.waitForTimeout(150)
+    expect(await width(page)).toBe(600)
+  })
+
+  test('half a typed number is not applied', async ({ page }) => {
+    const f = page.getByTestId('panel-props').locator('input[type=number]').first()
+    await f.click()
+    await f.fill('')
+    await f.type('4')
+    await page.waitForTimeout(250)
+    expect(await width(page)).toBe(500)
+    await f.type('50')
+    await f.press('Enter')
+    await settle(page)
+    await page.waitForTimeout(150)
+    expect(await width(page)).toBe(450)
+  })
+})

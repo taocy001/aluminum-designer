@@ -9,7 +9,7 @@ import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle } from 'lucide-react'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle, DoorOpen, DoorClosed } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -26,7 +26,7 @@ function App() {
     startFrameSelect, updateFrameSelect, endFrameSelect,
     toasts, showToast, dragConflict, hoverPartId, snapGuides, gizmoHover,
     dragMoved, resize, hoverCandidates, workPlaneY,
-    pendingRotate, setPendingRotate, viewMode, setViewMode, helpOpen, toggleHelp,
+    pendingRotate, setPendingRotate, viewMode, setViewMode, helpOpen, toggleHelp, showFittings, toggleFittings,
   } = useToolStore()
   const t = translations[language]
 
@@ -424,6 +424,10 @@ function App() {
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* One switch for every measurement on the drawing: the cut length on each member
                 and the overall size around it are the same question asked at two scales. */}
+            <button onClick={toggleFittings} data-testid="fittings-toggle" title={t.hintShowFittings}
+              aria-label={t.showFittings} className={iconBtn(!showFittings, 'bg-slate-600/40 text-slate-100')}>
+              {showFittings ? <DoorOpen size={14} /> : <DoorClosed size={14} />}
+            </button>
             <button onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labelsHint}
               aria-label={t.labels} className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
               <Ruler size={14} />

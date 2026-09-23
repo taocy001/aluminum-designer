@@ -65,7 +65,15 @@ const Section: React.FC<{
   )
 }
 
-/** Numeric field that commits on Enter / blur and re-syncs from props otherwise */
+/**
+ * A number you can nudge and watch.
+ *
+ * Typing is committed on Enter or on leaving the field, because half a number is not a
+ * number — "1" on the way to "120" should not make the part one millimetre long. The arrow
+ * keys are different: each press is a whole edit, so each one goes straight to the drawing.
+ * They are handled here rather than left to the browser's own stepper, which would arrive as
+ * an ordinary change and be indistinguishable from typing.
+ */
 /** the same red / green / blue the gizmo arrows use, so a field and an axis read as one thing */
 const AXIS_COLOR: Record<string, string> = { X: '#ef4444', Y: '#22c55e', Z: '#3b82f6' }
 
@@ -88,7 +96,19 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
         onFocus={() => setFocused(true)}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => { setFocused(false); commit() }}
-        onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur() } e.stopPropagation() }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { (e.target as HTMLInputElement).blur() }
+          else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            // one press, one edit: straight to the drawing, no Enter needed
+            e.preventDefault()
+            const by = (e.key === 'ArrowUp' ? 1 : -1) * step * (e.shiftKey ? 10 : 1)
+            const from = isFinite(parseFloat(text)) ? parseFloat(text) : value
+            const next = Math.round((from + by) * 100) / 100
+            setText(String(next))
+            onCommit(next)
+          }
+          e.stopPropagation()
+        }}
         className="w-full bg-transparent py-1.5 text-xs font-mono outline-none"
       />
     </label>

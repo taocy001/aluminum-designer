@@ -4,6 +4,7 @@ import { useThree } from '@react-three/fiber'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { pickAtScreen, pickCandidatesAtScreen, type ScreenPick } from '../utils/screenPick'
+import { frontmostId, promoteFrontmost } from '../utils/frontmost'
 import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { endGrabRadius } from './ResizeHandles'
 import { gizmoState, gizmoHandleAt } from './TransformGizmo'
@@ -35,7 +36,7 @@ const partById = (store: StoreLike, id: string) =>
  * Clearing the selection happens on release, so orbiting the camera keeps it.
  */
 const PointerRouter: React.FC = () => {
-  const { gl, camera, size, controls } = useThree()
+  const { gl, camera, size, controls, scene } = useThree()
   // kept in refs, not in the effect closure: R3F recreates that closure between pointer events
   const pendingClear = useRef<{ x: number; y: number; keepSelection: boolean } | null>(null)
   const pendingSelect = useRef<{ x: number; y: number; id: string; multi: boolean } | null>(null)
@@ -121,10 +122,19 @@ const PointerRouter: React.FC = () => {
       return hit.point.distanceTo(start) < zone || hit.point.distanceTo(end) < zone
     }
 
+    /** Everything under the pointer, with whatever is actually drawn there put first */
+    const candidatesFor = (cursor: THREE.Vector2, rect: DOMRect) => {
+      const ray = rayOf(cursor, rect)
+      const { profiles, connectors, panels, fittings } = useStore.getState()
+      // put away is put away: a hidden door is not something you can click either
+      const visible = useToolStore.getState().showFittings ? fittings : []
+      const list = pickCandidatesAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
+        profiles, connectors, panels, visible)
+      return promoteFrontmost(list, frontmostId(scene, ray, camera))
+    }
     const pickFor = (e: PointerEvent) => {
       const { cursor, rect } = cursorOf(e)
-      const { profiles, connectors, panels, fittings } = useStore.getState()
-      return pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height }, profiles, connectors, panels, fittings)
+      return candidatesFor(cursor, rect)[0] ?? null
     }
 
     const onPointerMove = (e: PointerEvent) => {
@@ -165,8 +175,7 @@ const PointerRouter: React.FC = () => {
       // rather than at a part; otherwise the hover works the same whatever is in hand.
       const busy = ts.isDrawing || ts.held === 'connector'
       const { cursor: hc, rect: hr } = cursorOf(e)
-      const list = busy ? [] : pickCandidatesAtScreen(hc, rayOf(hc, hr), camera,
-        { width: hr.width, height: hr.height }, useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels, useStore.getState().fittings)
+      const list = busy ? [] : candidatesFor(hc, hr)
       // a real move resets the cycle; jitter under a still hand must not
       const moved = Math.hypot(e.clientX - candidates.current.x, e.clientY - candidates.current.y) > 3
       candidates.current = {
@@ -288,10 +297,7 @@ const PointerRouter: React.FC = () => {
       if (ts.viewMode) {
         // while looking, the press means the nearest drawer or door, whatever else is nearer
         const { cursor, rect } = cursorOf(e)
-        const store = useStore.getState()
-        const hit = pickCandidatesAtScreen(cursor, rayOf(cursor, rect), camera,
-          { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels, store.fittings)
-          .find((p) => p.kind === 'fitting')
+        const hit = candidatesFor(cursor, rect).find((p) => p.kind === 'fitting')
         if (hit) {
           const f = useStore.getState().fittings.find((q) => q.id === hit.id)
           if (f) { setFittingOpen(f.id, (f.open ?? 0) > 0.5 ? 0 : 1); pendingClear.current = null }
@@ -350,8 +356,7 @@ const PointerRouter: React.FC = () => {
       // the one the hover is showing, which is the one under the highlight.
       const cyc = candidates.current
       const stepped = cyc.index > 0 && Math.hypot(e.clientX - cyc.x, e.clientY - cyc.y) <= 3 ? cyc.list[cyc.index] : null
-      const pickHere = stepped ?? pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height },
-        useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels, useStore.getState().fittings)
+      const pickHere = stepped ?? candidatesFor(downCursor, downRect)[0] ?? null
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
       const multi = e.ctrlKey || e.metaKey
       const pick = pickHere   // already resolved above; picking twice per press is wasted work

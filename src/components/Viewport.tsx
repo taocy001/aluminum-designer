@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { pickCandidatesAtScreen } from '../utils/screenPick'
 import { connectorSeatAt, seatFor } from '../utils/bracketSeat'
+import { frontmostId, promoteFrontmost } from '../utils/frontmost'
 import { fittingObb, leafObb } from '../utils/fittingGeometry'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
@@ -252,6 +253,25 @@ const DevHook: React.FC = () => {
     w.__aluframe.leafObb = leafObb
     w.__aluframe.fittingObb = fittingObb
     w.__aluframe.connectorSeatAt = connectorSeatAt
+    // what the renderer actually draws at a pixel, by raycasting the real meshes: the
+    // yardstick the screen-space picker is measured against
+    w.__aluframe.frontmostAt = (clientX: number, clientY: number) => {
+      camera.updateMatrixWorld()
+      const rect = gl.domElement.getBoundingClientRect()
+      const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1)
+      const rc = new THREE.Raycaster()
+      rc.setFromCamera(ndc, camera)
+      for (const h of rc.intersectObjects(scene.children, true)) {
+        let o: THREE.Object3D | null = h.object
+        while (o) {
+          const d = o.userData as Record<string, string>
+          const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId
+          if (id) return { id, dist: h.distance }
+          o = o.parent
+        }
+      }
+      return null
+    }
     w.__aluframe.pickAt = (clientX: number, clientY: number) => {
       camera.updateMatrixWorld()
       const rect = gl.domElement.getBoundingClientRect()
@@ -260,8 +280,10 @@ const DevHook: React.FC = () => {
       const rc = new THREE.Raycaster()
       rc.setFromCamera(ndc, camera)
       const st = useStore.getState()
-      return pickCandidatesAtScreen(cursor, rc.ray, camera, { width: rect.width, height: rect.height },
-        st.profiles, st.connectors, st.panels, st.fittings).map((p) => ({ kind: p.kind, id: p.id }))
+      const visible = useToolStore.getState().showFittings ? st.fittings : []
+      const list = pickCandidatesAtScreen(cursor, rc.ray, camera, { width: rect.width, height: rect.height },
+        st.profiles, st.connectors, st.panels, visible)
+      return promoteFrontmost(list, frontmostId(scene, rc.ray, camera)).map((p) => ({ kind: p.kind, id: p.id }))
     }
     w.__aluframe.countByName = (name: string) => {
       let n = 0
@@ -407,7 +429,7 @@ const SnapGuides: React.FC = () => {
 
 const Viewport: React.FC = () => {
   const { profiles, connectors, panels, fittings, selectedIds } = useStore()
-  const { isDragging, showDimensionLabels, selectMode } = useToolStore()
+  const { isDragging, showDimensionLabels, selectMode, showFittings } = useToolStore()
   const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles, connectors), [profiles, connectors])
 
   const orbitEnabled = !isDragging && !selectMode
@@ -443,7 +465,7 @@ const Viewport: React.FC = () => {
         <Panel key={b.id} {...b} isSelected={selectedIds.includes(b.id)} />
       ))}
 
-      {fittings.map((f) => (
+      {showFittings && fittings.map((f) => (
         <Fitting key={f.id} {...f} isSelected={selectedIds.includes(f.id)} />
       ))}
 
