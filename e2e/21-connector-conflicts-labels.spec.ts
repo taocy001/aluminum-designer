@@ -218,11 +218,23 @@ test.describe('Clicking a part where it actually is', () => {
     expect(await pickAt(page, [300, 400, 0])).toContain('door')
   })
 
-  test('a shelf can be clicked from any angle it can be seen from', async ({ page }) => {
+  test('a shelf can be clicked wherever it is drawn, from any angle', async ({ page }) => {
+    // The promise is not "the shelf always wins" — a closed door in front of it should win,
+    // and does. It is that wherever the renderer draws the shelf, clicking there selects it.
     for (const dy of [900, 400, 60, -300]) {
       await setView(page, [800, 400 + dy, 1400], [300, 400, 300])
       await page.waitForTimeout(250)
-      expect((await pickAt(page, [300, 400, 300]))[0]).toBe('shelf')
+      const found = await page.evaluate(() => {
+        const w = (window as any).__aluframe
+        const r = document.querySelector('canvas')!.getBoundingClientRect()
+        for (let y = r.top + 20; y < r.bottom - 20; y += 11) {
+          for (let x = r.left + 20; x < r.right - 20; x += 11) {
+            if (w.frontmostAt(x, y)?.id === 'shelf') return w.pickAt(x, y)[0]?.id ?? null
+          }
+        }
+        return 'not drawn'
+      })
+      expect(found).toBe('shelf')
     }
   })
 

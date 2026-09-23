@@ -167,10 +167,10 @@ interface State {
   commitProfileEdit: (id: string, updates: Partial<ProfileData>) => void
   commitProfilesEdit: (updates: Array<{ id: string; updates: Partial<ProfileData> }>) => void
   /** Move/rotate profiles and connectors together as one undoable step */
-  commitTransform: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>; panels?: Array<{ id: string; updates: Partial<PanelData> }> }) => void
+  commitTransform: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>; panels?: Array<{ id: string; updates: Partial<PanelData> }>; fittings?: Array<{ id: string; updates: Partial<FittingData> }> }) => void
   updateConnector: (id: string, updates: Partial<ConnectorData>) => void
   /** Live move of several parts at once (no history) — one store write per frame */
-  updateParts: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>; panels?: Array<{ id: string; updates: Partial<PanelData> }> }) => void
+  updateParts: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>; panels?: Array<{ id: string; updates: Partial<PanelData> }>; fittings?: Array<{ id: string; updates: Partial<FittingData> }> }) => void
   snapshotHistory: () => void
   undo: () => void
   redo: () => void
@@ -370,29 +370,33 @@ export const useStore = create<State>()(
         }
       }),
 
-      commitTransform: ({ profiles = [], connectors = [], panels = [] }) => set((state) => {
-        if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return {}
+      commitTransform: ({ profiles = [], connectors = [], panels = [], fittings = [] }) => set((state) => {
+        if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return {}
         const pMap = new Map(profiles.map((u) => [u.id, u.updates]))
         const cMap = new Map(connectors.map((u) => [u.id, u.updates]))
         const bMap = new Map(panels.map((u) => [u.id, u.updates]))
+        const fMap = new Map(fittings.map((u) => [u.id, u.updates]))
         return {
           past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p),
           connectors: state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c),
           panels: state.panels.map((b) => bMap.has(b.id) ? { ...b, ...bMap.get(b.id)! } : b),
+          fittings: state.fittings.map((f) => fMap.has(f.id) ? { ...f, ...fMap.get(f.id)! } : f),
         }
       }),
 
-      updateParts: ({ profiles = [], connectors = [], panels = [] }) => set((state) => {
-        if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return {}
+      updateParts: ({ profiles = [], connectors = [], panels = [], fittings = [] }) => set((state) => {
+        if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return {}
         const pMap = new Map(profiles.map((u) => [u.id, u.updates]))
         const cMap = new Map(connectors.map((u) => [u.id, u.updates]))
         const bMap = new Map(panels.map((u) => [u.id, u.updates]))
+        const fMap = new Map(fittings.map((u) => [u.id, u.updates]))
         return {
           profiles: pMap.size ? state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p) : state.profiles,
           connectors: cMap.size ? state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c) : state.connectors,
           panels: bMap.size ? state.panels.map((b) => bMap.has(b.id) ? { ...b, ...bMap.get(b.id)! } : b) : state.panels,
+          fittings: fMap.size ? state.fittings.map((f) => fMap.has(f.id) ? { ...f, ...fMap.get(f.id)! } : f) : state.fittings,
         }
       }),
 

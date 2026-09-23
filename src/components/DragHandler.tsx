@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { useToolStore } from '../store/useToolStore'
 import { noteNext } from '../utils/opLog'
-import { useStore, type ConnectorData, type PanelData, type ProfileData } from '../store/useStore'
+import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData } from '../store/useStore'
 import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { closestParamLineToRay } from '../utils/pickUtils'
 import { computeDragSnap, alignThreshold, ALIGN_PX } from '../utils/dragSnap'
@@ -266,11 +266,21 @@ const DragHandler: React.FC = () => {
         panelUpdates.push({ id: bid, updates: { position: [np.x, np.y, np.z] } })
       }
 
+      // A drawer or a door moves with the hand like anything else
+      const fittingUpdates: Array<{ id: string; updates: Partial<FittingData> }> = []
+      for (const fid of dragIds) {
+        const f = store.fittings.find((q) => q.id === fid)
+        if (!f) continue
+        const origin = new THREE.Vector3(...(dragGroupOrigins[fid] ?? f.position))
+        const np = origin.clone().add(groupDelta)
+        fittingUpdates.push({ id: fid, updates: { position: [np.x, np.y, np.z] } })
+      }
+
       // Interference is allowed while moving: conflicting members turn red instead of the
       // drag silently sticking. Only the floor rule still clamps (handled above).
       // one write per frame: separate sets would re-render the scene N times and show
       // a frame where the connectors have moved but the members have not
-      store.updateParts({ profiles: updates, connectors: connectorUpdates, panels: panelUpdates })
+      store.updateParts({ profiles: updates, connectors: connectorUpdates, panels: panelUpdates, fittings: fittingUpdates })
       ts.setDragConflict(movingPartsConflict(useStore.getState().profiles, new Set(updates.map((u) => u.id))))
     }
 

@@ -224,17 +224,71 @@ test.describe('Nudging a number', () => {
     expect(await width(page)).toBe(600)
   })
 
-  test('half a typed number is not applied', async ({ page }) => {
+  test('a size follows the typing, so 560 can be told from 650 before committing to one', async ({ page }) => {
     const f = page.getByTestId('panel-props').locator('input[type=number]').first()
     await f.click()
     await f.fill('')
-    await f.type('4')
-    await page.waitForTimeout(250)
-    expect(await width(page)).toBe(500)
+    await f.type('7')
+    await page.waitForTimeout(200)
+    expect(await width(page)).toBe(7)
     await f.type('50')
+    await page.waitForTimeout(200)
+    expect(await width(page)).toBe(750)
+  })
+
+  test('...and the whole edit is one step to undo', async ({ page }) => {
+    const before = await page.evaluate(() => (window as any).__aluframe.store.getState().past.length)
+    const f = page.getByTestId('panel-props').locator('input[type=number]').first()
+    await f.click()
+    await f.fill('')
+    await f.type('750')
     await f.press('Enter')
     await settle(page)
+    await page.waitForTimeout(200)
+    expect(await page.evaluate(() => (window as any).__aluframe.store.getState().past.length)).toBe(before + 1)
+    await page.keyboard.press('Control+z')
+    await settle(page)
+    await page.waitForTimeout(200)
+    expect(await width(page)).toBe(500)
+  })
+})
+
+
+/** A drawer is a part like any other and moves like one */
+test.describe('Moving a drawer', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page)
+    await page.evaluate(() => (window as any).__aluframe.store.getState().loadDocument({
+      profiles: [], connectors: [], panels: [],
+      fittings: [{ id: 'dr', kind: 'drawer', position: [300, 300, 0], quaternion: [0, 0, 0, 1],
+        width: 560, height: 250, depth: 560, material: 'ply', open: 0 }],
+    }))
+    await settle(page)
+    await setView(page, [1100, 900, 1600], [300, 300, 0])
+  })
+
+  test('it can be dragged', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItem('dr', false))
+    await settle(page)
+    const before = await page.evaluate(() => (window as any).__aluframe.store.getState().fittings[0].position)
+    const c = await page.evaluate((p) => (window as any).__aluframe.worldToClient(p[0], p[1], p[2]), before)
+    await page.mouse.move(c.x, c.y)
+    await page.mouse.down()
+    for (let i = 1; i <= 10; i++) { await page.mouse.move(c.x + i * 10, c.y + i * 3); await page.waitForTimeout(16) }
+    await page.mouse.up()
+    await page.waitForTimeout(250)
+    const after = await page.evaluate(() => (window as any).__aluframe.store.getState().fittings[0].position)
+    expect(after).not.toEqual(before)
+  })
+
+  test('the arrow keys nudge it too', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItem('dr', false))
+    await settle(page)
+    const before = await page.evaluate(() => (window as any).__aluframe.store.getState().fittings[0].position[0])
+    await page.mouse.move(700, 500)
+    await page.keyboard.press('ArrowRight')
+    await settle(page)
     await page.waitForTimeout(150)
-    expect(await width(page)).toBe(450)
+    expect(await page.evaluate(() => (window as any).__aluframe.store.getState().fittings[0].position[0])).toBe(before + 5)
   })
 })

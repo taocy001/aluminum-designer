@@ -20,7 +20,7 @@ import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { auditBrackets } from '../utils/bracketSeat'
-import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
+import { arraySelected, beginLiveEdit, directionLabel, duplicateSelected, flipProfile, livePart, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 /** "40 side faces ↑" and the like, so the roll is something you can read off the panel */
 function facingLabel(p: ProfileData): string {
@@ -77,14 +77,32 @@ const Section: React.FC<{
 /** the same red / green / blue the gizmo arrows use, so a field and an axis read as one thing */
 const AXIS_COLOR: Record<string, string> = { X: '#ef4444', Y: '#22c55e', Z: '#3b82f6' }
 
-const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: number; className?: string; label?: string }> = ({ value, onCommit, step = 5, className = '', label }) => {
+const NumField: React.FC<{
+  value: number
+  onCommit: (v: number) => void
+  /** shown straight away as it is typed, without an undo entry of its own */
+  onLive?: (v: number) => void
+  step?: number
+  className?: string
+  label?: string
+}> = ({ value, onCommit, onLive, step = 5, className = '', label }) => {
   const [text, setText] = useState(String(Math.round(value * 100) / 100))
   const [focused, setFocused] = useState(false)
+  /** one history entry covers the whole edit, taken the first time it shows anything */
+  const started = useRef(false)
+  const live = (v: number) => {
+    if (!onLive) return
+    if (!started.current) { started.current = true; beginLiveEdit() }
+    onLive(v)
+  }
   useEffect(() => { if (!focused) setText(String(Math.round(value * 100) / 100)) }, [value, focused])
   const commit = () => {
     const v = parseFloat(text)
+    // With a live preview the store already holds the new value, so there is nothing left
+    // for `onCommit` to change — the snapshot taken when the preview started is what makes
+    // it undoable. Without a preview, this is the whole edit.
     if (isFinite(v) && Math.abs(v - value) > 1e-6) onCommit(v)
-    else setText(String(Math.round(value * 100) / 100))
+    else if (!isFinite(v)) setText(String(Math.round(value * 100) / 100))
   }
   return (
     <label className={`flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500 ${className}`}>
@@ -94,8 +112,12 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
       <input
         type="number" step={step} value={text}
         onFocus={() => setFocused(true)}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => { setFocused(false); commit() }}
+        onChange={(e) => {
+          setText(e.target.value)
+          const v = parseFloat(e.target.value)
+          if (isFinite(v)) live(v)
+        }}
+        onBlur={() => { setFocused(false); commit(); started.current = false }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') { (e.target as HTMLInputElement).blur() }
           else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -106,6 +128,7 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
             const next = Math.round((from + by) * 100) / 100
             setText(String(next))
             onCommit(next)
+            started.current = false
           }
           e.stopPropagation()
         }}
@@ -640,10 +663,13 @@ const Sidebar: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-1">
                   <NumField label="W" value={selectedFitting.width} step={10}
+                    onLive={(v) => v >= 60 && livePart(selectedFitting.id, { width: v })}
                     onCommit={(v) => updateFitting(selectedFitting.id, { width: Math.max(60, v) })} />
                   <NumField label="H" value={selectedFitting.height} step={10}
+                    onLive={(v) => v >= 60 && livePart(selectedFitting.id, { height: v })}
                     onCommit={(v) => updateFitting(selectedFitting.id, { height: Math.max(60, v) })} />
                   <NumField label="D" value={selectedFitting.depth} step={10}
+                    onLive={(v) => v >= 60 && livePart(selectedFitting.id, { depth: v })}
                     onCommit={(v) => updateFitting(selectedFitting.id, { depth: Math.max(60, v) })} />
                 </div>
                 {selectedFitting.kind === 'door' && (
@@ -671,9 +697,15 @@ const Sidebar: React.FC = () => {
             {selectedPanel && (
               <div className="space-y-2" data-testid="panel-props">
                 <div className="grid grid-cols-3 gap-1">
-                  <NumField label="W" value={selectedPanel.width} step={10} onCommit={(v) => setPanelSize(selectedPanel.id, { width: v })} />
-                  <NumField label="H" value={selectedPanel.height} step={10} onCommit={(v) => setPanelSize(selectedPanel.id, { height: v })} />
-                  <NumField label="T" value={selectedPanel.thickness} step={1} onCommit={(v) => setPanelSize(selectedPanel.id, { thickness: v })} />
+                  <NumField label="W" value={selectedPanel.width} step={10}
+                    onLive={(v) => v > 0 && livePart(selectedPanel.id, { width: v })}
+                    onCommit={(v) => setPanelSize(selectedPanel.id, { width: v })} />
+                  <NumField label="H" value={selectedPanel.height} step={10}
+                    onLive={(v) => v > 0 && livePart(selectedPanel.id, { height: v })}
+                    onCommit={(v) => setPanelSize(selectedPanel.id, { height: v })} />
+                  <NumField label="T" value={selectedPanel.thickness} step={1}
+                    onLive={(v) => v > 0 && livePart(selectedPanel.id, { thickness: v })}
+                    onCommit={(v) => setPanelSize(selectedPanel.id, { thickness: v })} />
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.panelMaterial}</span>

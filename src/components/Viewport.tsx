@@ -246,6 +246,7 @@ const DevHook: React.FC = () => {
     const w = window as any
     w.__aluframe = w.__aluframe ?? {}
     w.__aluframe.camera = camera
+    w.__aluframe.sceneRoot = scene
     w.__aluframe.controls = controls
     // what the pointer would find at a point on the canvas, for tests and for debugging
     w.__aluframe.THREE = THREE

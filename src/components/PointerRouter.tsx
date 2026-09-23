@@ -28,6 +28,9 @@ const partById = (store: StoreLike, id: string) =>
   store.profiles.find((p) => p.id === id)
   ?? store.connectors.find((c) => c.id === id)
   ?? store.panels.find((b) => b.id === id)
+  // A drawer or a door is a part like any other and moves like one. Leaving it out of this
+  // lookup meant the drag found nothing to move and gave up without a word.
+  ?? store.fittings.find((f) => f.id === id)
 
 /**
  * Central pointer handling for navigate mode: hover highlight, selection and drag start.
@@ -386,9 +389,7 @@ const PointerRouter: React.FC = () => {
       if (multi) { store.selectItem(pick.id, true); return }
       if (!alreadySelected) store.selectItem(pick.id, false)
 
-      const item = pick.kind === 'connector' ? store.connectors.find((c) => c.id === pick.id)
-        : pick.kind === 'panel' ? store.panels.find((b) => b.id === pick.id)
-        : store.profiles.find((p) => p.id === pick.id)
+      const item = partById(store, pick.id)
       if (!item) return
 
       // Pressing an end face of a selected member stretches it instead of moving it
