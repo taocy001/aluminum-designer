@@ -12,6 +12,16 @@ const CONNECTOR_RADIUS_PX = 20
  * Bias them forward, otherwise the member always wins and they can never be picked.
  */
 const CONNECTOR_DEPTH_BIAS = 60
+/** how much being under the pointer beats being nearer the camera, for parts a few pixels across */
+const CONNECTOR_AIM_WEIGHT = 40
+/**
+ * A door is a square metre of board across the front of a cabinet, and everything behind it
+ * was unselectable while it won on depth. It is also the easiest thing on the drawing to hit
+ * somewhere else, so while building it is the last resort: if anything else is under the
+ * pointer, that is what was meant. While looking, the caller asks for the nearest fitting and
+ * this ordering does not apply.
+ */
+const FITTING_DEPTH_PENALTY = 1e6
 /** anything nearer than this to the camera plane cannot be projected meaningfully */
 const NEAR_EPS = 1
 
@@ -166,11 +176,10 @@ export function pickCandidatesAtScreen(
     }
     if (corners.some((v) => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
     if (!insideQuad(hull2d(corners.map((v) => toScreen(v, camera, size))), cursor)) continue
-    // No bias. A door covers the whole front of a cabinet, and one that always won the
-    // press meant nothing behind it — a shelf, a rail, the back — could ever be selected.
-    // While looking, the press goes to the nearest fitting whatever else is in front of it,
-    // which is a decision for the caller rather than a thumb on these scales.
-    found.push({ score: centre.distanceTo(camPos), pick: { kind: 'fitting', id: f.id, point: centre, depth: centre.distanceTo(camPos) } })
+    found.push({
+      score: centre.distanceTo(camPos) + FITTING_DEPTH_PENALTY,
+      pick: { kind: 'fitting', id: f.id, point: centre, depth: centre.distanceTo(camPos) },
+    })
   }
 
   for (const c of connectors) {
@@ -179,7 +188,13 @@ export function pickCandidatesAtScreen(
     const dist = toScreen(world, camera, size).distanceTo(cursor)
     if (dist > CONNECTOR_RADIUS_PX) continue
     const depth = world.distanceTo(camPos)
-    found.push({ score: depth - CONNECTOR_DEPTH_BIAS, pick: { kind: 'connector', id: c.id, point: world, depth } })
+    // Among parts this small, several are inside the same grab radius at once, and the one
+    // that was meant is the one nearest the pointer — not whichever happens to be a few
+    // millimetres closer to the camera. Aiming at a part has to select that part.
+    found.push({
+      score: depth - CONNECTOR_DEPTH_BIAS + dist * CONNECTOR_AIM_WEIGHT,
+      pick: { kind: 'connector', id: c.id, point: world, depth },
+    })
   }
 
   return found.sort((a, b) => a.score - b.score).map((f) => f.pick)

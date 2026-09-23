@@ -158,6 +158,43 @@ const FrameSelector: React.FC = () => {
 
 // Cut-length labels, placed just outside the member body
 /**
+ * Three dimensions, each on the edge it measures.
+ *
+ * One label in the middle reading "W 610 · H 570 · T 18" tells you the numbers and not which
+ * way round they go, so you end up counting axes. Each one sits at the middle of its own edge
+ * instead, with its letter — which is how a drawing has always done it, and the letters are
+ * the ones the properties panel uses.
+ *
+ * Local axes: X is the width, Y the height, Z the thickness or depth. That holds for a board
+ * and for a drawer, so one component labels both.
+ */
+const PartDimensions: React.FC<{
+  position: [number, number, number]
+  quaternion: [number, number, number, number]
+  sizes: Array<[string, number]>
+  color: string
+}> = ({ position, quaternion, sizes, color }) => {
+  const q = useMemo(() => new THREE.Quaternion(...quaternion).normalize(), [quaternion])
+  const centre = useMemo(() => new THREE.Vector3(...position), [position])
+  const [[wl, w], [hl, h], [tl, t]] = sizes
+  const ax = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
+  const ay = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
+  const az = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
+  const mm = (v: number) => String(Math.round(v))
+  // clear of the part by a fixed amount, so the label reads as belonging to that edge
+  const OFF = 34
+  const at = (a: THREE.Vector3, d: number, b: THREE.Vector3, e: number) =>
+    centre.clone().addScaledVector(a, d).addScaledVector(b, e).toArray() as [number, number, number]
+  return (
+    <>
+      <TextSprite text={`${wl} ${mm(w)}`} color={color} height={20} position={at(ay, -h / 2 - OFF, az, t / 2)} />
+      <TextSprite text={`${hl} ${mm(h)}`} color={color} height={20} position={at(ax, w / 2 + OFF, az, t / 2)} />
+      <TextSprite text={`${tl} ${mm(t)}`} color={color} height={20} position={at(ax, -w / 2 - OFF * 0.7, ay, h / 2 + OFF * 0.7)} />
+    </>
+  )
+}
+
+/**
  * The size of every part, on the part.
  *
  * A member has one number that matters, its cut length. A board and a drawer have three, and
@@ -181,22 +218,17 @@ const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims
         return <TextSprite key={p.id} text={String(Math.round(cut))} position={mid.toArray() as [number, number, number]} />
       })}
 
-      {panels.map((b) => {
-        // clear of the face, so the text is not read through the board it belongs to
-        const out = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...b.quaternion).normalize())
-        const at = new THREE.Vector3(...b.position).addScaledVector(out, b.thickness / 2 + 12)
-        return <TextSprite key={b.id} height={20} color="#fde68a"
-          text={`W ${mm(b.width)} · H ${mm(b.height)} · T ${mm(b.thickness)}`}
-          position={at.toArray() as [number, number, number]} />
-      })}
+      {panels.map((b) => (
+        <PartDimensions key={b.id}
+          position={b.position} quaternion={b.quaternion}
+          sizes={[['W', b.width], ['H', b.height], ['T', b.thickness]]} color="#fde68a" />
+      ))}
 
-      {fittings.map((f) => {
-        const out = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...f.quaternion).normalize())
-        const at = new THREE.Vector3(...f.position).addScaledVector(out, f.depth / 2 + 40)
-        return <TextSprite key={f.id} height={20} color="#7dd3fc"
-          text={`W ${mm(f.width)} · H ${mm(f.height)} · D ${mm(f.depth)}`}
-          position={at.toArray() as [number, number, number]} />
-      })}
+      {fittings.map((f) => (
+        <PartDimensions key={f.id}
+          position={f.position} quaternion={f.quaternion}
+          sizes={[['W', f.width], ['H', f.height], ['D', f.depth]]} color="#7dd3fc" />
+      ))}
     </>
   )
 }

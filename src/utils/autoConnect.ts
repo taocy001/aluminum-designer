@@ -2,10 +2,12 @@ import { noteNext } from './opLog'
 import * as THREE from 'three'
 import { useStore, type ConnectorData, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { analyzeFrame } from './analysis'
+import { analyzeFrame, connectorOBB, trimmedOBB } from './analysis'
+import { obbPenetration, type OBB } from './obb'
+import { specDims } from './specUtils'
 import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector } from './connectorFit'
-import { closestOnSegment, getProfileEndpoints } from './geometryCore'
+import { closestOnSegment, getProfileDir, getProfileEndpoints } from './geometryCore'
 import { flushFace, sharedEdge } from './specCompat'
 import { seatFor } from './bracketSeat'
 import { nextId } from './profileFactory'
@@ -15,6 +17,19 @@ import { translations } from './translations'
 const OCCUPIED_MM = 30
 /** how close an end has to be to another member's centreline to be its joint partner (mm) */
 const PARTNER_TOL = 30
+
+/**
+ * Does this part's body run into anything?
+ *
+ * Both what is already placed and the frame itself. Stepping a bracket along a post to get it
+ * out of another bracket's way is only an improvement if it does not step it into the rail
+ * above — which is exactly what happened when this only looked at the other brackets.
+ */
+function crowded(part: ConnectorData, placed: ConnectorData[], metal: OBB[]): boolean {
+  const box = connectorOBB(part)
+  if (placed.some((q) => obbPenetration(box, connectorOBB(q), 1) > 1)) return true
+  return metal.some((m) => obbPenetration(box, m, 3) > 3)
+}
 
 /** The member this end butts into: the nearest one whose centreline it lands on */
 function partnerAt(at: THREE.Vector3, self: ProfileData, profiles: ProfileData[]): ProfileData | null {
@@ -69,6 +84,7 @@ export function autoConnect(type: string): AutoConnectResult {
   const wanted: THREE.Vector3[] = []
 
   const { trims } = analyzeFrame(profiles)
+  const metal = profiles.map((q) => trimmedOBB(q, trims.get(q.id)!))
   // Only parts that were already there block a joint. Two rails butting into the same post
   // is two joints and takes two brackets, one on each rail — deduping by point would order
   // half the hardware. The second one is nudged along its own member so it reads as its own
@@ -121,11 +137,21 @@ export function autoConnect(type: string): AutoConnectResult {
         quaternion = placement.quaternion
         series = placement.series ?? seriesOf(p.spec)
       }
-      // Two rails butting into the same post used to be stepped apart along their own
-      // members so they did not draw inside each other. They do not need it: their planes
-      // are the cross products of two different pairs of axes, so they already land on
-      // different faces of the post. The step only pushed them off their slots.
-      made.push({ id: nextId('c'), type, series, position, quaternion })
+      // Two rails butting into the same post put a bracket on each of two faces of it, and
+      // those two brackets still meet round the corner of the post. Real assembly steps them
+      // apart along the post, and so does this: a slot runs the length of a profile, so
+      // sliding along it does not move a bolt off its slot line.
+      const part = { id: nextId('c'), type, series, position, quaternion }
+      if (partner) {
+        const along = getProfileDir(partner)
+        const step = specDims(partner.spec).w + 4
+        for (let tries = 0; tries < 8 && crowded(part, made, metal); tries++) {
+          const sign = tries % 2 === 0 ? 1 : -1
+          const by = along.clone().multiplyScalar(sign * step * Math.ceil((tries + 1) / 2))
+          part.position = [position[0] + by.x, position[1] + by.y, position[2] + by.z]
+        }
+      }
+      made.push(part)
     }
   }
 

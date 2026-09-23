@@ -294,14 +294,22 @@ export function auditBrackets(profiles: ProfileData[], connectors: ConnectorData
     let best: { seat: BracketSeat; d: number } | null = null
     for (const { p, start, end } of ends) {
       for (const at of [start, end]) {
-        if (at.distanceTo(here) > JOINT_TOL * 2) continue
+        // Wide enough to still find the joint a bracket was stepped along a post to reach,
+        // which is a legitimate placement and can be a few section widths from the corner.
+        if (at.distanceTo(here) > JOINT_TOL * 6) continue
         for (const { p: q } of ends) {
           if (q.id === p.id) continue
           const { start: qs, end: qe } = getProfileEndpoints(q)
           if (closestOnSegment(at, qs, qe).point.distanceTo(at) > JOINT_TOL) continue
           const seat = seatFor(c.type, p, q, at)
           if (!seat) continue
-          const d = new THREE.Vector3(...seat.position).distanceTo(here)
+          // Sliding along the member a bracket is bolted to is free: a slot runs the whole
+          // length of a profile, so the bolt is still on its slot line. It is what stepping
+          // two brackets apart at a shared post does. Only the offset across the member is
+          // a bracket that is not where it can be bolted.
+          const along = getProfileDir(q)
+          const off = new THREE.Vector3(...seat.position).sub(here)
+          const d = off.clone().addScaledVector(along, -off.dot(along)).length()
           if (!best || d < best.d) best = { seat, d }
         }
       }
