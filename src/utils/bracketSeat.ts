@@ -3,7 +3,7 @@ import type { ConnectorData, ProfileData } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong } from './geometryCore'
 import { flushFace, sharedEdge } from './specCompat'
 import { nearestSlot, slotOffsets } from './specUtils'
-import { connectorEntry, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
+import { connectorEntry, connectorExtent, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector, membersAt } from './connectorFit'
 
 /**
@@ -225,6 +225,30 @@ export function connectorSeatAt(
       if (seat) return { ...seat, seated: true }
     }
   }
+  // Seat inward-facing inline parts beyond the selected member end.
+  if (entry?.fit === 'inline' && entry.axes.towards === 'in') {
+    const near = membersAt(point, profiles, REACH)
+      .map((c) => {
+        const { start, end } = getProfileEndpoints(c.profile)
+        const at = point.distanceTo(start) <= point.distanceTo(end) ? start : end
+        return { c, at, atStart: point.distanceTo(start) <= point.distanceTo(end), d: point.distanceTo(at) }
+      })
+      .sort((x, y) => x.d - y.d)[0]
+    if (near) {
+      const fit = fitConnector(type, near.at, profiles, surfaceNormal)
+      const outward = getProfileDir(near.c.profile)
+      if (near.atStart) outward.negate()
+      const reach = connectorExtent(type).half[AXIS_INDEX[entry.axes.primary]] * connectorScale(fit.series)
+      const at = near.at.clone().addScaledVector(outward, reach)
+      return {
+        position: [round1(at.x), round1(at.y), round1(at.z)],
+        quaternion: fit.quaternion,
+        series: fit.series,
+        seated: true,
+      }
+    }
+  }
+
   const fit = fitConnector(type, point, profiles, surfaceNormal)
   return {
     position: [round1(point.x), round1(point.y), round1(point.z)],
@@ -233,6 +257,9 @@ export function connectorSeatAt(
     seated: false,
   }
 }
+
+/** which component of a part's own half-extent runs along its primary axis */
+const AXIS_INDEX: Record<string, 0 | 1 | 2> = { x: 0, y: 1, z: 2 }
 
 /** Dispatch seating by connector type: cast brackets use inner perpendicular faces; plates use an outer face. */
 export function seatFor(type: string, a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {

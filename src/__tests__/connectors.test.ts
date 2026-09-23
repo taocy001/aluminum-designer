@@ -261,3 +261,35 @@ describe('parts land the way they are built, not the way a convention assumes', 
     expect(axis(fit.quaternion, [0, 1, 0])).toEqual([0, 1, 0])
   })
 })
+
+import { connectorSeatAt } from '../utils/bracketSeat'
+import { findConflicts } from '../utils/analysis'
+
+/** Check that levelling feet seat below a post end without reported interference. */
+describe('a part that stands under a post stands under it', () => {
+  const post = buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 800, 0), '2020')!
+
+  it('is seated below the foot of the post, not inside it', () => {
+    const seat = connectorSeatAt('foot', new THREE.Vector3(0, 0, 0), [post])
+    expect(seat.seated).toBe(true)
+    expect(seat.position[1]).toBeLessThan(0)
+    const clash = findConflicts([post], computeAllTrims([post]), [{
+      id: 'f', type: 'foot', series: seat.series, position: seat.position, quaternion: seat.quaternion,
+    } as never])
+    expect(clash).toEqual([])
+  })
+
+  it('goes to the nearer end when it is dropped a little off', () => {
+    const near = connectorSeatAt('foot', new THREE.Vector3(6, 14, 4), [post])
+    expect(near.position[1]).toBeLessThan(0)
+    const top = connectorSeatAt('foot', new THREE.Vector3(0, 790, 0), [post])
+    expect(top.position[1]).toBeGreaterThan(800)
+  })
+
+  it('a plate that bridges two members is still left where it was put', () => {
+    const rail = buildProfile(new THREE.Vector3(0, 800, 0), new THREE.Vector3(600, 800, 0), '2020')!
+    const at = new THREE.Vector3(0, 800, 0)
+    const seat = connectorSeatAt('joining-plate', at, [post, rail])
+    expect(seat.position[1]).toBeCloseTo(800, 1)
+  })
+})
