@@ -100,3 +100,43 @@ describe('an inset board fits the opening, not the two rails that were picked', 
     expect(sides[1]).toBeCloseTo(620, 0)
   })
 })
+
+import { findConflicts } from '../utils/analysis'
+import { computeAllTrims } from '../utils/jointUtils'
+
+/**
+ * The interference check took the metal and the hardware and stopped there. Boards and
+ * fittings were never looked at, so a drawing with every one of its doors sunk into the posts
+ * and every back board buried in the frame reported nothing wrong at all — and said so with
+ * the same confidence as a drawing that really was clean.
+ */
+describe('a board inside a post is as unbuildable as two members through each other', () => {
+  const frame = () => cabinet(0, 600)
+
+  it('finds a board buried in the frame', () => {
+    const ps = frame()
+    const buried = {
+      id: 'b1', width: 600, height: 800, thickness: 18,
+      position: [300, 400, 0], quaternion: [0, 0, 0, 1], material: 'mdf',
+    } as never
+    expect(findConflicts(ps, computeAllTrims(ps), [], [buried]).length).toBeGreaterThan(0)
+  })
+
+  it('and leaves a board resting against the frame alone', () => {
+    const ps = frame()
+    const clear = {
+      id: 'b2', width: 560, height: 800, thickness: 18,
+      position: [300, 400, -20], quaternion: [0, 0, 0, 1], material: 'mdf',
+    } as never
+    expect(findConflicts(ps, computeAllTrims(ps), [], [clear])).toEqual([])
+  })
+
+  it('finds a door sunk into the post it hangs on', () => {
+    const ps = frame()
+    const sunk = {
+      id: 'd1', kind: 'door', width: 580, height: 840, depth: 600,
+      position: [300, 440, 300], quaternion: [0, 0, 0, 1], open: 0, overlay: 'full', hinge: 'left',
+    } as never
+    expect(findConflicts(ps, computeAllTrims(ps), [], [], [sunk]).length).toBeGreaterThan(0)
+  })
+})

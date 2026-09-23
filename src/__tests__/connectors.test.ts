@@ -322,3 +322,40 @@ describe('a foot picks the member that is standing on it', () => {
     expect(seat.position[1]).toBeLessThan(-15)
   })
 })
+
+import { autoConnect } from '../utils/autoConnect'
+import { useStore } from '../store/useStore'
+
+/**
+ * A levelling foot stands under the post; a bracket bolts the rail to its side. They are not
+ * in each other's way. Counting any part as occupying the corner meant that fitting the feet
+ * first quietly cost an eleven-cabinet drawing a third of its brackets — a hundred and ninety
+ * joints with nothing on them, and no complaint anywhere, because every bracket that was
+ * placed was placed correctly.
+ */
+describe('fitting the feet first does not cost you the brackets', () => {
+  const bay = (): ProfileData[] => {
+    const out: ProfileData[] = []
+    for (const x of [0, 600]) for (const z of [0, 400]) out.push(buildProfile(V(x, 0, z), V(x, 800, z), '2020')!)
+    for (const y of [20, 780]) {
+      for (const z of [0, 400]) out.push(buildProfile(V(0, y, z), V(600, y, z), '2020')!)
+      for (const x of [0, 600]) out.push(buildProfile(V(x, y, 0), V(x, y, 400), '2020')!)
+    }
+    return out
+  }
+  const load = (profiles: ProfileData[]) =>
+    useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [] } as never)
+
+  it('places the same number of brackets whether or not the feet went on first', () => {
+    load(bay())
+    const bare = autoConnect('inside-corner').placed
+    expect(bare).toBeGreaterThan(0)
+
+    load(bay())
+    autoConnect('foot')
+    const feet = useStore.getState().connectors.length
+    expect(feet).toBe(4)
+    const after = autoConnect('inside-corner').placed
+    expect(after).toBe(bare)
+  })
+})

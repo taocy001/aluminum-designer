@@ -89,7 +89,14 @@ export function autoConnect(type: string): AutoConnectResult {
   // is two joints and takes two brackets, one on each rail — deduping by point would order
   // half the hardware. The second one is nudged along its own member so it reads as its own
   // part rather than sitting inside the first.
-  const existing = connectors.map((c) => new THREE.Vector3(...c.position))
+  // ...and "already there" means a part of this kind. A levelling foot stands under the post
+  // and a bracket bolts the rail to its side; they are not in each other's way. Counting any
+  // part as occupying the corner meant that fitting the feet first quietly cost the drawing
+  // a third of its brackets — a hundred and ninety joints with nothing on them, and no
+  // complaint anywhere, because each bracket that was placed was placed correctly.
+  const existing = connectors
+    .filter((c) => connectorEntry(c.type)?.fit === entry.fit)
+    .map((c) => new THREE.Vector3(...c.position))
   const isFree = (v: THREE.Vector3) => !existing.some((p) => p.distanceTo(v) <= OCCUPIED_MM)
 
   const made: ConnectorData[] = []
@@ -105,6 +112,13 @@ export function autoConnect(type: string): AutoConnectResult {
       // nothing is attached at all
       const wantsOne = entry.fit === 'corner' ? where.butt : where.partners === 0
       if (!wantsOne) continue
+      // A foot goes on the floor. Fitting one to every free end put one on top of each post
+      // as well, which is an end cap's job, not a foot's.
+      if (entry.axes.towards === 'in') {
+        const outward = getProfileDir(p)
+        if (at.distanceTo(start) < at.distanceTo(end)) outward.negate()
+        if (outward.y > -0.9) continue
+      }
       wanted.push(at.clone())
       if (!isFree(at)) { skipped++; continue }
 

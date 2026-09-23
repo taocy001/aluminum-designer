@@ -467,7 +467,7 @@ const SnapGuides: React.FC = () => {
 const Viewport: React.FC = () => {
   const { profiles, connectors, panels, fittings, selectedIds } = useStore()
   const { isDragging, showDimensionLabels, selectMode, showFittings } = useToolStore()
-  const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles, connectors), [profiles, connectors])
+  const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings])
 
   const orbitEnabled = !isDragging && !selectMode
   // One mapping for the whole canvas, whatever is in hand: the buttons must not change

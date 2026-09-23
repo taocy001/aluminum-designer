@@ -71,7 +71,8 @@ export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: Pr
   // sideways so the faces its brackets will sit on line up with what it landed on
   const candidate = faceAlignOnCreate(built, useStore.getState().profiles)
   useStore.getState().addProfile(candidate)
-  const { conflictIds } = analyzeFrame(useStore.getState().profiles, useStore.getState().connectors)
+  const st = useStore.getState()
+  const { conflictIds } = analyzeFrame(st.profiles, st.connectors, st.panels, st.fittings)
   if (conflictIds.has(candidate.id)) showToast(t.toastOverlap, 'error')
   return true
 }
