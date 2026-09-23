@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { FittingData, HingeSide, HingeType, Overlay } from '../store/useStore'
+import { makeOBB, obbPenetration, type OBB } from './obb'
 
 /**
  * What a drawer and a door are actually made of.
@@ -22,11 +23,19 @@ export const OVERLAY_FULL = 18
 /** ...and a half overlay */
 export const OVERLAY_HALF = 9
 
-/** How far each kind of hinge will open, in degrees */
-export const HINGE_SWING: Record<HingeType, number> = {
-  cup: 110,          // a 35 mm concealed hinge, the standard kitchen fitting
-  slot: 180,         // two leaves bolted into T-slots: nothing in the way, so it lies back
-  continuous: 180,   // a piano hinge down the whole edge
+/** The furthest each mechanism will go, whatever angle is asked for */
+export const HINGE_MAX: Record<HingeType, number> = {
+  cup: 180,          // concealed hinges are made from 95° to 180°, in steps
+  slot: 270,         // two leaves bolted into T-slots: nothing is in the way
+  continuous: 180,   // a piano hinge folds back flat and no further
+}
+/** What each mechanism is usually ordered as */
+export const HINGE_DEFAULT: Record<HingeType, number> = { cup: 110, slot: 180, continuous: 180 }
+
+/** How far this door actually opens */
+export function swingOf(f: { hingeType?: HingeType; swing?: number }): number {
+  const type = f.hingeType ?? 'cup'
+  return Math.min(HINGE_MAX[type], Math.max(30, f.swing ?? HINGE_DEFAULT[type]))
 }
 
 /** Hinges needed for a door this tall, by kind */
@@ -161,7 +170,7 @@ function doorParts(f: FittingData): FittingParts {
       hinges.push(axis.y > 0.5 ? [origin.x, t, origin.z] : [t, origin.y, origin.z])
     }
   }
-  return { boards: [frontBoard(f)], rails: [], hinges, travel: HINGE_SWING[type] }
+  return { boards: [frontBoard(f)], rails: [], hinges, travel: swingOf(f) }
 }
 
 export function fittingParts(f: FittingData): FittingParts {
@@ -181,4 +190,50 @@ export function openTransform(f: FittingData): { position: THREE.Vector3; quater
   // turning about the hinge, not about the middle of the door
   const offset = origin.clone().sub(origin.clone().applyQuaternion(q))
   return { position: offset, quaternion: q }
+}
+
+/**
+ * Where a fitting's leaf actually is at a given opening, as an oriented box.
+ *
+ * A door turning about its hinge sweeps a quarter cylinder, and the axis-aligned box round
+ * that is nearly the whole bay plus its own width forward — so testing those boxes said every
+ * pair of neighbouring doors collided, which is not true and is not useful. The leaf itself,
+ * oriented, is what has to miss things.
+ */
+export function leafObb(f: FittingData, open: number): OBB | null {
+  const parts = fittingParts(f)
+  const leaf = parts.boards.find((b) => b.role === 'panel' || b.role === 'front')
+  if (!leaf) return null
+  const at = openTransform({ ...f, open })
+  const world = new THREE.Quaternion(...f.quaternion).normalize()
+  const centre = new THREE.Vector3(...leaf.position)
+    .applyQuaternion(at.quaternion).add(at.position)
+    .applyQuaternion(world).add(new THREE.Vector3(...f.position))
+  const quat = world.clone().multiply(at.quaternion).multiply(new THREE.Quaternion(...leaf.quaternion))
+  return makeOBB(centre, new THREE.Vector3(leaf.width / 2, leaf.height / 2, leaf.thickness / 2), quat)
+}
+
+/**
+ * Doors that meet each other on the way open.
+ *
+ * Sampled through the swing rather than judged at full open, because two doors can pass and
+ * still foul each other half way. A shared edge is not a clash; a shared thickness is.
+ */
+export function swingClashes(fittings: FittingData[]): Array<[string, string]> {
+  const doors = fittings.filter((f) => f.kind === 'door')
+  const out: Array<[string, string]> = []
+  const steps = [0.35, 0.7, 1]
+  for (let i = 0; i < doors.length; i++) {
+    for (let j = i + 1; j < doors.length; j++) {
+      let hit = false
+      for (const t of steps) {
+        const a = leafObb(doors[i], t)
+        const b = leafObb(doors[j], t)
+        if (!a || !b) continue
+        if (obbPenetration(a, b, 2) > 2) { hit = true; break }
+      }
+      if (hit) out.push([doors[i].id, doors[j].id])
+    }
+  }
+  return out
 }

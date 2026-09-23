@@ -1,6 +1,6 @@
 import { noteNext } from './opLog'
 import * as THREE from 'three'
-import { useStore, type FittingData, type FittingKind, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
+import { useStore, type FittingData, type FittingKind, type HingeSide, type HingeType, type Overlay, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { memberBox } from './dragSnap'
 import { nextId } from './profileFactory'
@@ -26,15 +26,60 @@ export interface FittingRequest {
   hinge?: HingeSide
   hingeType?: HingeType
   overlay?: Overlay
+  /** how far a door opens, in degrees */
+  swing?: number
 }
 
-/** Which way the run faces: a kitchen is long one way and shallow the other, and it opens the shallow way */
-function outwardAxis(): THREE.Vector3 {
+/**
+ * Which way the fitting faces.
+ *
+ * The answer is already in the selection. Picking out an opening means picking the members
+ * that frame it, and those are the ones at the front — so the front is whichever side of the
+ * whole frame they sit on. Guessing from the shape of the run instead ignored that, and put
+ * every door in a kitchen facing the wall.
+ */
+function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
+  const all = useStore.getState().profiles
   const whole = new THREE.Box3()
-  for (const p of useStore.getState().profiles) whole.union(memberBox(p))
+  for (const p of all) whole.union(memberBox(p))
+  const mine = new THREE.Box3()
+  for (const p of chosen) mine.union(memberBox(p))
+  if (whole.isEmpty() || mine.isEmpty()) return new THREE.Vector3(0, 0, 1)
+
+  const centre = whole.getCenter(new THREE.Vector3())
+  const at = mine.getCenter(new THREE.Vector3())
+  const span = mine.getSize(new THREE.Vector3())
   const run = whole.getSize(new THREE.Vector3())
-  // a tie goes to Z, which is the front of a cabinet drawn the conventional way round
-  return run.z <= run.x + 1 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(-1, 0, 0)
+  const X = new THREE.Vector3(1, 0, 0)
+  const Z = new THREE.Vector3(0, 0, 1)
+
+  // The members that frame a door's opening are coplanar — two uprights on the front line —
+  // and the normal of that plane is the way the door faces. So the front axis is whichever
+  // horizontal axis the selection is flat on, and the side is which side of the frame that
+  // plane sits on. Reading it as "far from the middle" instead put the doors at the end of a
+  // long run facing along the run.
+  const flat: Array<[THREE.Vector3, number, number]> = [[Z, span.z, at.z - centre.z], [X, span.x, at.x - centre.x]]
+  flat.sort((p, q) => p[1] - q[1])
+  const [axis, thickness, offset] = flat[0]
+  if (thickness <= section * 3 && Math.abs(offset) > 1) {
+    return axis.clone().multiplyScalar(Math.sign(offset))
+  }
+
+  // The selection spans the depth — four uprights round a drawer — so it says nothing about
+  // which side is the front. Ask the frame instead: a cabinet is open at the front and closed
+  // at the back, where the wall units, the backs and the shelf rails are, so the half with
+  // less metal in it is the front.
+  const deep = run.z <= run.x ? Z : X
+  const mid = centre.dot(deep)
+  let front = 0, back = 0
+  for (const p of all) {
+    const box = memberBox(p)
+    const size = box.getSize(new THREE.Vector3())
+    const bulk = Math.max(size.x, size.y, size.z)
+    if (box.getCenter(new THREE.Vector3()).dot(deep) >= mid) front += bulk
+    else back += bulk
+  }
+  return deep.clone().multiplyScalar(front <= back ? 1 : -1)
 }
 
 /** Rotation that sends local +Z onto `out`, keeping Y up */
@@ -72,7 +117,7 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
   ))
 
   const size = box.getSize(new THREE.Vector3())
-  const out = outwardAxis()
+  const out = outwardAxis(chosen, section)
   const quaternion = facing(out)
   const centre = box.getCenter(new THREE.Vector3())
   // across the opening and into it, in the fitting's own frame
@@ -126,6 +171,7 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
       hinge: req.hinge ?? 'left',
       hingeType: req.hingeType ?? 'cup',
       overlay: req.overlay ?? 'full',
+      swing: req.swing,
     })
   }
 

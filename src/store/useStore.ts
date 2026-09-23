@@ -81,6 +81,19 @@ export type HingeSide = 'left' | 'right' | 'top' | 'bottom'
  *  - `continuous`: a piano hinge down the whole edge, for a tall or heavy door, or a flap.
  */
 export type HingeType = 'cup' | 'slot' | 'continuous'
+/**
+ * How far a door is allowed to open, in degrees.
+ *
+ * Not a detail: it is chosen for the obstruction next to the door, and the wrong one is a
+ * door that hits the handle beside it or one that will not clear a drawer behind it.
+ *
+ *  - 95  restricted, for a door beside an appliance or a proud handle
+ *  - 110 the everyday standard for frameless cabinets
+ *  - 135 for a cabinet set at 45°
+ *  - 165 blind corners and carousels, where the door has to clear the cabinet next to it
+ *  - 180 folds flat back against the side
+ */
+export const HINGE_ANGLES = [95, 110, 135, 165, 180] as const
 /** how the door sits on the opening: over it, half over it, or inside it */
 export type Overlay = 'full' | 'half' | 'inset'
 
@@ -99,6 +112,8 @@ export interface FittingData {
   open: number
   hinge?: HingeSide
   hingeType?: HingeType
+  /** how far it opens (degrees); older files fall back to what the mechanism allows */
+  swing?: number
   overlay?: Overlay
   locked?: boolean
 }

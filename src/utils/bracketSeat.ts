@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { ConnectorData, ProfileData } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong } from './geometryCore'
-import { flushFace } from './specCompat'
+import { flushFace, sharedEdge } from './specCompat'
 import { nearestSlot, slotOffsets } from './specUtils'
 import { connectorEntry, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector, membersAt } from './connectorFit'
@@ -251,6 +251,11 @@ export function connectorSeatAt(
  * what put every cast bracket in this drawing on the wrong side of the metal.
  */
 export function seatFor(type: string, a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {
+  // Sections with no edge in common are not joined end-to-face, whatever the slots would
+  // allow. A 20-series bracket will bolt a flush 2020 to a 4040, and it covers half the face
+  // it is holding; a 40-series one has the wrong hole pitch for the 2020. Neither is a joint
+  // anybody builds, so none of these parts offers it.
+  if (!sharedEdge(a.spec, b.spec)) return null
   const kind = connectorEntry(type)?.seat
   if (kind === 'angle') return seatAngle(a, b, at)
   if (kind === 'plate') return seatBracket(a, b, at)

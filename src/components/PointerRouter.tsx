@@ -286,8 +286,13 @@ const PointerRouter: React.FC = () => {
       // While looking, a press opens or shuts whatever it lands on and nothing else happens.
       // Turning the view still works, which is most of what looking is.
       if (ts.viewMode) {
-        const hit = pickFor(e)
-        if (hit?.kind === 'fitting') {
+        // while looking, the press means the nearest drawer or door, whatever else is nearer
+        const { cursor, rect } = cursorOf(e)
+        const store = useStore.getState()
+        const hit = pickCandidatesAtScreen(cursor, rayOf(cursor, rect), camera,
+          { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels, store.fittings)
+          .find((p) => p.kind === 'fitting')
+        if (hit) {
           const f = useStore.getState().fittings.find((q) => q.id === hit.id)
           if (f) { setFittingOpen(f.id, (f.open ?? 0) > 0.5 ? 0 : 1); pendingClear.current = null }
         }

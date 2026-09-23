@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
 import { setThroughRule } from '../utils/jointUtils'
-import { seatAngle, seatBracket, sharedSlotLine } from '../utils/bracketSeat'
+import { seatAngle, seatBracket, seatFor, sharedSlotLine } from '../utils/bracketSeat'
 import { slotOffsets, nearestSlot } from '../utils/specUtils'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
 
@@ -234,5 +234,29 @@ describe('a cast corner bracket sits inside the corner', () => {
     const plate = seatBracket(rail(), post(), V(0, 10, 0))!
     const d = Math.hypot(...angle.position.map((v, i) => v - plate.position[i]))
     expect(d).toBeGreaterThan(5)
+  })
+})
+
+describe('sections with no edge in common are not joined end to face', () => {
+  it('no part offers a 2020 butting onto a 4040, flush or not', () => {
+    for (const z of [0, 10, -10]) {
+      const post = P(0, 20, 0, 0, 620, 0, '4040')
+      const rail = P(0, 20, z, 600, 20, z, '2020')
+      for (const type of ['bracket', 'inside-corner', 'gusset', 't-bracket']) {
+        expect(seatFor(type, rail, post, V(0, 20, z))).toBeNull()
+      }
+    }
+  })
+
+  it('but a 2040 onto a 4040 is fine, because they share the 40 edge', () => {
+    const post = P(0, 20, 0, 0, 620, 0, '4040')
+    const rail = P(0, 20, 10, 600, 20, 10, '2040')
+    expect(seatFor('bracket', rail, post, V(0, 20, 10))).not.toBeNull()
+  })
+
+  it('and a 2020 onto a 2040, because they share the 20 edge', () => {
+    const post = P(0, 20, 0, 0, 620, 0, '2040')
+    const rail = P(0, 20, 10, 600, 20, 10, '2020')
+    expect(seatFor('bracket', rail, post, V(0, 20, 10))).not.toBeNull()
   })
 })

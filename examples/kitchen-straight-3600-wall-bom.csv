@@ -10,7 +10,7 @@ Profile,2040,2040,3580,1
 Profile,2040,2040,580,2
 Profile,2040,2040,560,4
 Profile,4040,4040,850,4
-Connector,"35 杯铰",,,12
+Connector,"35 杯铰",,,18
 Connector,"L型角码",20 系列,,137
 Connector,"抽屉滑轨 580mm",侧装一对,,2
 Fastener,"螺栓 M5×10",20,,274
@@ -22,9 +22,9 @@ Board,"610 × 410 mm","多层板 18mm",,2
 Board,"580 × 350 mm","密度板 18mm",,4
 Board,"600 × 580 mm","密度板 18mm",,2
 Board,"610 × 570 mm","密度板 18mm",,2
-Board,"690 × 610 mm","密度板 18mm",,2
+Board,"690 × 610 mm","密度板 18mm",,5
 Board,"830 × 580 mm","密度板 18mm",,2
 Board,"870 × 610 mm","密度板 18mm",,2
 Summary,Overall WxDxH,3640x640x2220,,
 Summary,Total cut length (mm),,68140,
-Summary,Board area (m2),,7.66,
+Summary,Board area (m2),,8.93,

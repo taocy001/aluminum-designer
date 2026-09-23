@@ -12,8 +12,6 @@ const CONNECTOR_RADIUS_PX = 20
  * Bias them forward, otherwise the member always wins and they can never be picked.
  */
 const CONNECTOR_DEPTH_BIAS = 60
-/** a drawer front stands proud of the frame, so it wins the press over what is behind it */
-const FITTING_DEPTH_BIAS = 30
 /** anything nearer than this to the camera plane cannot be projected meaningfully */
 const NEAR_EPS = 1
 
@@ -168,7 +166,11 @@ export function pickCandidatesAtScreen(
     }
     if (corners.some((v) => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
     if (!insideQuad(hull2d(corners.map((v) => toScreen(v, camera, size))), cursor)) continue
-    found.push({ score: centre.distanceTo(camPos) - FITTING_DEPTH_BIAS, pick: { kind: 'fitting', id: f.id, point: centre, depth: centre.distanceTo(camPos) } })
+    // No bias. A door covers the whole front of a cabinet, and one that always won the
+    // press meant nothing behind it — a shelf, a rail, the back — could ever be selected.
+    // While looking, the press goes to the nearest fitting whatever else is in front of it,
+    // which is a decision for the caller rather than a thumb on these scales.
+    found.push({ score: centre.distanceTo(camPos), pick: { kind: 'fitting', id: f.id, point: centre, depth: centre.distanceTo(camPos) } })
   }
 
   for (const c of connectors) {

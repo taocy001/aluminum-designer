@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode } from 'lucide-react'
-import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
+import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, HINGE_ANGLES, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
 import { computeFrameBounds } from '../utils/jointUtils'
@@ -18,6 +18,7 @@ import { downloadText, openProject, saveProject, savedFileName } from '../utils/
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
+import { swingClashes } from '../utils/fittingGeometry'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
@@ -121,6 +122,7 @@ const Sidebar: React.FC = () => {
   const [hingeSide, setHingeSide] = useState<HingeSide>('left')
   const [hingeType, setHingeType] = useState<HingeType>('cup')
   const [overlay, setOverlay] = useState<Overlay>('full')
+  const [swing, setSwing] = useState<number>(110)
   const [savedName, setSavedName] = useState<string | null>(savedFileName())
   // the log lives outside React, so the panel listens for it rather than owning it
   const [stockText, setStockText] = useState('6000')
@@ -182,6 +184,7 @@ const Sidebar: React.FC = () => {
     && profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
     && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
 
+  const clashes = useMemo(() => swingClashes(fittings), [fittings])
   const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors])
   const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
@@ -379,6 +382,79 @@ const Sidebar: React.FC = () => {
                 </button>
               ))}
             </div>
+            {/* A drawer and a door are components, not piles of board. A drawer is a box that
+                slides — the runner takes 12.5 mm a side, so the box is 25 mm narrower than the
+                opening and needs a rail each side to screw to. A door hangs on hinges, and
+                which hinge decides how far it opens and whether anything has to be bored. */}
+            {(
+              <div className="space-y-1 pt-1 border-t border-white/5" data-testid="fitting-block">
+                <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.fittings}</label>
+                {selectedProfileCount < 2 && (
+                  <p className="text-[9px] text-slate-600 leading-snug pb-1">{t.hintFittingNeedsOpening}</p>
+                )}
+                <div className="flex items-center gap-1">
+                  <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
+                    <span className="text-[9px] text-slate-500 font-bold">{t.drawerHeight}</span>
+                    <input type="number" step={10} value={drawerHeightText} data-testid="drawer-height"
+                      onChange={(e) => setDrawerHeightText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
+                      className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
+                  </label>
+                  <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 w-20 focus-within:border-blue-500">
+                    <span className="text-[9px] text-slate-500 font-bold">{t.drawerCount}</span>
+                    <input type="number" min={1} max={8} step={1} value={drawerCountText} data-testid="drawer-count"
+                      onChange={(e) => setDrawerCountText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
+                      className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
+                  </label>
+                </div>
+                <button
+                  onClick={() => addFittingFromSelection({ kind: 'drawer', frontHeight: parseFloat(drawerHeightText), count: parseFloat(drawerCountText) })}
+                  data-testid="add-drawer" title={t.drawerHint} disabled={selectedProfileCount < 2}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-sky-600/80 hover:bg-sky-600 disabled:opacity-40 rounded-lg text-[10px] font-bold">
+                  <Archive size={12} />{t.drawer}
+                </button>
+
+                <div className="grid grid-cols-4 gap-1 pt-0.5">
+                  {(['left', 'right', 'top', 'bottom'] as const).map((side) => (
+                    <button key={side} data-testid={`hinge-${side}`} onClick={() => setHingeSide(side)}
+                      title={`${t.hingeSide} ${({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[side]}`}
+                      className={`py-1 rounded-lg text-[10px] font-bold ${hingeSide === side ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      {({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[side]}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {([['cup', t.hingeCup, t.hintHingeCup], ['slot', t.hingeSlot, t.hintHingeSlot], ['continuous', t.hingeContinuous, t.hintHingeContinuous]] as const).map(([k, label, tip]) => (
+                    <button key={k} data-testid={`hingetype-${k}`} onClick={() => setHingeType(k)} title={tip}
+                      className={`py-1 rounded-lg text-[9px] font-bold ${hingeType === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-5 gap-1">
+                  {HINGE_ANGLES.map((deg) => (
+                    <button key={deg} data-testid={`hinge-angle-${deg}`} onClick={() => setSwing(deg)} title={t.hintHingeAngle}
+                      className={`py-1 rounded-lg text-[9px] font-bold font-mono ${swing === deg ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      {deg}°
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {([['full', t.overlayFull], ['half', t.overlayHalf], ['inset', t.overlayInset]] as const).map(([k, label]) => (
+                    <button key={k} data-testid={`overlay-${k}`} onClick={() => setOverlay(k)} title={t.hintOverlay}
+                      className={`py-1 rounded-lg text-[9px] font-bold ${overlay === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => addFittingFromSelection({ kind: 'door', hinge: hingeSide, hingeType, overlay, swing })}
+                  data-testid="add-door" title={t.hintAddDoor} disabled={selectedProfileCount < 2}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-amber-600/80 hover:bg-amber-600 disabled:opacity-40 rounded-lg text-[10px] font-bold">
+                  <DoorOpen size={12} />{t.addDoor}
+                </button>
+              </div>
+            )}
+
             {/* The frame already knows where its joints are; this puts the part on all of them. */}
             {held === 'connector' && activeConnectorType && (
               <button onClick={() => autoConnect(activeConnectorType)} data-testid="auto-connect"
@@ -549,68 +625,6 @@ const Sidebar: React.FC = () => {
               </div>
             )}
 
-            {/* A drawer and a door are components, not piles of board. A drawer is a box that
-                slides — the runner takes 12.5 mm a side, so the box is 25 mm narrower than the
-                opening and needs a rail each side to screw to. A door hangs on hinges, and
-                which hinge decides how far it opens and whether anything has to be bored. */}
-            {selectedProfileCount >= 2 && (
-              <div className="space-y-1 pt-1 border-t border-white/5" data-testid="fitting-block">
-                <span className="text-[10px] text-slate-500 uppercase font-bold">{t.fittings}</span>
-                <div className="flex items-center gap-1">
-                  <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
-                    <span className="text-[9px] text-slate-500 font-bold">{t.drawerHeight}</span>
-                    <input type="number" step={10} value={drawerHeightText} data-testid="drawer-height"
-                      onChange={(e) => setDrawerHeightText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
-                      className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
-                  </label>
-                  <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 w-20 focus-within:border-blue-500">
-                    <span className="text-[9px] text-slate-500 font-bold">{t.drawerCount}</span>
-                    <input type="number" min={1} max={8} step={1} value={drawerCountText} data-testid="drawer-count"
-                      onChange={(e) => setDrawerCountText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
-                      className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
-                  </label>
-                </div>
-                <button
-                  onClick={() => addFittingFromSelection({ kind: 'drawer', frontHeight: parseFloat(drawerHeightText), count: parseFloat(drawerCountText) })}
-                  data-testid="add-drawer" title={t.drawerHint}
-                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-sky-600/80 hover:bg-sky-600 rounded-lg text-[10px] font-bold">
-                  <Archive size={12} />{t.drawer}
-                </button>
-
-                <div className="grid grid-cols-4 gap-1 pt-0.5">
-                  {(['left', 'right', 'top', 'bottom'] as const).map((side) => (
-                    <button key={side} data-testid={`hinge-${side}`} onClick={() => setHingeSide(side)}
-                      title={`${t.hingeSide} ${({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[side]}`}
-                      className={`py-1 rounded-lg text-[10px] font-bold ${hingeSide === side ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
-                      {({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[side]}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {([['cup', t.hingeCup, t.hintHingeCup], ['slot', t.hingeSlot, t.hintHingeSlot], ['continuous', t.hingeContinuous, t.hintHingeContinuous]] as const).map(([k, label, tip]) => (
-                    <button key={k} data-testid={`hingetype-${k}`} onClick={() => setHingeType(k)} title={tip}
-                      className={`py-1 rounded-lg text-[9px] font-bold ${hingeType === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {([['full', t.overlayFull], ['half', t.overlayHalf], ['inset', t.overlayInset]] as const).map(([k, label]) => (
-                    <button key={k} data-testid={`overlay-${k}`} onClick={() => setOverlay(k)} title={t.hintOverlay}
-                      className={`py-1 rounded-lg text-[9px] font-bold ${overlay === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => addFittingFromSelection({ kind: 'door', hinge: hingeSide, hingeType, overlay })}
-                  data-testid="add-door" title={t.hintAddDoor}
-                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-amber-600/80 hover:bg-amber-600 rounded-lg text-[10px] font-bold">
-                  <DoorOpen size={12} />{t.addDoor}
-                </button>
-              </div>
-            )}
-
             {/* A board fitted to whatever members are selected: door, back, shelf, drawer front */}
             {selectedProfileCount >= 2 && (
               <div className="grid grid-cols-2 gap-1">
@@ -766,6 +780,19 @@ const Sidebar: React.FC = () => {
         )}
         {/* A bracket beside a joint renders exactly like one bolted to it, and the cut list
             counts it either way — so the only way to know is to ask. */}
+        {fittings.some((f) => f.kind === 'door') && (
+          <button
+            onClick={() => { if (clashes.length) useStore.getState().selectItems(clashes.flat()) }}
+            title={t.hintSwingClash}
+            disabled={clashes.length === 0}
+            className={`w-full text-[10px] flex justify-between items-center ${clashes.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
+          >
+            <span className="flex items-center gap-1">{clashes.length > 0 && <AlertTriangle size={11} />}{t.swingClash}</span>
+            <span className="font-mono" data-testid="bom-swing-clash">
+              {clashes.length ? t.swingClashCount(clashes.length) : t.swingClashOk}
+            </span>
+          </button>
+        )}
         {connectors.length > 0 && (
           <button
             onClick={() => { if (bracketFaults.length) useStore.getState().selectItems(bracketFaults.map((f) => f.id)) }}

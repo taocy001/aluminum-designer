@@ -6,7 +6,7 @@ import { analyzeFrame } from './analysis'
 import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector } from './connectorFit'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
-import { flushFace } from './specCompat'
+import { flushFace, sharedEdge } from './specCompat'
 import { seatFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
@@ -105,10 +105,11 @@ export function autoConnect(type: string): AutoConnectResult {
         quaternion = seat.quaternion
         series = seat.series
       } else if (partner && connectorEntry(type)?.isCornerBracket) {
-        // There is a joint here and this part cannot be bolted to it: the two members offer
-        // no line that is a slot on both. Putting one there anyway makes a drawing that
-        // cannot be built and a cut list that has been paid for, so it is counted instead.
-        unbolted++
+        // There is a joint here and this part cannot be bolted to it. Putting one there
+        // anyway makes a drawing that cannot be built and a cut list that has been paid for,
+        // so it is skipped. Sections with no edge in common are not a fault to be reported —
+        // they are simply not a joint these parts make, and the frame check already says so.
+        if (sharedEdge(p.spec, partner.spec)) unbolted++
         continue
       } else {
         // caps, feet and the like sit on an end, where there is no second member to line up to

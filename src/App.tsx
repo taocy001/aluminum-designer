@@ -445,15 +445,15 @@ function App() {
               {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            {/* Building or looking. A drawing you cannot open is a drawing; the point of the
-                cabinet is whether the drawer clears the handle next to it. */}
-            <button data-testid="mode-build" onClick={() => setViewMode(false)} title={t.hintBuild}
-              aria-label={t.build} className={iconBtn(!viewMode, 'bg-blue-600 text-white shadow-lg')}>
-              <PencilRuler size={14} />
-            </button>
-            <button data-testid="mode-look" onClick={() => setViewMode(true)} title={t.hintLook}
-              aria-label={t.look} className={iconBtn(viewMode, 'bg-emerald-600 text-white shadow-lg')}>
-              <Eye size={14} />
+            {/* Building or looking: two states, so one switch. It shows the state it is in,
+                not the one it would take you to — a button that lies about where you are is
+                worse than one more click. */}
+            <button data-testid="mode-toggle" onClick={() => setViewMode(!viewMode)}
+              title={viewMode ? t.hintLook : t.hintBuild} aria-label={viewMode ? t.look : t.build}
+              className={`flex items-center gap-1.5 px-2 h-8 rounded-lg shrink-0 text-[11px] font-bold transition-all ${
+                viewMode ? 'bg-emerald-600 text-white shadow-lg' : 'bg-blue-600 text-white shadow-lg'}`}>
+              {viewMode ? <Eye size={14} /> : <PencilRuler size={14} />}
+              {viewMode ? t.look : t.build}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* The wheel already does this; the buttons are for trackpads and for anyone who
