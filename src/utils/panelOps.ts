@@ -4,6 +4,7 @@ import { useToolStore } from '../store/useToolStore'
 import { memberBox } from './dragSnap'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
+import { connectedTo } from './editOps'
 
 /** Board thicknesses that are actually stocked, so a cut list can be ordered as written */
 export const PANEL_THICKNESSES = [3, 5, 8, 10, 12, 15, 18, 25] as const
@@ -62,6 +63,23 @@ function innerBounds(boxes: THREE.Box3[], axis: 0 | 1 | 2, union: THREE.Box3): [
   return [low, high]
 }
 
+/** how far past the opening a member may sit and still be counted as bounding it (mm) */
+const BOUND_REACH = 2
+
+/** the members of this cabinet that reach across the opening, and so decide its size */
+function openingBounders(chosen: ProfileData[], opening: THREE.Box3): THREE.Box3[] {
+  const profiles = useStore.getState().profiles
+  const own = connectedTo(chosen.map((p) => p.id), profiles)
+  const grown = opening.clone().expandByScalar(BOUND_REACH)
+  const out: THREE.Box3[] = []
+  for (const p of profiles) {
+    if (!own.has(p.id)) continue
+    const b = memberBox(p)
+    if (b.intersectsBox(grown)) out.push(b)
+  }
+  return out.length > 0 ? out : chosen.map((p) => memberBox(p))
+}
+
 export function panelFromSelection(
   material: PanelMaterial = 'mdf', thickness = DEFAULT_THICKNESS, fit: PanelFit = 'overlay',
 ): PanelData | null {
@@ -84,10 +102,18 @@ export function panelFromSelection(
     useToolStore.getState().showToast(t.toastPanelSpanning(Math.round(longest)), 'error')
   }
 
+  // An opening is not bounded only by the two members that were picked. Picking the two side
+  // rails of a shelf says how wide it is and nothing about how deep: the rails run the full
+  // depth, so measuring between them there gives their own length, and the board came out
+  // 600 deep in a cabinet with 580 between its front and back posts — every shelf in the
+  // drawing too big by exactly one post. What bounds the opening is the cabinet, so for an
+  // inset board the cabinet's own members are asked as well, and only those that actually
+  // reach across the opening.
+  const bounders = fit === 'inset' ? openingBounders(chosen, box) : boxes
   const inner = fit === 'inset'
     ? new THREE.Box3(
-      new THREE.Vector3(...([0, 1, 2] as const).map((a) => innerBounds(boxes, a, box)[0]) as [number, number, number]),
-      new THREE.Vector3(...([0, 1, 2] as const).map((a) => innerBounds(boxes, a, box)[1]) as [number, number, number]),
+      new THREE.Vector3(...([0, 1, 2] as const).map((a) => innerBounds(bounders, a, box)[0]) as [number, number, number]),
+      new THREE.Vector3(...([0, 1, 2] as const).map((a) => innerBounds(bounders, a, box)[1]) as [number, number, number]),
     )
     : box
   const size = inner.getSize(new THREE.Vector3())

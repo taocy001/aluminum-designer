@@ -452,19 +452,23 @@ const LINKED_TOL = 30
  * and getting the carcass it belongs to is the difference between moving a cabinet and
  * moving forty members one at a time.
  */
-export function selectConnected(id: string): boolean {
-  const { profiles, selectItems } = useStore.getState()
-  const byId = new Map(profiles.map((p) => [p.id, p]))
-  if (!byId.has(id)) return false
+/**
+ * Every member reachable from these through joints — one piece of furniture.
+ *
+ * "Which cabinet is this?" has no answer in a box query: two cabinets standing in a row are
+ * one box, and asking what is behind a door found every cabinet in the room. What separates
+ * them is that they are not bolted together.
+ */
+export function connectedTo(seed: string[], profiles: ProfileData[]): Set<string> {
   const ends = new Map(profiles.map((p) => [p.id, getProfileEndpoints(p)]))
   const joined = (a: string, b: string) => {
-    const ea = ends.get(a)!, eb = ends.get(b)!
+    const ea = ends.get(a), eb = ends.get(b)
+    if (!ea || !eb) return false
     return [ea.start, ea.end].some((pt) => closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) <= LINKED_TOL)
       || [eb.start, eb.end].some((pt) => closestOnSegment(pt, ea.start, ea.end).point.distanceTo(pt) <= LINKED_TOL)
   }
-
-  const seen = new Set([id])
-  const queue = [id]
+  const seen = new Set(seed.filter((id) => ends.has(id)))
+  const queue = [...seen]
   while (queue.length) {
     const cur = queue.shift()!
     for (const p of profiles) {
@@ -473,7 +477,13 @@ export function selectConnected(id: string): boolean {
       queue.push(p.id)
     }
   }
-  selectItems([...seen])
+  return seen
+}
+
+export function selectConnected(id: string): boolean {
+  const { profiles, selectItems } = useStore.getState()
+  if (!profiles.some((p) => p.id === id)) return false
+  selectItems([...connectedTo([id], profiles)])
   return true
 }
 

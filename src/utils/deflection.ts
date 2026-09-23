@@ -96,16 +96,29 @@ export interface Deflection {
  *
  * A member lying alongside is not a support, so anything parallel is ignored.
  */
-function supportsAlong(p: ProfileData, all: ProfileData[]): number[] {
+interface Seg { id: string; start: THREE.Vector3; end: THREE.Vector3; dir: THREE.Vector3; mid: THREE.Vector3; reach: number }
+
+function segmentOf(p: ProfileData): Seg {
   const { start, end } = getProfileEndpoints(p)
-  const dir = getProfileDir(p)
+  return {
+    id: p.id, start, end, dir: getProfileDir(p),
+    mid: start.clone().add(end).multiplyScalar(0.5),
+    reach: start.distanceTo(end) / 2,
+  }
+}
+
+/** the members as segments, worked out once — asking each of them n times allocated n² vectors */
+const segments = (all: ProfileData[]): Seg[] => all.map(segmentOf)
+
+function supportsAlong(me: Seg, segs: Seg[]): number[] {
   const out: number[] = []
-  for (const b of all) {
-    if (b.id === p.id) continue
-    if (Math.abs(getProfileDir(b).dot(dir)) > 0.9) continue
-    const eb = getProfileEndpoints(b)
-    const near = closestParam(start, end, eb.start, eb.end)
-    if (near.dist <= SUPPORT_TOL) out.push(Math.min(p.length, Math.max(0, near.t)))
+  for (const b of segs) {
+    if (b.id === me.id) continue
+    if (Math.abs(b.dir.dot(me.dir)) > 0.9) continue
+    // two segments cannot touch if their midpoints are further apart than their two halves
+    if (me.mid.distanceTo(b.mid) > me.reach + b.reach + SUPPORT_TOL) continue
+    const near = closestParam(me.start, me.end, b.start, b.end)
+    if (near.dist <= SUPPORT_TOL) out.push(near.t)
   }
   return out.sort((a, b) => a - b)
 }
@@ -117,9 +130,12 @@ function supportsAlong(p: ProfileData, all: ProfileData[]): number[] {
  * member with nothing under either end is not spanning anything yet.
  */
 export function deflect(p: ProfileData, all: ProfileData[], loadKg: number): Deflection | null {
-  const dir = getProfileDir(p)
-  if (Math.abs(dir.y) > 0.15) return null              // not horizontal: not a beam
-  const held = supportsAlong(p, all)
+  return deflectIn(p, segmentOf(p), segments(all), loadKg)
+}
+
+function deflectIn(p: ProfileData, me: Seg, segs: Seg[], loadKg: number): Deflection | null {
+  if (Math.abs(me.dir.y) > 0.15) return null           // not horizontal: not a beam
+  const held = supportsAlong(me, segs)
   if (held.length === 0) return null                    // nothing under it: not spanning yet
 
   // The worst of the two things that bend: the longest run between two supports, and the
@@ -166,9 +182,10 @@ export const SLENDER = 200
 
 /** Every horizontal member that sags more than one part in `SLENDER` under the given load */
 export function saggingMembers(all: ProfileData[], loadKg: number): Array<{ id: string; d: Deflection }> {
+  const segs = segments(all)
   const out: Array<{ id: string; d: Deflection }> = []
-  for (const p of all) {
-    const d = deflect(p, all, loadKg)
+  for (const [i, p] of all.entries()) {
+    const d = deflectIn(p, segs[i], segs, loadKg)
     if (d && d.ratio < SLENDER) out.push({ id: p.id, d })
   }
   return out.sort((a, b) => a.d.ratio - b.d.ratio)

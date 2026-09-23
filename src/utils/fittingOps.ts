@@ -6,6 +6,7 @@ import { memberBox } from './dragSnap'
 import { nextId } from './profileFactory'
 import { specDims } from './specUtils'
 import { translations } from './translations'
+import { connectedTo } from './editOps'
 
 /**
  * Fit a drawer or a door to the opening the selected members bound.
@@ -99,8 +100,15 @@ function carcaseAround(chosen: ProfileData[]): THREE.Box3 {
   // opening is tall swallowed the top rails of the run below and made a wall unit as deep
   // as the base units under it.
   const near = new THREE.Box3().copy(mine).expandByVector(new THREE.Vector3(CARCASE_MARGIN, CARCASE_MARGIN, 1e5))
+  // Reaching without limit into the depth is right for one cabinet and disastrous for a
+  // room: it found every cabinet standing behind this one and gave a kitchen door a depth of
+  // eleven metres. What bounds it is not a distance, it is that a separate cabinet is not
+  // bolted to this one — so only the sub-assembly the opening belongs to is considered.
+  const profiles = useStore.getState().profiles
+  const own = connectedTo(chosen.map((p) => p.id), profiles)
   const box = new THREE.Box3()
-  for (const p of useStore.getState().profiles) {
+  for (const p of profiles) {
+    if (!own.has(p.id)) continue
     const b = memberBox(p)
     if (near.containsPoint(b.getCenter(new THREE.Vector3()))) box.union(b)
   }
