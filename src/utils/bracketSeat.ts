@@ -240,19 +240,24 @@ export function connectorSeatAt(
   // eight levelling feet ended up inside the posts they were meant to hold up, and every one
   // of them was reported as metal through metal, which is exactly what it was.
   if (entry?.fit === 'inline' && entry.axes.towards === 'in') {
-    const near = membersAt(point, profiles, REACH)
+    // Several members meet at the foot of a cabinet, and only one of them is standing on it.
+    // Taking the nearest end put a quarter of the feet on the end of a bottom rail, inside
+    // the metal: what a foot goes under is the member whose end faces the floor.
+    const ends = membersAt(point, profiles, REACH)
       .map((c) => {
         const { start, end } = getProfileEndpoints(c.profile)
-        const at = point.distanceTo(start) <= point.distanceTo(end) ? start : end
-        return { c, at, atStart: point.distanceTo(start) <= point.distanceTo(end), d: point.distanceTo(at) }
+        const atStart = point.distanceTo(start) <= point.distanceTo(end)
+        const at = atStart ? start : end
+        const outward = getProfileDir(c.profile)
+        if (atStart) outward.negate()
+        return { c, at, atStart, outward, d: point.distanceTo(at) }
       })
-      .sort((x, y) => x.d - y.d)[0]
+      .sort((x, y) => x.d - y.d)
+    const near = ends.find((e) => e.outward.y < -0.9) ?? ends[0]
     if (near) {
       const fit = fitConnector(type, near.at, profiles, surfaceNormal)
-      const outward = getProfileDir(near.c.profile)
-      if (near.atStart) outward.negate()
       const reach = connectorExtent(type).half[AXIS_INDEX[entry.axes.primary]] * connectorScale(fit.series)
-      const at = near.at.clone().addScaledVector(outward, reach)
+      const at = near.at.clone().addScaledVector(near.outward, reach)
       return {
         position: [round1(at.x), round1(at.y), round1(at.z)],
         quaternion: fit.quaternion,

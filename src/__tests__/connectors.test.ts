@@ -297,3 +297,28 @@ describe('a part that stands under a post stands under it', () => {
     expect(seat.position[1]).toBeCloseTo(800, 1)
   })
 })
+
+/**
+ * Several members meet at the foot of a cabinet and only one of them is standing on it.
+ * Taking the nearest end put a quarter of the feet on the end of a bottom rail, inside the
+ * metal — the foot goes under whichever member's end faces the floor.
+ */
+describe('a foot picks the member that is standing on it', () => {
+  it('goes under the post, not on the end of the rail beside it', () => {
+    const post = buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 800, 0), '2020')!
+    const rail = buildProfile(new THREE.Vector3(0, 20, 0), new THREE.Vector3(600, 20, 0), '2020')!
+    const cross = buildProfile(new THREE.Vector3(0, 20, 0), new THREE.Vector3(0, 20, 400), '2020')!
+    const seat = connectorSeatAt('foot', new THREE.Vector3(0, 0, 0), [post, rail, cross])
+    expect(seat.position[1]).toBeLessThan(0)
+    expect(findConflicts([post, rail, cross], computeAllTrims([post, rail, cross]), [{
+      id: 'f', type: 'foot', series: seat.series, position: seat.position, quaternion: seat.quaternion,
+    } as never]).filter((c) => c.a === 'f' || c.b === 'f')).toEqual([])
+  })
+
+  it('a heavier post takes a bigger foot, seated further down', () => {
+    const post = buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 800, 0), '4040')!
+    const seat = connectorSeatAt('foot', new THREE.Vector3(0, 0, 0), [post])
+    expect(seat.series).toBe(40)
+    expect(seat.position[1]).toBeLessThan(-15)
+  })
+})
