@@ -150,7 +150,23 @@ test.describe('Picking thin members', () => {
       return best
     })
     expect(best.d).toBeLessThan(6)     // they really do cover each other on screen
-    await page.mouse.click(best.x, best.y)
+
+    // Two rules, and this is about the second. Where the renderer draws one of them at the
+    // pixel, that one is picked — that is the promise, and it does not care which is nearer.
+    // Where neither is squarely under the pointer and both are inside the grab radius, depth
+    // breaks the tie, and the nearer one wins. So aim a few pixels off both of them.
+    const aside = await page.evaluate(([x, y]) => {
+      const w = (window as any).__aluframe
+      for (const d of [5, 6, 7, 8, 9, 10, 12]) {
+        for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) {
+          if (w.frontmostAt(x + dx, y + dy)) continue          // squarely on something
+          if (w.pickAt(x + dx, y + dy).length >= 2) return { x: x + dx, y: y + dy }
+        }
+      }
+      return null
+    }, [best.x, best.y])
+    expect(aside).not.toBeNull()
+    await page.mouse.click(aside!.x, aside!.y)
     const sel = (await store(page)).selectedIds
     expect(sel).toEqual([near.id])
     expect(sel).not.toContain(far.id)

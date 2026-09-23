@@ -48,16 +48,18 @@ export function unbuildable(profiles: ProfileData[]): Joint[] {
 }
 
 /** Score joints and clashes involving this member within its nearby-member set. */
-function scoreAround(profiles: ProfileData[], id: string): { bad: number; clashes: number } {
+function scoreAround(profiles: ProfileData[], id: string): Score {
   const me = profiles.find((p) => p.id === id)
-  if (!me) return { bad: 0, clashes: 0 }
+  if (!me) return { bad: 0, clashes: 0, links: 0 }
   const near = profiles.filter((p) => p.id === id || touching(me, p))
-  const bad = joints(near).filter((j) =>
-    (j.a.id === id || j.b.id === id) && sharedEdge(j.a.spec, j.b.spec) && !seatFor('bracket', j.a, j.b, j.at)).length
+  const mine = joints(near).filter((j) => j.a.id === id || j.b.id === id)
+  const bad = mine.filter((j) => sharedEdge(j.a.spec, j.b.spec) && !seatFor('bracket', j.a, j.b, j.at)).length
+  // Keep the inferred-link count so disconnecting members cannot improve the score.
+  const links = mine.length
   // trims for the neighbourhood, not the document: a member's trim is decided by what it
   // meets, and everything it meets is in `near` by construction
   const clashes = findConflicts(near, computeAllTrims(near)).filter((c) => c.a === id || c.b === id).length
-  return { bad, clashes }
+  return { bad, clashes, links }
 }
 
 /** near enough that one could be in the other's way */
@@ -74,18 +76,23 @@ function touching(a: ProfileData, b: ProfileData): boolean {
   return false
 }
 
+/** How bad the drawing is: joints with nowhere to bolt, members through each other, and
+ *  how much is still joined to anything at all. */
+interface Score { bad: number; clashes: number; links: number }
+
 /** How bad the whole drawing is, for the before-and-after the caller is told */
-function score(profiles: ProfileData[]): { bad: number; clashes: number } {
+function score(profiles: ProfileData[]): Score {
   return {
     bad: unbuildable(profiles).length,
     clashes: findConflicts(profiles, computeAllTrims(profiles)).length,
+    links: joints(profiles).length,
   }
 }
 
-const worse = (before: { bad: number; clashes: number }, after: { bad: number; clashes: number }) =>
-  after.bad > before.bad || after.clashes > before.clashes
-const better = (before: { bad: number; clashes: number }, after: { bad: number; clashes: number }) =>
-  after.bad < before.bad && after.clashes <= before.clashes
+const worse = (before: Score, after: Score) =>
+  after.bad > before.bad || after.clashes > before.clashes || after.links < before.links
+const better = (before: Score, after: Score) =>
+  after.bad < before.bad && after.clashes <= before.clashes && after.links >= before.links
 
 /** a quarter turn about the member's own axis, which moves nothing */
 function rolled(p: ProfileData): ProfileData {
@@ -131,7 +138,8 @@ export function planRepair(input: ProfileData[]): { profiles: ProfileData[]; rep
         const now = scoreAround(profiles, who.id)
         // 1. turn it
         const turned = profiles.map((p) => (p.id === who.id ? rolled(p) : p))
-        if (better(now, scoreAround(turned, who.id))) {
+        const afterTurn = scoreAround(turned, who.id)
+        if (better(now, afterTurn) && !worse(now, afterTurn)) {
           profiles = turned
           steps.push({ id: who.id, how: 'turned' })
           movedSomething = true; done = true; break
