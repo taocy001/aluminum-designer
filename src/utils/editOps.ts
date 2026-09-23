@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { noteNext } from './opLog'
-import { useStore, type ConnectorData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
+import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
 import { getProfileAxis, getProfileDir } from './jointUtils'
@@ -39,6 +39,13 @@ function selectedProfiles(includeLocked = false): ProfileData[] {
  */
 function selectedConnectors(_includeLocked = false): ConnectorData[] {
   return []
+}
+
+/** A drawer or a door moves, turns, is mirrored and copied like any other part */
+function selectedFittings(includeLocked = false): FittingData[] {
+  const { fittings, selectedIds } = useStore.getState()
+  const ids = new Set(selectedIds)
+  return fittings.filter((f) => ids.has(f.id) && (includeLocked || !f.locked))
 }
 
 function selectedPanels(includeLocked = false): PanelData[] {
@@ -90,7 +97,8 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
   const profiles = selectedProfiles()
   const connectors = selectedConnectors()
   const panels = selectedPanels()
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
+  const fittings = selectedFittings()
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
 
   const d: [number, number, number] = [...delta]
   const sink = sinkBelowFloor(profiles, d)
@@ -110,6 +118,10 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
     panels: panels.map((p) => ({
       id: p.id,
       updates: { position: [round3(p.position[0] + d[0]), round3(p.position[1] + d[1]), round3(p.position[2] + d[2])] as [number, number, number] },
+    })),
+    fittings: fittings.map((f) => ({
+      id: f.id,
+      updates: { position: [round3(f.position[0] + d[0]), round3(f.position[1] + d[1]), round3(f.position[2] + d[2])] as [number, number, number] },
     })),
   })
   warnIfNewConflicts(before)
@@ -305,7 +317,8 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   const profiles = selectedProfiles()
   const connectors = selectedConnectors()
   const panels = selectedPanels()
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
+  const fittings = selectedFittings()
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
   if (!isFinite(degrees) || degrees % 360 === 0) return false
   const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode)
   const rot = new THREE.Quaternion().setFromAxisAngle(AXES[axis], THREE.MathUtils.degToRad(degrees))
@@ -320,6 +333,7 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   const spunProfiles = profiles.map((p) => ({ id: p.id, updates: spin(p.position, p.quaternion) }))
   const spunConnectors = connectors.map((c) => ({ id: c.id, updates: spin(c.position, c.quaternion) }))
   const spunPanels = panels.map((p) => ({ id: p.id, updates: spin(p.position, p.quaternion) }))
+  const spunFittings = fittings.map((f) => ({ id: f.id, updates: spin(f.position, f.quaternion) }))
 
   // a turn must not bury the parts: lift the whole selection back onto the floor
   const rotated = profiles.map((p, i) => ({ ...p, ...spunProfiles[i].updates }))
@@ -328,10 +342,11 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
     for (const u of spunProfiles) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
     for (const u of spunConnectors) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
     for (const u of spunPanels) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
+    for (const u of spunFittings) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
   }
 
   const before = conflictPairsNow()
-  useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors, panels: spunPanels })
+  useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors, panels: spunPanels, fittings: spunFittings })
   warnIfNewConflicts(before)
   return true
 }
@@ -515,4 +530,21 @@ export function orientationDegrees(quaternion: [number, number, number, number])
   const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(...quaternion).normalize(), 'YXZ')
   const deg = (r: number) => { const d = Math.round(THREE.MathUtils.radToDeg(r) * 10) / 10; return d === 0 ? 0 : d }
   return [deg(e.x), deg(e.y), deg(e.z)]
+}
+
+
+/**
+ * Apply live edits without adding individual history entries.
+ * beginLiveEdit supplies the snapshot used to undo the completed edit as one step.
+ */
+export function beginLiveEdit(): void {
+  useStore.getState().snapshotHistory()
+}
+
+export function livePart(id: string, updates: Record<string, unknown>): void {
+  const s = useStore.getState()
+  if (s.profiles.some((p) => p.id === id)) s.updateParts({ profiles: [{ id, updates }] })
+  else if (s.panels.some((p) => p.id === id)) s.updateParts({ panels: [{ id, updates }] })
+  else if (s.fittings.some((f) => f.id === id)) s.updateParts({ fittings: [{ id, updates }] })
+  else if (s.connectors.some((c) => c.id === id)) s.updateParts({ connectors: [{ id, updates }] })
 }
