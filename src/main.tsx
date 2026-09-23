@@ -6,6 +6,8 @@ import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { analyzeFrame } from './utils/analysis'
 import { record, noteNext, opLog, clearOpLog, opLogText, type Doc } from './utils/opLog'
+import { decodeShare, takeShareLink } from './utils/shareLink'
+import { translations } from './utils/translations'
 
 const snapshotOf = (s: ReturnType<typeof useStore.getState>): Doc => ({
   profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings,
@@ -64,6 +66,17 @@ if (import.meta.env.DEV) {
     if (wasMid && !now) { noteNext('drag'); flush() }
     wasMid = now
   })
+}
+
+/** Consume shared project data from the URL before rendering the app. */
+{
+  const payload = takeShareLink()
+  if (payload) {
+    decodeShare(payload).then((doc) => {
+      useStore.getState().loadDocument(doc)
+      useToolStore.getState().showToast(translations[useToolStore.getState().language].toastSharedOpened, 'success')
+    }).catch(() => { /* a link we cannot read is not a link for us */ })
+  }
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
