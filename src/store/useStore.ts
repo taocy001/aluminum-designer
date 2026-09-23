@@ -98,6 +98,15 @@ export const HINGE_ANGLES = [95, 110, 135, 165, 180] as const
 export type Overlay = 'full' | 'half' | 'inset'
 
 export interface FittingData {
+  /**
+   * How thick the frame is that this front lies on (mm).
+   *
+   * A full-overlay front covers the uprights it is fitted to, so it sits that much further
+   * out than the box behind it. Without the number the two cannot both be right: put the box
+   * where it belongs and the front is inside the frame, put the front where it belongs and
+   * the box is through the post. Absent on documents written before this, and then zero.
+   */
+  frame?: number
   id: string
   kind: FittingKind
   /** centre of the clear opening */

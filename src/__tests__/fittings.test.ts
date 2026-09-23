@@ -140,3 +140,38 @@ describe('a board inside a post is as unbuildable as two members through each ot
     expect(findConflicts(ps, computeAllTrims(ps), [], [], [sunk]).length).toBeGreaterThan(0)
   })
 })
+
+/**
+ * A door's leaf and a drawer's front both sit at +depth/2 in the fitting's own frame, so
+ * that plane has to land on the outside face of the uprights the opening is framed by.
+ * Landing it on their centreline sank all twenty doors of a drawing half a section into the
+ * posts they hang on, and nothing said a word, because nothing was looking.
+ */
+describe('a door hangs on the front of the post, not inside it', () => {
+  const load2 = (profiles: ProfileData[]) =>
+    useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [] } as never)
+
+  it('leaves the post it hangs on alone', () => {
+    const box = cabinet(0, 600)
+    load2(box)
+    const front = box.filter((p) => p.position[2] === 0 && p.length === 880)
+    useStore.getState().selectItems(front.map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'door', hinge: 'left' })).toBe(true)
+    const s = useStore.getState()
+    expect(findConflicts(s.profiles, computeAllTrims(s.profiles), [], [], s.fittings)).toEqual([])
+  })
+
+  it('and a drawer faces the way its own cabinet does, whatever else is in the drawing', () => {
+    // a second cabinet far along Z: the drawing is now deeper than it is wide, and asking the
+    // drawing which way is depth turns the drawer ninety degrees
+    const mine = cabinet(0, 600)
+    const far = cabinet(9000, 600)
+    load2([...mine, ...far])
+    useStore.getState().selectItems(mine.filter((p) => p.length === 880).map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'drawer', frontHeight: 200, count: 1 })).toBe(true)
+    const d = useStore.getState().fittings[0]
+    expect(d.width).toBeGreaterThan(d.depth)      // 600 wide bay, 600 deep box, front is the bay
+    const s = useStore.getState()
+    expect(findConflicts(s.profiles, computeAllTrims(s.profiles), [], [], s.fittings)).toEqual([])
+  })
+})

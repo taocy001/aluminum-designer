@@ -42,7 +42,12 @@ export interface FittingRequest {
  * every door in a kitchen facing the wall.
  */
 function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
-  const all = useStore.getState().profiles
+  // The cabinet this opening is in, not the drawing it is in. Asked of the whole drawing,
+  // "which way is depth" is answered by the room: eleven cabinets laid out along Z made every
+  // drawer in the flat face along X, turned ninety degrees, with its width and its depth
+  // swapped and its front buried in the upright beside it.
+  const own = connectedTo(chosen.map((p) => p.id), useStore.getState().profiles)
+  const all = useStore.getState().profiles.filter((p) => own.has(p.id))
   const whole = new THREE.Box3()
   for (const p of all) whole.union(memberBox(p))
   const mine = new THREE.Box3()
@@ -162,6 +167,7 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
   // empty and hands back zeroes for both the centre and the size, which reads as "no
   // opening here" for an opening that is plainly there.
   const span = box.getSize(new THREE.Vector3())
+  const framing = box.clone()   // the members themselves, before the opening is taken in
   box.expandByVector(new THREE.Vector3(
     span.x > section * 2.5 ? -section : 0,
     span.y > section * 2.5 ? -section : 0,
@@ -193,6 +199,21 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
     useToolStore.getState().showToast(t.toastDrawerTooSmall, 'error'); return false
   }
 
+  // Where the front is. A door's leaf and a drawer's front both sit at +depth/2 in the
+  // fitting's own frame, so that plane has to land on the outside face of the uprights the
+  // opening is framed by — putting it on their centreline instead sank every door half a
+  // section into the post it hangs on, and every drawer front the same.
+  // The box goes behind the uprights and the front lies on them, so the fitting's own front
+  // plane is their inner face and `frame` says how much is in front of it. Measuring to the
+  // centreline instead sank every door half a section into the post it hangs on.
+  const axis: 'x' | 'z' = Math.abs(out.z) > 0.5 ? 'z' : 'x'
+  const sign = out[axis] > 0 ? 1 : -1
+  const outer = sign > 0 ? framing.max[axis] : framing.min[axis]
+  const frame = Math.abs(framing.max[axis] - framing.min[axis]) >= section * 2
+    ? section                                  // the selection spans the cabinet: one upright
+    : Math.abs(framing.max[axis] - framing.min[axis])
+  const origin = outer - sign * (frame + deep / 2)
+
   const made: FittingData[] = []
   if (req.kind === 'drawer') {
     const frontHeight = Math.max(60, req.frontHeight ?? 200)
@@ -202,24 +223,18 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
       if (y + frontHeight / 2 > box.max.y + 1) break
       made.push({
         id: nextId('f'), kind: 'drawer',
-        position: [
-          Math.abs(out.z) > 0.5 ? centre.x : centre.x, y,
-          Math.abs(out.z) > 0.5 ? centre.z : centre.z,
-        ],
+        position: [axis === 'x' ? origin : centre.x, y, axis === 'z' ? origin : centre.z],
         quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
-        width: across, height: frontHeight, depth: deep,
+        width: across, height: frontHeight, depth: deep, frame,
         material: 'ply', open: 0,
       })
     }
   } else {
-    // the selected uprights are the front of the cabinet, and the door's front plane is at
-    // +depth/2 in its own frame, so the opening centre sits half a depth behind them
-    const back = out.clone().multiplyScalar(-deep / 2)
     made.push({
       id: nextId('f'), kind: 'door',
-      position: [centre.x + back.x, centre.y + back.y, centre.z + back.z],
+      position: [axis === 'x' ? origin : centre.x, centre.y, axis === 'z' ? origin : centre.z],
       quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
-      width: across, height: size.y, depth: deep,
+      width: across, height: size.y, depth: deep, frame,
       material: 'mdf', open: 0,
       hinge: req.hinge ?? 'left',
       hingeType: req.hingeType ?? 'cup',

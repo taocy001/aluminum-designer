@@ -96,7 +96,7 @@ function frontBoard(f: FittingData): Board {
     width: Math.max(20, f.width + grow),
     height: Math.max(20, f.height + grow),
     thickness: FRONT_BOARD,
-    position: [0, 0, f.depth / 2 + FRONT_BOARD / 2],
+    position: [0, 0, f.depth / 2 + (f.frame ?? 0) + FRONT_BOARD / 2],
     quaternion: Q_FLAT,
   }
 }
@@ -145,7 +145,7 @@ export function hingeAxis(f: FittingData): { origin: THREE.Vector3; axis: THREE.
   const side: HingeSide = f.hinge ?? 'left'
   const w = f.width / 2 + overlayMm(f.overlay)
   const h = f.height / 2 + overlayMm(f.overlay)
-  const z = f.depth / 2
+  const z = f.depth / 2 + (f.frame ?? 0)
   switch (side) {
     case 'right':  return { origin: new THREE.Vector3(w, 0, z), axis: new THREE.Vector3(0, 1, 0), sign: 1 }
     case 'top':    return { origin: new THREE.Vector3(0, h, z), axis: new THREE.Vector3(1, 0, 0), sign: 1 }
