@@ -190,7 +190,18 @@ const Sidebar: React.FC = () => {
     for (const b of panels) if (ids.has(b.id)) top = Math.max(top, b.position[1] + b.height / 2)
     return isFinite(top) ? Math.round(top) : null
   }, [selectedIds, profiles, connectors, panels])
-  const [collapsed, setCollapsed] = useState(false)
+  /**
+   * On a phone the panel is a sheet you pull up, not a column beside the drawing: there is
+   * no room for both, and the drawing is what you came for. It starts out of the way, and
+   * the rail that opens it sits along the edge where a thumb already is.
+   */
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 720)
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < 720)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 720)
   // section state is remembered per browser, and selecting something opens the properties
   const [open, setOpen] = useState<Record<SectionKey, boolean>>(() => {
     try {
@@ -351,11 +362,13 @@ const Sidebar: React.FC = () => {
 
   if (collapsed) {
     return (
-      <div className="w-11 bg-slate-800 border-r border-white/5 flex flex-col items-center gap-2 py-3 shrink-0" data-testid="sidebar-rail">
+      <div className={`bg-slate-800 border-white/5 flex shrink-0 ${narrow
+        ? 'w-full h-11 border-t flex-row items-center gap-3 px-3 order-last'
+        : 'w-11 border-r flex-col items-center gap-2 py-3'}`} data-testid="sidebar-rail">
         <button onClick={() => setCollapsed(false)} title={t.expandPanel} data-testid="sidebar-expand"
           className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><PanelLeftOpen size={16} /></button>
-        <div className="w-6 h-px bg-white/10" />
-        <div className="text-[9px] font-mono text-slate-500 writing-vertical" style={{ writingMode: 'vertical-rl' }}>
+        <div className={narrow ? 'h-6 w-px bg-white/10' : 'w-6 h-px bg-white/10'} />
+        <div className="text-[9px] font-mono text-slate-500" style={narrow ? undefined : { writingMode: 'vertical-rl' }}>
           {profiles.length} · {(totalCut / 1000).toFixed(2)}m{conflicts.length ? ` · ⚠${conflicts.length}` : ''}
         </div>
       </div>
@@ -363,7 +376,9 @@ const Sidebar: React.FC = () => {
   }
 
   return (
-    <div className="w-80 bg-slate-800 border-r border-white/5 flex flex-col text-slate-200 shrink-0" data-testid="sidebar">
+    <div className={`bg-slate-800 border-white/5 flex flex-col text-slate-200 shrink-0 ${narrow
+      ? 'w-full border-t max-h-[62vh] order-last'
+      : 'w-80 border-r'}`} data-testid="sidebar">
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 shrink-0">
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{t.components}</span>
         <button onClick={() => setCollapsed(true)} title={t.collapsePanel} data-testid="sidebar-collapse"

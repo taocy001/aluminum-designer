@@ -377,7 +377,9 @@ function App() {
         </div>
       </header>
 
-      <div className="flex-grow flex overflow-hidden">
+      {/* Side by side where there is room, stacked where there is not: on a phone the
+          drawing takes the screen and the panel is a sheet along the bottom edge. */}
+      <div className="flex-grow flex overflow-hidden flex-col md:flex-row">
         <Sidebar />
         <main
           ref={mainRef}
@@ -399,10 +401,12 @@ function App() {
           )}
 
           {/* Toolbar */}
-          {/* One row, never wrapped: the toggles carry an icon and a tooltip, and only the
-              two things that change constantly — what is in hand and the work plane — keep
-              their words. A toolbar that wraps into a column is worse than a short label. */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-0.5 flex-nowrap whitespace-nowrap max-w-[calc(100%-2rem)] overflow-x-auto bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
+          {/* One row where there is room for one. The toggles carry an icon and a tooltip,
+              and only the two things that change constantly — what is in hand and the work
+              plane — keep their words, because a toolbar that wraps into a column is worse
+              than a short label. On a phone there is no row wide enough, and a strip that
+              scrolls sideways hides its own end, so there it wraps to two. */}
+          <div className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap md:flex-nowrap whitespace-nowrap max-w-[calc(100%-1rem)] md:overflow-x-auto bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
             {/* What is in hand, and the way to put it down. Not a mode switch: it only ever
                 empties the hand, because filling it is the sidebar's job. */}
             {/* the label is the part's name, but the accessible name says what the button does,

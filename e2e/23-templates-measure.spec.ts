@@ -203,3 +203,80 @@ test.describe('A drawing in a link', () => {
     await c.close()
   })
 })
+
+/**
+ * On a phone the drawing is what you came for, so it takes the screen and the panel is a
+ * sheet along the bottom edge rather than a column stealing half the width.
+ */
+test.describe('Narrow screens', () => {
+  const sizes = [
+    { name: 'phone', width: 390, height: 844, stacked: true },
+    { name: 'tablet', width: 820, height: 1180, stacked: false },
+    { name: 'laptop', width: 1440, height: 900, stacked: false },
+  ]
+
+  for (const s of sizes) {
+    test(`${s.name}: the drawing gets the room, and the toolbar fits`, async ({ browser }) => {
+      const c = await browser.newContext({ viewport: { width: s.width, height: s.height }, hasTouch: true })
+      const p = await c.newPage()
+      await p.goto('/')
+      await p.evaluate(() => localStorage.clear())
+      await p.goto('/')
+      await p.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
+      await p.waitForTimeout(500)
+
+      const canvasWidth = await p.evaluate(() => Math.round(document.querySelector('canvas')!.getBoundingClientRect().width))
+      if (s.stacked) {
+        // the panel is out of the way, and the drawing has the whole width
+        expect(canvasWidth).toBeGreaterThan(s.width * 0.9)
+        await expect(p.getByTestId('sidebar-rail')).toBeVisible()
+      } else {
+        await expect(p.getByTestId('sidebar')).toBeVisible()
+        expect(canvasWidth).toBeLessThan(s.width)
+      }
+
+      // every toolbar button is on screen, not off the end of a strip that scrolls
+      const offscreen = await p.evaluate(() => {
+        const ids = ['fit-view', 'zoom-in', 'zoom-out', 'labels-toggle', 'mode-toggle', 'measure-toggle', 'fittings-toggle']
+        return ids.filter((id) => {
+          const el = document.querySelector(`[data-testid="${id}"]`)
+          if (!el) return false
+          const r = el.getBoundingClientRect()
+          return r.right > window.innerWidth + 1 || r.left < -1 || r.bottom > window.innerHeight + 1
+        })
+      })
+      expect(offscreen).toEqual([])
+      await c.close()
+    })
+  }
+
+  test('the panel opens and closes on a phone', async ({ browser }) => {
+    const c = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true })
+    const p = await c.newPage()
+    await p.goto('/')
+    await p.evaluate(() => localStorage.clear())
+    await p.goto('/')
+    await p.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
+    await expect(p.getByTestId('sidebar')).toHaveCount(0)
+    await p.getByTestId('sidebar-expand').click()
+    await expect(p.getByTestId('sidebar')).toBeVisible()
+    await p.getByTestId('sidebar-collapse').click()
+    await expect(p.getByTestId('sidebar')).toHaveCount(0)
+    await c.close()
+  })
+
+  test('a frame can be placed from a phone', async ({ browser }) => {
+    const c = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true })
+    const p = await c.newPage()
+    await p.goto('/')
+    await p.evaluate(() => localStorage.clear())
+    await p.goto('/')
+    await p.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
+    await p.getByTestId('sidebar-expand').click()
+    await p.getByTestId('template-cabinet').click()
+    await p.getByTestId('template-place').click()
+    await p.waitForTimeout(400)
+    expect(await p.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)).toBeGreaterThan(3)
+    await c.close()
+  })
+})
