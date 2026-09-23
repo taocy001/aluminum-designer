@@ -44,6 +44,23 @@ export function massPerMetre(spec: string): number {
   return sectionProps(spec).area * 0.0027
 }
 
+/** closest approach between two segments, as the parameter along the first (0…|ab|) */
+function closestParam(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3): { t: number; dist: number } {
+  const u = b.clone().sub(a)
+  const v = d.clone().sub(c)
+  const w0 = a.clone().sub(c)
+  const A = u.dot(u), B = u.dot(v), C = v.dot(v), D = u.dot(w0), Ee = v.dot(w0)
+  const den = A * C - B * B
+  let sc: number, tc: number
+  if (Math.abs(den) < 1e-9) { sc = 0; tc = C > 1e-9 ? Ee / C : 0 }
+  else { sc = (B * Ee - C * D) / den; tc = (A * Ee - B * D) / den }
+  sc = Math.min(1, Math.max(0, sc))
+  tc = Math.min(1, Math.max(0, tc))
+  const pa = a.clone().addScaledVector(u, sc)
+  const pb = c.clone().addScaledVector(v, tc)
+  return { t: sc * Math.sqrt(A), dist: pa.distanceTo(pb) }
+}
+
 export type Support = 'simple' | 'cantilever' | 'none'
 
 export interface Deflection {
@@ -62,18 +79,19 @@ export interface Deflection {
   turnHelps: boolean
 }
 
-/** how many of a member's two ends are held up by something else */
-function supportsOf(p: ProfileData, all: ProfileData[]): number {
+/** Locate contacts along a member, including intermediate supports. Parallel members are excluded. */
+function supportsAlong(p: ProfileData, all: ProfileData[]): number[] {
   const { start, end } = getProfileEndpoints(p)
-  let n = 0
-  for (const at of [start, end]) {
-    for (const b of all) {
-      if (b.id === p.id) continue
-      const eb = getProfileEndpoints(b)
-      if (closestOnSegment(at, eb.start, eb.end).point.distanceTo(at) <= SUPPORT_TOL) { n++; break }
-    }
+  const dir = getProfileDir(p)
+  const out: number[] = []
+  for (const b of all) {
+    if (b.id === p.id) continue
+    if (Math.abs(getProfileDir(b).dot(dir)) > 0.9) continue
+    const eb = getProfileEndpoints(b)
+    const near = closestParam(start, end, eb.start, eb.end)
+    if (near.dist <= SUPPORT_TOL) out.push(Math.min(p.length, Math.max(0, near.t)))
   }
-  return n
+  return out.sort((a, b) => a - b)
 }
 
 /**
@@ -85,9 +103,15 @@ function supportsOf(p: ProfileData, all: ProfileData[]): number {
 export function deflect(p: ProfileData, all: ProfileData[], loadKg: number): Deflection | null {
   const dir = getProfileDir(p)
   if (Math.abs(dir.y) > 0.15) return null              // not horizontal: not a beam
-  const held = supportsOf(p, all)
-  const support: Support = held >= 2 ? 'simple' : held === 1 ? 'cantilever' : 'none'
-  if (support === 'none') return null
+  const held = supportsAlong(p, all)
+  if (held.length === 0) return null                    // nothing under it: not spanning yet
+
+  // The worst of the two things that bend: the longest run between two supports, and the
+  // longest tail hanging past the last one. A tail bends far more for its length, so they
+  // are compared by how far each would actually drop, not by which is longer.
+  let gap = 0
+  for (let i = 1; i < held.length; i++) gap = Math.max(gap, held[i] - held[i - 1])
+  const tail = Math.max(held[0], p.length - held[held.length - 1])
 
   const { w, h } = specDims(p.spec)
   const props = sectionProps(p.spec)
@@ -100,19 +124,22 @@ export function deflect(p: ProfileData, all: ProfileData[], loadKg: number): Def
   const deep = depth >= Math.max(w, h) - 1e-6
   const I = deep ? props.strong : props.weak
 
-  const L = p.length
   const F = loadKg * G                                  // N
   const wSelf = (massPerMetre(p.spec) * G) / 1000       // N/mm
-  const sag = support === 'simple'
-    ? (F * L ** 3) / (48 * E * I) + (5 * wSelf * L ** 4) / (384 * E * I)
-    : (F * L ** 3) / (3 * E * I) + (wSelf * L ** 4) / (8 * E * I)
+  const simple = (L: number) => (F * L ** 3) / (48 * E * I) + (5 * wSelf * L ** 4) / (384 * E * I)
+  const cantilever = (L: number) => (F * L ** 3) / (3 * E * I) + (wSelf * L ** 4) / (8 * E * I)
+
+  const a = { span: gap, support: 'simple' as Support, sag: gap > 0 ? simple(gap) : 0 }
+  const b = { span: tail, support: 'cantilever' as Support, sag: tail > 0 ? cantilever(tail) : 0 }
+  const worst = b.sag > a.sag ? b : a
+  if (worst.span <= 0) return null
 
   return {
-    span: L,
-    support,
+    span: Math.round(worst.span),
+    support: worst.support,
     load: loadKg,
-    sag: Math.round(sag * 100) / 100,
-    ratio: sag > 0 ? Math.round(L / sag) : Infinity,
+    sag: Math.round(worst.sag * 100) / 100,
+    ratio: worst.sag > 0 ? Math.round(worst.span / worst.sag) : Infinity,
     I,
     turnHelps: w !== h && !deep && props.strong > props.weak,
   }
