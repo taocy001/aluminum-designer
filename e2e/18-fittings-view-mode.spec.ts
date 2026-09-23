@@ -165,12 +165,14 @@ test.describe('Looking at it instead of building it', () => {
   })
 
   test('the mode switch says which one you are in', async ({ page }) => {
-    // one switch, two states: it shows where you are, not where it would take you
-    await expect(page.getByTestId('mode-toggle')).toContainText('编辑')
+    // one switch, two states. The toolbar is icons, so the state it is in is the icon and
+    // the name it answers to, never a caption on one button among a row that has none.
+    await expect(page.getByTestId('mode-toggle')).toHaveAttribute('aria-label', '编辑')
+    await expect(page.getByTestId('mode-toggle')).toHaveText('')
     await page.getByTestId('mode-toggle').click()
     await settle(page)
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().viewMode)).toBe(true)
-    await expect(page.getByTestId('mode-toggle')).toContainText('查看')
+    await expect(page.getByTestId('mode-toggle')).toHaveAttribute('aria-label', '查看')
     await page.getByTestId('mode-toggle').click()
     await settle(page)
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().viewMode)).toBe(false)

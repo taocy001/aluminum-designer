@@ -209,7 +209,8 @@ export function connectorSeatAt(
   type: string, point: THREE.Vector3, profiles: ProfileData[], surfaceNormal?: THREE.Vector3 | null,
 ): { position: [number, number, number]; quaternion: [number, number, number, number]; series: ConnectorSeries; seated: boolean } {
   const entry = connectorEntry(type)
-  if (entry?.isCornerBracket) {
+  // Infer seats for corner-mounted types; preserve the drop position for other types.
+  if (entry?.seat === 'angle' || entry?.seat === 'plate') {
     // Search nearby members within REACH for a perpendicular corner.
     const contacts = membersAt(point, profiles, REACH)
     // the member whose end is here is the one butting in; the other is what it butts into
