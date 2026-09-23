@@ -4,7 +4,7 @@ import { OrbitControls, Grid, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { pickCandidatesAtScreen } from '../utils/screenPick'
-import { seatFor } from '../utils/bracketSeat'
+import { connectorSeatAt, seatFor } from '../utils/bracketSeat'
 import { leafObb } from '../utils/fittingGeometry'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
@@ -65,6 +65,29 @@ const CameraController: React.FC = () => {
     orbit?.update()
     clearZoom()
   }, [zoomStep, camera, controls, clearZoom])
+
+  /**
+   * Frame the drawing when the page opens.
+   *
+   * The camera starts where it starts, which for a new drawing is a sensible place to stand
+   * and for a three-metre kitchen restored from the last session is somewhere inside it. It
+   * waits for the document because the store hydrates from storage, and it only ever does
+   * this once — after that, where the camera is, is where the person put it.
+   */
+  const framedOnOpen = useRef(false)
+  useEffect(() => {
+    if (framedOnOpen.current) return
+    const fitIfAny = (s: ReturnType<typeof useStore.getState>) => {
+      if (framedOnOpen.current) return true
+      if (s.profiles.length + s.panels.length + s.fittings.length === 0) return false
+      framedOnOpen.current = true
+      useToolStore.getState().triggerCameraReset('all')
+      return true
+    }
+    if (fitIfAny(useStore.getState())) return
+    const stop = useStore.subscribe((s) => { if (fitIfAny(s)) stop() })
+    return stop
+  }, [])
 
   useEffect(() => {
     if (cameraResetTrigger === prevTrigger.current) return
@@ -163,6 +186,7 @@ const DevHook: React.FC = () => {
     w.__aluframe.THREE = THREE
     w.__aluframe.seatFor = seatFor
     w.__aluframe.leafObb = leafObb
+    w.__aluframe.connectorSeatAt = connectorSeatAt
     w.__aluframe.pickAt = (clientX: number, clientY: number) => {
       camera.updateMatrixWorld()
       const rect = gl.domElement.getBoundingClientRect()

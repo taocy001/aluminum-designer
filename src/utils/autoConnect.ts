@@ -104,7 +104,7 @@ export function autoConnect(type: string): AutoConnectResult {
         position = seat.position
         quaternion = seat.quaternion
         series = seat.series
-      } else if (partner && connectorEntry(type)?.isCornerBracket) {
+      } else if (partner && (entry.seat === 'angle' || entry.seat === 'plate')) {
         // There is a joint here and this part cannot be bolted to it. Putting one there
         // anyway makes a drawing that cannot be built and a cut list that has been paid for,
         // so it is skipped. Sections with no edge in common are not a fault to be reported —

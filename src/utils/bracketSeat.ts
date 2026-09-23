@@ -216,7 +216,9 @@ export function connectorSeatAt(
   type: string, point: THREE.Vector3, profiles: ProfileData[], surfaceNormal?: THREE.Vector3 | null,
 ): { position: [number, number, number]; quaternion: [number, number, number, number]; series: ConnectorSeries; seated: boolean } {
   const entry = connectorEntry(type)
-  if (entry?.isCornerBracket) {
+  // anything that meets two members at a corner has a seat to find; the rest is placed where
+  // it was dropped, because which face a plate or a foot goes on is nobody's inference
+  if (entry?.seat === 'angle' || entry?.seat === 'plate') {
     // Generous on purpose. The part is twenty millimetres on a frame metres across, so
     // asking for the pointer to be on the joint is asking for pixel work; anywhere in the
     // neighbourhood of a corner can only have meant that corner.
