@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { ConnectorData, ProfileData } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong } from './geometryCore'
-import { flushFace } from './specCompat'
+import { flushFace, sharedEdge } from './specCompat'
 import { nearestSlot, slotOffsets } from './specUtils'
 import { connectorEntry, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector, membersAt } from './connectorFit'
@@ -235,6 +235,8 @@ export function connectorSeatAt(
 
 /** Dispatch seating by connector type: cast brackets use inner perpendicular faces; plates use an outer face. */
 export function seatFor(type: string, a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {
+  // Reject end-to-face pairs whose section dimensions share no edge.
+  if (!sharedEdge(a.spec, b.spec)) return null
   const kind = connectorEntry(type)?.seat
   if (kind === 'angle') return seatAngle(a, b, at)
   if (kind === 'plate') return seatBracket(a, b, at)

@@ -1845,22 +1845,6 @@
   },
   {
    "id": "c7",
-   "type": "bracket",
-   "series": 20,
-   "position": [
-    3520,
-    290,
-    -10
-   ],
-   "quaternion": [
-    1,
-    0,
-    1.1102230246251565e-16,
-    -1.1102230246251565e-16
-   ]
-  },
-  {
-   "id": "c8",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -1876,7 +1860,7 @@
    ]
   },
   {
-   "id": "c9",
+   "id": "c8",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -1892,7 +1876,7 @@
    ]
   },
   {
-   "id": "c10",
+   "id": "c9",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -1908,7 +1892,7 @@
    ]
   },
   {
-   "id": "c11",
+   "id": "c10",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -1924,7 +1908,7 @@
    ]
   },
   {
-   "id": "c12",
+   "id": "c11",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -1940,7 +1924,7 @@
    ]
   },
   {
-   "id": "c13",
+   "id": "c12",
    "type": "inside-corner",
    "series": 40,
    "position": [
@@ -1956,7 +1940,7 @@
    ]
   },
   {
-   "id": "c14",
+   "id": "c13",
    "type": "inside-corner",
    "series": 40,
    "position": [
@@ -1972,23 +1956,7 @@
    ]
   },
   {
-   "id": "c15",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    3520,
-    290,
-    1090
-   ],
-   "quaternion": [
-    1,
-    0,
-    1.1102230246251565e-16,
-    -1.1102230246251565e-16
-   ]
-  },
-  {
-   "id": "c16",
+   "id": "c14",
    "type": "gusset",
    "series": 20,
    "position": [
@@ -2004,7 +1972,7 @@
    ]
   },
   {
-   "id": "c17",
+   "id": "c15",
    "type": "gusset",
    "series": 20,
    "position": [
@@ -2020,7 +1988,7 @@
    ]
   },
   {
-   "id": "c18",
+   "id": "c16",
    "type": "gusset",
    "series": 20,
    "position": [
@@ -2036,7 +2004,7 @@
    ]
   },
   {
-   "id": "c19",
+   "id": "c17",
    "type": "gusset",
    "series": 20,
    "position": [
@@ -2052,7 +2020,7 @@
    ]
   },
   {
-   "id": "c20",
+   "id": "c18",
    "type": "gusset",
    "series": 20,
    "position": [
@@ -2068,7 +2036,7 @@
    ]
   },
   {
-   "id": "c21",
+   "id": "c19",
    "type": "gusset",
    "series": 40,
    "position": [
@@ -2084,7 +2052,7 @@
    ]
   },
   {
-   "id": "c22",
+   "id": "c20",
    "type": "gusset",
    "series": 40,
    "position": [
@@ -2100,23 +2068,7 @@
    ]
   },
   {
-   "id": "c23",
-   "type": "gusset",
-   "series": 20,
-   "position": [
-    3490,
-    300,
-    2180
-   ],
-   "quaternion": [
-    1,
-    0,
-    1.1102230246251565e-16,
-    -1.1102230246251565e-16
-   ]
-  },
-  {
-   "id": "c24",
+   "id": "c21",
    "type": "t-bracket",
    "series": 20,
    "position": [
@@ -2132,7 +2084,7 @@
    ]
   },
   {
-   "id": "c25",
+   "id": "c22",
    "type": "t-bracket",
    "series": 20,
    "position": [
@@ -2148,7 +2100,7 @@
    ]
   },
   {
-   "id": "c26",
+   "id": "c23",
    "type": "t-bracket",
    "series": 20,
    "position": [
@@ -2164,7 +2116,7 @@
    ]
   },
   {
-   "id": "c27",
+   "id": "c24",
    "type": "t-bracket",
    "series": 20,
    "position": [
@@ -2180,7 +2132,7 @@
    ]
   },
   {
-   "id": "c28",
+   "id": "c25",
    "type": "t-bracket",
    "series": 20,
    "position": [
@@ -2196,7 +2148,7 @@
    ]
   },
   {
-   "id": "c29",
+   "id": "c26",
    "type": "t-bracket",
    "series": 40,
    "position": [
@@ -2212,7 +2164,7 @@
    ]
   },
   {
-   "id": "c30",
+   "id": "c27",
    "type": "t-bracket",
    "series": 40,
    "position": [
@@ -2225,22 +2177,6 @@
     0,
     -0.7071067811865475,
     0.7071067811865476
-   ]
-  },
-  {
-   "id": "c31",
-   "type": "t-bracket",
-   "series": 20,
-   "position": [
-    3490,
-    300,
-    3280
-   ],
-   "quaternion": [
-    1,
-    0,
-    1.1102230246251565e-16,
-    -1.1102230246251565e-16
    ]
   }
  ],

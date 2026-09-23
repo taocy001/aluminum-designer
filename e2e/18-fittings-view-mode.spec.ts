@@ -165,16 +165,19 @@ test.describe('Looking at it instead of building it', () => {
   })
 
   test('the mode switch says which one you are in', async ({ page }) => {
-    await page.getByTestId('mode-look').click()
+    // one switch, two states: it shows where you are, not where it would take you
+    await expect(page.getByTestId('mode-toggle')).toContainText('编辑')
+    await page.getByTestId('mode-toggle').click()
     await settle(page)
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().viewMode)).toBe(true)
-    await page.getByTestId('mode-build').click()
+    await expect(page.getByTestId('mode-toggle')).toContainText('查看')
+    await page.getByTestId('mode-toggle').click()
     await settle(page)
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().viewMode)).toBe(false)
   })
 
   test('a press on a drawer pulls it out, and again puts it back', async ({ page }) => {
-    await page.getByTestId('mode-look').click()
+    await page.getByTestId('mode-toggle').click()
     await settle(page)
     const f = (await fittings(page))[0]
     const c = await page.evaluate((p) => (window as any).__aluframe.worldToClient(p[0], p[1], p[2]), f.position)
@@ -188,7 +191,7 @@ test.describe('Looking at it instead of building it', () => {
 
   test('opening one is not something to undo: it is not a change to the design', async ({ page }) => {
     const before = (await store(page)).past
-    await page.getByTestId('mode-look').click()
+    await page.getByTestId('mode-toggle').click()
     await settle(page)
     const f = (await fittings(page))[0]
     const c = await page.evaluate((p) => (window as any).__aluframe.worldToClient(p[0], p[1], p[2]), f.position)
@@ -199,7 +202,7 @@ test.describe('Looking at it instead of building it', () => {
 
   test('nothing can be moved or deleted while looking', async ({ page }) => {
     await pick(page, ['u1'])
-    await page.getByTestId('mode-look').click()
+    await page.getByTestId('mode-toggle').click()
     await settle(page)
     const before = await store(page)
     await page.keyboard.press('Delete')
@@ -215,14 +218,14 @@ test.describe('Looking at it instead of building it', () => {
     await settle(page)
     await page.waitForTimeout(200)
     expect(await page.evaluate(() => (window as any).__aluframe.gizmoHandles().length)).toBeGreaterThan(0)
-    await page.getByTestId('mode-look').click()
+    await page.getByTestId('mode-toggle').click()
     await settle(page)
     await page.waitForTimeout(250)
     expect(await page.evaluate(() => (window as any).__aluframe.gizmoHandles().length)).toBe(0)
   })
 
   test('picking up a part goes back to building rather than doing nothing', async ({ page }) => {
-    await page.getByTestId('mode-look').click()
+    await page.getByTestId('mode-toggle').click()
     await settle(page)
     await page.getByTestId('spec-2040').click()
     await settle(page)
@@ -254,7 +257,7 @@ test.describe('The corner of the canvas', () => {
     await page.getByTestId('spec-2040').click()
     await settle(page)
     await expect(page.getByTestId('mode-line')).toContainText('2040')
-    await page.getByTestId('mode-look').click()
+    await page.getByTestId('mode-toggle').click()
     await settle(page)
     await expect(page.getByTestId('mode-line')).not.toContainText('2040')
   })
