@@ -128,3 +128,21 @@ export function boltLabel(series: ConnectorSeries, language: 'zh' | 'en'): strin
 export function nutLabel(series: ConnectorSeries, language: 'zh' | 'en'): string {
   return language === 'zh' ? `T型螺母 ${boltThread(series)}` : `T-nut ${boltThread(series)}`
 }
+
+/**
+ * Approximate connector collision boxes in local coordinates.
+ * Angle brackets originate at the inner flange vertex; plates at the intersection of their bolt lines.
+ */
+export function connectorExtent(type: string): { centre: [number, number, number]; half: [number, number, number] } {
+  switch (connectorEntry(type)?.seat) {
+    case 'angle':
+      // two flanges reaching 30 out of the vertex, 18 across
+      return { centre: [15, 15, 0], half: [15, 15, 9] }
+    case 'plate':
+      return { centre: [10, 10, 2], half: [20, 20, 2] }
+    case 'inline':
+      return { centre: [0, 0, 0], half: [30, 10, 10] }
+    default:
+      return { centre: [0, 0, 0], half: [12, 12, 12] }
+  }
+}

@@ -18,7 +18,7 @@ import { countUnflush, rollProfile } from './utils/faceAlign'
 if (import.meta.env.DEV) {
   ;(window as any).__aluframe = {
     store: useStore, tool: useToolStore,
-    trims: () => Object.fromEntries(analyzeFrame(useStore.getState().profiles).trims),
+    trims: () => Object.fromEntries(analyzeFrame(useStore.getState().profiles, useStore.getState().connectors).trims),
     gizmoHandles: () => gizmoState.handles.map((h) => {
       const world = h.probe.getWorldPosition(h.probe.position.clone())
       return { kind: h.part.kind, axis: h.part.axis, position: [world.x, world.y, world.z] }
@@ -32,7 +32,7 @@ if (import.meta.env.DEV) {
       return auditBrackets(s.profiles, s.connectors).map((f) => ({ id: f.id, off: f.off, reason: f.reason }))
     },
     conflicts: () => {
-      const { conflicts, conflictIds } = analyzeFrame(useStore.getState().profiles)
+      const { conflicts, conflictIds } = analyzeFrame(useStore.getState().profiles, useStore.getState().connectors)
       return { conflicts: conflicts.map((c) => ({ a: c.a, b: c.b, depth: c.depth })), ids: [...conflictIds] }
     },
   }
