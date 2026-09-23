@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -17,6 +17,7 @@ import { addFittingFromSelection } from '../utils/fittingOps'
 import { downloadText, openProject, saveProject, savedFileName } from '../utils/projectFile'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
+import { buildDxf } from '../utils/dxf'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
@@ -231,6 +232,11 @@ const Sidebar: React.FC = () => {
   const handleExportCutting = () => {
     downloadText(`aluframe-cutting-${new Date().toISOString().slice(0, 10)}.csv`,
       '\ufeff' + nestingCsv(nesting, stockMm), 'text/csv;charset=utf-8')
+  }
+  // A screenshot is not a drawing: it cannot be measured and it cannot go on a machine.
+  const handleExportDxf = () => {
+    downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.dxf`,
+      buildDxf({ profiles, panels, fittings }), 'application/dxf')
   }
   const handleSaveProject = async (asNew = false) => {
     const doc = { version: 3, savedAt: new Date().toISOString(), profiles, connectors, panels, fittings }
@@ -852,9 +858,17 @@ const Sidebar: React.FC = () => {
           </div>
         )}
 
-        <button onClick={handleExportBOM} disabled={profiles.length === 0} data-testid="export-bom" title={t.hintExportBOM} className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
-          <Download size={14} /> {t.exportBOM}
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={handleExportBOM} disabled={profiles.length === 0} data-testid="export-bom" title={t.hintExportBOM}
+            className="flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
+            <Download size={14} /> {t.exportBOM}
+          </button>
+          <button onClick={handleExportDxf} disabled={profiles.length + panels.length + fittings.length === 0}
+            data-testid="export-dxf" title={t.hintExportDxf}
+            className="flex items-center justify-center gap-2 py-2 bg-blue-600/70 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
+            <FileCode size={14} /> {t.exportDxf}
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => handleSaveProject(false)} data-testid="export-project" title={t.hintSave}
             className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">

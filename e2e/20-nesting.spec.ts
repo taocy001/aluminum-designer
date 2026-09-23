@@ -57,3 +57,48 @@ test.describe('How much stock to buy', () => {
     await expect(page.getByTestId('nesting-block')).toHaveCount(0)
   })
 })
+
+/**
+ * A screenshot is not a drawing: you cannot measure it, and the person cutting the board
+ * cannot put it on a machine.
+ */
+test.describe('The drawing as a file', () => {
+  test.beforeEach(async ({ page }) => { await openApp(page); await frame(page); await useDownloadFallback(page) })
+
+  test('it downloads as DXF', async ({ page }) => {
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-dxf').click()])
+    expect(dl.suggestedFilename()).toMatch(/\.dxf$/)
+  })
+
+  test('it carries three elevations with their sizes on them', async ({ page }) => {
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-dxf').click()])
+    const fs = await import('node:fs')
+    const text = fs.readFileSync((await dl.path())!, 'utf8')
+    expect(text).toContain('FRONT (X-Y)')
+    expect(text).toContain('TOP (X-Z)')
+    expect(text).toContain('RIGHT (Z-Y)')
+    expect(text).toContain('\nMEMBERS\n')
+    expect(text).toContain('\nDIMS\n')
+    expect(text.trimEnd().endsWith('EOF')).toBe(true)
+    expect(text).not.toMatch(/\bNaN\b/)
+  })
+
+  test('with nothing drawn there is nothing to export, and it says so', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().clearAll())
+    await settle(page)
+    await expect(page.getByTestId('export-dxf')).toBeDisabled()
+  })
+
+  test('boards alone are worth a drawing, even with no frame', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.getState().loadDocument({
+      profiles: [], connectors: [],
+      panels: [{ id: 'b', width: 560, height: 350, thickness: 18, position: [0, 0, 0], quaternion: [0, 0, 0, 1], material: 'mdf' }],
+      fittings: [],
+    }))
+    await settle(page)
+    await expect(page.getByTestId('export-dxf')).toBeEnabled()
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-dxf').click()])
+    const fs = await import('node:fs')
+    expect(fs.readFileSync((await dl.path())!, 'utf8')).toContain('560x350x18')
+  })
+})

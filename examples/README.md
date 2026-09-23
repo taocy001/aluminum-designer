@@ -11,6 +11,9 @@
 |---|---|
 | `kitchen-straight-3600-wall.json` | 工程文件，可在侧栏「导入」直接打开 |
 | `kitchen-straight-3600-wall-bom.csv` | 物料清单（型材下料 + 角码 + 紧固件 + 板材） |
+| `kitchen-straight-3600-wall.dxf` | 图纸：正视/俯视/右视三视图带总尺寸 + 26 块板材摊平下料图 |
+
+侧栏还能导出「下料单 CSV」（一根原料一行，见下文）和「图纸 DXF」。
 
 ### 数据
 
