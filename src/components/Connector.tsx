@@ -46,6 +46,38 @@ const PLATE_REACH = 30    // how far each arm runs past the corner
 const PLATE_BACK = 10     // how far it runs the other way, to cover the corner
 const HOLE_AT = 18        // bolt centre along each arm from the origin
 
+/**
+ * A cast corner bracket: two flanges at ninety degrees, meeting at the inside vertex.
+ *
+ * Its local origin is that vertex, +X runs along one member and +Y along the other, so both
+ * flanges lie in the positive quadrant — which is the inside of the corner, where the part
+ * actually goes. It was drawn as a flat L in one plane, which is a joining plate: a different
+ * part, bolted to different faces, in a different place.
+ */
+const ANGLE_T = 4        // flange thickness
+const ANGLE_W = 18       // across the flange, just under a 20 face
+const ANGLE_REACH = 30   // how far each flange runs from the vertex
+const ANGLE_HOLE = 16    // bolt centre along each flange
+
+const AngleBracket: React.FC<{ color: string; glow?: string; opacity: number }> = ({ color, glow, opacity }) => (
+  <>
+    {/* the flange lying on the member that runs along +X */}
+    <MeshPart geom="box" args={[ANGLE_REACH, ANGLE_T, ANGLE_W]} pos={[ANGLE_REACH / 2, ANGLE_T / 2, 0]} color={color} glow={glow} opacity={opacity} />
+    {/* ...and the one on the member that runs along +Y */}
+    <MeshPart geom="box" args={[ANGLE_T, ANGLE_REACH, ANGLE_W]} pos={[ANGLE_T / 2, ANGLE_REACH / 2, 0]} color={color} glow={glow} opacity={opacity} />
+    {/* the web that makes it stiff, which is why a cast bracket beats a plate at a corner */}
+    <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <cylinderGeometry args={[ANGLE_T * 1.6, ANGLE_T * 1.6, ANGLE_W * 0.55, 3]} />
+      <meshStandardMaterial color={color} metalness={0.3} roughness={0.55}
+        emissive={glow ?? '#000000'} emissiveIntensity={glow ? 0.9 : 0}
+        transparent={opacity < 1} opacity={opacity} />
+    </mesh>
+    {/* the bolts: each one drops a T-nut into the face its flange is lying on */}
+    <MeshPart geom="cylinder" args={[2.6, 2.6, ANGLE_T + 5, 12]} pos={[ANGLE_HOLE, ANGLE_T / 2, 0]} color="#1e293b" opacity={opacity} />
+    <MeshPart geom="cylinder" args={[2.6, 2.6, ANGLE_T + 5, 12]} pos={[ANGLE_T / 2, ANGLE_HOLE, 0]} rot={[0, 0, Math.PI / 2]} color="#1e293b" opacity={opacity} />
+  </>
+)
+
 const CornerPlate: React.FC<{ color: string; glow?: string; opacity: number }> = ({ color, glow, opacity }) => {
   const armLen = PLATE_REACH + PLATE_BACK
   const armMid = (PLATE_REACH - PLATE_BACK) / 2
@@ -95,20 +127,20 @@ const Connector: React.FC<ConnectorProps> = ({
   const renderParts = () => {
     switch (type) {
 
-      // ── L型角码 ── a flat plate lying across the corner, a bolt in each arm
+      // ── L型角码 ── two flanges at 90°, inside the corner, a bolt into each member
       case 'bracket':
-        return <CornerPlate color={c} glow={glow} opacity={opacity} />
+        return <AngleBracket color={c} glow={glow} opacity={opacity} />
 
-      // ── 加强筋 ── diagonal gusset triangle
+      // ── 加强筋 ── a flat triangular plate across the outside face of the corner
       case 'gusset': {
         return <mesh geometry={GUSSET_GEOMETRY} position={[-12, -12, -2]}>
           <meshStandardMaterial color={c} metalness={0.8} roughness={0.2} transparent={opacity < 1} opacity={opacity} />
         </mesh>
       }
 
-      // ── 内角码 ── the same plate, smaller, for the inside of a corner
+      // ── 内角码 ── the same angle, smaller, for tight corners
       case 'inside-corner':
-        return <group scale={0.7}><CornerPlate color={c} glow={glow} opacity={opacity} /></group>
+        return <group scale={0.7}><AngleBracket color={c} glow={glow} opacity={opacity} /></group>
 
       // ── 直连板 ── flat inline joining plate (end-to-end)
       case 'flat-plate':
@@ -118,11 +150,14 @@ const Connector: React.FC<ConnectorProps> = ({
           <MeshPart geom="cylinder" args={[2.5, 2.5, 5, 12]} pos={[20, 3, 0]} rot={[Math.PI / 2, 0, 0]} color={c} glow={glow} opacity={opacity} />
         </>
 
-      // ── T型角码 ── T-bracket connecting 3 profiles
+      // ── T型角码 ── a flat T plate across the outside face where a member meets a run
       case 't-bracket':
         return <>
-          <MeshPart geom="box" args={[40, 4, 4]} pos={[0, 0, 0]} color={c} glow={glow} opacity={opacity} />
-          <MeshPart geom="box" args={[4, 20, 4]} pos={[0, 10, 0]} color={c} glow={glow} opacity={opacity} />
+          <MeshPart geom="box" args={[70, 20, 4]} pos={[0, 0, 2]} color={c} glow={glow} opacity={opacity} />
+          <MeshPart geom="box" args={[20, 40, 4]} pos={[0, 20, 2]} color={c} glow={glow} opacity={opacity} />
+          <MeshPart geom="cylinder" args={[3, 3, 7, 12]} pos={[-22, 0, 2]} rot={[Math.PI / 2, 0, 0]} color="#1e293b" opacity={opacity} />
+          <MeshPart geom="cylinder" args={[3, 3, 7, 12]} pos={[22, 0, 2]} rot={[Math.PI / 2, 0, 0]} color="#1e293b" opacity={opacity} />
+          <MeshPart geom="cylinder" args={[3, 3, 7, 12]} pos={[0, 28, 2]} rot={[Math.PI / 2, 0, 0]} color="#1e293b" opacity={opacity} />
         </>
 
       // ── 十字连接板 ── 4-way cross plate

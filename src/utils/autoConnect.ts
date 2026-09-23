@@ -7,7 +7,7 @@ import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from '
 import { fitConnector } from './connectorFit'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
 import { flushFace } from './specCompat'
-import { seatBracket } from './bracketSeat'
+import { seatFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
 
@@ -35,6 +35,8 @@ export interface AutoConnectResult {
   skipped: number
   /** parts of this type left stranded by a member that moved, cleared away */
   removed?: number
+  /** joints that want one and cannot take one: no line is a slot on both members */
+  unbolted?: number
   /** why nothing was placed, when nothing was */
   reason?: 'no-frame' | 'needs-a-surface' | 'nothing-open'
 }
@@ -76,6 +78,8 @@ export function autoConnect(type: string): AutoConnectResult {
 
   const made: ConnectorData[] = []
   let skipped = 0
+  /** joints that want this part but offer it nowhere to bolt */
+  let unbolted = 0
   for (const p of profiles) {
     const tr = trims.get(p.id)
     if (!tr) continue
@@ -92,7 +96,7 @@ export function autoConnect(type: string): AutoConnectResult {
       // the back on the face the two members share and each hole on a slot line; a part
       // dropped on the centreline is a marker, not something that can be fitted.
       const partner = partnerAt(at, p, profiles)
-      const seat = entry.isCornerBracket && partner ? seatBracket(p, partner, at) : null
+      const seat = partner ? seatFor(type, p, partner, at) : null
       let position: [number, number, number]
       let quaternion: [number, number, number, number]
       let series: ConnectorSeries
@@ -100,6 +104,12 @@ export function autoConnect(type: string): AutoConnectResult {
         position = seat.position
         quaternion = seat.quaternion
         series = seat.series
+      } else if (partner && connectorEntry(type)?.isCornerBracket) {
+        // There is a joint here and this part cannot be bolted to it: the two members offer
+        // no line that is a slot on both. Putting one there anyway makes a drawing that
+        // cannot be built and a cut list that has been paid for, so it is counted instead.
+        unbolted++
+        continue
       } else {
         // caps, feet and the like sit on an end, where there is no second member to line up to
         const face = partner ? flushFace(p, partner, at) : null
@@ -129,12 +139,12 @@ export function autoConnect(type: string): AutoConnectResult {
     .map((c) => c.id)
 
   if (made.length === 0 && stale.length === 0) {
-    useToolStore.getState().showToast(t.toastAutoNothingOpen, 'info')
-    return { placed: 0, skipped, reason: 'nothing-open' }
+    useToolStore.getState().showToast(unbolted ? t.toastAutoUnbolted(unbolted) : t.toastAutoNothingOpen, 'info')
+    return { placed: 0, skipped, unbolted, reason: 'nothing-open' }
   }
   noteNext(`fit ${connectorLabel(type, useToolStore.getState().language)}`)
   if (stale.length > 0) store.removeConnectors(stale, made.length === 0)
   if (made.length > 0) store.addItems([], made, false)
-  useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, stale.length), 'success')
-  return { placed: made.length, skipped, removed: stale.length }
+  useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, stale.length, unbolted), unbolted ? 'info' : 'success')
+  return { placed: made.length, skipped, removed: stale.length, unbolted }
 }

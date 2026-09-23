@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
 import { setThroughRule } from '../utils/jointUtils'
-import { seatBracket } from '../utils/bracketSeat'
+import { seatAngle, seatBracket, sharedSlotLine } from '../utils/bracketSeat'
 import { slotOffsets, nearestSlot } from '../utils/specUtils'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
 
@@ -167,5 +167,72 @@ describe('the bracket sits outside the metal on whichever side the face is', () 
         .map((v) => [Math.round(v.x), Math.round(v.y), Math.round(v.z)].join(','))
       expect(dirs.sort()).toEqual(['0,1,0', '1,0,0'])
     }
+  })
+})
+
+/**
+ * A cast corner bracket is not a plate. Its two flanges are perpendicular and it sits inside
+ * the corner, one flange on the face of each member that looks towards the other. Treating it
+ * as a plate lying across an outside face put every one of them on the wrong side of the metal.
+ */
+describe('a cast corner bracket sits inside the corner', () => {
+  /** rail running +X from the origin, post running +Y from the origin, both 2020 about z = 0 */
+  const rail = () => P(0, 10, 0, 600, 10, 0)
+  const post = () => P(0, 10, 0, 0, 610, 0)
+
+  it('lands in the quadrant the two members enclose', () => {
+    const seat = seatAngle(rail(), post(), V(0, 10, 0))!
+    expect(seat).not.toBeNull()
+    // the rail's face looking towards the post is y = 20; the post's looking at the rail is x = 10
+    expect(seat.position[0]).toBeCloseTo(10, 1)
+    expect(seat.position[1]).toBeCloseTo(20, 1)
+  })
+
+  it('its flanges run along the two members, and its third axis across them', () => {
+    const seat = seatAngle(rail(), post(), V(0, 10, 0))!
+    const q = new THREE.Quaternion(...seat.quaternion)
+    const fx = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
+    const fy = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
+    expect(fx.x).toBeCloseTo(1, 2)     // along the rail
+    expect(fy.y).toBeCloseTo(1, 2)     // along the post
+  })
+
+  it('both bolts sit on the one line that is a slot on both faces', () => {
+    const seat = seatAngle(rail(), post(), V(0, 10, 0))!
+    // two 20 faces, both centred on z = 0, so the shared line is the middle of each
+    expect(seat.slotOffsets[0]).toBeCloseTo(0, 2)
+    expect(seat.slotOffsets[1]).toBeCloseTo(0, 2)
+  })
+
+  it('a 2020 centred on a 4040 has no such line, so no single bracket fits', () => {
+    const wide = P(0, 20, 0, 0, 620, 0, '4040')
+    const small = P(0, 20, 0, 600, 20, 0, '2020')
+    // the 2020's only slot line is its middle; the 4040's are ten either side of its middle
+    expect(seatAngle(small, wide, V(0, 20, 0))).toBeNull()
+  })
+
+  it('...and pushing it flush to one side gives it one', () => {
+    const wide = P(0, 20, 0, 0, 620, 0, '4040')
+    const flush = P(0, 20, 10, 600, 20, 10, '2020')
+    const seat = seatAngle(flush, wide, V(0, 20, 10))
+    expect(seat).not.toBeNull()
+  })
+
+  it('it is sized to the smaller of the two, which is what bolts to both', () => {
+    const wide = P(0, 20, 10, 0, 620, 10, '4040')
+    const small = P(0, 20, 10, 600, 20, 10, '2020')
+    const seat = seatAngle(small, wide, V(0, 20, 10))
+    if (seat) expect(seat.series).toBe(20)
+  })
+
+  it('refuses two members running the same way', () => {
+    expect(seatAngle(P(0, 10, 0, 600, 10, 0), P(600, 10, 0, 1200, 10, 0), V(600, 10, 0))).toBeNull()
+  })
+
+  it('an angle bracket and a plate do not go in the same place', () => {
+    const angle = seatAngle(rail(), post(), V(0, 10, 0))!
+    const plate = seatBracket(rail(), post(), V(0, 10, 0))!
+    const d = Math.hypot(...angle.position.map((v, i) => v - plate.position[i]))
+    expect(d).toBeGreaterThan(5)
   })
 })

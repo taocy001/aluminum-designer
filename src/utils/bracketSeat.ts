@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { ConnectorData, ProfileData } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong } from './geometryCore'
 import { flushFace } from './specCompat'
-import { nearestSlot } from './specUtils'
+import { nearestSlot, slotOffsets } from './specUtils'
 import { connectorEntry, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector, membersAt } from './connectorFit'
 
@@ -39,6 +39,31 @@ const REACH = 70
 /** the plate lies on the face, not in it: its back is at zero, so nothing to offset by */
 const HALF_THICK = 0
 
+/**
+ * A lateral position that is a slot on both faces, or null when there is none.
+ *
+ * This is the real rule behind "the two sections must share an edge" and behind pushing a
+ * member flush with the outside of a bigger one. A bracket is one rigid part: its two bolts
+ * are at the same position across the joint, so that one position has to land on a slot in
+ * each member. A 20 face has a slot down its middle; a 40 face has two, ten either side.
+ * Centre a 2020 on a 4040 and there is no such position — the 2020's only slot line lands on
+ * the 4040's solid middle. Push it flush to one side and there is.
+ */
+export function sharedSlotLine(
+  aCentre: number, aFaceWidth: number, bCentre: number, bFaceWidth: number, tol = 1,
+): number | null {
+  let best: { at: number; d: number } | null = null
+  for (const sa of slotOffsets(aFaceWidth)) {
+    for (const sb of slotOffsets(bFaceWidth)) {
+      const d = Math.abs((aCentre + sa) - (bCentre + sb))
+      if (d > tol) continue
+      const at = (aCentre + sa + bCentre + sb) / 2
+      if (!best || Math.abs(at) < Math.abs(best.at)) best = { at, d }
+    }
+  }
+  return best ? best.at : null
+}
+
 export interface BracketSeat {
   position: [number, number, number]
   quaternion: [number, number, number, number]
@@ -66,6 +91,56 @@ function into(p: ProfileData, at: THREE.Vector3): THREE.Vector3 {
  * Returns null when no flat bracket can be bolted there — the two members present no shared
  * face, which is the same thing the amber joint markers are complaining about.
  */
+/**
+ * Seat a cast corner bracket: two flanges at ninety degrees, in the inside of the corner.
+ *
+ * Take a rail running +X that ends against a post running +Y. The inside of the L is the
+ * quadrant they enclose, and the bracket sits in it: one flange flat on the rail's face that
+ * looks towards the post, the other flat on the post's face that looks towards the rail.
+ * So the two mounting faces are the ones whose normals are the *other* member's direction —
+ * which is the whole of the geometry, and is nothing like a plate lying across an outside
+ * face. Both are real parts; they are not the same part.
+ */
+export function seatAngle(a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {
+  const intoA = into(a, at)
+  const intoB = into(b, at)
+  if (Math.abs(intoA.dot(intoB)) > 0.9) return null       // parallel: not a corner
+
+  // across the joint: the one direction neither member runs along
+  const n = new THREE.Vector3().crossVectors(intoA, intoB).normalize()
+
+  // the flange on A lies on A's face looking towards B, and vice versa
+  const faceA = crossExtentAlong(a, intoB)
+  const faceB = crossExtentAlong(b, intoA)
+
+  // both bolts sit at the same place across the joint, so that place has to be a slot on
+  // both faces — measured from each member's own centreline
+  const aAxis = closestOnSegment(at, ...(({ start, end }) => [start, end] as const)(getProfileEndpoints(a))).point
+  const bAxis = closestOnSegment(at, ...(({ start, end }) => [start, end] as const)(getProfileEndpoints(b))).point
+  const line = sharedSlotLine(
+    aAxis.dot(n), crossExtentAlong(a, n) * 2,
+    bAxis.dot(n), crossExtentAlong(b, n) * 2,
+  )
+  if (line === null) return null
+
+  // the inside vertex: on A's face along intoB, and on B's face along intoA
+  const position = new THREE.Vector3()
+    .addScaledVector(intoA, bAxis.dot(intoA) + faceB)
+    .addScaledVector(intoB, aAxis.dot(intoB) + faceA)
+    .addScaledVector(n, line)
+
+  const basis = new THREE.Matrix4().makeBasis(intoA, intoB, n)
+  const quat = new THREE.Quaternion().setFromRotationMatrix(basis)
+  return {
+    position: [round1(position.x), round1(position.y), round1(position.z)],
+    quaternion: [quat.x, quat.y, quat.z, quat.w],
+    series: Math.min(seriesOf(a.spec), seriesOf(b.spec)) as ConnectorSeries,
+    legs: [a.id, b.id],
+    slotOffsets: [line - aAxis.dot(n), line - bAxis.dot(n)],
+  }
+}
+
+/** Seat a flat plate across the outside face the two members share */
 export function seatBracket(a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {
   const face = flushFace(a, b, at)
   if (!face) return null
@@ -154,7 +229,7 @@ export function connectorSeatAt(
       // to be only works if everything downstream still measures from the corner itself.
       const { start, end } = getProfileEndpoints(butting.profile)
       const joint = point.distanceTo(start) <= point.distanceTo(end) ? start : end
-      const seat = seatBracket(butting.profile, partner.profile, joint)
+      const seat = seatFor(type, butting.profile, partner.profile, joint)
       if (seat) return { ...seat, seated: true }
     }
   }
@@ -165,6 +240,21 @@ export function connectorSeatAt(
     series: fit.series,
     seated: false,
   }
+}
+
+/**
+ * Seat whichever kind of part this is.
+ *
+ * An angle bracket and a plate are both "the thing you put on a corner", and they go in
+ * completely different places — inside the corner with perpendicular flanges, or flat across
+ * an outside face. Asking one function for "the bracket seat" and getting the plate answer is
+ * what put every cast bracket in this drawing on the wrong side of the metal.
+ */
+export function seatFor(type: string, a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {
+  const kind = connectorEntry(type)?.seat
+  if (kind === 'angle') return seatAngle(a, b, at)
+  if (kind === 'plate') return seatBracket(a, b, at)
+  return null
 }
 
 export interface BracketFault {
@@ -202,7 +292,7 @@ export function auditBrackets(profiles: ProfileData[], connectors: ConnectorData
           if (q.id === p.id) continue
           const { start: qs, end: qe } = getProfileEndpoints(q)
           if (closestOnSegment(at, qs, qe).point.distanceTo(at) > JOINT_TOL) continue
-          const seat = seatBracket(p, q, at)
+          const seat = seatFor(c.type, p, q, at)
           if (!seat) continue
           const d = new THREE.Vector3(...seat.position).distanceTo(here)
           if (!best || d < best.d) best = { seat, d }
