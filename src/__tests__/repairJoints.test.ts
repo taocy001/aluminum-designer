@@ -97,3 +97,51 @@ describe('putting unbuildable joints right', () => {
     expect(twice.repair.steps.length).toBe(0)
   })
 })
+
+/**
+ * A joint with nowhere to bolt scores badly. A member that has been pushed out of reach of
+ * its neighbour has no joint there at all, and so scores perfectly — which is how a repair
+ * can "fix" a cabinet by taking it apart. Eight cabinets turned this up once: a 4040 post was
+ * slid thirty millimetres off its bay line, the joint stopped being counted, and the report
+ * said every joint was sound.
+ */
+describe('a repair may not solve a joint by walking away from it', () => {
+  const joinedEnds = (ps: ProfileData[]) => {
+    let n = 0
+    for (const a of ps) {
+      const ea = { s: new THREE.Vector3(...a.position) }
+      for (const b of ps) {
+        if (a.id === b.id) continue
+        const bs = new THREE.Vector3(...b.position)
+        if (ea.s.distanceTo(bs) < 30) n++
+      }
+    }
+    return n
+  }
+
+  it('keeps every member meeting what it met before', () => {
+    // a bay: two posts, a rail across the top of each face, and a cross rail between them
+    const frame = [
+      P(0, 0, 0, 0, 2400, 0, '4040'),
+      P(0, 0, 600, 0, 2400, 600, '4040'),
+      P(1000, 0, 0, 1000, 2400, 0, '4040'),
+      P(1000, 0, 600, 1000, 2400, 600, '4040'),
+      P(0, 20, 0, 1000, 20, 0, '2040'),
+      P(0, 20, 600, 1000, 20, 600, '2040'),
+      P(0, 20, 0, 0, 20, 600, '2040'),
+      P(1000, 20, 0, 1000, 20, 600, '2040'),
+    ]
+    const linkedBefore = joinedEnds(frame)
+    const { profiles, repair } = planRepair(frame)
+    expect(repair.after).toBe(0)
+    expect(clashes(profiles)).toBeLessThanOrEqual(clashes(frame))
+    // nothing was solved by moving a member out of reach of its neighbour
+    expect(joinedEnds(profiles)).toBeGreaterThanOrEqual(linkedBefore)
+    // and no post left its bay line by more than the width of a slot
+    for (const [i, p] of profiles.entries()) {
+      if (!p.spec.startsWith('40')) continue
+      const was = frame[i].position
+      expect(Math.hypot(p.position[0] - was[0], p.position[2] - was[2])).toBeLessThanOrEqual(20)
+    }
+  })
+})

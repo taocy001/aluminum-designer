@@ -16,6 +16,8 @@ const AXES: Record<Axis, THREE.Vector3> = {
 export const SNAP_PX = 18
 /** Clicking a member body this close (mm) to one of its ends snaps to that end */
 const END_ZONE = 25
+/** how far off a raised work plane a point may sit and still count as on it (mm) */
+const PLANE_TOL = 0.5
 
 export function toScreen(v: THREE.Vector3, camera: THREE.Camera, size: ScreenSize): THREE.Vector2 {
   const p = v.clone().project(camera)
@@ -98,6 +100,22 @@ export function modelPointFromHit(hit: MeshHit, profiles: ProfileData[], ray?: T
 }
 
 /**
+ * Where a member's centreline crosses a horizontal plane, or null when it does not reach it.
+ * A member lying in the plane crosses it everywhere, and answers with the point nearest the
+ * sight line instead.
+ */
+function centrelineOnPlane(p: ProfileData, planeY: number, ray: THREE.Ray): THREE.Vector3 | null {
+  const { start, end } = getProfileEndpoints(p)
+  const dy = end.y - start.y
+  if (Math.abs(dy) < 1e-6) {
+    return Math.abs(start.y - planeY) <= PLANE_TOL ? closestPointSegmentToRay(start, end, ray) : null
+  }
+  const t = (planeY - start.y) / dy
+  if (t < -1e-6 || t > 1 + 1e-6) return null
+  return start.clone().lerp(end, THREE.MathUtils.clamp(t, 0, 1))
+}
+
+/**
  * Pick a 3D start point under the cursor:
  *  1. a member body under the cursor (end cap → its centerline end; side → centerline point),
  *  2. an existing endpoint within SNAP_PX pixels,
@@ -108,6 +126,13 @@ export function pickPoint(
   ray: THREE.Ray, cursor: THREE.Vector2, camera: THREE.Camera, size: ScreenSize, profiles: ProfileData[],
   meshHit?: MeshHit | null, planeY = 0,
 ): PickResult {
+  // A raised work plane is a statement of the height being worked at, so a snap must land on
+  // it. Without that, a vertex two metres away that happens to fall under the cursor wins the
+  // pixel test and the rail is drawn in the next cabinet — which is a surprise, not a snap.
+  // At floor level there is no such statement, and everything is a candidate as before.
+  const held = planeY !== 0
+  const onPlane = (v: THREE.Vector3) => !held || Math.abs(v.y - planeY) <= PLANE_TOL
+
   // 1. a nearby endpoint on screen — but never one hidden behind the body under the cursor:
   //    it must belong to the hit member or be closer to the camera than the hit point
   const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
@@ -117,6 +142,7 @@ export function pickPoint(
   for (const p of profiles) {
     const { start, end } = getProfileEndpoints(p)
     for (const ep of [start, end]) {
+      if (!onPlane(ep)) continue
       const px = toScreen(ep, camera, size).distanceTo(cursor)
       if (px >= bestPx) continue
       if (meshHit && meshHit.profileId !== p.id && ep.distanceTo(camPos) > hitDepth + 1) continue
@@ -124,18 +150,31 @@ export function pickPoint(
     }
   }
   if (best) return best
-  if (meshHit) { const m = modelPointFromHit(meshHit, profiles, ray); if (m) return m }
+  if (meshHit) {
+    const m = modelPointFromHit(meshHit, profiles, ray)
+    // Clicking a post while working at a height means that post, at that height — so the body
+    // hit is carried onto the plane rather than thrown away.
+    if (m && onPlane(m.point)) return m
+    if (m && held) {
+      const p = profiles.find((q) => q.id === meshHit.profileId)
+      const at = p ? centrelineOnPlane(p, planeY, ray) : null
+      if (at) return { point: at, kind: 'segment', profileId: meshHit.profileId, normal: meshHit.normal.clone() }
+    }
+  }
 
   bestPx = SNAP_PX
   for (const p of profiles) {
     const { start, end } = getProfileEndpoints(p)
-    const cp = closestPointSegmentToRay(start, end, ray)
+    const cp = held ? centrelineOnPlane(p, planeY, ray) : closestPointSegmentToRay(start, end, ray)
+    if (!cp) continue
     const px = toScreen(cp, camera, size).distanceTo(cursor)
     if (px < bestPx) {
       const dir = end.clone().sub(start).normalize()
       const t = THREE.MathUtils.clamp(roundToGrid(cp.clone().sub(start).dot(dir)), 0, p.length)
+      const on = start.clone().addScaledVector(dir, t)
       bestPx = px
-      best = { point: start.clone().addScaledVector(dir, t), kind: 'segment', profileId: p.id }
+      // rounding along the member must not lift the point off the plane it was found on
+      best = { point: held ? cp.clone() : on, kind: 'segment', profileId: p.id }
     }
   }
   if (best) return best
