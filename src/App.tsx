@@ -27,6 +27,7 @@ function App() {
     toasts, showToast, dragConflict, hoverPartId, snapGuides, gizmoHover,
     dragMoved, resize, hoverCandidates, workPlaneY,
     pendingRotate, setPendingRotate, viewMode, setViewMode, helpOpen, toggleHelp, showFittings, toggleFittings,
+    measuring, startMeasuring, stopMeasuring,
   } = useToolStore()
   const t = translations[language]
 
@@ -117,6 +118,7 @@ function App() {
       if (e.key === 'Escape') {
         // a turn waiting for its axis is the innermost thing Escape can back out of
         if (pendingRotate) { setPendingRotate(null); return }
+        if (measuring) { stopMeasuring(); return }
         if (quickMenuOpenRef.current) { closeQuickMenu(); return }
         if (isDrawing) cancelDraw()
         else if (selectMode) setSelectMode(false)
@@ -185,7 +187,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, viewMode, setViewMode, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen])
+  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, viewMode, setViewMode, measuring, stopMeasuring, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -452,6 +454,11 @@ function App() {
             {/* Building or looking: two states, so one switch. It shows the state it is in,
                 not the one it would take you to — a button that lies about where you are is
                 worse than one more click. */}
+            <button data-testid="measure-toggle" onClick={() => measuring ? stopMeasuring() : startMeasuring()}
+              title={t.hintMeasure} aria-label={t.measure}
+              className={iconBtn(!!measuring, 'bg-amber-500 text-white shadow-lg')}>
+              <Ruler size={14} />
+            </button>
             <button data-testid="mode-toggle" onClick={() => setViewMode(!viewMode)}
               title={viewMode ? t.hintLook : t.hintBuild} aria-label={viewMode ? t.look : t.build}
               className={iconBtn(true, viewMode ? 'bg-emerald-600 text-white shadow-lg' : 'bg-blue-600 text-white shadow-lg')}>
@@ -476,9 +483,9 @@ function App() {
               away instead — and the one line that is left is the one that changes. */}
           <div className="absolute bottom-6 left-6 flex items-center gap-2 z-10">
             <div className={`pointer-events-none bg-slate-900/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-bold shadow-2xl ${
-              viewMode ? 'text-emerald-400' : selectMode ? 'text-violet-400' : held !== null ? 'text-blue-400' : 'text-slate-300'}`}
+              measuring ? 'text-amber-400' : viewMode ? 'text-emerald-400' : selectMode ? 'text-violet-400' : held !== null ? 'text-blue-400' : 'text-slate-300'}`}
               data-testid="mode-line">
-              {viewMode ? t.look : selectMode ? t.selectMode : held !== null ? `${t.draw} · ${heldName}` : t.emptyHand}
+              {measuring ? (t.measureHint) : viewMode ? t.look : selectMode ? t.selectMode : held !== null ? `${t.draw} · ${heldName}` : t.emptyHand}
             </div>
             <button data-testid="help-toggle" onClick={toggleHelp} title={t.hintHelp} aria-label={t.help}
               className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-900/80 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/25 shadow-2xl">

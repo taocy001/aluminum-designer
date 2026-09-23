@@ -18,6 +18,7 @@ import { downloadText, openProject, saveProject, savedFileName } from '../utils/
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
+import { TEMPLATES, templateById } from '../utils/templates'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, beginLiveEdit, directionLabel, duplicateSelected, flipProfile, livePart, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
@@ -166,6 +167,9 @@ const Sidebar: React.FC = () => {
   const [hingeType, setHingeType] = useState<HingeType>('cup')
   const [overlay, setOverlay] = useState<Overlay>('full')
   const [swing, setSwing] = useState<number>(110)
+  const [templateId, setTemplateId] = useState<string | null>(null)
+  const [templateParams, setTemplateParams] = useState<Record<string, number>>({})
+  const chosenTemplate = templateId ? templateById(templateId) : undefined
   const [savedName, setSavedName] = useState<string | null>(savedFileName())
   // the log lives outside React, so the panel listens for it rather than owning it
   const [stockText, setStockText] = useState('6000')
@@ -362,6 +366,44 @@ const Sidebar: React.FC = () => {
       <Section id="components" title={t.components} open={open.components} onToggle={() => toggle('components')}>
         <div className="space-y-4">
           <div>
+            {/* An empty canvas asks you to know the answer before you have seen one. */}
+            <div className="space-y-1 pb-3 mb-3 border-b border-white/5" data-testid="template-block">
+              <label className="text-[9px] text-slate-500 font-black mb-1 block uppercase tracking-widest" title={t.hintTemplates}>{t.templates}</label>
+              <div className="grid grid-cols-3 gap-1">
+                {TEMPLATES.map((tpl) => (
+                  <button key={tpl.id} data-testid={`template-${tpl.id}`}
+                    onClick={() => { setTemplateId(tpl.id === templateId ? null : tpl.id); setTemplateParams({}) }}
+                    title={language === 'zh' ? tpl.noteZh : tpl.noteEn}
+                    className={`py-1.5 rounded-lg text-[10px] font-bold ${templateId === tpl.id ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                    {language === 'zh' ? tpl.labelZh : tpl.labelEn}
+                  </button>
+                ))}
+              </div>
+              {chosenTemplate && (
+                <div className="space-y-1 pt-1">
+                  <div className="grid grid-cols-2 gap-1">
+                    {chosenTemplate.params.map((prm) => (
+                      <NumField key={prm.key} label={language === 'zh' ? prm.labelZh : prm.labelEn}
+                        step={prm.step}
+                        value={templateParams[prm.key] ?? prm.value}
+                        onCommit={(v) => setTemplateParams((was) => ({ ...was, [prm.key]: Math.min(prm.max, Math.max(prm.min, v)) }))} />
+                    ))}
+                  </div>
+                  <button data-testid="template-place" onClick={() => {
+                    const values: Record<string, number> = {}
+                    for (const prm of chosenTemplate.params) values[prm.key] = templateParams[prm.key] ?? prm.value
+                    const made = chosenTemplate.build(values)
+                    useStore.getState().addItems(made, [], true)
+                    showToast(t.toastTemplateAdded(made.length), 'success')
+                    setTemplateId(null)
+                  }}
+                    className="w-full flex items-center justify-center gap-1 py-1.5 bg-blue-600/80 hover:bg-blue-600 rounded-lg text-[10px] font-bold">
+                    <Box size={12} />{t.templateAdd}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.profiles}</label>
             <div className="grid grid-cols-5 gap-1">
               {ALL_SPECS.map((spec) => (

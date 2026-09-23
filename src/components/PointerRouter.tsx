@@ -295,6 +295,15 @@ const PointerRouter: React.FC = () => {
       const ts = useToolStore.getState()
       if (e.button !== 0) return
 
+      // Measuring owns the click: the point under the pointer, snapped the way drawing snaps
+      if (ts.measuring) {
+        const { cursor, rect } = cursorOf(e)
+        const hit = candidatesFor(cursor, rect)[0]
+        const at = hit?.point?.clone() ?? planeHit(rayOf(cursor, rect), ts.workPlaneY)
+        if (at) useToolStore.getState().setMeasurePoint(at)
+        return
+      }
+
       // While looking, a press opens or shuts whatever it lands on and nothing else happens.
       // Turning the view still works, which is most of what looking is.
       if (ts.viewMode) {

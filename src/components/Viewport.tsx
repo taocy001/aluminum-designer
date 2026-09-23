@@ -6,6 +6,9 @@ import { useStore } from '../store/useStore'
 import { pickCandidatesAtScreen } from '../utils/screenPick'
 import { connectorSeatAt, seatFor } from '../utils/bracketSeat'
 import { frontmostId, promoteFrontmost } from '../utils/frontmost'
+import { readout } from '../utils/measure'
+import SnapMarker from './SnapMarker'
+import { translations } from '../utils/translations'
 import { fittingObb, leafObb } from '../utils/fittingGeometry'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
@@ -234,6 +237,39 @@ const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims
           position={f.position} quaternion={f.quaternion}
           sizes={[['W', f.width], ['H', f.height], ['D', f.depth]]} color="#7dd3fc" />
       ))}
+    </>
+  )
+}
+
+/**
+ * The two points being measured, and the answer.
+ *
+ * Drawn on top of everything, unlike the dimensions, because a measurement is a question
+ * being asked right now rather than a property of the drawing.
+ */
+const MeasureOverlay: React.FC = () => {
+  const measuring = useToolStore((s) => s.measuring)
+  const language = useToolStore((s) => s.language)
+  if (!measuring?.from) return null
+  const t = translations[language]
+  const { from, to } = measuring
+  if (!to) {
+    return <>
+      <SnapMarker position={from} kind="endpoint" />
+      <TextSprite text={t.measureHint2} throughWalls position={[from.x, from.y + 60, from.z]} height={22} />
+    </>
+  }
+  const r = readout({ from, to })
+  const mid = from.clone().lerp(to, 0.5)
+  return (
+    <>
+      <SnapMarker position={from} kind="endpoint" />
+      <SnapMarker position={to} kind="endpoint" />
+      <Line points={[from.toArray(), to.toArray()]} color="#facc15" lineWidth={2} />
+      <TextSprite throughWalls color="#fde68a" height={26}
+        text={`${r.total}`} position={[mid.x, mid.y + 40, mid.z]} />
+      <TextSprite throughWalls color="#94a3b8" height={18}
+        text={`X ${r.dx} · Y ${r.dy} · Z ${r.dz}`} position={[mid.x, mid.y + 10, mid.z]} />
     </>
   )
 }
@@ -470,6 +506,7 @@ const Viewport: React.FC = () => {
         <Fitting key={f.id} {...f} isSelected={selectedIds.includes(f.id)} />
       ))}
 
+      <MeasureOverlay />
       {showDimensionLabels && <DimensionLabels trims={trims} />}
       <FrameDimensions />
       <ConflictMarkers conflicts={conflicts} />
