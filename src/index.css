@@ -27,3 +27,13 @@ body {
   width: 100%;
   height: 100vh;
 }
+
+/*
+ * A two-finger swipe sideways is the browser's back gesture. On a page you are reading that
+ * is helpful; on a canvas you are drawing on it means leaving, and the drawing is in local
+ * storage rather than in the address bar, so there is nothing to come back to. The gesture
+ * stays with the browser everywhere else — it is only stopped from turning into navigation.
+ */
+html, body, #root {
+  overscroll-behavior: none;
+}

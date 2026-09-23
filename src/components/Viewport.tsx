@@ -15,6 +15,7 @@ import Profile from './Profile'
 import Connector from './Connector'
 import Panel from './Panel'
 import Fitting from './Fitting'
+import Gestures from './Gestures'
 import FrameDimensions from './FrameDimensions'
 import DrawingHandler from './DrawingHandler'
 import DragHandler from './DragHandler'
@@ -461,6 +462,7 @@ const Viewport: React.FC = () => {
       <OrbitControls makeDefault enabled={orbitEnabled} mouseButtons={mouseButtons}
         enableDamping={false} minDistance={50} maxDistance={30000} />
       <CameraController />
+      <Gestures />
       <DevHook />
       </Suspense>
     </Canvas>
