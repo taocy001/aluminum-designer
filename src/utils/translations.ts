@@ -191,8 +191,12 @@ const en = {
   rotateAxisPrompt: 'Turn around which axis? X / Y / Z',
   toastDrawerTooSmall: 'That opening is too small for a drawer',
   toastDrawerAdded: (n: number, parts: number) => `${n} drawer${n === 1 ? '' : 's'}, ${parts} parts`,
-  alignFaces: 'Line the faces up',
-  alignFacesHint: 'Slides members sideways until the faces a bracket sits on are flush. Length and direction are untouched.',
+  alignFaces: 'Mend the joints',
+  alignFacesHint: 'Turns a member a quarter, or slides it across, until a bracket has somewhere to bolt on both sides. Nothing changes length, nothing leaves its line, and any step that made the drawing worse is undone.',
+  toastRepaired: (n: number, left: number) => left
+    ? `${n} joints mended, ${left} still cannot be bolted`
+    : `${n} joints mended`,
+  toastRepairNothing: 'Nothing to mend',
   toastAligned: (moved: number, left: number) =>
     left ? `${moved} members moved, ${left} joints still out` : `${moved} members moved, every joint takes a bracket now`,
   toastAlignNothing: 'Every joint already takes a flat bracket',
@@ -473,8 +477,11 @@ const zh: typeof en = {
   rotateAxisPrompt: '绕哪个轴旋转？按 X / Y / Z',
   toastDrawerTooSmall: '这个开口放不下抽屉',
   toastDrawerAdded: (n: number, parts: number) => `已生成 ${n} 个抽屉，共 ${parts} 个零件`,
-  alignFaces: '贴面对齐',
-  alignFacesHint: '横向平移型材，使角码贴合的两个面共面。长度与朝向保持不变。',
+  alignFaces: '修复接头',
+  alignFacesHint: '把型材转四分之一圈，或横向挪一点，直到两侧都有槽让角码下螺栓。长度不变、不脱离原来的线，任何让图纸变差的一步都会被撤回。',
+  toastRepaired: (n: number, left: number) => left
+    ? `已修复 ${n} 处接头，仍有 ${left} 处装不上` : `已修复 ${n} 处接头`,
+  toastRepairNothing: '没有需要修复的接头',
   toastAligned: (moved: number, left: number) =>
     left ? `移动了 ${moved} 根，仍有 ${left} 处接头贴不平` : `移动了 ${moved} 根，所有接头都能装角码了`,
   toastAlignNothing: '所有接头本来就能装角码',
