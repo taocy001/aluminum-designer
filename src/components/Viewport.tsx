@@ -159,6 +159,7 @@ const DevHook: React.FC = () => {
     w.__aluframe.controls = controls
     // what the pointer would find at a point on the canvas, for tests and for debugging
     w.__aluframe.pickAt = (clientX: number, clientY: number) => {
+      camera.updateMatrixWorld()
       const rect = gl.domElement.getBoundingClientRect()
       const cursor = new THREE.Vector2(clientX - rect.left, clientY - rect.top)
       const ndc = new THREE.Vector2((cursor.x / rect.width) * 2 - 1, -(cursor.y / rect.height) * 2 + 1)
@@ -183,10 +184,17 @@ const DevHook: React.FC = () => {
       const orbit = controls as any
       if (orbit) { orbit.target.set(...target); orbit.update() } else camera.lookAt(...target)
     }
+    // The box on screen, not the size R3F last recorded. They are the same once the layout
+    // has settled and different while it has not, and everything else that turns a point
+    // into a pixel — picking, the gizmo, the pointer itself — measures the box. A hook that
+    // measured something else put every test's clicks tens of pixels off the thing they
+    // were aiming at, which read as flakiness.
     w.__aluframe.worldToClient = (x: number, y: number, z: number) => {
+      // Refresh camera matrices before projecting world coordinates.
+      camera.updateMatrixWorld()
       const rect = gl.domElement.getBoundingClientRect()
       const p = new THREE.Vector3(x, y, z).project(camera)
-      return { x: rect.left + (p.x + 1) / 2 * size.width, y: rect.top + (1 - p.y) / 2 * size.height }
+      return { x: rect.left + (p.x + 1) / 2 * rect.width, y: rect.top + (1 - p.y) / 2 * rect.height }
     }
   }, [camera, size, gl, controls, scene])
   return null

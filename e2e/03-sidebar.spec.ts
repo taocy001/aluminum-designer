@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, enterDraw, drawMember, drawExact, clickWorld, store, tool, endpoints, r } from './helpers'
+import { openApp, enterDraw, drawMember, drawExact, clickWorld, store, tool, endpoints, r , useDownloadFallback } from './helpers'
 import fs from 'node:fs'
 
 async function toNavigate(page: any) {
@@ -48,14 +48,16 @@ test.describe('Sidebar properties', () => {
   })
 
   test('flip swaps start and end; rotate turns 90°; duplicate adds a copy', async ({ page }) => {
-    await page.getByTestId('properties').getByTitle('反向').click()
+    // the pointer's own tooltip parks `title` while it is resting there, so the stable
+    // handle is the name, not the attribute
+    await page.getByTestId('properties').getByRole('button', { name: '反向' }).click()
     let p = (await store(page)).profiles[0]
     expect(p.position.map(r)).toEqual([400, 10, 0])
     expect(endpoints(p).end.map(r)).toEqual([0, 10, 0])
     await page.getByTestId('rot-y-plus').click()
     p = (await store(page)).profiles[0]
     expect(Math.abs(r(endpoints(p).end[2] - endpoints(p).start[2]))).toBe(400)
-    await page.getByTestId('properties').getByTitle(/复制/).click()
+    await page.getByTestId('properties').getByRole('button', { name: /复制/ }).click()
     expect((await store(page)).profiles).toHaveLength(2)
     await expect(page.getByTestId('toasts')).toContainText('已复制')
   })
@@ -104,11 +106,13 @@ test.describe('BOM, project files, clear', () => {
   })
 
   test('save then open a project round-trips the document', async ({ page }) => {
+    await useDownloadFallback(page)
+    await openApp(page)
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await drawExact(page, [0, 10, 0], [0, 300, 0], 700)
     const before = (await store(page)).profiles
-    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByText('保存工程').click()])
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click()])
     const path = await dl.path()
     const doc = JSON.parse(fs.readFileSync(path!, 'utf8'))
     expect(doc.profiles).toHaveLength(2)
