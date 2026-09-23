@@ -1,4 +1,5 @@
-import type { ConnectorData, PanelData, ProfileData } from '../store/useStore'
+import type { ConnectorData, PanelData, ProfileData, FittingData, HingeType } from '../store/useStore'
+import { fittingParts, hingeCount } from './fittingGeometry'
 import { materialLabel } from './panelOps'
 import type { ProfileTrims } from './jointUtils'
 import {
@@ -40,7 +41,7 @@ export interface BomResult {
  */
 export function buildBom(
   profiles: ProfileData[], connectors: ConnectorData[], trims: Map<string, ProfileTrims>,
-  language: 'zh' | 'en', panels: PanelData[] = [],
+  language: 'zh' | 'en', panels: PanelData[] = [], fittings: FittingData[] = [],
 ): BomResult {
   const profileRows = new Map<string, BomRow>()
   let totalCutLength = 0
@@ -123,9 +124,42 @@ export function buildBom(
   }
 
   // Boards are grouped the way a cutting shop quotes them: one line per size and material.
+  // A drawer and a door are components, but they are still made of board and still take
+  // hardware, so they are broken down here rather than being left off the order.
   const panelRows = new Map<string, BomRow>()
   let totalBoardArea = 0
-  for (const b of panels) {
+  const fittingBoards: PanelData[] = []
+  for (const f of fittings) {
+    for (const b of fittingParts(f).boards) {
+      fittingBoards.push({
+        id: `${f.id}-${b.role}`, width: b.width, height: b.height, thickness: b.thickness,
+        position: [0, 0, 0], quaternion: [0, 0, 0, 1], material: f.material,
+      })
+    }
+    if (f.kind === 'drawer') {
+      const key = `runner-${Math.round(f.depth)}`
+      const row = connectorRows.get(key) ?? {
+        kind: 'connector' as const, key,
+        label: language === 'zh' ? `抽屉滑轨 ${Math.round(f.depth)}mm` : `Drawer runner ${Math.round(f.depth)} mm`,
+        spec: language === 'zh' ? '侧装一对' : 'side-mount pair', qty: 0,
+      }
+      row.qty++
+      connectorRows.set(key, row)
+    } else {
+      const type: HingeType = f.hingeType ?? 'cup'
+      const n = hingeCount(type, f.height)
+      const key = `hinge-${type}`
+      const names = {
+        cup: language === 'zh' ? '35 杯铰' : '35 mm cup hinge',
+        slot: language === 'zh' ? '型材合页' : 'T-slot leaf hinge',
+        continuous: language === 'zh' ? `长排合页 ${Math.round(f.height)}mm` : `Piano hinge ${Math.round(f.height)} mm`,
+      }
+      const row = connectorRows.get(key) ?? { kind: 'connector' as const, key, label: names[type], spec: '', qty: 0 }
+      row.qty += n
+      connectorRows.set(key, row)
+    }
+  }
+  for (const b of [...panels, ...fittingBoards]) {
     const w = Math.round(b.width), h = Math.round(b.height)
     // the same board turned on its side is the same cut, so the pair is ordered
     const [a1, a2] = w >= h ? [w, h] : [h, w]

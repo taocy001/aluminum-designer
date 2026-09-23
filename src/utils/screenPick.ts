@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { ProfileData, ConnectorData, PanelData } from '../store/useStore'
+import type { ProfileData, ConnectorData, PanelData, FittingData } from '../store/useStore'
 import { getProfileEndpoints, getProfileDir, crossExtentAlong } from './geometryCore'
 import { toScreen, closestParamLineToRay, type ScreenSize } from './pickUtils'
 import { panelCorners } from './panelOps'
@@ -12,10 +12,36 @@ const CONNECTOR_RADIUS_PX = 20
  * Bias them forward, otherwise the member always wins and they can never be picked.
  */
 const CONNECTOR_DEPTH_BIAS = 60
+/** a drawer front stands proud of the frame, so it wins the press over what is behind it */
+const FITTING_DEPTH_BIAS = 30
 /** anything nearer than this to the camera plane cannot be projected meaningfully */
 const NEAR_EPS = 1
 
 /** Winding test on the projected quad, which stays correct however the board is turned */
+/**
+ * The outline of a projected box, as seen.
+ *
+ * A drawer is a solid, so a press anywhere over it should find it — but a box seen in
+ * perspective is a hexagon on screen, and testing one of its faces misses the middle of the
+ * very part you are pointing at. The hull of all eight corners is what you can actually see.
+ */
+function hull2d(pts: THREE.Vector2[]): THREE.Vector2[] {
+  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y)
+  if (p.length < 3) return p
+  const cross = (o: THREE.Vector2, a: THREE.Vector2, b: THREE.Vector2) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+  const half = (src: THREE.Vector2[]) => {
+    const out: THREE.Vector2[] = []
+    for (const v of src) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], v) <= 0) out.pop()
+      out.push(v)
+    }
+    out.pop()
+    return out
+  }
+  return [...half(p), ...half([...p].reverse())]
+}
+
 function insideQuad(q: THREE.Vector2[], p: THREE.Vector2): boolean {
   let sign = 0
   for (let i = 0; i < q.length; i++) {
@@ -38,7 +64,7 @@ function segmentDistancePx(a: THREE.Vector2, b: THREE.Vector2, p: THREE.Vector2)
 }
 
 export interface ScreenPick {
-  kind: 'profile' | 'connector' | 'panel'
+  kind: 'profile' | 'connector' | 'panel' | 'fitting'
   id: string
   /** point on the member centerline nearest the sight line (profiles only) */
   point: THREE.Vector3
@@ -69,8 +95,9 @@ function clipToFront(a: THREE.Vector3, b: THREE.Vector3, camPos: THREE.Vector3, 
 export function pickAtScreen(
   cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
   profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
+  fittings: FittingData[] = [],
 ): ScreenPick | null {
-  return pickCandidatesAtScreen(cursor, ray, camera, size, profiles, connectors, panels)[0] ?? null
+  return pickCandidatesAtScreen(cursor, ray, camera, size, profiles, connectors, panels, fittings)[0] ?? null
 }
 
 /**
@@ -83,6 +110,7 @@ export function pickAtScreen(
 export function pickCandidatesAtScreen(
   cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
   profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
+  fittings: FittingData[] = [],
 ): ScreenPick[] {
   const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
   const fwd = camera.getWorldDirection(new THREE.Vector3())
@@ -123,6 +151,24 @@ export function pickCandidatesAtScreen(
     if (!insideQuad(pts, cursor)) continue
     const depth = centre.distanceTo(camPos)
     found.push({ score: depth, pick: { kind: 'panel', id: b.id, point: centre, depth } })
+  }
+
+  // A drawer or a door is picked by the box it fills. It sits proud of the frame, so it is
+  // in front of the members around it — which is what makes it easy to press when looking.
+  for (const f of fittings) {
+    const centre = new THREE.Vector3(...f.position)
+    if (centre.clone().sub(camPos).dot(fwd) <= NEAR_EPS) continue
+    const q = new THREE.Quaternion(...f.quaternion).normalize()
+    const half = new THREE.Vector3(f.width / 2, f.height / 2, f.depth / 2)
+    // Whichever of the two big faces is nearer, so it can be pressed from either side —
+    // which way round the cabinet was drawn is not something to make anyone think about.
+    const corners: THREE.Vector3[] = []
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      corners.push(new THREE.Vector3(sx * half.x, sy * half.y, sz * half.z).applyQuaternion(q).add(centre))
+    }
+    if (corners.some((v) => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
+    if (!insideQuad(hull2d(corners.map((v) => toScreen(v, camera, size))), cursor)) continue
+    found.push({ score: centre.distanceTo(camPos) - FITTING_DEPTH_BIAS, pick: { kind: 'fitting', id: f.id, point: centre, depth: centre.distanceTo(camPos) } })
   }
 
   for (const c of connectors) {

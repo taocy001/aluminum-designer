@@ -8,6 +8,7 @@ import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { endGrabRadius } from './ResizeHandles'
 import { gizmoState, gizmoHandleAt } from './TransformGizmo'
 import { rotateSelected, selectConnected } from '../utils/editOps'
+import { setFittingOpen } from '../utils/fittingOps'
 import { translations } from '../utils/translations'
 import { memberBox } from '../utils/dragSnap'
 
@@ -122,9 +123,8 @@ const PointerRouter: React.FC = () => {
 
     const pickFor = (e: PointerEvent) => {
       const { cursor, rect } = cursorOf(e)
-      const { profiles, connectors } = useStore.getState()
-      const panels = useStore.getState().panels
-      return pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height }, profiles, connectors, panels)
+      const { profiles, connectors, panels, fittings } = useStore.getState()
+      return pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height }, profiles, connectors, panels, fittings)
     }
 
     const onPointerMove = (e: PointerEvent) => {
@@ -166,7 +166,7 @@ const PointerRouter: React.FC = () => {
       const busy = ts.isDrawing || ts.held === 'connector'
       const { cursor: hc, rect: hr } = cursorOf(e)
       const list = busy ? [] : pickCandidatesAtScreen(hc, rayOf(hc, hr), camera,
-        { width: hr.width, height: hr.height }, useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
+        { width: hr.width, height: hr.height }, useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels, useStore.getState().fittings)
       // a real move resets the cycle; jitter under a still hand must not
       const moved = Math.hypot(e.clientX - candidates.current.x, e.clientY - candidates.current.y) > 3
       candidates.current = {
@@ -224,7 +224,7 @@ const PointerRouter: React.FC = () => {
       const { cursor, rect } = cursorOf(e as unknown as PointerEvent)
       const ray = rayOf(cursor, rect)
       const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
-        useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
+        useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels, useStore.getState().fittings)
       let target = hit?.point?.clone() ?? null
       if (!target) {
         // Nothing under the pointer. Falling through to the floor sends the camera off to
@@ -261,7 +261,7 @@ const PointerRouter: React.FC = () => {
       const store = useStore.getState()
       const hit = pickAtScreen(
         new THREE.Vector2(rect.width / 2, rect.height / 2), ray.ray, camera,
-        { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels,
+        { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels, store.fittings,
       )
       const dir = camera.getWorldDirection(new THREE.Vector3())
       let depth: number | null = null
@@ -284,6 +284,17 @@ const PointerRouter: React.FC = () => {
       if (e.button !== 0) return
       // a press on empty space is about to become an orbit: pivot on what is being looked at
       if (!ts.selectMode && ts.held === null) aimPivot()
+
+      // While looking, a press opens or shuts whatever it lands on and nothing else happens.
+      // Turning the view still works, which is most of what looking is.
+      if (ts.viewMode) {
+        const hit = pickFor(e)
+        if (hit?.kind === 'fitting') {
+          const f = useStore.getState().fittings.find((q) => q.id === hit.id)
+          if (f) { setFittingOpen(f.id, (f.open ?? 0) > 0.5 ? 0 : 1); pendingClear.current = null }
+        }
+        return
+      }
 
       // a press on a move arrow slides the selection along that axis, in either mode.
       // Ctrl/Cmd (add to selection) and Alt (plane drag) are gestures aimed at the model,
@@ -337,7 +348,7 @@ const PointerRouter: React.FC = () => {
       const cyc = candidates.current
       const stepped = cyc.index > 0 && Math.hypot(e.clientX - cyc.x, e.clientY - cyc.y) <= 3 ? cyc.list[cyc.index] : null
       const pickHere = stepped ?? pickAtScreen(downCursor, downRay, camera, { width: downRect.width, height: downRect.height },
-        useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels)
+        useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels, useStore.getState().fittings)
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
       const multi = e.ctrlKey || e.metaKey
       const pick = pickHere   // already resolved above; picking twice per press is wasted work

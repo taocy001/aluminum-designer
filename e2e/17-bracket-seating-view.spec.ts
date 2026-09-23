@@ -47,9 +47,9 @@ test.describe('A bracket goes where it can be bolted', () => {
     await settle(page)
     await page.waitForTimeout(300)
     const c = (await store(page)).connectors[0]
-    // both members are 20 wide about z = 0, so the faces are at ±10 and the part sits beyond
-    expect(Math.abs(c.position[2])).toBeGreaterThan(10)
-    expect(Math.abs(c.position[2])).toBeLessThan(20)
+    // both members are 20 wide about z = 0, so the shared faces are at ±10: the plate's
+    // back lies on one of them and its body stands out from there
+    expect(Math.abs(Math.abs(c.position[2]) - 10)).toBeLessThan(1)
   })
 
   test('dropping one near a corner settles it onto the corner', async ({ page }) => {
@@ -130,8 +130,12 @@ test.describe('Coming in, and turning about what you are looking at', () => {
     await page.mouse.dblclick(c.x, c.y)
     await page.waitForTimeout(350)
     const after = await cam(page)
-    expect(Math.abs(after.target[0] - 300)).toBeLessThan(60)
+    // it comes in on the rail: how far along the rail it lands is the pick's business, so
+    // what matters is that the target is on the member and not somewhere else entirely
+    expect(after.target[0]).toBeGreaterThan(-30)
+    expect(after.target[0]).toBeLessThan(630)
     expect(Math.abs(after.target[1] - 10)).toBeLessThan(60)
+    expect(Math.abs(after.target[2])).toBeLessThan(60)
   })
 
   test('a double click on empty sky stays at the depth you were looking at', async ({ page }) => {

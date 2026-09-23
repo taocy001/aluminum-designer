@@ -25,6 +25,16 @@ interface ToolState {
   activeConnectorType: string | null
   language: Language
   cameraResetTrigger: number
+  /**
+   * Building or looking.
+   *
+   * While looking, nothing can be moved or drawn and a press on a drawer or a door opens it
+   * instead. It is the difference between a drawing and a cabinet: the point of the second
+   * is whether the drawer clears the handle next to it, which you cannot see with it shut.
+   */
+  viewMode: boolean
+  /** the full key list, opened from the corner rather than printed there */
+  helpOpen: boolean
   /** what the next camera fit should frame: everything, or just what is selected */
   cameraFitScope: 'all' | 'selection'
   /** R was pressed and is waiting for an axis key; null when no turn is pending */
@@ -130,6 +140,8 @@ interface ToolState {
   setLanguage: (lang: Language) => void
   triggerCameraReset: (scope?: 'all' | 'selection') => void
   setPendingRotate: (p: null | { degrees: number }) => void
+  setViewMode: (on: boolean) => void
+  toggleHelp: () => void
   zoomBy: (step: number) => void
   zoomToPoint: (at: [number, number, number]) => void
   clearZoom: () => void
@@ -188,6 +200,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   language: 'zh',
   cameraResetTrigger: 0,
   cameraFitScope: 'all',
+  viewMode: false,
+  helpOpen: false,
   pendingRotate: null,
   zoomStep: 0,
   zoomAt: null,
@@ -252,6 +266,12 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setLanguage: (language) => set({ language }),
   triggerCameraReset: (scope = 'all') => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1, cameraFitScope: scope })),
   setPendingRotate: (pendingRotate) => set({ pendingRotate }),
+  // going to look puts down whatever is in hand: nothing can be drawn while looking
+  setViewMode: (viewMode) => set({
+    viewMode,
+    ...(viewMode ? { held: null, activeConnectorType: null, isDrawing: false, selectMode: false, startPoint: null, currentPoint: null, pendingRotate: null } : {}),
+  }),
+  toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
   zoomBy: (step) => set((s) => ({ zoomStep: s.zoomStep + step })),
   clearZoom: () => set({ zoomStep: 0, zoomAt: null }),
   zoomToPoint: (at) => set({ zoomAt: at }),

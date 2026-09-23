@@ -1,0 +1,184 @@
+import * as THREE from 'three'
+import type { FittingData, HingeSide, HingeType, Overlay } from '../store/useStore'
+
+/**
+ * What a drawer and a door are actually made of.
+ *
+ * One place, used by the renderer, the cut list and the tests, so a drawer that looks a
+ * certain way is priced that way. Everything is in the fitting's own frame: X across the
+ * opening, Y up, +Z out towards whoever opens it, origin at the centre of the clear opening.
+ */
+
+/** side clearance each side of a drawer box, which is what a side-mount runner occupies (mm) */
+export const RUNNER_CLEARANCE = 12.5
+/** gap all round a front, so neighbouring fronts do not rub (mm) */
+export const FRONT_GAP = 3
+/** the boards a drawer box is made from (mm) */
+export const BOX_BOARD = 15
+/** a door or a drawer front (mm) */
+export const FRONT_BOARD = 18
+/** how much of the frame a full-overlay front covers on each side (mm) */
+export const OVERLAY_FULL = 18
+/** ...and a half overlay */
+export const OVERLAY_HALF = 9
+
+/** How far each kind of hinge will open, in degrees */
+export const HINGE_SWING: Record<HingeType, number> = {
+  cup: 110,          // a 35 mm concealed hinge, the standard kitchen fitting
+  slot: 180,         // two leaves bolted into T-slots: nothing in the way, so it lies back
+  continuous: 180,   // a piano hinge down the whole edge
+}
+
+/** Hinges needed for a door this tall, by kind */
+export function hingeCount(type: HingeType, heightMm: number): number {
+  if (type === 'continuous') return 1
+  // the usual rule: two up to 900, three to 1600, four beyond
+  return heightMm <= 900 ? 2 : heightMm <= 1600 ? 3 : 4
+}
+
+export interface Board {
+  /** what it is, for the cut list */
+  role: 'side' | 'back' | 'inner-front' | 'base' | 'front' | 'panel'
+  width: number
+  height: number
+  thickness: number
+  /** centre, in the fitting's own frame */
+  position: [number, number, number]
+  /** rotation from a board lying in XY, in the fitting's own frame */
+  quaternion: [number, number, number, number]
+}
+
+export interface RunnerRail {
+  /** centre, in the fitting's own frame */
+  position: [number, number, number]
+  length: number
+}
+
+export interface FittingParts {
+  boards: Board[]
+  rails: RunnerRail[]
+  /** hinge positions along the hung edge, in the fitting's own frame */
+  hinges: Array<[number, number, number]>
+  /** how far the whole thing travels when fully open: mm for a drawer, degrees for a door */
+  travel: number
+}
+
+const Q_FLAT: [number, number, number, number] = [0, 0, 0, 1]
+/** a board standing on edge, facing across X */
+const Q_SIDE = (() => {
+  const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+  return [q.x, q.y, q.z, q.w] as [number, number, number, number]
+})()
+/** a board lying flat, facing up */
+const Q_LEVEL = (() => {
+  const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2)
+  return [q.x, q.y, q.z, q.w] as [number, number, number, number]
+})()
+
+export function overlayMm(overlay: Overlay | undefined): number {
+  return overlay === 'inset' ? -FRONT_GAP : overlay === 'half' ? OVERLAY_HALF : OVERLAY_FULL
+}
+
+/** The front of a drawer or the leaf of a door: the same board, sized by how it sits */
+function frontBoard(f: FittingData): Board {
+  const grow = overlayMm(f.overlay) * 2 - FRONT_GAP * 2
+  return {
+    role: f.kind === 'door' ? 'panel' : 'front',
+    width: Math.max(20, f.width + grow),
+    height: Math.max(20, f.height + grow),
+    thickness: FRONT_BOARD,
+    position: [0, 0, f.depth / 2 + FRONT_BOARD / 2],
+    quaternion: Q_FLAT,
+  }
+}
+
+/**
+ * A drawer: a box that slides, and the slide sets every dimension.
+ *
+ * A side-mount runner takes 12.5 mm between the box and the cabinet side, so the box is
+ * 25 mm narrower than the opening. The runner has to be screwed to something, so each side
+ * gets a rail at the right height.
+ */
+function drawerParts(f: FittingData): FittingParts {
+  const boxW = f.width - RUNNER_CLEARANCE * 2
+  const boxD = f.depth - 20
+  const boxH = Math.max(40, f.height - FRONT_GAP * 2 - 20)
+  const boxY = -f.height / 2 + boxH / 2
+  const boards: Board[] = []
+  if (boxW > 40 && boxD > 40) {
+    for (const s of [-1, 1]) {
+      boards.push({ role: 'side', width: boxD, height: boxH, thickness: BOX_BOARD,
+        position: [s * (boxW / 2 - BOX_BOARD / 2), boxY, 0], quaternion: Q_SIDE })
+    }
+    for (const [s, role] of [[-1, 'back'], [1, 'inner-front']] as const) {
+      boards.push({ role, width: boxW - BOX_BOARD * 2, height: boxH, thickness: BOX_BOARD,
+        position: [0, boxY, s * (boxD / 2 - BOX_BOARD / 2)], quaternion: Q_FLAT })
+    }
+    boards.push({ role: 'base', width: boxW - BOX_BOARD * 2, height: boxD - BOX_BOARD * 2, thickness: BOX_BOARD,
+      position: [0, boxY - boxH / 2 + BOX_BOARD / 2, 0], quaternion: Q_LEVEL })
+  }
+  boards.push(frontBoard(f))
+  const railY = -f.height / 2 + 10
+  return {
+    boards,
+    rails: [
+      { position: [-f.width / 2 + 10, railY, 0], length: f.depth },
+      { position: [f.width / 2 - 10, railY, 0], length: f.depth },
+    ],
+    hinges: [],
+    // it comes out far enough to reach the back of the box, less the bit a runner keeps
+    travel: Math.max(0, f.depth - 30),
+  }
+}
+
+/** Which way a door swings: the axis it turns about and where that axis sits */
+export function hingeAxis(f: FittingData): { origin: THREE.Vector3; axis: THREE.Vector3; sign: number } {
+  const side: HingeSide = f.hinge ?? 'left'
+  const w = f.width / 2 + overlayMm(f.overlay)
+  const h = f.height / 2 + overlayMm(f.overlay)
+  const z = f.depth / 2
+  switch (side) {
+    case 'right':  return { origin: new THREE.Vector3(w, 0, z), axis: new THREE.Vector3(0, 1, 0), sign: 1 }
+    case 'top':    return { origin: new THREE.Vector3(0, h, z), axis: new THREE.Vector3(1, 0, 0), sign: 1 }
+    case 'bottom': return { origin: new THREE.Vector3(0, -h, z), axis: new THREE.Vector3(1, 0, 0), sign: -1 }
+    default:       return { origin: new THREE.Vector3(-w, 0, z), axis: new THREE.Vector3(0, 1, 0), sign: -1 }
+  }
+}
+
+function doorParts(f: FittingData): FittingParts {
+  const type = f.hingeType ?? 'cup'
+  const { origin, axis } = hingeAxis(f)
+  const n = hingeCount(type, axis.y > 0.5 ? f.height : f.width)
+  const span = axis.y > 0.5 ? f.height : f.width
+  const hinges: Array<[number, number, number]> = []
+  if (type === 'continuous') {
+    hinges.push([origin.x, origin.y, origin.z])
+  } else {
+    // spread them along the hung edge, held in from each end
+    const inset = Math.min(80, span / 4)
+    for (let i = 0; i < n; i++) {
+      const t = -span / 2 + inset + (i * (span - inset * 2)) / Math.max(1, n - 1)
+      hinges.push(axis.y > 0.5 ? [origin.x, t, origin.z] : [t, origin.y, origin.z])
+    }
+  }
+  return { boards: [frontBoard(f)], rails: [], hinges, travel: HINGE_SWING[type] }
+}
+
+export function fittingParts(f: FittingData): FittingParts {
+  return f.kind === 'drawer' ? drawerParts(f) : doorParts(f)
+}
+
+/** The transform the moving part takes at `open` (0…1), in the fitting's own frame */
+export function openTransform(f: FittingData): { position: THREE.Vector3; quaternion: THREE.Quaternion } {
+  const t = Math.max(0, Math.min(1, f.open ?? 0))
+  const parts = fittingParts(f)
+  if (f.kind === 'drawer') {
+    return { position: new THREE.Vector3(0, 0, parts.travel * t), quaternion: new THREE.Quaternion() }
+  }
+  const { origin, axis, sign } = hingeAxis(f)
+  const angle = THREE.MathUtils.degToRad(parts.travel * t) * sign
+  const q = new THREE.Quaternion().setFromAxisAngle(axis, angle)
+  // turning about the hinge, not about the middle of the door
+  const offset = origin.clone().sub(origin.clone().applyQuaternion(q))
+  return { position: offset, quaternion: q }
+}

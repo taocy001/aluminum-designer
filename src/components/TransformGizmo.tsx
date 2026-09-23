@@ -86,7 +86,9 @@ const TransformGizmo: React.FC = () => {
   const anchor = useMemo(() => selectionPivot(selection.profiles, selection.connectors, pivotMode), [selection, pivotMode])
   // a fully locked selection has nothing the gizmo could do
   const anyMovable = selection.profiles.some((p) => !p.locked)
-  const active = showGizmo && !selectMode && !isDragging && selectedIds.length > 0 && anyMovable
+  const viewMode = useToolStore((s) => s.viewMode)
+  // nothing moves while looking, so handles that promise to move something are a lie
+  const active = showGizmo && !viewMode && !selectMode && !isDragging && selectedIds.length > 0 && anyMovable
 
   // one world size for the whole widget, refreshed every frame so zoom and orbit keep it steady
   useFrame(() => {

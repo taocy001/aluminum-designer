@@ -26,6 +26,7 @@ export async function store(page: Page) {
       profiles: s.profiles as any[],
       connectors: s.connectors as any[],
       panels: s.panels as any[],
+      fittings: s.fittings as any[],
       selectedIds: s.selectedIds as string[],
       past: s.past.length as number,
       future: s.future.length as number,

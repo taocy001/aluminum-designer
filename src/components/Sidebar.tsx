@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive } from 'lucide-react'
-import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type PanelMaterial } from '../store/useStore'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen } from 'lucide-react'
+import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
 import { computeFrameBounds } from '../utils/jointUtils'
@@ -13,7 +13,8 @@ import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
-import { addDrawerFromSelection } from '../utils/drawerOps'
+import { addFittingFromSelection } from '../utils/fittingOps'
+import { downloadText, openProject, saveProject, savedFileName } from '../utils/projectFile'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
@@ -28,17 +29,7 @@ function facingLabel(p: ProfileData): string {
 
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
 
-function downloadText(filename: string, text: string, mime: string) {
-  const blob = new Blob([text], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
+
 
 type SectionKey = 'components' | 'properties' | 'bom'
 
@@ -101,9 +92,9 @@ const NumField: React.FC<{ value: number; onCommit: (v: number) => void; step?: 
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, panels, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
+  const { profiles, connectors, panels, fittings, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
-    workPlaneY, setWorkPlaneY, throughRule, setThroughRule } = useToolStore()
+    workPlaneY, setWorkPlaneY, throughRule, setThroughRule, viewMode, setViewMode } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -124,6 +115,10 @@ const Sidebar: React.FC = () => {
   const [workPlaneText, setWorkPlaneText] = useState('0')
   const [drawerHeightText, setDrawerHeightText] = useState('200')
   const [drawerCountText, setDrawerCountText] = useState('1')
+  const [hingeSide, setHingeSide] = useState<HingeSide>('left')
+  const [hingeType, setHingeType] = useState<HingeType>('cup')
+  const [overlay, setOverlay] = useState<Overlay>('full')
+  const [savedName, setSavedName] = useState<string | null>(savedFileName())
   // the highest point of whatever is selected, so the work plane can be put on top of it
   const selectionTopY = useMemo(() => {
     const ids = new Set(selectedIds)
@@ -184,7 +179,7 @@ const Sidebar: React.FC = () => {
   const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
-  const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels), [profiles, connectors, trims, language, panels])
+  const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels, fittings), [profiles, connectors, trims, language, panels, fittings])
   const totalCut = bom.totalCutLength
   const buttEnds = bom.buttEnds
   // how many of the joints that want a bracket actually have one, so the headline stops
@@ -193,11 +188,15 @@ const Sidebar: React.FC = () => {
   const bounds = useMemo(() => computeFrameBounds(profiles, trims), [profiles, trims])
   const overall = bounds ? bounds.getSize(new THREE.Vector3()) : null
 
+  // Picking a part up is building, so it goes back to building rather than quietly doing
+  // nothing — pressing a profile while looking can only have meant "I want to draw one".
   const handleSpecClick = (spec: ProfileSpec) => {
+    if (viewMode) setViewMode(false)
     if (held === 'profile' && activeSpec === spec) putDown()
     else setActiveSpec(spec)
   }
   const handleConnectorClick = (type: string) => {
+    if (viewMode) setViewMode(false)
     if (held === 'connector' && activeConnectorType === type) putDown()
     else setActiveConnector(type)
   }
@@ -218,20 +217,49 @@ const Sidebar: React.FC = () => {
     const dims = overall ? `${Math.round(overall.x)}x${Math.round(overall.z)}x${Math.round(overall.y)}` : ''
     downloadText('BOM.csv', '﻿' + bomToCsv(bom, dims), 'text/csv;charset=utf-8;')
   }
-  const handleExportJSON = () => {
-    const doc = { version: 2, savedAt: new Date().toISOString(), profiles, connectors, panels }
-    downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(doc, null, 2), 'application/json')
+  // Save to a file you pick, and save over it next time. A download is not a save: it drops
+  // a numbered copy in Downloads that can never be written over, and after a few edits
+  // nobody knows which of the five files is the drawing.
+  const handleSaveProject = async (asNew = false) => {
+    const doc = { version: 3, savedAt: new Date().toISOString(), profiles, connectors, panels, fittings }
+    const suggested = savedFileName() ?? `aluframe-${new Date().toISOString().slice(0, 10)}.json`
+    const r = await saveProject(JSON.stringify(doc, null, 2), suggested, asNew)
+    if (r.outcome === 'cancelled') return
+    setSavedName(savedFileName())
+    showToast(
+      r.outcome === 'overwritten' ? t.toastSavedOver(r.name ?? '')
+      : r.outcome === 'saved' ? t.toastSavedAs(r.name ?? '')
+      : t.toastDownloaded(r.name ?? ''),
+      'success',
+    )
+  }
+  const handleOpenProject = async () => {
+    const picked = await openProject()
+    if (!picked) { fileRef.current?.click(); return }
+    try {
+      applyDocument(JSON.parse(picked.text))
+      setSavedName(savedFileName())
+      showToast(t.toastImported, 'success')
+    } catch { showToast(t.toastImportFailed, 'error') }
+  }
+  /** A saved drawing, checked before it replaces the one on screen. Throws if it is not one. */
+  const applyDocument = (doc: {
+    profiles?: ProfileData[]; connectors?: ConnectorData[]; panels?: PanelData[]; fittings?: FittingData[]
+  }) => {
+    const ok = Array.isArray(doc.profiles) && doc.profiles.every((p: ProfileData) =>
+      typeof p.id === 'string' && ALL_SPECS.includes(p.spec) && isFinite(p.length) &&
+      Array.isArray(p.position) && p.position.length === 3 && Array.isArray(p.quaternion) && p.quaternion.length === 4)
+    if (!ok) throw new Error('bad doc')
+    loadDocument({
+      profiles: doc.profiles!.map((p: ProfileData) => ({ ...p, miterCuts: p.miterCuts ?? [], holes: p.holes ?? [] })),
+      connectors: Array.isArray(doc.connectors) ? doc.connectors : [],
+      panels: Array.isArray(doc.panels) ? doc.panels : [],
+      fittings: Array.isArray(doc.fittings) ? doc.fittings : [],
+    })
   }
   const handleImportJSON = (file: File) => {
     file.text().then((txt) => {
-      const doc = JSON.parse(txt)
-      const ok = Array.isArray(doc.profiles) && doc.profiles.every((p: ProfileData) =>
-        typeof p.id === 'string' && ALL_SPECS.includes(p.spec) && isFinite(p.length) &&
-        Array.isArray(p.position) && p.position.length === 3 && Array.isArray(p.quaternion) && p.quaternion.length === 4)
-      if (!ok) throw new Error('bad doc')
-      const conns: ConnectorData[] = Array.isArray(doc.connectors) ? doc.connectors : []
-      const boards: PanelData[] = Array.isArray(doc.panels) ? doc.panels : []
-      loadDocument({ profiles: doc.profiles.map((p: ProfileData) => ({ ...p, miterCuts: p.miterCuts ?? [], holes: p.holes ?? [] })), connectors: conns, panels: boards })
+      applyDocument(JSON.parse(txt))
       showToast(t.toastImported, 'success')
     }).catch(() => showToast(t.toastImportFailed, 'error'))
   }
@@ -503,11 +531,13 @@ const Sidebar: React.FC = () => {
               </div>
             )}
 
-            {/* A drawer is a box that slides, not a board across the hole: the runner takes
-                12.5 mm a side, so the box is 25 mm narrower than the opening and needs a rail
-                at each side to be screwed to. */}
+            {/* A drawer and a door are components, not piles of board. A drawer is a box that
+                slides — the runner takes 12.5 mm a side, so the box is 25 mm narrower than the
+                opening and needs a rail each side to screw to. A door hangs on hinges, and
+                which hinge decides how far it opens and whether anything has to be bored. */}
             {selectedProfileCount >= 2 && (
-              <div className="space-y-1" data-testid="drawer-block">
+              <div className="space-y-1 pt-1 border-t border-white/5" data-testid="fitting-block">
+                <span className="text-[10px] text-slate-500 uppercase font-bold">{t.fittings}</span>
                 <div className="flex items-center gap-1">
                   <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
                     <span className="text-[9px] text-slate-500 font-bold">{t.drawerHeight}</span>
@@ -517,15 +547,48 @@ const Sidebar: React.FC = () => {
                   </label>
                   <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 w-20 focus-within:border-blue-500">
                     <span className="text-[9px] text-slate-500 font-bold">{t.drawerCount}</span>
-                    <input type="number" min={1} max={6} step={1} value={drawerCountText} data-testid="drawer-count"
+                    <input type="number" min={1} max={8} step={1} value={drawerCountText} data-testid="drawer-count"
                       onChange={(e) => setDrawerCountText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
                       className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
                   </label>
                 </div>
-                <button onClick={() => addDrawerFromSelection(parseFloat(drawerHeightText), 0, parseFloat(drawerCountText))}
+                <button
+                  onClick={() => addFittingFromSelection({ kind: 'drawer', frontHeight: parseFloat(drawerHeightText), count: parseFloat(drawerCountText) })}
                   data-testid="add-drawer" title={t.drawerHint}
                   className="w-full flex items-center justify-center gap-1 py-1.5 bg-sky-600/80 hover:bg-sky-600 rounded-lg text-[10px] font-bold">
                   <Archive size={12} />{t.drawer}
+                </button>
+
+                <div className="grid grid-cols-4 gap-1 pt-0.5">
+                  {(['left', 'right', 'top', 'bottom'] as const).map((side) => (
+                    <button key={side} data-testid={`hinge-${side}`} onClick={() => setHingeSide(side)}
+                      title={`${t.hingeSide} ${({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[side]}`}
+                      className={`py-1 rounded-lg text-[10px] font-bold ${hingeSide === side ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      {({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[side]}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {([['cup', t.hingeCup, t.hintHingeCup], ['slot', t.hingeSlot, t.hintHingeSlot], ['continuous', t.hingeContinuous, t.hintHingeContinuous]] as const).map(([k, label, tip]) => (
+                    <button key={k} data-testid={`hingetype-${k}`} onClick={() => setHingeType(k)} title={tip}
+                      className={`py-1 rounded-lg text-[9px] font-bold ${hingeType === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {([['full', t.overlayFull], ['half', t.overlayHalf], ['inset', t.overlayInset]] as const).map(([k, label]) => (
+                    <button key={k} data-testid={`overlay-${k}`} onClick={() => setOverlay(k)} title={t.hintOverlay}
+                      className={`py-1 rounded-lg text-[9px] font-bold ${overlay === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => addFittingFromSelection({ kind: 'door', hinge: hingeSide, hingeType, overlay })}
+                  data-testid="add-door" title={t.hintAddDoor}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-amber-600/80 hover:bg-amber-600 rounded-lg text-[10px] font-bold">
+                  <DoorOpen size={12} />{t.addDoor}
                 </button>
               </div>
             )}
@@ -747,10 +810,20 @@ const Sidebar: React.FC = () => {
           <Download size={14} /> {t.exportBOM}
         </button>
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={handleExportJSON} data-testid="export-project" className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold"><Save size={13} /> {t.exportJSON}</button>
-          <button onClick={() => fileRef.current?.click()} title={t.hintImport} className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold"><Upload size={13} /> {t.importJSON}</button>
+          <button onClick={() => handleSaveProject(false)} data-testid="export-project" title={t.hintSave}
+            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
+            <Save size={13} /> {savedName ?? t.exportJSON}
+          </button>
+          <button onClick={handleOpenProject} title={t.hintImport} data-testid="import-project"
+            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
+            <Upload size={13} /> {t.importJSON}
+          </button>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportJSON(f); e.target.value = '' }} />
         </div>
+        {savedName && (
+          <button onClick={() => handleSaveProject(true)} data-testid="save-as" title={t.hintSaveAs}
+            className="w-full py-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-300">{t.saveAs}</button>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <button onClick={handleLogDebug} className="flex items-center justify-center gap-2 py-2 bg-amber-600/20 hover:bg-amber-600/40 text-amber-500 border border-amber-600/30 rounded-lg text-[10px] font-bold"><Bug size={14} /> LOG</button>
           <button onClick={handleClearAll} data-testid="clear-all" title={t.hintClearAll}

@@ -9,7 +9,7 @@ import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus } from 'lucide-react'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -26,7 +26,7 @@ function App() {
     startFrameSelect, updateFrameSelect, endFrameSelect,
     toasts, showToast, dragConflict, hoverPartId, snapGuides, gizmoHover,
     dragMoved, resize, hoverCandidates, workPlaneY,
-    pendingRotate, setPendingRotate,
+    pendingRotate, setPendingRotate, viewMode, setViewMode, helpOpen, toggleHelp,
   } = useToolStore()
   const t = translations[language]
 
@@ -97,6 +97,13 @@ function App() {
       if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return }
       if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return }
       if (isInInput) return
+
+      // Looking, not building: the view keys still work, the ones that change things do not.
+      if (viewMode && !['Escape', 'f', 'F', 'F11', ' '].includes(e.key) && e.code !== 'Space') {
+        if (e.key.toLowerCase() === 'v') { setViewMode(false); return }
+        return
+      }
+      if (e.key.toLowerCase() === 'v' && !mod) { setViewMode(!viewMode); return }
 
       // Space always opens the menu; with nothing selected it carries the whole-document
       // actions instead. One key that always does something beats one that sometimes does.
@@ -178,7 +185,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen])
+  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, viewMode, setViewMode, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -246,7 +253,6 @@ function App() {
     : hoverPartId ? 'grab'
     : 'default'
 
-  const guide = selectMode ? t.guideSelect : held !== null ? t.guideDraw : t.guideNavigate
   // the part in hand, named the way the sidebar names it
   const heldName = held === 'connector'
     ? (activeConnectorType ? connectorLabel(activeConnectorType, language) : '')
@@ -439,6 +445,17 @@ function App() {
               {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            {/* Building or looking. A drawing you cannot open is a drawing; the point of the
+                cabinet is whether the drawer clears the handle next to it. */}
+            <button data-testid="mode-build" onClick={() => setViewMode(false)} title={t.hintBuild}
+              aria-label={t.build} className={iconBtn(!viewMode, 'bg-blue-600 text-white shadow-lg')}>
+              <PencilRuler size={14} />
+            </button>
+            <button data-testid="mode-look" onClick={() => setViewMode(true)} title={t.hintLook}
+              aria-label={t.look} className={iconBtn(viewMode, 'bg-emerald-600 text-white shadow-lg')}>
+              <Eye size={14} />
+            </button>
+            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* The wheel already does this; the buttons are for trackpads and for anyone who
                 would rather press something than learn a gesture. */}
             <button data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
@@ -451,13 +468,32 @@ function App() {
             </button>
           </div>
 
-          {/* Guide */}
-          <div className="absolute bottom-6 left-6 pointer-events-none bg-slate-900/80 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 text-[10px] text-slate-400 space-y-1 shadow-2xl max-w-xs">
-            <p className={`font-bold ${selectMode ? 'text-violet-400' : held !== null ? 'text-blue-400' : 'text-slate-200'}`}>
-              {selectMode ? t.selectMode : held !== null ? `${t.draw} · ${heldName}` : t.emptyHand}
-            </p>
-            {guide.map((line, i) => <p key={i}>{line}</p>)}
+          {/* What you are doing, and nothing else.
+              Every button explains itself under the pointer now, so eight lines of keys in
+              the corner were eight lines nobody read after the first day. They are one press
+              away instead — and the one line that is left is the one that changes. */}
+          <div className="absolute bottom-6 left-6 flex items-center gap-2 z-10">
+            <div className={`pointer-events-none bg-slate-900/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-bold shadow-2xl ${
+              viewMode ? 'text-emerald-400' : selectMode ? 'text-violet-400' : held !== null ? 'text-blue-400' : 'text-slate-300'}`}
+              data-testid="mode-line">
+              {viewMode ? t.look : selectMode ? t.selectMode : held !== null ? `${t.draw} · ${heldName}` : t.emptyHand}
+            </div>
+            <button data-testid="help-toggle" onClick={toggleHelp} title={t.hintHelp} aria-label={t.help}
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-900/80 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/25 shadow-2xl">
+              <HelpCircle size={13} />
+            </button>
           </div>
+
+          {helpOpen && (
+            <div data-testid="help-panel"
+              className="absolute bottom-16 left-6 z-20 bg-slate-900/95 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 shadow-2xl max-w-sm text-[10px] text-slate-400 space-y-1">
+              <div className="flex items-center justify-between pb-1.5 mb-1 border-b border-white/10">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t.help}</span>
+                <button onClick={toggleHelp} aria-label={t.help} className="text-slate-500 hover:text-white"><X size={12} /></button>
+              </div>
+              {[...t.guideNavigate, ...t.guideDraw, ...t.guideSelect].map((line, i) => <p key={i}>{line}</p>)}
+            </div>
+          )}
 
           {/* Toasts */}
           <div className="absolute top-20 right-6 flex flex-col gap-2 items-end pointer-events-none z-20" data-testid="toasts">

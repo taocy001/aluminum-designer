@@ -29,6 +29,35 @@ const GUSSET_GEOMETRY = (() => {
   return new THREE.ExtrudeGeometry(shape, { depth: 4, bevelEnabled: false })
 })()
 
+/**
+ * A flat corner plate, drawn as the part it is.
+ *
+ * Both arms lie in one plane — that is what "the two members share a face" buys you — so
+ * this is a plate bent nowhere, an L lying against the frame. It was two 4 mm square bars,
+ * which at this size read as a staple rather than a bracket, and gave no clue where the
+ * bolts go. Now each arm is the width of the face it sits on, and the two holes are drawn,
+ * because where those holes land is the whole question the seating answers.
+ *
+ * The local origin is where the two bolt lines cross, which is what `seatBracket` positions.
+ */
+const PLATE_W = 20        // across the arm: the width of a 20 face
+const PLATE_T = 4         // thickness
+const PLATE_REACH = 30    // how far each arm runs past the corner
+const PLATE_BACK = 10     // how far it runs the other way, to cover the corner
+const HOLE_AT = 18        // bolt centre along each arm from the origin
+
+const CornerPlate: React.FC<{ color: string; glow?: string; opacity: number }> = ({ color, glow, opacity }) => {
+  const armLen = PLATE_REACH + PLATE_BACK
+  const armMid = (PLATE_REACH - PLATE_BACK) / 2
+  return <>
+    <MeshPart geom="box" args={[armLen, PLATE_W, PLATE_T]} pos={[armMid, 0, PLATE_T / 2]} color={color} glow={glow} opacity={opacity} />
+    <MeshPart geom="box" args={[PLATE_W, armLen, PLATE_T]} pos={[0, armMid, PLATE_T / 2]} color={color} glow={glow} opacity={opacity} />
+    {/* the bolts: what the part is for, and the only way to see whether they found a slot */}
+    <MeshPart geom="cylinder" args={[3, 3, PLATE_T + 3, 12]} pos={[HOLE_AT, 0, PLATE_T / 2]} rot={[Math.PI / 2, 0, 0]} color="#1e293b" opacity={opacity} />
+    <MeshPart geom="cylinder" args={[3, 3, PLATE_T + 3, 12]} pos={[0, HOLE_AT, PLATE_T / 2]} rot={[Math.PI / 2, 0, 0]} color="#1e293b" opacity={opacity} />
+  </>
+}
+
 const MeshPart: React.FC<MeshPartProps & { opacity?: number; glow?: string }> = ({ geom, args, pos = [0, 0, 0], rot = [0, 0, 0], color, opacity = 1, glow }) => (
   <mesh position={pos} rotation={rot}>
     {geom === 'box'
@@ -36,9 +65,13 @@ const MeshPart: React.FC<MeshPartProps & { opacity?: number; glow?: string }> = 
       : <cylinderGeometry args={args as [number, number, number, number]} />
     }
     {/* A bracket is a 20 mm part on a frame metres across. Colour alone does not carry at
-        that size, so a selected or hovered one lights up from the inside. */}
+        that size, so a selected or hovered one lights up from the inside.
+
+        Metalness stays where the profiles keep it. There is no environment map in this
+        scene, and a metal has no diffuse term — at 0.8 every bracket rendered as a black
+        smudge with a highlight on it, which read as a fault rather than a part. */}
     <meshStandardMaterial
-      color={color} metalness={0.8} roughness={0.2}
+      color={color} metalness={0.3} roughness={0.55}
       emissive={glow ?? '#000000'} emissiveIntensity={glow ? 0.9 : 0}
       transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
   </mesh>
@@ -62,12 +95,9 @@ const Connector: React.FC<ConnectorProps> = ({
   const renderParts = () => {
     switch (type) {
 
-      // ── L型角码 ── two arms at 90°, 20mm length, 4mm thick
+      // ── L型角码 ── a flat plate lying across the corner, a bolt in each arm
       case 'bracket':
-        return <>
-          <MeshPart geom="box" args={[20, 4, 4]} pos={[10, 0, 0]} color={c} glow={glow} opacity={opacity} />
-          <MeshPart geom="box" args={[4, 20, 4]} pos={[0, 10, 0]} color={c} glow={glow} opacity={opacity} />
-        </>
+        return <CornerPlate color={c} glow={glow} opacity={opacity} />
 
       // ── 加强筋 ── diagonal gusset triangle
       case 'gusset': {
@@ -76,12 +106,9 @@ const Connector: React.FC<ConnectorProps> = ({
         </mesh>
       }
 
-      // ── 内角码 ── smaller inside-corner bracket
+      // ── 内角码 ── the same plate, smaller, for the inside of a corner
       case 'inside-corner':
-        return <>
-          <MeshPart geom="box" args={[14, 3, 3]} pos={[7, 0, 0]} color={c} glow={glow} opacity={opacity} />
-          <MeshPart geom="box" args={[3, 14, 3]} pos={[0, 7, 0]} color={c} glow={glow} opacity={opacity} />
-        </>
+        return <group scale={0.7}><CornerPlate color={c} glow={glow} opacity={opacity} /></group>
 
       // ── 直连板 ── flat inline joining plate (end-to-end)
       case 'flat-plate':

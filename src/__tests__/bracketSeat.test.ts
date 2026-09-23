@@ -42,7 +42,7 @@ describe('seating a bracket at a corner', () => {
     const seat = seatBracket(rail(), post(), V(0, 10, 0))!
     expect(seat).not.toBeNull()
     // both members are 20 wide in z and centred on z = 0, so the shared faces are z = ±10
-    expect(Math.abs(Math.abs(seat.position[2]) - 10)).toBeLessThan(3)
+    expect(Math.abs(Math.abs(seat.position[2]) - 10)).toBeLessThan(1)
   })
 
   it('puts both bolts on a slot line — for two 20s that is each centreline', () => {
@@ -50,10 +50,11 @@ describe('seating a bracket at a corner', () => {
     expect(seat.slotOffsets).toEqual([0, 0])
   })
 
-  it('sits on the metal, not in it', () => {
+  it('its back plane is the shared face, so the plate lies on the metal', () => {
     const seat = seatBracket(rail(), post(), V(0, 10, 0))!
-    // 10 is the face; anything at 10 exactly is half-buried, so it must be further out
-    expect(Math.abs(seat.position[2])).toBeGreaterThan(10)
+    // both members are 20 wide about z = 0, so the shared faces are at ±10 and the plate's
+    // back — its local z = 0 — sits exactly there, with its body outward from it
+    expect(Math.abs(Math.abs(seat.position[2]) - 10)).toBeLessThan(0.01)
   })
 
   it('takes the smaller of the two sections', () => {
@@ -113,5 +114,58 @@ describe('a bolt on a 40 face is offset, because its middle is metal', () => {
     const rail = P(0, 20, 0, 600, 20, 0, '4040')
     const seat = seatBracket(rail, post, V(0, 20, 0))!
     expect(seat.slotOffsets.map(Math.abs)).toEqual([10, 10])
+  })
+})
+
+/**
+ * The shared face can be on either side of the joint. `flushFace` reports it as a signed
+ * distance, and taking its normal on trust put every bracket on a negative-side face two
+ * millimetres inside the metal with its back pointing into the frame.
+ */
+describe('the bracket sits outside the metal on whichever side the face is', () => {
+  function pair(railZ: number, postZ: number) {
+    return [
+      buildProfile(V(0, 10, railZ), V(600, 10, railZ), '2020')!,
+      buildProfile(V(0, 10, postZ), V(0, 610, postZ), '4040')!,
+    ]
+  }
+
+  it('a face on the far side seats it further out, not further in', () => {
+    // a 2020 rail flush with the +z face of a 4040 post: shared plane at z = +20
+    const [rail, post] = pair(10, 0)
+    const seat = seatBracket(rail, post, V(0, 10, 10))
+    if (!seat) return
+    expect(seat.position[2]).toBeCloseTo(20, 1)
+  })
+
+  it('a face on the near side seats it further out on that side', () => {
+    // the same rail flush with the −z face: shared plane at z = −20
+    const [rail, post] = pair(-10, 0)
+    const seat = seatBracket(rail, post, V(0, 10, -10))
+    if (!seat) return
+    expect(seat.position[2]).toBeCloseTo(-20, 1)
+  })
+
+  it('its back faces out of the metal on both sides', () => {
+    for (const [railZ, postZ, side] of [[10, 0, 1], [-10, 0, -1]] as const) {
+      const [rail, post] = pair(railZ, postZ)
+      const seat = seatBracket(rail, post, V(0, 10, railZ))
+      if (!seat) continue
+      const back = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...seat.quaternion))
+      expect(back.z * side).toBeGreaterThan(0.9)
+    }
+  })
+
+  it('both legs still run into their own members', () => {
+    for (const railZ of [10, -10]) {
+      const [rail, post] = pair(railZ, 0)
+      const seat = seatBracket(rail, post, V(0, 10, railZ))
+      if (!seat) continue
+      const q = new THREE.Quaternion(...seat.quaternion)
+      const dirs = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)]
+        .map((v) => v.applyQuaternion(q))
+        .map((v) => [Math.round(v.x), Math.round(v.y), Math.round(v.z)].join(','))
+      expect(dirs.sort()).toEqual(['0,1,0', '1,0,0'])
+    }
   })
 })
