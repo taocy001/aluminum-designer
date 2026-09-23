@@ -53,7 +53,8 @@ test.describe('Fitting a board', () => {
     expect(Math.round(list[0].width)).toBe(620)
     expect(Math.round(list[0].height)).toBe(810)
     expect(list[0].thickness).toBe(18)
-    expect(r3(list[0].position)).toEqual([300, 405, 0])
+    // The board rests on the outside frame face.
+    expect(r3(list[0].position)).toEqual([300, 405, 19])
   })
 
   test('two parallel rails give a shelf lying flat', async ({ page }) => {
