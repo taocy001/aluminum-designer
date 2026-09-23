@@ -227,19 +227,22 @@ export function connectorSeatAt(
   }
   // Seat inward-facing inline parts beyond the selected member end.
   if (entry?.fit === 'inline' && entry.axes.towards === 'in') {
-    const near = membersAt(point, profiles, REACH)
+    // Prefer a downward-facing member end for a foot; fall back to the nearest end.
+    const ends = membersAt(point, profiles, REACH)
       .map((c) => {
         const { start, end } = getProfileEndpoints(c.profile)
-        const at = point.distanceTo(start) <= point.distanceTo(end) ? start : end
-        return { c, at, atStart: point.distanceTo(start) <= point.distanceTo(end), d: point.distanceTo(at) }
+        const atStart = point.distanceTo(start) <= point.distanceTo(end)
+        const at = atStart ? start : end
+        const outward = getProfileDir(c.profile)
+        if (atStart) outward.negate()
+        return { c, at, atStart, outward, d: point.distanceTo(at) }
       })
-      .sort((x, y) => x.d - y.d)[0]
+      .sort((x, y) => x.d - y.d)
+    const near = ends.find((e) => e.outward.y < -0.9) ?? ends[0]
     if (near) {
       const fit = fitConnector(type, near.at, profiles, surfaceNormal)
-      const outward = getProfileDir(near.c.profile)
-      if (near.atStart) outward.negate()
       const reach = connectorExtent(type).half[AXIS_INDEX[entry.axes.primary]] * connectorScale(fit.series)
-      const at = near.at.clone().addScaledVector(outward, reach)
+      const at = near.at.clone().addScaledVector(near.outward, reach)
       return {
         position: [round1(at.x), round1(at.y), round1(at.z)],
         quaternion: fit.quaternion,
