@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -16,6 +16,7 @@ import { rollProfile, sectionFacing } from '../utils/faceAlign'
 import { addFittingFromSelection } from '../utils/fittingOps'
 import { downloadText, openProject, saveProject, savedFileName } from '../utils/projectFile'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
+import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
@@ -121,6 +122,7 @@ const Sidebar: React.FC = () => {
   const [overlay, setOverlay] = useState<Overlay>('full')
   const [savedName, setSavedName] = useState<string | null>(savedFileName())
   // the log lives outside React, so the panel listens for it rather than owning it
+  const [stockText, setStockText] = useState('6000')
   const [log, setLog] = useState(opLog())
   useEffect(() => subscribeOpLog(() => setLog([...opLog()])), [])
   // the highest point of whatever is selected, so the work plane can be put on top of it
@@ -184,6 +186,8 @@ const Sidebar: React.FC = () => {
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
   const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels, fittings), [profiles, connectors, trims, language, panels, fittings])
+  const stockMm = Math.max(500, parseFloat(stockText) || 6000)
+  const nesting = useMemo(() => nestProfiles(bom.profiles, stockMm), [bom.profiles, stockMm])
   const totalCut = bom.totalCutLength
   const buttEnds = bom.buttEnds
   // how many of the joints that want a bracket actually have one, so the headline stops
@@ -224,6 +228,10 @@ const Sidebar: React.FC = () => {
   // Save to a file you pick, and save over it next time. A download is not a save: it drops
   // a numbered copy in Downloads that can never be written over, and after a few edits
   // nobody knows which of the five files is the drawing.
+  const handleExportCutting = () => {
+    downloadText(`aluframe-cutting-${new Date().toISOString().slice(0, 10)}.csv`,
+      '\ufeff' + nestingCsv(nesting, stockMm), 'text/csv;charset=utf-8')
+  }
   const handleSaveProject = async (asNew = false) => {
     const doc = { version: 3, savedAt: new Date().toISOString(), profiles, connectors, panels, fittings }
     const suggested = savedFileName() ?? `aluframe-${new Date().toISOString().slice(0, 10)}.json`
@@ -807,6 +815,40 @@ const Sidebar: React.FC = () => {
                 <span className="text-slate-500 truncate">{r.label}</span><span /><span className="text-slate-400">×{r.qty}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* A cut list says you need forty-two pieces. It does not say how many six-metre
+            lengths to order, which is the number that goes on the purchase order — so
+            everyone works it out on paper, badly, and buys one too few. */}
+        {bom.profiles.length > 0 && (
+          <div className="space-y-1 pt-2 border-t border-white/5" data-testid="nesting-block">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-slate-500 uppercase font-bold" title={t.hintNesting}>{t.nesting}</span>
+              <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500">
+                <span className="text-[9px] text-slate-500 font-bold">{t.stockLength}</span>
+                <input type="number" step={500} min={500} value={stockText} data-testid="stock-length"
+                  onChange={(e) => setStockText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
+                  className="w-16 bg-transparent py-1 text-xs font-mono outline-none" />
+              </label>
+            </div>
+            <div className="text-[10px] font-mono rounded-lg border border-white/5 overflow-hidden" data-testid="nesting-summary">
+              {nesting.bySpec.map((r) => (
+                <div key={r.spec} className="flex justify-between px-2 py-1 odd:bg-white/5">
+                  <span className="text-slate-400">{r.spec}</span>
+                  <span className="text-blue-400 font-bold">{t.barsNeeded(r.bars)}</span>
+                  <span className="text-slate-500">{t.longestOffcut} {Math.round(r.longestOffcut)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between px-2 py-1 bg-white/5 border-t border-white/5">
+                <span className="text-slate-500">{t.nestYield}</span>
+                <span className="font-bold text-emerald-400" data-testid="nesting-yield">{(nesting.yield * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+            <button onClick={handleExportCutting} data-testid="export-cutting" title={t.hintExportCutting}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
+              <Scissors size={12} /> {t.exportCutting}
+            </button>
           </div>
         )}
 
