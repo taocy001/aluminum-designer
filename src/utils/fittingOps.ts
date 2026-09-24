@@ -46,8 +46,7 @@ function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
   // "which way is depth" is answered by the room: eleven cabinets laid out along Z made every
   // drawer in the flat face along X, turned ninety degrees, with its width and its depth
   // swapped and its front buried in the upright beside it.
-  const own = connectedTo(chosen.map((p) => p.id), useStore.getState().profiles)
-  const all = useStore.getState().profiles.filter((p) => own.has(p.id))
+  const all = cabinetOf(chosen)
   const whole = new THREE.Box3()
   for (const p of all) whole.union(memberBox(p))
   const mine = new THREE.Box3()
@@ -97,6 +96,20 @@ function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
  * cabinets with different depths, and asking the whole frame how deep "the cabinet" is gets
  * a door hinged a foot in front of the one it belongs to.
  */
+/**
+ * The members of the cabinet this selection belongs to.
+ *
+ * Bolted together is what makes two cabinets one, so that is what is asked — but a selection
+ * with nothing yet bolted to it is not a cabinet of its own, it is a frame half drawn. Then
+ * the only thing there is to ask is the drawing.
+ */
+function cabinetOf(chosen: ProfileData[]): ProfileData[] {
+  const profiles = useStore.getState().profiles
+  const own = connectedTo(chosen.map((p) => p.id), profiles)
+  if (own.size <= chosen.length) return profiles
+  return profiles.filter((p) => own.has(p.id))
+}
+
 function carcaseAround(chosen: ProfileData[]): THREE.Box3 {
   const mine = new THREE.Box3()
   for (const p of chosen) mine.union(memberBox(p))
@@ -109,11 +122,8 @@ function carcaseAround(chosen: ProfileData[]): THREE.Box3 {
   // room: it found every cabinet standing behind this one and gave a kitchen door a depth of
   // eleven metres. What bounds it is not a distance, it is that a separate cabinet is not
   // bolted to this one — so only the sub-assembly the opening belongs to is considered.
-  const profiles = useStore.getState().profiles
-  const own = connectedTo(chosen.map((p) => p.id), profiles)
   const box = new THREE.Box3()
-  for (const p of profiles) {
-    if (!own.has(p.id)) continue
+  for (const p of cabinetOf(chosen)) {
     const b = memberBox(p)
     if (near.containsPoint(b.getCenter(new THREE.Vector3()))) box.union(b)
   }

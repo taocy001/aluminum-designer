@@ -4,7 +4,7 @@ import App from './App'
 import './index.css'
 import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
-import { analyzeFrame } from './utils/analysis'
+import { analyzeFrame, connectorOBB } from './utils/analysis'
 import { record, noteNext, opLog, clearOpLog, opLogText, type Doc } from './utils/opLog'
 import { decodeShare, takeShareLink } from './utils/shareLink'
 import { translations } from './utils/translations'
@@ -28,6 +28,10 @@ if (import.meta.env.DEV) {
     gizmoBusy: () => gizmoState.busy,
     rollProfile,
     unflush: () => countUnflush(useStore.getState().profiles),
+    connectorOBB: (id: string) => {
+      const c = useStore.getState().connectors.find((q) => q.id === id)
+      return c ? connectorOBB(c).center.toArray() : null
+    },
     unflushPairs: () => {
       const s = useStore.getState()
       const spec = (id: string) => s.profiles.find((p) => p.id === id)?.spec ?? '?'

@@ -284,7 +284,7 @@ test.describe('A door opens outward', () => {
     const f = w.store.getState().fittings.at(-1)
     const shut = w.leafObb({ ...f, open: 0 }, 0).center
     const open = w.leafObb({ ...f, open: 1 }, 1).center
-    return { z: open.z - shut.z, depth: f.depth, at: f.position[2] }
+    return { z: open.z - shut.z, depth: f.depth, at: f.position[2], leaf: shut.z }
   })
 
   test.beforeEach(async ({ page }) => { await openApp(page); await build(page); await settle(page) })
@@ -315,6 +315,8 @@ test.describe('A door opens outward', () => {
     await page.waitForTimeout(250)
     const t = await travel(page)
     expect(t.depth).toBeLessThan(450)          // the wall units are 350 deep
-    expect(t.at + t.depth / 2).toBeCloseTo(350, -1)   // and its face is on their front
+    // ...and the leaf lies on the front of the posts rather than in the middle of them: they
+    // are 2020 centred on z = 350, so their front face is 360 and an 18 mm leaf on it is 369
+    expect(t.leaf).toBeCloseTo(369, -1)
   })
 })

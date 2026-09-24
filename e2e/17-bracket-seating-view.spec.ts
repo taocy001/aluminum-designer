@@ -41,15 +41,20 @@ test.describe('A bracket goes where it can be bolted', () => {
     expect(await faults(page)).toEqual([])
   })
 
-  test('it rests on the shared face, not on the centreline', async ({ page }) => {
+  test('it sits inside the corner, on a slot line of both members', async ({ page }) => {
     await page.getByTestId('connector-bracket').click()
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)
     const c = (await store(page)).connectors[0]
-    // both members are 20 wide about z = 0, so the shared faces are at ±10: the plate's
-    // back lies on one of them and its body stands out from there
-    expect(Math.abs(Math.abs(c.position[2]) - 10)).toBeLessThan(1)
+    // This is a cast angle bracket, not a plate. Its two flanges lie on the faces the two
+    // members turn towards each other, and its bolts drop into a slot in each of those
+    // faces. Both faces here are 20 wide with a single slot down the middle, so the part is
+    // centred on z = 0 — a plate is the one that lies on the shared outside face at ±10.
+    expect(Math.abs(c.position[2])).toBeLessThan(1)
+    // and it is in the quadrant the two members enclose, not buried in either of them
+    expect(c.position[0]).toBeGreaterThan(5)
+    expect(c.position[1]).toBeGreaterThan(5)
   })
 
   test('dropping one near a corner settles it onto the corner', async ({ page }) => {
@@ -63,7 +68,10 @@ test.describe('A bracket goes where it can be bolted', () => {
     await settle(page)
     await page.waitForTimeout(250)
     const placed = (await store(page)).connectors[0]
-    expect(Math.abs(placed.position[0])).toBeLessThan(3)     // on the corner, not at x = 70
+    // on the corner rather than at x = 70 where it was dropped. Not at x = 0 either: an
+    // angle bracket's vertex is where the two mounting faces meet, which is half a section
+    // out from each centreline.
+    expect(Math.abs(placed.position[0])).toBeLessThan(25)
     expect(await faults(page)).toEqual([])
   })
 

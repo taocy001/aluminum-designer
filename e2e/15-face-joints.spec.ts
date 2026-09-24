@@ -278,18 +278,37 @@ test.describe('Everything under the cursor lights up, not only members', () => {
 
   test('hovering a bracket marks it, and a click then selects it', async ({ page }) => {
     const c = (await store(page)).connectors[0]
-    const px = await page.evaluate((pos) => (window as any).__aluframe.worldToClient(...pos), c.position)
-    await page.mouse.move(px.x, px.y)
+    // A bracket is twenty millimetres on a frame nearly a metre across and it sits inside
+    // the corner, so from most angles the metal is in front of most of it. The promise is
+    // not that any particular point works — it is that wherever the renderer draws the
+    // bracket, that is what the cursor marks. So find such a pixel and ask there.
+    const at = await page.evaluate((id) => (window as any).__aluframe.connectorOBB(id), c.id)
+    const seed = await page.evaluate((pos) => (window as any).__aluframe.worldToClient(...pos), at)
+    // ...and stand where the inside of the corner faces you, or there is nothing to hover:
+    // the flanges are against the metal and the metal is between you and them
+    await setView(page, [at[0] + 320, at[1] + 240, at[2] + 320], at as [number, number, number])
+    await page.waitForTimeout(200)
+    const px = await page.evaluate((id) => {
+      const w = (window as any).__aluframe
+      for (let y = 40; y < 860; y += 4) {
+        for (let x = 340; x < 1380; x += 4) if (w.frontmostAt(x, y)?.id === id) return { x, y }
+      }
+      return null
+    }, c.id)
+    void seed
+    expect(px, 'the bracket is drawn somewhere on the screen').not.toBeNull()
+    await page.mouse.move(px!.x, px!.y)
     await page.waitForTimeout(200)
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().hoverPartId)).toBe(c.id)
-    await page.mouse.click(px.x, px.y)
+    await page.mouse.click(px!.x, px!.y)
     await page.waitForTimeout(150)
     expect((await store(page)).selectedIds[0]).toBe(c.id)
   })
 
   test('the cursor says a part is grabbable when a bracket is under it', async ({ page }) => {
     const c = (await store(page)).connectors[0]
-    const px = await page.evaluate((pos) => (window as any).__aluframe.worldToClient(...pos), c.position)
+    const at = await page.evaluate((id) => (window as any).__aluframe.connectorOBB(id), c.id)
+    const px = await page.evaluate((pos) => (window as any).__aluframe.worldToClient(...pos), at)
     await page.mouse.move(px.x, px.y)
     await page.waitForTimeout(200)
     const cursor = await page.getByTestId('viewport').evaluate((el) => getComputedStyle(el as HTMLElement).cursor)
