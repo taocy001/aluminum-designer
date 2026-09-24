@@ -756,6 +756,42 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "p-mufvmswkz",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    440,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmswl10",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    440,
+    650
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -1786,7 +1822,7 @@
  ],
  "panels": [
   {
-   "id": "b-mufscity28",
+   "id": "b-mufvmswm11",
    "width": 630,
    "height": 580,
    "thickness": 18,
@@ -1835,7 +1871,7 @@
    "kind": "drawer",
    "position": [
     900,
-    195.0,
+    195,
     324.9999999999999
    ],
    "quaternion": [

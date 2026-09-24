@@ -756,6 +756,402 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "p-mufvmsxs2m",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    200,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxs2n",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    200,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxu2p",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    400,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxv2q",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    400,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxw2s",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    600,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxx2t",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    600,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxy2v",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    800,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxz2w",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    800,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsy02y",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    1000,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsy12z",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    1000,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsy331",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    1200,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsy432",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    1200,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsy634",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    1400,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsy735",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    1400,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsy937",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    1600,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsya38",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    0,
+    1600,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsyb3a",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    600,
+    450,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsyd3b",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    600,
+    450,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsye3d",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    600,
+    900,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsyg3e",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    600,
+    900,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsyi3g",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    600,
+    1350,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsyj3h",
+   "spec": "2020",
+   "length": 600,
+   "position": [
+    600,
+    1350,
+    380
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -1914,204 +2310,6 @@
  ],
  "panels": [
   {
-   "id": "b-mueqp4a9t",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    300,
-    200,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqp5jew",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    300,
-    400,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqp6xez",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    300,
-    600,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqp86k12",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    300,
-    800,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqp9l015",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    300,
-    1000,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqpaw018",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    300,
-    1200,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqpcad1b",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    300,
-    1400,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqpdi81e",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    300,
-    1600,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqpeto1h",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    900,
-    450,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqpg3i1k",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    900,
-    900,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mueqphfo1n",
-   "width": 360,
-   "height": 580,
-   "thickness": 18,
-   "position": [
-    900,
-    1350,
-    190
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
    "id": "b-mueqqhsh3b",
    "width": 1220,
    "height": 2000,
@@ -2126,6 +2324,204 @@
     0,
     0,
     1
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsxt2o",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    300,
+    200,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsxv2r",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    300,
+    400,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsxy2u",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    300,
+    600,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsy02x",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    300,
+    800,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsy330",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    300,
+    1000,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsy533",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    300,
+    1200,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsy836",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    300,
+    1400,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsyb39",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    300,
+    1600,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsye3c",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    900,
+    450,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsyh3f",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    900,
+    900,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mufvmsyk3i",
+   "width": 360,
+   "height": 580,
+   "thickness": 18,
+   "position": [
+    900,
+    1350,
+    189.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
    ],
    "material": "mdf"
   }

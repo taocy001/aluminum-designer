@@ -882,6 +882,114 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "p-mufvmsx91y",
+   "spec": "2020",
+   "length": 800,
+   "position": [
+    0,
+    1940,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxa1z",
+   "spec": "2020",
+   "length": 800,
+   "position": [
+    0,
+    1940,
+    320
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxc21",
+   "spec": "2020",
+   "length": 630,
+   "position": [
+    800,
+    1940,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxc22",
+   "spec": "2020",
+   "length": 630,
+   "position": [
+    800,
+    1940,
+    320
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxe24",
+   "spec": "2020",
+   "length": 700,
+   "position": [
+    2680,
+    1940,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsxf25",
+   "spec": "2020",
+   "length": 700,
+   "position": [
+    2680,
+    1940,
+    320
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -1430,38 +1538,6 @@
    ]
   },
   {
-   "id": "c-mueqr37b8m",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    3380,
-    1618,
-    9.99999999999999
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "c-mueqr37b8n",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    3380,
-    1618,
-    310
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
    "id": "c-mueqr37b8o",
    "type": "inside-corner",
    "series": 20,
@@ -1816,7 +1892,7 @@
  ],
  "panels": [
   {
-   "id": "b-mueqowf3c",
+   "id": "b-mufvmsxb20",
    "width": 300,
    "height": 780,
    "thickness": 18,
@@ -1834,7 +1910,7 @@
    "material": "mdf"
   },
   {
-   "id": "b-mueqoxc2e",
+   "id": "b-mufvmsxe23",
    "width": 300,
    "height": 610,
    "thickness": 18,
@@ -1852,7 +1928,7 @@
    "material": "mdf"
   },
   {
-   "id": "b-mueqoyofh",
+   "id": "b-mufvmsxg26",
    "width": 300,
    "height": 680,
    "thickness": 18,

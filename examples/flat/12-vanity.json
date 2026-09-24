@@ -396,6 +396,42 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "p-mufvmsz94i",
+   "spec": "2020",
+   "length": 400,
+   "position": [
+    400,
+    280,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsz94j",
+   "spec": "2020",
+   "length": 400,
+   "position": [
+    400,
+    280,
+    450
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -1010,14 +1046,14 @@
  ],
  "panels": [
   {
-   "id": "b-mueqptid2e",
+   "id": "b-mufvmsz94k",
    "width": 430,
    "height": 380,
    "thickness": 18,
    "position": [
     600,
     280,
-    225
+    224.99999999999994
    ],
    "quaternion": [
     0.5,
