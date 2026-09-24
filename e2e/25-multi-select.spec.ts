@@ -85,3 +85,41 @@ test.describe('Doors, boards and brackets select together', () => {
     for (const f of (await store(page)).fittings) expect(f.swing).not.toBe(165)
   })
 })
+
+/**
+ * A board and a door move and turn like anything else. The widget only ever counted members,
+ * so selecting a drawer offered no handles at all — and the one path that did the moving
+ * looked for a member or a board to lead the group, never a fitting.
+ */
+test.describe('Doors and boards have handles too', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page)
+    await cabinet(page)
+    await setView(page, [2200, 1400, 2400], [600, 440, 300])
+  })
+
+  const handles = (page: import('@playwright/test').Page) =>
+    page.evaluate(() => (window as any).__aluframe.gizmoHandles().length)
+
+  test('a door on its own gets the move and turn handles', async ({ page }) => {
+    expect(await handles(page)).toBe(0)
+    const id = (await store(page)).fittings[0].id
+    await page.evaluate((x) => (window as any).__aluframe.store.getState().selectItems([x]), id)
+    await page.waitForTimeout(400)
+    expect(await handles(page)).toBeGreaterThan(0)
+  })
+
+  test('and the arrows sit where the door is, not at the world origin', async ({ page }) => {
+    const f = (await store(page)).fittings[0]
+    await page.evaluate((x) => (window as any).__aluframe.store.getState().selectItems([x]), f.id)
+    await page.waitForTimeout(400)
+    const at = await page.evaluate(() => (window as any).__aluframe.gizmoHandles()[0].position)
+    const middle = await page.evaluate((x) => {
+      const w = (window as any).__aluframe
+      const g = w.store.getState().fittings.find((q: { id: string }) => q.id === x)
+      return w.fittingObbCentre ? w.fittingObbCentre(x) : g.position
+    }, f.id)
+    expect(Math.hypot(at[0] - middle[0], at[2] - middle[2])).toBeLessThan(600)
+    expect(Math.hypot(at[0], at[1], at[2])).toBeGreaterThan(100)
+  })
+})

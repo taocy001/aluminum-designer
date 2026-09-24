@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { migrateFittings } from '../utils/migrate'
 import { persist } from 'zustand/middleware'
 
 export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
@@ -256,7 +257,9 @@ export const useStore = create<State>()(
         profiles: doc.profiles,
         connectors: doc.connectors,
         panels: doc.panels ?? [],
-        fittings: doc.fittings ?? [],
+        // a document written before a fitting knew how thick the frame it covers is puts
+        // every leaf half a section inside the post it hangs on
+        fittings: migrateFittings(doc.profiles, doc.fittings ?? []),
         selectedIds: [],
       })),
 

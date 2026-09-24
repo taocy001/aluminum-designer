@@ -329,6 +329,7 @@ const PointerRouter: React.FC = () => {
           const store = useStore.getState()
           const lead = store.profiles.find((p) => store.selectedIds.includes(p.id))
             ?? store.panels.find((b) => store.selectedIds.includes(b.id))
+            ?? store.fittings.find((f) => store.selectedIds.includes(f.id))
           if (!lead) return
           const groupOrigins: Record<string, [number, number, number]> = {}
           for (const sid of store.selectedIds) {
