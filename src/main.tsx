@@ -15,6 +15,8 @@ const snapshotOf = (s: ReturnType<typeof useStore.getState>): Doc => ({
 import { auditBrackets } from './utils/bracketSeat'
 import { gizmoState } from './components/TransformGizmo'
 import { countUnflush, unflushPairs, rollProfile } from './utils/faceAlign'
+import { nextSuggestion } from './utils/suggestOps'
+import { getProfileEndpoints } from './utils/geometryCore'
 
 // Dev-only hook for end-to-end tests: window.__aluframe.{store,tool}
 // VITE_TEST_HOOK=1 keeps it in a production build, so what users run can be measured
@@ -39,6 +41,21 @@ if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
       return unflushPairs(s.profiles).map((u) => `${spec(u.a)} × ${spec(u.b)} @ ${u.at.map(Math.round)}`)
     },
     opLog, clearOpLog, opLogText,
+    // press 建议 the way the button does, and read what is being offered
+    suggest: () => {
+      const t0 = performance.now()
+      const c = nextSuggestion()
+      return c ? { key: c.key, rule: c.rule, ms: performance.now() - t0 } : { key: null, ms: performance.now() - t0 }
+    },
+    suggestion: () => {
+      const s = useToolStore.getState().suggestion
+      if (!s) return null
+      const { start, end } = getProfileEndpoints(s.cand.member)
+      return {
+        key: s.cand.key, rule: s.cand.rule, index: s.index, spec: s.cand.member.spec, length: s.cand.member.length,
+        start: start.toArray(), end: end.toArray(), mid: start.clone().add(end).multiplyScalar(0.5).toArray(),
+      }
+    },
     bracketFaults: () => {
       const s = useStore.getState()
       return auditBrackets(s.profiles, s.connectors).map((f) => ({ id: f.id, off: f.off, reason: f.reason }))

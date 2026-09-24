@@ -154,6 +154,8 @@ const DrawingHandler: React.FC = () => {
       return
     }
     if (e.button !== 0) return
+    // while a suggestion is showing, a click answers it rather than drawing
+    if (ts.suggestion) { leftDownRef.current = null; return }
 
     // Decide on release: a click draws, a press-and-drag orbits. The press ray is kept so a
     // tap without a preceding move still places a point, and a release outside the canvas does not.
@@ -167,6 +169,7 @@ const DrawingHandler: React.FC = () => {
   /** The actual placement, run on release when the gesture turned out to be a click */
   const placeAt = useCallback((ray: THREE.Ray, cursor: THREE.Vector2) => {
     const ts = useToolStore.getState()
+    if (ts.suggestion) return
 
     if (ts.held === 'connector') {
       if (!ts.activeConnectorType) return

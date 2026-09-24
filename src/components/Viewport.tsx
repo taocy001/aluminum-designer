@@ -24,6 +24,7 @@ import Fitting from './Fitting'
 import Gestures from './Gestures'
 import FrameDimensions from './FrameDimensions'
 import DrawingHandler from './DrawingHandler'
+import SuggestionGhost from './SuggestionGhost'
 import DragHandler from './DragHandler'
 import PointerRouter from './PointerRouter'
 import ResizeHandles from './ResizeHandles'
@@ -575,6 +576,7 @@ const Viewport: React.FC = () => {
       <SnapGuides />
 
       <DrawingHandler />
+      <SuggestionGhost />
       <DragHandler />
       <PointerRouter />
       <ResizeHandles />
