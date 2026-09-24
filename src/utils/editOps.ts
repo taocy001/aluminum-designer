@@ -7,6 +7,7 @@ import { getProfileAxis, getProfileDir } from './jointUtils'
 import { analyzeFrame } from './analysis'
 import { buildProfile, floorY, lowestPointY, nextId } from './profileFactory'
 import { translations } from './translations'
+import { fittingObb } from './fittingGeometry'
 
 export type RotAxis = 'x' | 'y' | 'z'
 const AXES: Record<RotAxis, THREE.Vector3> = {
@@ -288,6 +289,7 @@ export type PivotMode = 'center' | 'start' | 'end'
 
 export function selectionPivot(
   profiles: ProfileData[], connectors: ConnectorData[], mode: PivotMode = 'center',
+  panels: PanelData[] = [], fittings: FittingData[] = [],
 ): THREE.Vector3 {
   if (mode !== 'center' && profiles.length === 1 && connectors.length === 0) {
     const { start, end } = getProfileEndpoints(profiles[0])
@@ -299,6 +301,9 @@ export function selectionPivot(
     pts.push(start, end)
   }
   for (const c of connectors) pts.push(new THREE.Vector3(...c.position))
+  for (const b of panels) pts.push(new THREE.Vector3(...b.position))
+  // Use fitting geometry when computing the rotation pivot.
+  for (const f of fittings) pts.push(fittingObb(f).center)
   if (pts.length === 0) return new THREE.Vector3()
   const sum = pts.reduce((acc, v) => acc.add(v), new THREE.Vector3())
   return sum.divideScalar(pts.length)
@@ -321,7 +326,7 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   const fittings = selectedFittings()
   if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
   if (!isFinite(degrees) || degrees % 360 === 0) return false
-  const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode)
+  const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode, panels, fittings)
   const rot = new THREE.Quaternion().setFromAxisAngle(AXES[axis], THREE.MathUtils.degToRad(degrees))
   const spin = (pos: [number, number, number], quat: [number, number, number, number]) => {
     const p = new THREE.Vector3(...pos).sub(pivot).applyQuaternion(rot).add(pivot)
@@ -425,8 +430,9 @@ export function commitExactLength(length: number): boolean {
 
 /** Everything in the document, so Ctrl+A means what it means everywhere else */
 export function selectAll(): boolean {
-  const { profiles, connectors, panels, selectItems } = useStore.getState()
-  const ids = [...profiles.map((p) => p.id), ...connectors.map((c) => c.id), ...panels.map((b) => b.id)]
+  const { profiles, connectors, panels, fittings, selectItems } = useStore.getState()
+  const ids = [...profiles.map((p) => p.id), ...connectors.map((c) => c.id),
+    ...panels.map((b) => b.id), ...fittings.map((f) => f.id)]
   if (ids.length === 0) return false
   selectItems(ids)
   return true
