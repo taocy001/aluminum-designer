@@ -17,7 +17,8 @@ import { gizmoState } from './components/TransformGizmo'
 import { countUnflush, unflushPairs, rollProfile } from './utils/faceAlign'
 
 // Dev-only hook for end-to-end tests: window.__aluframe.{store,tool}
-if (import.meta.env.DEV) {
+// VITE_TEST_HOOK=1 keeps it in a production build, so what users run can be measured
+if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
   ;(window as any).__aluframe = {
     store: useStore, tool: useToolStore,
     trims: () => Object.fromEntries(analyzeFrame(useStore.getState().profiles, useStore.getState().connectors).trims),

@@ -97,10 +97,17 @@ export function findSpecMismatches(profiles: ProfileData[]): SpecMismatch[] {
   const ends = new Map<string, { start: THREE.Vector3; end: THREE.Vector3 }>()
   for (const p of profiles) ends.set(p.id, getProfileEndpoints(p))
 
+  // only members whose outlines come within a joint's reach of each other can meet; every
+  // one against every other ran on each frame of a drag
+  const box = new Map(profiles.map((p) => {
+    const e = ends.get(p.id)!
+    return [p.id, new THREE.Box3().setFromPoints([e.start, e.end]).expandByScalar(JOINT_TOL + 1)]
+  }))
   for (const a of profiles) {
     const ea = ends.get(a.id)!
+    const ba = box.get(a.id)!
     for (const b of profiles) {
-      if (a.id === b.id) continue
+      if (a.id === b.id || !ba.intersectsBox(box.get(b.id)!)) continue
       const eb = ends.get(b.id)!
       const touch = [ea.start, ea.end]
         .map((pt) => ({ pt, d: closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) }))

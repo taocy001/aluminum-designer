@@ -98,4 +98,5 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
   )
 }
 
-export default Fitting
+// the store keeps every part it did not touch, so identity says whether this one changed
+export default React.memo(Fitting)

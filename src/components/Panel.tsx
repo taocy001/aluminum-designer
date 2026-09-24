@@ -46,4 +46,5 @@ const Panel: React.FC<PanelData & { isSelected?: boolean }> = ({
   )
 }
 
-export default Panel
+// the store keeps every part it did not touch, so identity says whether this one changed
+export default React.memo(Panel)

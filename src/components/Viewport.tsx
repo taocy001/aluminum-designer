@@ -330,7 +330,7 @@ const MeasureOverlay: React.FC = () => {
 const DevHook: React.FC = () => {
   const { camera, size, gl, controls, scene } = useThree()
   useEffect(() => {
-    if (!import.meta.env.DEV) return
+    if (!import.meta.env.DEV && !import.meta.env.VITE_TEST_HOOK) return
     const w = window as any
     w.__aluframe = w.__aluframe ?? {}
     w.__aluframe.camera = camera

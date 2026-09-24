@@ -76,4 +76,21 @@ const Profile: React.FC<ProfileProps> = ({
   )
 }
 
-export default Profile
+/**
+ * Drawn again only when something about this member changed.
+ *
+ * Dragging one rail rebuilt every member in the drawing, because the joint analysis hands
+ * out a fresh trims object for each of them every time — equal, but not the same object.
+ * The trims are compared by what they say; everything else by identity, which the store
+ * keeps for every member it did not touch.
+ */
+const sameTrims = (a?: ProfileTrims, b?: ProfileTrims) => a === b || (!!a && !!b
+  && a.cutLength === b.cutLength && a.start.trim === b.start.trim && a.end.trim === b.end.trim)
+
+export default React.memo(Profile, (a, b) => {
+  for (const k of Object.keys(b) as Array<keyof ProfileProps>) {
+    if (k === 'trims') continue
+    if (a[k] !== b[k]) return false
+  }
+  return Object.keys(a).length === Object.keys(b).length && sameTrims(a.trims, b.trims)
+})
