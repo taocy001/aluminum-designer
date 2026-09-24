@@ -146,7 +146,19 @@ export function connectorExtent(type: string): { centre: [number, number, number
       return { centre: [10, 10, 2], half: [20, 20, 2] }
     case 'inline':
       return { centre: [0, 0, 0], half: [30, 10, 10] }
-    default:
-      return { centre: [0, 0, 0], half: [12, 12, 12] }
+    default: {
+      // A face-mounted part lies *on* the metal. Centred on the surface, half of every hinge,
+      // pivot and cross plate was inside the member it is bolted to — which is what the
+      // interference check says when it is asked, and nothing asked it of a whole drawing
+      // until boards and fittings came under the same check. `primary` is the plate's normal,
+      // and it is a different axis for each of these parts, so the offset follows it.
+      //
+      // A T-nut is the exception: it drops into the slot, which is the whole of its job.
+      const entry = connectorEntry(type)
+      const axis = entry?.axes.primary ?? 'z'
+      const centre: [number, number, number] = [0, 0, 0]
+      if (type !== 't-nut') centre[axis === 'x' ? 0 : axis === 'y' ? 1 : 2] = 12
+      return { centre, half: [12, 12, 12] }
+    }
   }
 }
