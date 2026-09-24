@@ -355,7 +355,7 @@ const Sidebar: React.FC = () => {
   }
   const handleExportStep = () => {
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.step`,
-      buildStepFile({ profiles, panels, fittings }), 'application/step')
+      buildStepFile({ profiles, panels, fittings, connectors }), 'application/step')
   }
   const handleSaveProject = async (asNew = false) => {
     const doc = { version: 3, savedAt: new Date().toISOString(), profiles, connectors, panels, fittings }

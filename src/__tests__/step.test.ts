@@ -23,6 +23,44 @@ function ids(step: string) {
   return { defined, used }
 }
 
+/** the file as a graph: every entity's body, by id */
+function entities(step: string): Map<number, string> {
+  const out = new Map<number, string>()
+  for (const m of step.matchAll(/^#(\d+) = (.*);$/gm)) out.set(Number(m[1]), m[2])
+  return out
+}
+
+/** every entity reachable from `root` */
+function reach(all: Map<number, string>, root: number): Set<number> {
+  const seen = new Set<number>([root])
+  const todo = [root]
+  while (todo.length) {
+    for (const m of all.get(todo.pop()!)!.matchAll(/#(\d+)/g)) {
+      const id = Number(m[1])
+      if (!seen.has(id)) { seen.add(id); todo.push(id) }
+    }
+  }
+  return seen
+}
+
+/** every solid in the file with the corners it reaches */
+function solidsOf(step: string) {
+  const all = entities(step)
+  return [...all].filter(([, b]) => b.startsWith('MANIFOLD_SOLID_BREP(')).map(([id, body]) => {
+    const ids = reach(all, id)
+    const points: THREE.Vector3[] = []
+    const uses = new Map<number, string[]>()
+    for (const i of ids) {
+      const b = all.get(i)!
+      const pt = b.match(/^CARTESIAN_POINT\('',\(([-\d.eE]+),([-\d.eE]+),([-\d.eE]+)\)\)/)
+      if (pt) points.push(new THREE.Vector3(+pt[1], +pt[2], +pt[3]))
+      const oe = b.match(/^ORIENTED_EDGE\('',\*,\*,#(\d+),\.(T|F)\.\)/)
+      if (oe) uses.set(+oe[1], [...(uses.get(+oe[1]) ?? []), oe[2]])
+    }
+    return { name: body.match(/'([^']*)'/)![1], points, uses }
+  })
+}
+
 /**
  * Without this a drawing stops at the screen: it cannot be opened in FreeCAD, and it cannot
  * be sent to a shop's CAM. A frame is a gift for the format — everything in it is a polygon
@@ -59,20 +97,44 @@ describe('STEP export', () => {
     expect(out).not.toContain('#RAD')
   })
 
-  it('one swept solid per member, and the section written once per spec', () => {
+  it('one closed solid per member, and each member its own part in the assembly', () => {
     const mixed = [...frame(), P(0, 0, 400, 0, 800, 400, '4040'), P(600, 0, 400, 600, 800, 400, '4040')]
     const out = buildStep({ profiles: mixed })
-    expect((out.match(/EXTRUDED_AREA_SOLID/g) ?? []).length).toBe(mixed.length)
-    // six members, two sections: the points of each section are shared, so the file stays small
-    expect((out.match(/CARTESIAN_POINT/g) ?? []).length).toBeLessThan(200)
+    // what OpenCASCADE (and so FreeCAD) will not translate: the file used to open empty
+    expect(out).not.toContain('EXTRUDED_AREA_SOLID')
+    expect(out).not.toContain('ARBITRARY_CLOSED_PROFILE_DEF')
+    expect(solidsOf(out).length).toBe(mixed.length)
+    expect((out.match(/= NEXT_ASSEMBLY_USAGE_OCCURRENCE\(/g) ?? []).length).toBe(mixed.length)
+    // one product per part, plus the assembly they are all used in
+    expect((out.match(/= PRODUCT\(/g) ?? []).length).toBe(mixed.length + 1)
+    expect(out).toContain("PRODUCT('4040 L800','4040 L800'")
+  })
+
+  it('every shell is closed: each edge used by two faces, once each way round', () => {
+    const board = {
+      id: 'b1', width: 560, height: 760, thickness: 18,
+      position: [300, 400, -20], quaternion: [0, 0, 0, 1], material: 'mdf',
+    } as never
+    const bracket = { id: 'c1', type: 'bracket', position: [20, 20, 0], quaternion: [0, 0, 0, 1] } as never
+    const out = buildStep({ profiles: [...frame(), P(0, 0, 400, 0, 800, 400, '4040')], panels: [board], connectors: [bracket] })
+    const solids = solidsOf(out)
+    expect(solids.length).toBe(7)
+    for (const sol of solids) {
+      expect(sol.uses.size, sol.name).toBeGreaterThan(0)
+      for (const [edge, senses] of sol.uses) expect(senses.sort(), `${sol.name} edge #${edge}`).toEqual(['F', 'T'])
+    }
   })
 
   it('writes the cut length, not the centreline length', () => {
     const out = buildStep({ profiles: frame() })
     // the rails butt into the posts, so they are cut shorter than the 600 they were drawn
-    const depths = [...out.matchAll(/EXTRUDED_AREA_SOLID\('2020',#\d+,#\d+,#\d+,([\d.]+)\)/g)].map((m) => parseFloat(m[1]))
-    expect(depths).toContain(580)
-    expect(depths).not.toContain(600)
+    const lengths = solidsOf(out).map((sol) => {
+      const box = new THREE.Box3().setFromPoints(sol.points)
+      return Math.round(box.max.x - box.min.x)
+    })
+    expect(lengths).toContain(580)
+    expect(lengths).not.toContain(600)
+    expect(out).toContain("PRODUCT('2020 L580'")
   })
 
   it('a board comes out as a slab of its own thickness', () => {
@@ -81,9 +143,31 @@ describe('STEP export', () => {
       position: [300, 400, -20], quaternion: [0, 0, 0, 1], material: 'mdf',
     } as never
     const out = buildStep({ profiles: frame(), panels: [board] })
-    expect((out.match(/EXTRUDED_AREA_SOLID/g) ?? []).length).toBe(5)
-    expect(out).toContain("ARBITRARY_CLOSED_PROFILE_DEF(.AREA.,'mdf'")
-    expect(out).toContain(',18.)')
+    const solids = solidsOf(out)
+    expect(solids.length).toBe(5)
+    const slab = solids.find((sol) => sol.name === 'mdf 560x760x18')!
+    const box = new THREE.Box3().setFromPoints(slab.points)
+    expect(box.min.toArray().map(Math.round)).toEqual([20, 20, -29])
+    expect(box.max.toArray().map(Math.round)).toEqual([580, 780, -11])
+  })
+
+  it('every bracket is a solid, where the bracket is', () => {
+    const at: [number, number, number] = [100, 200, 300]
+    const connectors = [
+      { id: 'c1', type: 'bracket', position: at, quaternion: [0, 0, 0, 1] },
+      { id: 'c2', type: 'bracket', series: 40, position: at, quaternion: [0, 0, 0, 1] },
+      { id: 'c3', type: 'inside-corner', position: at, quaternion: [0, 0, 0, 1] },
+    ] as never
+    const solids = solidsOf(buildStep({ profiles: [], connectors }))
+    expect(solids.length).toBe(3)
+    const box = (i: number) => new THREE.Box3().setFromPoints(solids[i].points)
+    // a cast angle runs thirty out of its vertex along both members, eighteen across
+    expect(box(0).min.toArray().map(Math.round)).toEqual([100, 200, 291])
+    expect(box(0).max.toArray().map(Math.round)).toEqual([130, 230, 309])
+    // the 40 series part is the same part twice the size
+    expect(box(1).max.toArray().map(Math.round)).toEqual([160, 260, 318])
+    // an inside corner connector sits in the slots: all that is outside is its vertex
+    expect(box(2).max.x - box(2).min.x).toBeLessThan(5)
   })
 
   it('an empty drawing is still a valid file', () => {
@@ -109,31 +193,21 @@ describe('reading the STEP back finds the frame that went in', () => {
     ]
     const out = buildStep({ profiles: frame })
 
-    const points = new Map<string, [number, number, number]>()
-    for (const m of out.matchAll(/^#(\d+) = CARTESIAN_POINT\('',\(([-\d.]+),([-\d.]+),([-\d.]+)\)\)/gm)) {
-      points.set(m[1], [parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])])
-    }
-    const dirs = new Map<string, [number, number, number]>()
-    for (const m of out.matchAll(/^#(\d+) = DIRECTION\('',\(([-\d.]+),([-\d.]+),([-\d.]+)\)\)/gm)) {
-      dirs.set(m[1], [parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])])
-    }
-    const places = new Map<string, { at: [number, number, number]; z: [number, number, number] }>()
-    for (const m of out.matchAll(/^#(\d+) = AXIS2_PLACEMENT_3D\('',#(\d+),#(\d+),#(\d+)\)/gm)) {
-      places.set(m[1], { at: points.get(m[2])!, z: dirs.get(m[3])! })
-    }
-    const solids = [...out.matchAll(/EXTRUDED_AREA_SOLID\('[^']*',#\d+,#(\d+),#\d+,([\d.]+)\)/g)]
-      .map((m) => ({ ...places.get(m[1])!, depth: parseFloat(m[2]) }))
-
+    const solids = solidsOf(out)
     expect(solids.length).toBe(frame.length)
     const trims = computeAllTrims(frame)
     for (const p of frame) {
       const t = trims.get(p.id)!
       const dir = getProfileDir(p)
       const start = new THREE.Vector3(...p.position).addScaledVector(dir, t.start.trim)
-      const hit = solids.find((s) =>
-        new THREE.Vector3(...s.at).distanceTo(start) < 0.01
-        && Math.abs(s.depth - t.cutLength) < 0.01
-        && new THREE.Vector3(...s.z).dot(dir) > 0.999)
+      // the member's own points, measured along it: from the cut start to the cut end
+      const hit = solids.find((sol) => {
+        const along = sol.points.map((q) => q.clone().sub(start).dot(dir))
+        const across = sol.points.map((q) => q.clone().sub(start).projectOnPlane(dir).length())
+        return Math.abs(Math.min(...along)) < 0.01
+          && Math.abs(Math.max(...along) - t.cutLength) < 0.01
+          && Math.max(...across) < 15
+      })
       expect(hit, `${p.spec} from ${start.toArray()} for ${t.cutLength}`).toBeTruthy()
     }
   })
