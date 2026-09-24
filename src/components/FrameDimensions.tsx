@@ -24,7 +24,7 @@ const Dim: React.FC<{ from: THREE.Vector3; to: THREE.Vector3; tick: THREE.Vector
         <Line points={[from, to]} color={color} lineWidth={2} />
         <Line points={[from.clone().sub(t), from.clone().add(t)]} color={color} lineWidth={2} />
         <Line points={[to.clone().sub(t), to.clone().add(t)]} color={color} lineWidth={2} />
-        <TextSprite text={`${value}`} position={mid.toArray() as [number, number, number]}
+        <TextSprite text={`${value}`} priority={3} position={mid.toArray() as [number, number, number]}
           height={label} color="#f8fafc" background="rgba(15,23,42,0.92)" />
       </group>
     )
