@@ -89,15 +89,19 @@ describe('an inset board fits the opening, not the two rails that were picked', 
     expect(sides[1]).toBeCloseTo(580, 0)      // between the front and back posts
   })
 
-  it('and an overlay board still covers the frame it was given', () => {
+  it('and an overlay board covers the rails it was given, stopping at the posts', () => {
     const box = cabinet(0, 600)
     const rails = [P(0, 440, 0, 0, 440, 600), P(600, 440, 0, 600, 440, 600)]
     load([...box, ...rails])
     useStore.getState().selectItems(rails.map((p) => p.id))
     const board = panelFromSelection('mdf', 18, 'overlay')!
     const sides = [board.width, board.height].sort((a, b) => a - b)
-    expect(sides[0]).toBeCloseTo(600, 0)
+    // across: over both rails, 620; along them: the posts stand up through the rails' ends,
+    // so the board is the 580 between them rather than a board through four posts
+    expect(sides[0]).toBeCloseTo(580, 0)
     expect(sides[1]).toBeCloseTo(620, 0)
+    const s = useStore.getState()
+    expect(findConflicts(s.profiles, computeAllTrims(s.profiles), [], [board])).toEqual([])
   })
 })
 

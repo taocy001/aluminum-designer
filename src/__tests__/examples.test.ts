@@ -165,7 +165,9 @@ describe('the drawings that ship are buildable', () => {
           const other = axis === 'x' ? 'z' : 'x'
           return metal.some((m) => {
             const run = Math.min(m.max[axis], box.max[axis]) - Math.max(m.min[axis], box.min[axis])
-            return run >= size[axis] * 0.7 && m.max.y >= box.min.y - 2 && m.min.y <= box.max.y + 2
+            // resting on it: the rail's top face against the board's underside, not merely
+            // level with the board beside it
+            return run >= size[axis] * 0.7 && Math.abs(m.max.y - box.min.y) <= 2
               && m.min[other] - 25 <= at && at <= m.max[other] + 25
           })
         }

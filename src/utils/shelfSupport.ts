@@ -4,6 +4,10 @@ import { computeAllTrims, trimmedBox, type ProfileTrims } from './jointUtils'
 
 /** a board thinner than this, measured upright, is lying down: a shelf, a top, a base (mm) */
 const LYING_MAX = 40
+/** a carrier's top face and the board's underside may differ by this much and still touch (mm) */
+const LEVEL_TOL = 2
+/** how far from the edge line a carrier may run and still be the one holding that edge (mm) */
+const EDGE_REACH = 25
 
 export type ShelfEdge = 'x-' | 'x+' | 'z-' | 'z+'
 
@@ -35,9 +39,12 @@ export function panelBox(b: PanelData): THREE.Box3 {
  * The four edges of every board lying flat, and whether each is carried by metal.
  *
  * A shelf hung between two rails is held along two edges; the other two sag under a row of
- * books and the board can tip off. An edge is carried when a member runs under or beside it
- * for most of its length (70 %), within 25 mm of the edge line and level with the board to
- * within 2 mm — the same test the example drawings are held to.
+ * books and the board can tip off. An edge is carried when a member runs under it for most
+ * of its length (70 %), within 25 mm of the edge line, with its top face against the
+ * board's underside (to 2 mm). A rail merely level with the board, beside it, holds nothing
+ * up — counting it let a board hung at the rails' mid-height pass as carried on all four
+ * sides while it rested on nothing — and a rail above the board or below the gap holds
+ * nothing either. The example drawings are held to the same test.
  */
 export function shelfEdges(panels: PanelData[], profiles: ProfileData[], trims?: Map<string, ProfileTrims>): ShelfEdgeState[] {
   const t = trims ?? computeAllTrims(profiles)
@@ -51,8 +58,8 @@ export function shelfEdges(panels: PanelData[], profiles: ProfileData[], trims?:
       const other = axis === 'x' ? 'z' : 'x'
       for (const m of metal) {
         const run = Math.min(m.box.max[axis], box.max[axis]) - Math.max(m.box.min[axis], box.min[axis])
-        if (run >= size[axis] * 0.7 && m.box.max.y >= box.min.y - 2 && m.box.min.y <= box.max.y + 2
-          && m.box.min[other] - 25 <= at && at <= m.box.max[other] + 25) return m.id
+        if (run >= size[axis] * 0.7 && Math.abs(m.box.max.y - box.min.y) <= LEVEL_TOL
+          && m.box.min[other] - EDGE_REACH <= at && at <= m.box.max[other] + EDGE_REACH) return m.id
       }
       return null
     }
