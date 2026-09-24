@@ -1,5 +1,5 @@
 ﻿Category,Item,Spec,Cut length (mm),Quantity
-Profile,2020,2020,910,2
+Profile,2020,2020,900,2
 Profile,2040,2040,860,8
 Profile,2040,2040,560,11
 Profile,4040,4040,2120,6
@@ -17,5 +17,5 @@ Board,"860 × 560 mm","密度板 18mm",,3
 Suggested,"L型角码（按对接端推算）",,,8
 Suggested,"端盖 20 系列（按自由端推算）",20,,4
 Summary,Overall WxDxH,1840x640x2200,,
-Summary,Total cut length (mm),,27580,
+Summary,Total cut length (mm),,27560,
 Summary,Board area (m2),,7.44,

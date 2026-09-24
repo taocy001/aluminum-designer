@@ -1,11 +1,13 @@
 ﻿Category,Item,Spec,Cut length (mm),Quantity
-Profile,2040,2040,1920,4
-Profile,2040,2040,880,4
-Profile,2040,2040,280,14
-Connector,"内角码",20 系列,,44
-Fastener,"螺栓 M5×10",20,,88
-Fastener,"T型螺母 M5",20,,88
+Profile,2040,2040,1930,4
+Profile,2040,2040,920,2
+Profile,2040,2040,880,2
+Profile,2040,2040,300,2
+Profile,2040,2040,280,12
+Connector,"内角码",20 系列,,40
+Fastener,"螺栓 M5×10",20,,80
+Fastener,"T型螺母 M5",20,,80
 Board,"880 × 280 mm","密度板 18mm",,5
-Summary,Overall WxDxH,920x360x2000,,
-Summary,Total cut length (mm),,15120,
+Summary,Overall WxDxH,920x360x2010,,
+Summary,Total cut length (mm),,15280,
 Summary,Board area (m2),,1.23,
