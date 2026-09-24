@@ -28,6 +28,11 @@ interface ToolState {
   measuring: null | { from: THREE.Vector3 | null; to: THREE.Vector3 | null }
   /** Visibility of drawers and doors in the scene. */
   showFittings: boolean
+  /**
+   * A cut through the drawing: which way it faces, where along that axis, and which side is
+   * taken away. Null for no cut, which is the usual state.
+   */
+  section: { axis: 'x' | 'y' | 'z'; at: number; flip: boolean } | null
   /** what the next camera fit should frame: everything, or just what is selected */
   cameraFitScope: 'all' | 'selection'
   /** R was pressed and is waiting for an axis key; null when no turn is pending */
@@ -131,6 +136,7 @@ interface ToolState {
   setViewMode: (on: boolean) => void
   toggleHelp: () => void
   toggleFittings: () => void
+  setSection: (section: { axis: 'x' | 'y' | 'z'; at: number; flip: boolean } | null) => void
   startMeasuring: () => void
   setMeasurePoint: (at: THREE.Vector3) => void
   stopMeasuring: () => void
@@ -195,6 +201,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   viewMode: false,
   helpOpen: false,
   showFittings: true,
+  section: null,
   measuring: null,
   pendingRotate: null,
   zoomStep: 0,
@@ -267,6 +274,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   }),
   toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
   toggleFittings: () => set((s) => ({ showFittings: !s.showFittings })),
+  setSection: (section) => set({ section }),
   // measuring puts down whatever is in hand: a click has to mean one thing at a time
   startMeasuring: () => set({ measuring: { from: null, to: null }, held: null, activeConnectorType: null, isDrawing: false, selectMode: false }),
   setMeasurePoint: (at) => set((s) => {
