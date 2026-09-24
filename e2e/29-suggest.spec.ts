@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import { openApp, enterDraw, drawMember, setView, store, settle, w2c, type V3 } from './helpers'
 
 const SHOTS = process.env.SUGGEST_SHOTS ?? ''
@@ -137,10 +139,9 @@ test.describe('Suggesting the next member', () => {
   })
 
   test('a press is quick on every cabinet of the flat', async ({ page }) => {
-    const fs = await import('node:fs')
-    const dir = new URL('../examples/flat/', import.meta.url)
+    const dir = path.join(process.cwd(), 'examples', 'flat')
     for (const f of fs.readdirSync(dir).filter((x: string) => x.endsWith('.json'))) {
-      const doc = JSON.parse(fs.readFileSync(new URL(f, dir), 'utf8'))
+      const doc = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
       const ms = await page.evaluate((d) => {
         const w = (window as any).__aluframe
         w.store.getState().loadDocument({ ...d, profiles: d.profiles.slice(0, -1) })
