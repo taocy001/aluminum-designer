@@ -377,8 +377,10 @@ const PointerRouter: React.FC = () => {
       // the one the hover is showing, which is the one under the highlight.
       const cyc = candidates.current
       const stepped = cyc.index > 0 && Math.hypot(e.clientX - cyc.x, e.clientY - cyc.y) <= 3 ? cyc.list[cyc.index] : null
-      // the selected member's own end handle takes the press ahead of anything drawn over it
-      const onHandle = reachingForEnd(downCursor, downRect, downRay)
+      // the selected member's own end handle takes the press ahead of anything drawn over it —
+      // unless a modifier is held: Ctrl/Cmd/Alt is adding to or taking from the selection, and
+      // the handle catching it dropped the member instead of adding the bracket at its end
+      const onHandle = e.ctrlKey || e.metaKey || e.altKey ? null : reachingForEnd(downCursor, downRect, downRay)
       const pickHere = onHandle ?? stepped ?? candidatesFor(downCursor, downRect)[0] ?? null
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
       const multi = e.ctrlKey || e.metaKey
