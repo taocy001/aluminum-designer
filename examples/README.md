@@ -67,13 +67,15 @@
 
 ---
 
-## apartment-12-units — 100㎡ 两室两厅，12 组柜子
+## flat/ — 100㎡ 两室两厅，12 组柜子，12 张图
 
 ![12 组柜子](apartment-12-units-overview.png)
 
 12 组独立柜体示例。
 358 根型材、636 个连接件（568 内角码 + 68 调节脚）、38 块板、29 个构件（20 扇门 + 9 只抽屉），
 下料总长 **256.36 m**。
+
+每组柜体为独立工程，文件编号与下表对应。可分别编辑并导出清单。
 
 | 柜体 | 宽×深×高 | 内容 |
 |---|---|---|
@@ -90,12 +92,22 @@
 | 餐边柜 | 1200×400×2000 | 三道隔板 |
 | 卫生间浴室柜 | 800×450×550 | 两扇门 + 一道隔板 |
 
-| 文件 | 内容 |
+| 文件 | 柜体 |
 |---|---|
-| `apartment-12-units.json` | 工程文件，侧栏「导入」直接打开 |
-| `apartment-12-units-bom.csv` | 物料清单 |
-| `apartment-12-units-cutting.csv` | 下料单，一根原料一行 |
-| `apartment-12-units.dxf` | 三视图 + 38 块板的展开下料图 |
+| `flat/01-kitchen-base.json` | 厨房地柜 |
+| `flat/02-kitchen-wall.json` | 厨房吊柜（离地 1550） |
+| `flat/03-tall-unit.json` | 冰箱+蒸烤箱高柜 |
+| `flat/04-shoe-cupboard.json` | 玄关鞋柜 |
+| `flat/05-media-unit.json` | 客厅电视柜 |
+| `flat/06-wardrobe.json` | 主卧衣柜 |
+| `flat/07-desk.json` | 次卧书桌 |
+| `flat/08-bookshelf.json` | 书桌上书架（离地 1300） |
+| `flat/09-laundry.json` | 阳台洗衣柜 |
+| `flat/10-wardrobe-small.json` | 次卧衣柜 |
+| `flat/11-sideboard.json` | 餐边柜 |
+| `flat/12-vanity.json` | 卫生间浴室柜 |
+
+每张图在侧栏「导入」直接打开；物料清单、下料单、DXF 图纸从侧栏「导出」生成。
 
 ### 工具自检的结果
 
