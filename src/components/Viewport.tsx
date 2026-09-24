@@ -29,6 +29,7 @@ import PointerRouter from './PointerRouter'
 import ResizeHandles from './ResizeHandles'
 import TransformGizmo from './TransformGizmo'
 import TextSprite from './TextSprite'
+import LabelLayout from './LabelLayout'
 
 const DEFAULT_CAM = new THREE.Vector3(600, 500, 600)
 
@@ -212,7 +213,8 @@ const PartDimensions: React.FC<{
   quaternion: [number, number, number, number]
   sizes: Array<[string, number]>
   color: string
-}> = ({ position, quaternion, sizes, color }) => {
+  owner: string
+}> = ({ position, quaternion, sizes, color, owner }) => {
   const q = useMemo(() => new THREE.Quaternion(...quaternion).normalize(), [quaternion])
   const centre = useMemo(() => new THREE.Vector3(...position), [position])
   const [[wl, w], [hl, h], [tl, t]] = sizes
@@ -235,9 +237,9 @@ const PartDimensions: React.FC<{
   const inset = (v: number, by: number) => Math.max(0, v / 2 - by)
   return (
     <>
-      <TextSprite text={`${wl} ${mm(w)}`} color={color} height={22} position={at(ay, -inset(h, IN), ax, 0)} />
-      <TextSprite text={`${hl} ${mm(h)}`} color={color} height={22} position={at(ax, inset(w, IN * 1.6), ay, 0)} />
-      <TextSprite text={`${tl} ${mm(t)}`} color={color} height={22} position={at(ax, -inset(w, IN * 1.6), ay, inset(h, IN))} />
+      <TextSprite text={`${wl} ${mm(w)}`} color={color} height={22} owner={owner} position={at(ay, -inset(h, IN), ax, 0)} />
+      <TextSprite text={`${hl} ${mm(h)}`} color={color} height={22} owner={owner} position={at(ax, inset(w, IN * 1.6), ay, 0)} />
+      <TextSprite text={`${tl} ${mm(t)}`} color={color} height={22} owner={owner} position={at(ax, -inset(w, IN * 1.6), ay, inset(h, IN))} />
     </>
   )
 }
@@ -263,20 +265,30 @@ const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims
         const dir = getProfileDir(p)
         if (Math.abs(dir.y) > 0.7) { mid.x += 26; mid.z += 26 } else mid.y += 30
         const cut = trims.get(p.id)?.cutLength ?? p.length
-        return <TextSprite key={p.id} text={String(Math.round(cut))} position={mid.toArray() as [number, number, number]} />
+        return <TextSprite key={p.id} text={String(Math.round(cut))} priority={2} owner={p.id} position={mid.toArray() as [number, number, number]} />
       })}
 
       {panels.map((b) => (
-        <PartDimensions key={b.id}
+        <PartDimensions key={b.id} owner={b.id}
           position={b.position} quaternion={b.quaternion}
           sizes={[['W', b.width], ['H', b.height], ['T', b.thickness]]} color="#fde68a" />
       ))}
 
-      {fittings.map((f) => (
-        <PartDimensions key={f.id}
+      {fittings.map((f) => {
+        // A door is labelled as the leaf you would cut: its own width, height and thickness,
+        // on the leaf and following it open. Its depth is the cabinet's, and "D 670" on a
+        // door read as a door 670 thick.
+        const leaf = f.kind === 'door' ? leafObb(f, f.open ?? 0) : null
+        if (leaf) {
+          const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(...leaf.axes))
+          return <PartDimensions key={f.id} owner={f.id}
+            position={leaf.center.toArray() as [number, number, number]} quaternion={[q.x, q.y, q.z, q.w]}
+            sizes={[['W', leaf.half.x * 2], ['H', leaf.half.y * 2], ['T', leaf.half.z * 2]]} color="#7dd3fc" />
+        }
+        return <PartDimensions key={f.id} owner={f.id}
           position={f.position} quaternion={f.quaternion}
           sizes={[['W', f.width], ['H', f.height], ['D', f.depth]]} color="#7dd3fc" />
-      ))}
+      })}
     </>
   )
 }
@@ -589,6 +601,7 @@ const Viewport: React.FC = () => {
       <MeasureOverlay />
       {showDimensionLabels && <DimensionLabels trims={trims} />}
       <FrameDimensions />
+      <LabelLayout />
       <ConflictMarkers conflicts={conflicts} />
       <MismatchMarkers mismatches={mismatches} />
       <SnapGuides />

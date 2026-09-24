@@ -93,6 +93,7 @@ const ResizeHandles: React.FC = () => {
       {live && (
         <TextSprite
           text={`${Math.round(target.length)} mm`}
+          priority={4}
           position={at.clone().addScaledVector(out, section * 2.6).toArray() as [number, number, number]}
           height={section * 1.6}
           color="#fde68a"

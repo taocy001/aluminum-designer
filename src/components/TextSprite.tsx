@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { registerLabel } from './LabelLayout'
 
 interface Props {
   text: string
@@ -17,6 +18,10 @@ interface Props {
    * marker that has to be findable through the metal — a snap point, a fault — turns it off.
    */
   throughWalls?: boolean
+  /** which label keeps a patch of screen two of them want (see LabelLayout) */
+  priority?: number
+  /** the part this label is on, which does not hide its own label */
+  owner?: string
 }
 
 /**
@@ -26,7 +31,7 @@ interface Props {
 /** how far a label leans out of the surface it is on, towards the camera (mm) */
 const LEAN = 40
 
-const TextSprite: React.FC<Props> = ({ text, position, height = 26, color = '#e2e8f0', background = 'rgba(15,23,42,0.85)', throughWalls = false }) => {
+const TextSprite: React.FC<Props> = ({ text, position, height = 26, color = '#e2e8f0', background = 'rgba(15,23,42,0.85)', throughWalls = false, priority = 1, owner }) => {
   const { texture, aspect } = useMemo(() => {
     const scale = 4
     const fontPx = 16 * scale
@@ -69,6 +74,12 @@ const TextSprite: React.FC<Props> = ({ text, position, height = 26, color = '#e2
    * about where the label appears to be.
    */
   const ref = useRef<THREE.Sprite>(null)
+  // A marker that has to be found through the metal is always drawn; every other label is
+  // shown whole or not at all, by the layout, rather than cut by whatever crosses it.
+  useEffect(() => {
+    if (throughWalls || !ref.current) return
+    return registerLabel({ sprite: ref.current, priority, owner })
+  }, [throughWalls, priority, owner])
   useFrame(({ camera }) => {
     const sp = ref.current
     if (!sp || throughWalls) return
@@ -81,7 +92,7 @@ const TextSprite: React.FC<Props> = ({ text, position, height = 26, color = '#e2
 
   return (
     <sprite ref={ref} position={position} scale={[height * aspect, height, 1]} renderOrder={10} raycast={() => null}>
-      <spriteMaterial map={texture} transparent depthTest={!throughWalls} depthWrite={false} sizeAttenuation />
+      <spriteMaterial map={texture} transparent depthTest={false} depthWrite={false} sizeAttenuation />
     </sprite>
   )
 }
