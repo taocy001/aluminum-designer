@@ -34,6 +34,33 @@ export interface FittingRequest {
 }
 
 /**
+ * How much metal stands between an opening and the world, in one direction.
+ *
+ * Only what is actually across from the opening counts: members that overlap it across its
+ * width and its height. A cabinet round the corner is not in the way of this one, and the
+ * bounding box of an L-shaped run cannot tell the difference.
+ */
+function metalAhead(all: ProfileData[], mine: THREE.Box3, reach: number, axis: THREE.Vector3): number {
+  const k: 'x' | 'z' = Math.abs(axis.x) > 0.5 ? 'x' : 'z'
+  const across: 'x' | 'z' = k === 'x' ? 'z' : 'x'
+  const sign = axis[k] > 0 ? 1 : -1
+  const at = mine.getCenter(new THREE.Vector3())
+  let metal = 0
+  for (const p of all) {
+    const box = memberBox(p)
+    // Across from the opening means across from its middle, not touching one of its edges.
+    // At an inside corner the long run's uprights clip the edge of the return leg's opening
+    // by a single section, and counting them made the return leg's doors face the long run.
+    if (box.max[across] < at[across] || box.min[across] > at[across]) continue
+    if (box.max.y < mine.min.y - 1 || box.min.y > mine.max.y + 1) continue
+    const away = (box.getCenter(new THREE.Vector3())[k] - at[k]) * sign
+    if (away <= 1 || away > reach) continue
+    metal += Math.max(box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z)
+  }
+  return metal
+}
+
+/**
  * Which way the fitting faces.
  *
  * The answer is already in the selection. Picking out an opening means picking the members
@@ -41,7 +68,7 @@ export interface FittingRequest {
  * whole frame they sit on. Guessing from the shape of the run instead ignored that, and put
  * every door in a kitchen facing the wall.
  */
-function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
+function outwardAxis(chosen: ProfileData[], section: number): { out: THREE.Vector3; settled: boolean } {
   // The cabinet this opening is in, not the drawing it is in. Asked of the whole drawing,
   // "which way is depth" is answered by the room: eleven cabinets laid out along Z made every
   // drawer in the flat face along X, turned ninety degrees, with its width and its depth
@@ -51,7 +78,7 @@ function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
   for (const p of all) whole.union(memberBox(p))
   const mine = new THREE.Box3()
   for (const p of chosen) mine.union(memberBox(p))
-  if (whole.isEmpty() || mine.isEmpty()) return new THREE.Vector3(0, 0, 1)
+  if (whole.isEmpty() || mine.isEmpty()) return { out: new THREE.Vector3(0, 0, 1), settled: false }
 
   const centre = whole.getCenter(new THREE.Vector3())
   const at = mine.getCenter(new THREE.Vector3())
@@ -65,45 +92,65 @@ function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
   // horizontal axis the selection is flat on, and the side is which side of the frame that
   // plane sits on. Reading it as "far from the middle" instead put the doors at the end of a
   // long run facing along the run.
-  const flat: Array<[THREE.Vector3, number, number]> = [[Z, span.z, at.z - centre.z], [X, span.x, at.x - centre.x]]
+  /**
+   * Which way is out, decided where the opening is rather than where the cabinet's middle is.
+   *
+   * "Which side of the frame does this sit on" is fine for a box and wrong for an L: the
+   * return leg drags the middle round behind the long run, and every door on the long run
+   * comes out facing the wall. A cabinet is open at the front, and that is a local fact —
+   * so look along the axis from the opening itself, at the members that are actually across
+   * from it, and take the side with less in the way.
+   */
+  const reach = Math.max(run.x, run.z)
+  const facing = (axis: THREE.Vector3): THREE.Vector3 => {
+    const ahead = metalAhead(all, mine, reach, axis)
+    const behind = metalAhead(all, mine, reach, axis.clone().negate())
+    return ahead <= behind ? axis.clone() : axis.clone().negate()
+  }
+
+  // Which axis is settled by the shape of the selection, and only the direction along it is
+  // open to argument. Two uprights that frame a door are coplanar, and the normal of that
+  // plane is the one direction the door can face — a return leg's doors face along X however
+  // the long run's doors face, because its uprights are lined up along Z.
+  const flat: Array<[THREE.Vector3, number]> = [[Z, span.z], [X, span.x]]
   flat.sort((p, q) => p[1] - q[1])
-  const [axis, thickness, offset] = flat[0]
-  if (thickness <= section * 3 && Math.abs(offset) > 1) {
-    return axis.clone().multiplyScalar(Math.sign(offset))
-  }
+  const [thin, thickness] = flat[0]
+  const coplanar = thickness <= section * 3
+  void centre
 
-  // The selection spans the depth — four uprights round a drawer — so it says nothing about
-  // which side is the front.
-  //
-  // If anything has already been hung on this cabinet, that settles it. A cabinet whose doors
-  // open into the room and whose drawers pull out towards the wall is not a cabinet, and
-  // where the carcase is as deep as it is wide there is nothing to count anyway: the tie went
-  // to whichever axis the comparison happened to prefer.
-  const near = new THREE.Box3().copy(mine).expandByScalar(Math.max(run.x, run.z))
+  /**
+   * Something already hung on this carcase is evidence rather than a guess, and nothing
+   * below may overturn it — an inside corner has cabinet on both sides, so there is nothing
+   * local to weigh up there.
+   *
+   * How much of it counts depends on what the selection has already settled. Two uprights
+   * framing a door are coplanar and the normal of that plane is the one direction the door
+   * can face, so a door already hung can only confirm or reverse it — one facing a different
+   * axis belongs to the other leg of an L and says nothing about this opening. Four uprights
+   * round a drawer say nothing at all about the axis, and then a fitting already in the
+   * carcase is the only thing that does.
+   */
+  const room = new THREE.Box3().copy(mine).expandByScalar(Math.max(run.x, run.z))
   for (const f of useStore.getState().fittings) {
-    if (!near.containsPoint(new THREE.Vector3(...f.position))) continue
-    const facing = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...f.quaternion).normalize())
-    facing.y = 0
-    if (facing.lengthSq() < 0.5) continue
-    facing.normalize()
-    return Math.abs(facing.x) > Math.abs(facing.z)
-      ? X.clone().multiplyScalar(Math.sign(facing.x))
-      : Z.clone().multiplyScalar(Math.sign(facing.z))
+    if (!room.containsPoint(new THREE.Vector3(...f.position))) continue
+    const hung = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...f.quaternion).normalize())
+    if (coplanar) {
+      const along = hung.dot(thin)
+      if (Math.abs(along) < 0.9) continue
+      return { out: thin.clone().multiplyScalar(Math.sign(along)), settled: true }
+    }
+    hung.y = 0
+    if (hung.lengthSq() < 0.5) continue
+    hung.normalize()
+    return {
+      out: Math.abs(hung.x) > Math.abs(hung.z)
+        ? X.clone().multiplyScalar(Math.sign(hung.x))
+        : Z.clone().multiplyScalar(Math.sign(hung.z)),
+      settled: true,
+    }
   }
 
-  // Nothing hung yet: a cabinet is open at the front and closed at the back, where the backs
-  // and the shelf rails are, so the half with less metal in it is the front.
-  const deep = run.z <= run.x ? Z : X
-  const mid = centre.dot(deep)
-  let front = 0, back = 0
-  for (const p of all) {
-    const box = memberBox(p)
-    const size = box.getSize(new THREE.Vector3())
-    const bulk = Math.max(size.x, size.y, size.z)
-    if (box.getCenter(new THREE.Vector3()).dot(deep) >= mid) front += bulk
-    else back += bulk
-  }
-  return deep.clone().multiplyScalar(front <= back ? 1 : -1)
+  return { out: facing(coplanar ? thin : (run.z <= run.x ? Z : X)), settled: false }
 }
 
 /**
@@ -125,6 +172,35 @@ function cabinetOf(chosen: ProfileData[]): ProfileData[] {
   const own = connectedTo(chosen.map((p) => p.id), profiles)
   if (own.size <= chosen.length) return profiles
   return profiles.filter((p) => own.has(p.id))
+}
+
+/**
+ * How far the metal goes back behind an opening.
+ *
+ * Only what is directly behind it counts: members that overlap the opening across its width
+ * and its height. A box query over an L-shaped run answers with the whole L — the long run's
+ * doors came out as deep as the return leg is long — because the return leg is inside the
+ * same bounding box while being nowhere behind the opening.
+ */
+function depthBehind(chosen: ProfileData[], out: THREE.Vector3): number {
+  const mine = new THREE.Box3()
+  for (const p of chosen) mine.union(memberBox(p))
+  const k: 'x' | 'z' = Math.abs(out.z) > 0.5 ? 'z' : 'x'
+  const across: 'x' | 'z' = k === 'z' ? 'x' : 'z'
+  const sign = out[k] > 0 ? 1 : -1
+  const face = sign > 0 ? mine.max[k] : mine.min[k]
+
+  const middle = mine.getCenter(new THREE.Vector3())
+  let back = 0
+  for (const p of cabinetOf(chosen)) {
+    const box = memberBox(p)
+    // ...and behind it means behind its middle, for the same reason
+    if (box.max[across] < middle[across] || box.min[across] > middle[across]) continue
+    if (box.max.y < mine.min.y - 1 || box.min.y > mine.max.y + 1) continue
+    const far = sign > 0 ? face - box.min[k] : box.max[k] - face
+    back = Math.max(back, far)
+  }
+  return back
 }
 
 function carcaseAround(chosen: ProfileData[]): THREE.Box3 {
@@ -157,13 +233,20 @@ function carcaseAround(chosen: ProfileData[]): THREE.Box3 {
  * cabinet the opening is on.
  */
 function openingOutward(out: THREE.Vector3, chosen: ProfileData[]): THREE.Vector3 {
-  const carcase = carcaseAround(chosen)
+  // This is the second look — "whatever else was decided, a door opens away from its own
+  // cabinet" — and it used to take the cabinet's bounding-box middle as the answer. On an
+  // L-shaped run the return leg drags that middle round behind the long run, so this turned
+  // the right answer into the wrong one: the corner door faced the wall and came out as deep
+  // as the return leg is long. So it asks what the first look asks — which side has the
+  // cabinet on it — and only overturns a direction that is plainly blocked.
+  const all = cabinetOf(chosen)
   const mine = new THREE.Box3()
   for (const p of chosen) mine.union(memberBox(p))
-  const away = mine.getCenter(new THREE.Vector3()).sub(carcase.getCenter(new THREE.Vector3()))
-  const along = away.dot(out)
-  // dead centre of its own cabinet says nothing; anything else settles it
-  return Math.abs(along) < 1 || along > 0 ? out : out.clone().negate()
+  const carcase = carcaseAround(chosen).getSize(new THREE.Vector3())
+  const reach = Math.max(carcase.x, carcase.z)
+  const ahead = metalAhead(all, mine, reach, out)
+  const behind = metalAhead(all, mine, reach, out.clone().negate())
+  return ahead > behind ? out.clone().negate() : out
 }
 
 /** Rotation that sends local +Z onto `out`, keeping Y up */
@@ -202,7 +285,10 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
   ))
 
   const size = box.getSize(new THREE.Vector3())
-  const out = openingOutward(outwardAxis(chosen, section), chosen)
+  const aim = outwardAxis(chosen, section)
+  // the second look is a check on a guess, so it has nothing to say about an answer that was
+  // not a guess
+  const out = aim.settled ? aim.out : openingOutward(aim.out, chosen)
   const quaternion = facing(out)
   const centre = box.getCenter(new THREE.Vector3())
   // across the opening and into it, in the fitting's own frame
@@ -216,11 +302,10 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
     // its own cabinet's depth, not the whole drawing's: wall units are shallower than the
     // base units under them, and a door hung on the deeper figure swings about an axis a
     // foot in front of the cabinet it belongs to
-    const run = carcaseAround(chosen).getSize(new THREE.Vector3())
-    deep = Math.max(MIN_OPENING, Math.abs(out.z) > 0.5 ? run.z : run.x)
-    // and it hangs on the face nearest the front, not in the middle of the cabinet
-    const front = Math.abs(out.z) > 0.5 ? centre.z : centre.x
-    void front
+    // How far back the cabinet goes *behind this opening*, not across the whole carcase.
+    // An L-shaped run's bounding box is as deep as the return leg is long, and a door on the
+    // long run came out nearly two metres deep, hinged out in the middle of the room.
+    deep = Math.max(MIN_OPENING, depthBehind(chosen, out))
   }
   if (across < MIN_OPENING || size.y < MIN_OPENING || (req.kind === 'drawer' && deep < MIN_OPENING)) {
     useToolStore.getState().showToast(t.toastDrawerTooSmall, 'error'); return false

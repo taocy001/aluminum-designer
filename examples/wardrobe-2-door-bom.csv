@@ -1,0 +1,21 @@
+﻿Category,Item,Spec,Cut length (mm),Quantity
+Profile,2020,2020,910,2
+Profile,2040,2040,860,8
+Profile,2040,2040,560,11
+Profile,4040,4040,2120,6
+Connector,"35 杯铰",,,8
+Connector,"内角码",20 系列,,42
+Connector,"抽屉滑轨 560mm",侧装一对,,2
+Fastener,"螺栓 M5×10",20,,84
+Fastener,"T型螺母 M5",20,,84
+Board,"540 × 174 mm","多层板 15mm",,4
+Board,"805 × 174 mm","多层板 15mm",,4
+Board,"805 × 510 mm","多层板 15mm",,2
+Board,"890 × 230 mm","多层板 18mm",,2
+Board,"2150 × 890 mm","密度板 18mm",,2
+Board,"860 × 560 mm","密度板 18mm",,3
+Suggested,"L型角码（按对接端推算）",,,8
+Suggested,"端盖 20 系列（按自由端推算）",20,,4
+Summary,Overall WxDxH,1840x640x2200,,
+Summary,Total cut length (mm),,27580,
+Summary,Board area (m2),,7.44,

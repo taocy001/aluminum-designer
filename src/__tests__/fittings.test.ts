@@ -256,3 +256,177 @@ describe('turning a part turns it where it stands', () => {
     expect(selectionPivot([], [], 'center', [board], []).distanceTo(at)).toBeLessThan(1)
   })
 })
+
+/**
+ * An L-shaped run is where "which side of the frame does this sit on" stops working. The
+ * return leg drags the frame's middle round behind the long run, so every door on the long
+ * run came out facing the wall. A cabinet is open at the front, and that is a local fact.
+ */
+describe('a door on an L-shaped run still faces the room', () => {
+  it('faces away from the wall, not towards the middle of the L', () => {
+    const D = 650, H = 880, W = 2400, inner = W - D
+    const up: ProfileData[] = []
+    // the long run: wall at z = 0, front at z = D, stopping at the inner corner
+    for (const x of [0, 600, 1200, 1800, W]) up.push(P(x, 0, 0, x, H, 0))
+    for (const x of [0, 600, 1200, inner]) up.push(P(x, 0, D, x, H, D))
+    // the return: wall at x = W, front at x = inner
+    for (const z of [1250, 1850]) for (const x of [inner, W]) up.push(P(x, 0, z, x, H, z))
+    const rails: ProfileData[] = []
+    for (const y of [20, H - 20]) {
+      rails.push(P(0, y, 0, W, y, 0), P(0, y, D, inner, y, D))
+      rails.push(P(inner, y, D, inner, y, 1850), P(W, y, D, W, y, 1850))
+      for (const x of [0, 600, 1200, inner]) rails.push(P(x, y, 0, x, y, D))
+    }
+    const frame = [...up, ...rails]
+    load(frame)
+
+    // a bay on the long run, framed by its two front uprights
+    const bay = frame.filter((p) => p.length === H && p.position[2] === D
+      && (p.position[0] === 0 || p.position[0] === 600))
+    expect(bay.length).toBe(2)
+    useStore.getState().selectItems(bay.map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'door', hinge: 'left' })).toBe(true)
+
+    const door = useStore.getState().fittings[0]
+    const facing = new THREE.Vector3(0, 0, 1)
+      .applyQuaternion(new THREE.Quaternion(...door.quaternion))
+    // the wall is at z = 0 and the room is at +z: it must open into the room
+    expect(facing.z).toBeGreaterThan(0.9)
+  })
+})
+
+/**
+ * ...and it is as deep as the cabinet behind it, not as deep as the bounding box of the L it
+ * belongs to. The return leg is inside that box while being nowhere behind the opening, and
+ * a door on the long run came out nearly two metres deep, hinged out in the middle of the
+ * room.
+ */
+describe('a door is as deep as what is behind it', () => {
+  it('ignores a return leg that is not behind the opening', () => {
+    const D = 650, H = 880, W = 2400, inner = W - D
+    const frame: ProfileData[] = []
+    for (const x of [0, 600, 1200, 1800, W]) frame.push(P(x, 0, 0, x, H, 0))
+    for (const x of [0, 600, 1200, inner]) frame.push(P(x, 0, D, x, H, D))
+    for (const z of [1250, 1850]) for (const x of [inner, W]) frame.push(P(x, 0, z, x, H, z))
+    // bay by bay, because a rail cannot run through the post it crosses
+    for (const y of [20, H - 20]) {
+      for (const [a, b] of [[0, 600], [600, 1200], [1200, 1800], [1800, W]]) frame.push(P(a, y, 0, b, y, 0))
+      for (const [a, b] of [[0, 600], [600, 1200], [1200, inner]]) frame.push(P(a, y, D, b, y, D))
+      for (const [a, b] of [[D, 1250], [1250, 1850]]) {
+        frame.push(P(inner, y, a, inner, y, b), P(W, y, a, W, y, b))
+      }
+      for (const x of [0, 600, 1200, inner]) frame.push(P(x, y, 0, x, y, D))
+    }
+    load(frame)
+    const bay = frame.filter((p) => p.length === H && p.position[2] === D
+      && (p.position[0] === 0 || p.position[0] === 600))
+    useStore.getState().selectItems(bay.map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'door', hinge: 'left' })).toBe(true)
+    const door = useStore.getState().fittings[0]
+    expect(door.depth).toBeLessThan(750)        // the run is 650 deep, not 1850
+    const s = useStore.getState()
+    const clashes = findConflicts(s.profiles, computeAllTrims(s.profiles), [], [], s.fittings)
+    expect(clashes.filter((c) => c.a === door.id || c.b === door.id)).toEqual([])
+  })
+})
+
+/**
+ * An inside corner is genuinely ambiguous: the cabinet carries on in both directions, so
+ * "which side has less in the way" has no answer there. What does have an answer is the two
+ * doors already hanging on the same carcase — and that is evidence rather than a guess, so
+ * nothing further down may overturn it. Without that the corner door faced the wall, and
+ * took its depth from the return leg: 1220 mm, hinged out in the middle of the room.
+ */
+describe('doors on an L-shaped run follow one another', () => {
+  const lShaped = (): ProfileData[] => {
+    const D = 650, H = 880, W = 2400, inner = W - D
+    const frame: ProfileData[] = []
+    for (const x of [0, 600, 1200, 1800, W]) frame.push(P(x, 0, 0, x, H, 0))
+    for (const x of [0, 600, 1200, inner]) frame.push(P(x, 0, D, x, H, D))
+    for (const z of [1250, 1850]) for (const x of [inner, W]) frame.push(P(x, 0, z, x, H, z))
+    for (const y of [20, H - 20]) {
+      for (const [a, b] of [[0, 600], [600, 1200], [1200, 1800], [1800, W]]) frame.push(P(a, y, 0, b, y, 0))
+      for (const [a, b] of [[0, 600], [600, 1200], [1200, inner]]) frame.push(P(a, y, D, b, y, D))
+      for (const [a, b] of [[D, 1250], [1250, 1850]]) {
+        frame.push(P(inner, y, a, inner, y, b), P(W, y, a, W, y, b))
+      }
+      for (const x of [0, 600, 1200, inner]) frame.push(P(x, y, 0, x, y, D))
+    }
+    return frame
+  }
+
+  it('they open into the room, and none is as deep as the return leg', () => {
+    const frame = lShaped()
+    load(frame)
+    // not the corner bay: a leaf taken all the way to the inside corner post fouls the end
+    // of the return leg's rail, which is why a real kitchen puts a pull-out there instead
+    for (const [x1, x2] of [[0, 600], [600, 1200]]) {
+      const bay = frame.filter((p) => p.length === 880 && p.position[2] === 650
+        && (p.position[0] === x1 || p.position[0] === x2))
+      expect(bay.length, `bay ${x1}–${x2}`).toBe(2)
+      useStore.getState().selectItems(bay.map((p) => p.id))
+      // half overlay: two full-overlay leaves cannot share a 20 mm stile, which the check
+      // says plainly and which is a fact about the cabinet rather than about the tool
+      expect(addFittingFromSelection({ kind: 'door', hinge: 'left', overlay: 'half' })).toBe(true)
+    }
+    const doors = useStore.getState().fittings
+    expect(doors.length).toBe(2)
+    for (const d of doors) {
+      const facing = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...d.quaternion))
+      expect(facing.z, 'opens into the room').toBeGreaterThan(0.9)
+      expect(d.depth, 'as deep as the run, not the return leg').toBeLessThan(750)
+    }
+    const s = useStore.getState()
+    const clashes = findConflicts(s.profiles, computeAllTrims(s.profiles), [], [], s.fittings)
+      .filter((c) => s.fittings.some((f) => f.id === c.a || f.id === c.b))
+    expect(clashes).toEqual([])
+  })
+})
+
+/**
+ * The two legs of an L face different ways, and a door already hung on one of them says
+ * nothing about the other. What a selection has already settled decides how much of that
+ * evidence counts: two uprights framing a door are coplanar, and the normal of that plane is
+ * the one direction the door can face, so only a door facing the same axis can confirm or
+ * reverse it. Without that, doors on the return leg were told to face along the long run —
+ * where their two uprights are twenty millimetres apart — and the opening came out too small
+ * to hang anything in at all.
+ */
+describe('the two legs of an L face different ways', () => {
+  it('a door on the return leg faces along the return leg', () => {
+    const D = 650, H = 880, W = 2400, inner = W - D, L = 1850
+    const frame: ProfileData[] = []
+    for (const x of [0, 600, 1200, 1800, W]) frame.push(P(x, 0, 0, x, H, 0))
+    for (const x of [0, 600, 1200, inner]) frame.push(P(x, 0, D, x, H, D))
+    for (const z of [1250, L]) for (const x of [inner, W]) frame.push(P(x, 0, z, x, H, z))
+    for (const y of [20, H - 20]) {
+      for (const [a, b] of [[0, 600], [600, 1200], [1200, 1800], [1800, W]]) frame.push(P(a, y, 0, b, y, 0))
+      for (const [a, b] of [[0, 600], [600, 1200], [1200, inner]]) frame.push(P(a, y, D, b, y, D))
+      for (const [a, b] of [[D, 1250], [1250, L]]) {
+        frame.push(P(inner, y, a, inner, y, b), P(W, y, a, W, y, b))
+      }
+      for (const x of [0, 600, 1200, inner]) frame.push(P(x, y, 0, x, y, D))
+    }
+    load(frame)
+
+    // first a door on the long run, so there is a precedent to be misled by
+    const along = frame.filter((p) => p.length === H && p.position[2] === D
+      && (p.position[0] === 0 || p.position[0] === 600))
+    useStore.getState().selectItems(along.map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'door', hinge: 'left', overlay: 'half' })).toBe(true)
+
+    // then one on the return leg, whose uprights are lined up along Z
+    const back = frame.filter((p) => p.length === H && p.position[0] === inner
+      && (p.position[2] === D || p.position[2] === 1250))
+    expect(back.length).toBe(2)
+    useStore.getState().selectItems(back.map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'door', hinge: 'left', overlay: 'half' })).toBe(true)
+
+    const [first, second] = useStore.getState().fittings
+    const dir = (f: { quaternion: number[] }) =>
+      new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...(f.quaternion as [number, number, number, number])))
+    expect(dir(first).z).toBeGreaterThan(0.9)        // the long run faces the room
+    expect(Math.abs(dir(second).x)).toBeGreaterThan(0.9)   // the return leg faces across it
+    expect(second.width).toBeGreaterThan(500)        // and it is an opening, not a 20 mm sliver
+  })
+})
