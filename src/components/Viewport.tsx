@@ -433,6 +433,16 @@ const ConflictMarker: React.FC<{ conflict: Conflict }> = ({ conflict }) => {
 const MismatchMarker: React.FC<{ at: THREE.Vector3 }> = ({ at }) => {
   const { camera, size } = useThree()
   const ref = useRef<THREE.Sprite>(null)
+  // a plain three object rather than a JSX element: `line` in JSX is the SVG one
+  const leader = useMemo(() => {
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()])
+    const mat = new THREE.LineBasicMaterial({ color: '#fbbf24', transparent: true, opacity: 0.55, depthTest: false })
+    const l = new THREE.Line(geo, mat)
+    l.renderOrder = 8
+    l.raycast = () => null
+    return l
+  }, [])
+  useEffect(() => () => { leader.geometry.dispose(); (leader.material as THREE.Material).dispose() }, [leader])
   const texture = useMemo(() => {
     const c = document.createElement('canvas')
     c.width = c.height = 64
@@ -446,17 +456,36 @@ const MismatchMarker: React.FC<{ at: THREE.Vector3 }> = ({ at }) => {
     return tex
   }, [])
   useEffect(() => () => texture.dispose(), [texture])
+  /**
+   * The marker stands beside the joint, not on it, with a thin line pointing back.
+   *
+   * It is drawn in front of everything on purpose — a warning you cannot see is no warning —
+   * and sitting on the joint that meant it covered the very thing it was telling you to go
+   * and look at. Zooming in only made it worse, because it keeps its size on screen. Up and
+   * to the right of the joint, in the camera's own frame, so it stays out of the way from
+   * every angle.
+   */
   useFrame(() => {
     if (!ref.current) return
-    const dist = ref.current.position.distanceTo(camera.position)
     const persp = camera as THREE.PerspectiveCamera
+    const dist = at.distanceTo(camera.position)
     const world = 2 * Math.tan(THREE.MathUtils.degToRad(persp.fov ?? 45) / 2) * dist * (26 / size.height)
     ref.current.scale.set(world, world, 1)
+
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0)
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1)
+    const beside = at.clone().addScaledVector(right, world * 1.1).addScaledVector(up, world * 1.1)
+    ref.current.position.copy(beside)
+    leader.geometry.setFromPoints([at.clone(), beside])
+    leader.geometry.computeBoundingSphere()
   })
   return (
-    <sprite ref={ref} position={at} renderOrder={8} raycast={() => null}>
-      <spriteMaterial map={texture} transparent depthTest={false} />
-    </sprite>
+    <>
+      <primitive object={leader} />
+      <sprite ref={ref} position={at} renderOrder={9} raycast={() => null}>
+        <spriteMaterial map={texture} transparent depthTest={false} />
+      </sprite>
+    </>
   )
 }
 

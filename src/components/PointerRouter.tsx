@@ -112,17 +112,25 @@ const PointerRouter: React.FC = () => {
      * empty, start a new member when it holds a profile — but either way the gizmo, which is
      * centred on the member and reaches out over both ends, must step aside.
      */
-    const reachingForEnd = (cursor: THREE.Vector2, rect: DOMRect, ray: THREE.Ray): boolean => {
+    /**
+     * The end handle of the one selected member, when the pointer is on it.
+     *
+     * It is asked of that member alone, and it wins over whatever else is drawn there. At a
+     * corner four members end at the same point and the pointer resolves to whichever the
+     * renderer put in front, so the handle you can see and are aiming at went to somebody
+     * else. A handle is drawn to be pressed; nothing in front of it should take the press.
+     */
+    const reachingForEnd = (cursor: THREE.Vector2, rect: DOMRect, ray: THREE.Ray): ScreenPick | null => {
       const store = useStore.getState()
-      if (store.selectedIds.length !== 1) return false
+      if (store.selectedIds.length !== 1) return null
       const only = store.profiles.find((p) => p.id === store.selectedIds[0])
-      if (!only) return false
+      if (!only || only.locked) return null
       const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height }, [only], [])
-      if (!hit || hit.id !== only.id) return false
+      if (!hit || hit.id !== only.id) return null
       const { start, end } = getProfileEndpoints(only)
       const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
       const zone = endGrabRadius(only.length, hit.point.distanceTo(camPos), camera, size.height)
-      return hit.point.distanceTo(start) < zone || hit.point.distanceTo(end) < zone
+      return hit.point.distanceTo(start) < zone || hit.point.distanceTo(end) < zone ? hit : null
     }
 
     /** Everything under the pointer, with whatever is actually drawn there put first */
@@ -369,7 +377,9 @@ const PointerRouter: React.FC = () => {
       // the one the hover is showing, which is the one under the highlight.
       const cyc = candidates.current
       const stepped = cyc.index > 0 && Math.hypot(e.clientX - cyc.x, e.clientY - cyc.y) <= 3 ? cyc.list[cyc.index] : null
-      const pickHere = stepped ?? candidatesFor(downCursor, downRect)[0] ?? null
+      // the selected member's own end handle takes the press ahead of anything drawn over it
+      const onHandle = reachingForEnd(downCursor, downRect, downRay)
+      const pickHere = onHandle ?? stepped ?? candidatesFor(downCursor, downRect)[0] ?? null
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
       const multi = e.ctrlKey || e.metaKey
       const pick = pickHere   // already resolved above; picking twice per press is wasted work
@@ -402,8 +412,17 @@ const PointerRouter: React.FC = () => {
       const item = partById(store, pick.id)
       if (!item) return
 
-      // Pressing an end face of a selected member stretches it instead of moving it
-      if (pick.kind === 'profile') {
+      // Pressing an end face of a member that was *already* selected stretches it instead of
+      // moving it. Already, not as of a moment ago: the line above may just have changed the
+      // selection to whatever the pointer landed on, and at a corner that is often not the
+      // member somebody meant to take hold of. One press did two things — moved the selection
+      // and started stretching the new one — so reaching for a rail in a crowded corner
+      // shortened an upright instead, and the stretch handle went to whichever member the
+      // renderer happened to draw in front.
+      //
+      // One press, one thing. The handle only ever appears on a member that is selected, so
+      // this is also what the picture has been promising all along.
+      if (pick.kind === 'profile' && alreadySelected) {
         const profile = store.profiles.find((p) => p.id === pick.id)!
         const { start, end } = getProfileEndpoints(profile)
         const nearStart = pick.point.distanceTo(start)
@@ -412,7 +431,7 @@ const PointerRouter: React.FC = () => {
         const camDist = pick.point.distanceTo(new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld))
         const zone = endGrabRadius(profile.length, camDist, camera, size.height)
         const grabEnd = nearStart < zone ? 'start' : nearEnd < zone ? 'end' : null
-        if (grabEnd && !profile.locked && store.selectedIds.includes(pick.id) && store.selectedIds.length === 1) {
+        if (grabEnd && !profile.locked && store.selectedIds.length === 1) {
           // the length the press itself implies, so the member does not jump by the
           // distance between the press point and the end face
           const dir = getProfileDir(profile)
