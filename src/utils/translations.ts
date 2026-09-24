@@ -8,6 +8,16 @@ const en = {
   length: 'Centerline length (mm)',
   cutLength: 'Cut length',
   section: 'Cut through',
+  buildOrder: 'Build order',
+  buildOrderHint: 'What goes on first. You cannot bolt a rail to a post that is not standing yet, so the order is a constraint rather than a preference.',
+  buildShow: 'steps',
+  buildHide: 'done',
+  buildStepOf: (n: number, of: number) => `step ${n} of ${of}`,
+  buildAtHeight: (mm: number) => `at ${mm} mm`,
+  buildParts: (members: number, parts: number, boards: number) =>
+    [members && `${members} members`, parts && `${parts} brackets`, boards && `${boards} boards and fittings`]
+      .filter(Boolean).join(' · ') || 'nothing',
+  buildSelect: 'select this step',
   sectionOff: 'off',
   sectionFlip: 'Keep the other side instead',
   sectionHint: 'Takes away everything on one side of a plane, so the inside can be seen without hiding any part in particular.',
@@ -304,6 +314,16 @@ const zh: typeof en = {
   length: '中心线长度 (mm)',
   cutLength: '下料长度',
   section: '剖切',
+  buildOrder: '装配顺序',
+  buildOrderHint: '先装哪根。立柱没立起来就拧不上横梁，所以顺序是约束，不是偏好。',
+  buildShow: '分步',
+  buildHide: '看完',
+  buildStepOf: (n: number, of: number) => `第 ${n} 步 / 共 ${of} 步`,
+  buildAtHeight: (mm: number) => `标高 ${mm} mm`,
+  buildParts: (members: number, parts: number, boards: number) =>
+    [members && `型材 ${members}`, parts && `角码 ${parts}`, boards && `板件与构件 ${boards}`]
+      .filter(Boolean).join(' · ') || '无',
+  buildSelect: '选中这一步的零件',
   sectionOff: '关',
   sectionFlip: '换成保留另一半',
   sectionHint: '沿一个平面把一侧整个切掉，不用先决定隐藏哪个零件就能看到内部。',
