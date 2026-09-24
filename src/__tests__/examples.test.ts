@@ -126,15 +126,20 @@ describe('the drawings that ship are buildable', () => {
      * drawn and not how they are used: a leaf turned about the wrong edge went through the
      * door beside it and into the frame, in a drawing that had just been declared clean.
      */
-    it('every door opens all the way without striking anything', () => {
+    it('every door and drawer opens all the way without striking anything, one at a time and all at once', () => {
       const { profiles, connectors, panels, fittings } = load(name)
       const trims = computeAllTrims(profiles)
+      const shut = new Set(findConflicts(profiles, trims, connectors, panels, fittings).map((c) => `${c.a}|${c.b}`))
       const struck: string[] = []
-      for (const door of fittings.filter((f) => f.kind === 'door')) {
-        const opened = fittings.map((f) => (f.id === door.id ? { ...f, open: 1 } : f))
+      for (const f of fittings) {
+        const opened = fittings.map((g) => (g.id === f.id ? { ...g, open: 1 } : g))
         for (const c of findConflicts(profiles, trims, connectors, panels, opened)) {
-          if (c.a === door.id || c.b === door.id) struck.push(`door@${door.position.map(Math.round)} ${c.depth}mm`)
+          if (c.a === f.id || c.b === f.id) struck.push(`${f.kind}@${f.position.map(Math.round)} ${c.depth}mm`)
         }
+      }
+      const everything = fittings.map((g) => ({ ...g, open: 1 }))
+      for (const c of findConflicts(profiles, trims, connectors, panels, everything)) {
+        if (!shut.has(`${c.a}|${c.b}`)) struck.push(`all open: ${c.a} × ${c.b} ${c.depth}mm`)
       }
       expect(struck).toEqual([])
     })

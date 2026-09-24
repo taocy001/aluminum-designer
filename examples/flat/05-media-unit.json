@@ -1411,7 +1411,7 @@
    "kind": "drawer",
    "position": [
     1200,
-    95,
+    105.0,
     200
    ],
    "quaternion": [
@@ -1421,7 +1421,7 @@
     0
    ],
    "width": 1180,
-   "height": 150,
+   "height": 130,
    "depth": 380,
    "frame": 20,
    "material": "ply",
@@ -1453,7 +1453,7 @@
    "kind": "drawer",
    "position": [
     1200,
-    395,
+    390.0,
     200
    ],
    "quaternion": [
@@ -1463,7 +1463,7 @@
     0
    ],
    "width": 1180,
-   "height": 150,
+   "height": 140,
    "depth": 380,
    "frame": 20,
    "material": "ply",

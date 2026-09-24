@@ -138,9 +138,13 @@ const Connector: React.FC<ConnectorProps> = ({
         </mesh>
       }
 
-      // ── 内角码 ── the same angle, smaller, for tight corners
+      // ── 内角码 ── two legs sunk in the two slots, meeting at the corner; nothing stands
+      //    proud of either face, so what shows is a short dark bar down each slot mouth
       case 'inside-corner':
-        return <group scale={0.7}><AngleBracket color={c} glow={glow} opacity={opacity} /></group>
+        return <>
+          <MeshPart geom="box" args={[20, 6, 6]} pos={[10, -3, 0]} color={c} glow={glow} opacity={opacity} />
+          <MeshPart geom="box" args={[6, 20, 6]} pos={[-3, 10, 0]} color={c} glow={glow} opacity={opacity} />
+        </>
 
       // ── 直连板 ── flat inline joining plate (end-to-end)
       case 'flat-plate':

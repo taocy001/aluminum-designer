@@ -61,6 +61,33 @@ function metalAhead(all: ProfileData[], mine: THREE.Box3, reach: number, axis: T
 }
 
 /**
+ * Is there a board standing across this opening, some way off along `axis`?
+ *
+ * Across means its thin side lies along the axis and its face covers the middle of the
+ * opening; a shelf lying flat inside the bay is not across anything.
+ */
+function boardAcross(mine: THREE.Box3, reach: number, axis: THREE.Vector3): boolean {
+  const k: 'x' | 'z' = Math.abs(axis.x) > 0.5 ? 'x' : 'z'
+  const across: 'x' | 'z' = k === 'x' ? 'z' : 'x'
+  const sign = axis[k] > 0 ? 1 : -1
+  const at = mine.getCenter(new THREE.Vector3())
+  for (const b of useStore.getState().panels) {
+    const q = new THREE.Quaternion(...b.quaternion).normalize()
+    const box = new THREE.Box3()
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      box.expandByPoint(new THREE.Vector3(sx * b.width / 2, sy * b.height / 2, sz * b.thickness / 2).applyQuaternion(q).add(new THREE.Vector3(...b.position)))
+    }
+    const size = box.getSize(new THREE.Vector3())
+    if (size[k] > 40) continue                                   // not standing across the axis
+    if (box.max[across] < at[across] || box.min[across] > at[across]) continue
+    if (box.max.y < at.y || box.min.y > at.y) continue
+    const away = (box.getCenter(new THREE.Vector3())[k] - at[k]) * sign
+    if (away > 1 && away <= reach) return true
+  }
+  return false
+}
+
+/**
  * Which way the fitting faces.
  *
  * The answer is already in the selection. Picking out an opening means picking the members
@@ -103,6 +130,12 @@ function outwardAxis(chosen: ProfileData[], section: number): { out: THREE.Vecto
    */
   const reach = Math.max(run.x, run.z)
   const facing = (axis: THREE.Vector3): THREE.Vector3 => {
+    // A board across the whole opening on one side and nothing on the other is the back.
+    // A wardrobe is symmetric front to back in its metal, so counting metal alone was a
+    // coin toss, and two drawers came out facing the back board they would open through.
+    const backAhead = boardAcross(mine, reach, axis)
+    const backBehind = boardAcross(mine, reach, axis.clone().negate())
+    if (backAhead !== backBehind) return backAhead ? axis.clone().negate() : axis.clone()
     const ahead = metalAhead(all, mine, reach, axis)
     const behind = metalAhead(all, mine, reach, axis.clone().negate())
     return ahead <= behind ? axis.clone() : axis.clone().negate()
@@ -283,6 +316,24 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
     span.y > section * 2.5 ? -section : 0,
     span.z > section * 2.5 ? -section : 0,
   ))
+
+  // A drawer box slides out through the front, so its opening is the clear height between
+  // the rails that cross it, not the uprights less a section: a 2040 on edge under a 2020
+  // bay stands forty high, and the bottom drawer of every such bay was cut to start at
+  // twenty and ran its box through the rail as it came out. A door hangs in front of the
+  // rails and covers them, so it keeps the opening it had.
+  if (req.kind === 'drawer') {
+    const mid = box.getCenter(new THREE.Vector3())
+    for (const p of cabinetOf(chosen)) {
+      if (ids.has(p.id)) continue
+      const m = memberBox(p)
+      if (m.max.y - m.min.y > 100) continue                    // an upright, not a rail
+      if (m.max.x <= box.min.x + 1 || m.min.x >= box.max.x - 1) continue
+      if (m.max.z <= framing.min.z + 1 || m.min.z >= framing.max.z - 1) continue
+      if ((m.min.y + m.max.y) / 2 < mid.y) box.min.y = Math.max(box.min.y, m.max.y)
+      else box.max.y = Math.min(box.max.y, m.min.y)
+    }
+  }
 
   const size = box.getSize(new THREE.Vector3())
   const aim = outwardAxis(chosen, section)

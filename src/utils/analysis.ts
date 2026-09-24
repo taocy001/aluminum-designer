@@ -129,8 +129,28 @@ export function findConflicts(
   }
   pairs.sort((p, q) => p[0] - q[0] || p[1] - q[1])
 
+  // A drawer behind a door is opened by opening the door first. Pulled out while the door
+  // is shut it would of course meet the door, and saying so paints a wardrobe's inside
+  // drawers red for being inside a wardrobe. A door swinging into its neighbour is still
+  // reported: the neighbour is beside it, not in front of it.
+  const firstFitting = parts + panels.length
+  const behindShutDoor = (i: number, j: number): boolean => {
+    if (i < firstFitting || j < firstFitting) return false
+    const a = fittings[i - firstFitting], b = fittings[j - firstFitting]
+    const [moving, door] = (a.open ?? 0) > 0 && b.kind === 'door' && !(b.open ?? 0) ? [a, b]
+      : (b.open ?? 0) > 0 && a.kind === 'door' && !(a.open ?? 0) ? [b, a] : [null, null]
+    if (!moving || !door) return false
+    const shut = fittingObb({ ...moving, open: 0 })
+    const leaf = fittingObb(door)
+    const d = shut.center.clone().sub(leaf.center)
+    // behind the leaf, and within its outline
+    return d.dot(leaf.axes[2]) < 0
+      && Math.abs(d.dot(leaf.axes[0])) <= leaf.half.x && Math.abs(d.dot(leaf.axes[1])) <= leaf.half.y
+  }
+
   const out: Conflict[] = []
   for (const [i, j] of pairs) {
+    if (behindShutDoor(i, j)) continue
     const tol = i >= parts || j >= parts ? BOARD_TOUCH_TOL
       : i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL
     const depth = obbPenetration(boxes[i].obb, boxes[j].obb, tol)
