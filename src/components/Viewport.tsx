@@ -414,13 +414,16 @@ const ConflictMarker: React.FC<{ conflict: Conflict }> = ({ conflict }) => {
   }, [w, h, d])
   useEffect(() => () => { geometries.box.dispose(); geometries.edges.dispose() }, [geometries])
 
+  // The fill sits where the clash is, behind whatever is in front of it: drawn over
+  // everything, it buried the very joint someone had zoomed in to put right. The outline
+  // still shows through, so a clash hidden behind a post can be found — and seen past.
   return (
     <group position={center} raycast={() => null}>
       <mesh geometry={geometries.box} renderOrder={6}>
-        <meshBasicMaterial color="#ff2d2d" transparent opacity={0.5} depthTest={false} />
+        <meshBasicMaterial color="#ff2d2d" transparent opacity={0.45} depthWrite={false} />
       </mesh>
       <lineSegments geometry={geometries.edges} renderOrder={7}>
-        <lineBasicMaterial color="#fecaca" transparent opacity={0.95} depthTest={false} />
+        <lineBasicMaterial color="#fecaca" transparent opacity={0.9} depthTest={false} />
       </lineSegments>
     </group>
   )
