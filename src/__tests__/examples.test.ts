@@ -25,7 +25,7 @@ interface Doc {
  * object and is judged as one.
  */
 const SHOWCASE = 'connector-demo'
-const loaded = import.meta.glob('../../examples/*.json', { eager: true }) as Record<string, { default: Doc }>
+const loaded = import.meta.glob(['../../examples/*.json', '../../examples/flat/*.json'], { eager: true }) as Record<string, { default: Doc }>
 const docs = new Map<string, Doc>()
 for (const [path, mod] of Object.entries(loaded)) {
   const name = path.split('/').pop()!

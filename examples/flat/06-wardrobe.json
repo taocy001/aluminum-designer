@@ -1,0 +1,1437 @@
+{
+ "version": 3,
+ "profiles": [
+  {
+   "id": "p-mueqfl044d",
+   "spec": "4040",
+   "length": 2400,
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfl614e",
+   "spec": "4040",
+   "length": 2400,
+   "position": [
+    0,
+    0,
+    600
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqflbb4f",
+   "spec": "4040",
+   "length": 2400,
+   "position": [
+    1000,
+    0,
+    0
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqflgx4g",
+   "spec": "4040",
+   "length": 2400,
+   "position": [
+    1000,
+    0,
+    600
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqflm74h",
+   "spec": "4040",
+   "length": 2400,
+   "position": [
+    2000,
+    0,
+    0
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfltd4i",
+   "spec": "4040",
+   "length": 2400,
+   "position": [
+    2000,
+    0,
+    600
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfm284j",
+   "spec": "2040",
+   "length": 1000,
+   "position": [
+    0,
+    20,
+    -10
+   ],
+   "quaternion": [
+    1.582653198353245e-16,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfm824k",
+   "spec": "2040",
+   "length": 1000,
+   "position": [
+    0,
+    20,
+    610
+   ],
+   "quaternion": [
+    1.582653198353245e-16,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfmdu4l",
+   "spec": "2040",
+   "length": 1000,
+   "position": [
+    1000,
+    20,
+    -10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    1.1102230246251565e-16
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfmlk4m",
+   "spec": "2040",
+   "length": 1000,
+   "position": [
+    1000,
+    20,
+    610
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    1.1102230246251565e-16
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfmrh4n",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    10,
+    20,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfmxi4o",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    1010,
+    20,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfn3j4p",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    2010,
+    20,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfnco4q",
+   "spec": "2040",
+   "length": 1000,
+   "position": [
+    0,
+    2380,
+    -10
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfnjj4r",
+   "spec": "2040",
+   "length": 1000,
+   "position": [
+    0,
+    2380,
+    610
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfnps4s",
+   "spec": "2040",
+   "length": 1000,
+   "position": [
+    1000,
+    2380,
+    -10
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfnw04t",
+   "spec": "2040",
+   "length": 1000,
+   "position": [
+    1000,
+    2380,
+    610
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfo3i4u",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    10,
+    2380,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfoe34v",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    1010,
+    2380,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqfokc4w",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    2010,
+    2380,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqphwp1o",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    1000,
+    1150,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqpic51p",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    2000,
+    1150,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqpj8f1r",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    1000,
+    1800,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqpjmp1s",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    2000,
+    1800,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqpkjv1u",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    0,
+    1750,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqpkzt1v",
+   "spec": "2040",
+   "length": 600,
+   "position": [
+    1000,
+    1750,
+    0
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqpu2f2f",
+   "spec": "2020",
+   "length": 990,
+   "position": [
+    10,
+    1700,
+    300
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mueqpusg2g",
+   "spec": "2020",
+   "length": 990,
+   "position": [
+    1010,
+    1100,
+    300
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  }
+ ],
+ "connectors": [
+  {
+   "id": "c-mueqqt0p4c",
+   "type": "foot",
+   "series": 40,
+   "position": [
+    0,
+    -20,
+    0
+   ],
+   "quaternion": [
+    -1.1102230246251563e-16,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "c-mueqqtag4d",
+   "type": "foot",
+   "series": 40,
+   "position": [
+    0,
+    -20,
+    600
+   ],
+   "quaternion": [
+    -1.1102230246251563e-16,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "c-mueqqti64e",
+   "type": "foot",
+   "series": 40,
+   "position": [
+    1000,
+    -20,
+    0
+   ],
+   "quaternion": [
+    -1.1102230246251563e-16,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "c-mueqqtsk4f",
+   "type": "foot",
+   "series": 40,
+   "position": [
+    1000,
+    -20,
+    600
+   ],
+   "quaternion": [
+    -1.1102230246251563e-16,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "c-mueqqu284g",
+   "type": "foot",
+   "series": 40,
+   "position": [
+    2000,
+    -20,
+    0
+   ],
+   "quaternion": [
+    -1.1102230246251563e-16,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "c-mueqqu9s4h",
+   "type": "foot",
+   "series": 40,
+   "position": [
+    2000,
+    -20,
+    600
+   ],
+   "quaternion": [
+    -1.1102230246251563e-16,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "c-mueqr37rbu",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    20,
+    40,
+    -10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865477,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ]
+  },
+  {
+   "id": "c-mueqr37rbv",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    20,
+    2360,
+    -10
+   ],
+   "quaternion": [
+    -1.5700924586837747e-16,
+    -1.7431527984210492e-32,
+    -0.7071067811865476,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37rbw",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    20,
+    40,
+    610
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865477,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ]
+  },
+  {
+   "id": "c-mueqr37rbx",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    20,
+    2360,
+    610
+   ],
+   "quaternion": [
+    -1.5700924586837747e-16,
+    -1.7431527984210492e-32,
+    -0.7071067811865476,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37rby",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    980,
+    40,
+    -10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865476,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37rbz",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    980,
+    2360,
+    -10
+   ],
+   "quaternion": [
+    -0.7071067811865477,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.5700924586837747e-16
+   ]
+  },
+  {
+   "id": "c-mueqr37sc0",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    980,
+    40,
+    610
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865476,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37sc1",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    980,
+    2360,
+    610
+   ],
+   "quaternion": [
+    -0.7071067811865477,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.5700924586837747e-16
+   ]
+  },
+  {
+   "id": "c-mueqr37sc2",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1980,
+    40,
+    -10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37sc3",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1980,
+    2360,
+    -10
+   ],
+   "quaternion": [
+    -0.7071067811865477,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.5700924586837747e-16
+   ]
+  },
+  {
+   "id": "c-mueqr37sc4",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1980,
+    40,
+    610
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37sc5",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1980,
+    2360,
+    610
+   ],
+   "quaternion": [
+    -0.7071067811865477,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.5700924586837747e-16
+   ]
+  },
+  {
+   "id": "c-mueqr37sc6",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    20,
+    84,
+    -10
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251565e-16,
+    -5.595524044110789e-17,
+    1
+   ]
+  },
+  {
+   "id": "c-mueqr37tc7",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    20,
+    84,
+    610
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251565e-16,
+    -5.595524044110789e-17,
+    1
+   ]
+  },
+  {
+   "id": "c-mueqr37tc8",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1980,
+    84,
+    -10
+   ],
+   "quaternion": [
+    3.925231146709438e-17,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251565e-16
+   ]
+  },
+  {
+   "id": "c-mueqr37tc9",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1980,
+    84,
+    610
+   ],
+   "quaternion": [
+    3.925231146709438e-17,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251565e-16
+   ]
+  },
+  {
+   "id": "c-mueqr37tca",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    10,
+    40,
+    20
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37tcb",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    10,
+    40,
+    580
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37tcc",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1010,
+    40,
+    20
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37ucd",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1010,
+    40,
+    580
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37uce",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    2010,
+    40,
+    20
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37ucf",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    2010,
+    40,
+    580
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr37ucg",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    20,
+    2316,
+    -10
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ]
+  },
+  {
+   "id": "c-mueqr37uch",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    20,
+    2316,
+    610
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ]
+  },
+  {
+   "id": "c-mueqr37uci",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1980,
+    2316,
+    -10
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr37vcj",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1980,
+    2316,
+    610
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr37vck",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    10,
+    2360,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr37vcl",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    10,
+    2360,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr37vcm",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1010,
+    2360,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr37vcn",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1010,
+    2360,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr37vco",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    2010,
+    2360,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr37wcp",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    2010,
+    2360,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr399k4",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    990,
+    1160,
+    20
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr399k5",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    990,
+    1160,
+    580
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr399k6",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1990,
+    1160,
+    20
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr399k7",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1990,
+    1160,
+    580
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mueqr39ak8",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    990,
+    1790,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr39ak9",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    990,
+    1790,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr39aka",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1990,
+    1790,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr39akb",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1990,
+    1790,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr39akc",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    -10,
+    1740,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr39akd",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    10,
+    1740,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr39bke",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    990,
+    1740,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mueqr39bkf",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    990,
+    1740,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  }
+ ],
+ "panels": [
+  {
+   "id": "b-mueqpip11q",
+   "width": 560,
+   "height": 960,
+   "thickness": 18,
+   "position": [
+    1500,
+    1150,
+    300
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mueqpk2c1t",
+   "width": 560,
+   "height": 960,
+   "thickness": 18,
+   "position": [
+    1500,
+    1800,
+    300
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mueqpldb1w",
+   "width": 560,
+   "height": 960,
+   "thickness": 18,
+   "position": [
+    500,
+    1750,
+    300
+   ],
+   "quaternion": [
+    0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "material": "mdf"
+  },
+  {
+   "id": "b-mueqqibw3c",
+   "width": 2040,
+   "height": 2400,
+   "thickness": 18,
+   "position": [
+    1000,
+    1200.0000000000002,
+    -29
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "material": "mdf"
+  }
+ ],
+ "fittings": [
+  {
+   "id": "f-mueqqdmq32",
+   "kind": "door",
+   "position": [
+    500,
+    1200.0000000000002,
+    260
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "width": 960,
+   "height": 2320.0000000000005,
+   "depth": 640,
+   "frame": 40,
+   "material": "mdf",
+   "open": 0,
+   "hinge": "left",
+   "hingeType": "cup",
+   "overlay": "full",
+   "swing": 110
+  },
+  {
+   "id": "f-mueqqe1b33",
+   "kind": "door",
+   "position": [
+    1500,
+    1200.0000000000002,
+    260
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "width": 960,
+   "height": 2320.0000000000005,
+   "depth": 640,
+   "frame": 40,
+   "material": "mdf",
+   "open": 0,
+   "hinge": "right",
+   "hingeType": "cup",
+   "overlay": "full",
+   "swing": 110
+  }
+ ]
+}

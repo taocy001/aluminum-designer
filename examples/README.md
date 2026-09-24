@@ -101,13 +101,16 @@
 
 ---
 
-## apartment-12-units — 100㎡ 两室两厅，12 组柜子
+## flat/ — 100㎡ 两室两厅，12 组柜子，12 张图
 
 ![12 组柜子](apartment-12-units-overview.png)
 
 整套房子的全部柜体，**在有头浏览器里用点击一根一根画出来的**，不是写进数据里的。
 358 根型材、636 个连接件（568 内角码 + 68 调节脚）、38 块板、29 个构件（20 扇门 + 9 只抽屉），
 下料总长 **256.36 m**。
+
+一组一张图，文件名前的编号就是下表的顺序。原来是一张图装下全部 12 组，挪一根型材要把
+358 根的接头都重算一遍，拖动明显发卡；而实际上谁也不会一次做一整套房子的柜子。
 
 | 柜体 | 宽×深×高 | 内容 |
 |---|---|---|
@@ -124,12 +127,22 @@
 | 餐边柜 | 1200×400×2000 | 三道隔板 |
 | 卫生间浴室柜 | 800×450×550 | 两扇门 + 一道隔板 |
 
-| 文件 | 内容 |
+| 文件 | 柜体 |
 |---|---|
-| `apartment-12-units.json` | 工程文件，侧栏「导入」直接打开 |
-| `apartment-12-units-bom.csv` | 物料清单 |
-| `apartment-12-units-cutting.csv` | 下料单，一根原料一行 |
-| `apartment-12-units.dxf` | 三视图 + 38 块板的展开下料图 |
+| `flat/01-kitchen-base.json` | 厨房地柜 |
+| `flat/02-kitchen-wall.json` | 厨房吊柜（离地 1550） |
+| `flat/03-tall-unit.json` | 冰箱+蒸烤箱高柜 |
+| `flat/04-shoe-cupboard.json` | 玄关鞋柜 |
+| `flat/05-media-unit.json` | 客厅电视柜 |
+| `flat/06-wardrobe.json` | 主卧衣柜 |
+| `flat/07-desk.json` | 次卧书桌 |
+| `flat/08-bookshelf.json` | 书桌上书架（离地 1300） |
+| `flat/09-laundry.json` | 阳台洗衣柜 |
+| `flat/10-wardrobe-small.json` | 次卧衣柜 |
+| `flat/11-sideboard.json` | 餐边柜 |
+| `flat/12-vanity.json` | 卫生间浴室柜 |
+
+每张图在侧栏「导入」直接打开；物料清单、下料单、DXF 图纸从侧栏「导出」生成。
 
 ### 工具自检的结果
 
@@ -175,7 +188,7 @@
 
 留一张有已知缺陷的图当"示例"，和"示例应该是可施工的"是矛盾的。
 厨房这个题目现在由 [L 形橱柜](kitchen-l-shaped.png) 承担，整套住宅由
-[apartment-12-units](apartment-12-units-overview.png) 承担，两者都过了全部四项检查。
+[flat/](flat/) 里的 12 张图承担，两者都过了全部四项检查。
 
 它那一节里讲的通用道理——角码为什么落在槽线上、为什么 2040 配 4040 而 2020 不配、
 抽屉为什么是构件不是六块散板——都在 [`docs/FEATURES.md`](../docs/FEATURES.md) 里，
