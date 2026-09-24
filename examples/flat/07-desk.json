@@ -1043,7 +1043,7 @@
    "kind": "drawer",
    "position": [
     1150,
-    110,
+    120.0,
     300
    ],
    "quaternion": [
@@ -1053,7 +1053,7 @@
     0
    ],
    "width": 480,
-   "height": 180,
+   "height": 160,
    "depth": 580,
    "frame": 20,
    "material": "ply",
