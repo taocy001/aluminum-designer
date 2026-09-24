@@ -169,9 +169,33 @@ export function computeTrims(profile: ProfileData, all: ProfileData[]): ProfileT
   return { start: s, end: e, cutLength }
 }
 
+/** how far from an end anything that can decide its trim can be: a corner claim reaches
+ *  CORNER_TOL past the partner's end, and no section is wider than 40 (mm) */
+const REACH = CORNER_TOL + 60
+
 export function computeAllTrims(all: ProfileData[]): Map<string, ProfileTrims> {
+  // Each end only ever meets what is near it, so each member is resolved against its
+  // neighbours rather than the whole drawing: every member against every other took 81 ms
+  // on the twelve-cabinet flat, on every frame of a drag. The answer is the same.
+  const boxes = all.map((p) => {
+    const { start, end } = getProfileEndpoints(p)
+    return new THREE.Box3().setFromPoints([start, end]).expandByScalar(REACH)
+  })
+  const order = all.map((_, i) => i).sort((a, b) => boxes[a].min.x - boxes[b].min.x)
+  const near: number[][] = all.map(() => [])
+  for (let a = 0; a < order.length; a++) {
+    const A = boxes[order[a]]
+    for (let b = a + 1; b < order.length && boxes[order[b]].min.x <= A.max.x; b++) {
+      if (!A.intersectsBox(boxes[order[b]])) continue
+      near[order[a]].push(order[b]); near[order[b]].push(order[a])
+    }
+  }
   const map = new Map<string, ProfileTrims>()
-  for (const p of all) map.set(p.id, computeTrims(p, all))
+  all.forEach((p, i) => {
+    // neighbours in drawing order, so ties are broken exactly as before
+    const mine = [...near[i], i].sort((a, b) => a - b).map((k) => all[k])
+    map.set(p.id, computeTrims(p, mine))
+  })
   return map
 }
 

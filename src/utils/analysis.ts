@@ -104,21 +104,42 @@ export function findConflicts(
   for (const b of panels) boxes.push({ id: b.id, obb: panelOBB(b) })
   for (const f of fittings) boxes.push({ id: f.id, obb: fittingObb(f) })
 
-  const out: Conflict[] = []
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
-      const bothParts = i >= members && j >= members
-      const tol = i >= parts || j >= parts ? BOARD_TOUCH_TOL
-        : i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL
-      const depth = obbPenetration(boxes[i].obb, boxes[j].obb, tol)
-      if (depth <= 0) continue
-      void bothParts
-      out.push({
-        a: boxes[i].id, b: boxes[j].id,
-        depth: Math.round(depth * 100) / 100,
-        region: regionOf(boxes[i].obb, boxes[j].obb),
-      })
+  // Sweep and prune: only pairs whose axis-aligned outlines overlap along X are put to the
+  // exact test. Every pair against every other was 191 ms on a flat of twelve cabinets, and
+  // it ran on every frame of a drag. Pairs come out in the same order as before.
+  const spans = boxes.map((b, i) => {
+    let r = 0
+    for (let k = 0; k < 3; k++) r += Math.abs(b.obb.axes[k].x) * b.obb.half.getComponent(k)
+    let ry = 0, rz = 0
+    for (let k = 0; k < 3; k++) {
+      ry += Math.abs(b.obb.axes[k].y) * b.obb.half.getComponent(k)
+      rz += Math.abs(b.obb.axes[k].z) * b.obb.half.getComponent(k)
     }
+    const c = b.obb.center
+    return { i, x0: c.x - r - 2, x1: c.x + r + 2, y0: c.y - ry - 2, y1: c.y + ry + 2, z0: c.z - rz - 2, z1: c.z + rz + 2 }
+  }).sort((a, b) => a.x0 - b.x0)
+  const pairs: Array<[number, number]> = []
+  for (let a = 0; a < spans.length; a++) {
+    const A = spans[a]
+    for (let b = a + 1; b < spans.length && spans[b].x0 <= A.x1; b++) {
+      const B = spans[b]
+      if (B.y0 > A.y1 || A.y0 > B.y1 || B.z0 > A.z1 || A.z0 > B.z1) continue
+      pairs.push(A.i < B.i ? [A.i, B.i] : [B.i, A.i])
+    }
+  }
+  pairs.sort((p, q) => p[0] - q[0] || p[1] - q[1])
+
+  const out: Conflict[] = []
+  for (const [i, j] of pairs) {
+    const tol = i >= parts || j >= parts ? BOARD_TOUCH_TOL
+      : i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL
+    const depth = obbPenetration(boxes[i].obb, boxes[j].obb, tol)
+    if (depth <= 0) continue
+    out.push({
+      a: boxes[i].id, b: boxes[j].id,
+      depth: Math.round(depth * 100) / 100,
+      region: regionOf(boxes[i].obb, boxes[j].obb),
+    })
   }
   return out
 }
