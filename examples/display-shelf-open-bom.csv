@@ -1,0 +1,12 @@
+﻿Category,Item,Spec,Cut length (mm),Quantity
+Profile,2020,2020,1600,4
+Profile,2020,2020,1180,4
+Profile,2020,2020,380,10
+Connector,"内角码",20 系列,,28
+Fastener,"螺栓 M5×10",20,,56
+Fastener,"T型螺母 M5",20,,56
+Board,"1180 × 380 mm","密度板 18mm",,3
+Suggested,"端盖 20 系列（按自由端推算）",20,,8
+Summary,Overall WxDxH,1220x420x1600,,
+Summary,Total cut length (mm),,14920,
+Summary,Board area (m2),,1.35,

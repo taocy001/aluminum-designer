@@ -1,0 +1,19 @@
+﻿Category,Item,Spec,Cut length (mm),Quantity
+Profile,2040,2040,960,3
+Profile,2040,2040,560,5
+Profile,2040,2040,460,4
+Profile,4040,4040,680,1
+Profile,4040,4040,640,5
+Connector,"内角码",20 系列,,29
+Connector,"抽屉滑轨 560mm",侧装一对,,3
+Fastener,"螺栓 M5×10",20,,58
+Fastener,"T型螺母 M5",20,,58
+Board,"405 × 154 mm","多层板 15mm",,6
+Board,"510 × 405 mm","多层板 15mm",,3
+Board,"540 × 154 mm","多层板 15mm",,6
+Board,"490 × 210 mm","多层板 18mm",,3
+Suggested,"L型角码（按对接端推算）",,,6
+Suggested,"端盖 40 系列（按自由端推算）",40,,1
+Summary,Overall WxDxH,1540x640x720,,
+Summary,Total cut length (mm),,11400,
+Summary,Board area (m2),,1.80,
