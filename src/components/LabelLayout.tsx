@@ -46,26 +46,50 @@ function partOf(o: THREE.Object3D | null): string | null {
 const GAP = 3
 /** how often the layout is redone while nothing is moving — doors open, parts are added (ms) */
 const IDLE_MS = 600
-/** and at most this often while the view is moving (ms) */
-const BUSY_MS = 90
+/**
+ * How long the view has to have been still before the labels are laid out again (ms).
+ *
+ * Laying out hundreds of labels means a ray per label through every part, and doing it while
+ * the view was moving took a flat of twelve cabinets from 55 ms a frame to 276. While the
+ * view moves the labels keep what they had; they are sorted out once it stops.
+ */
+const SETTLE_MS = 120
 
 const LabelLayout: React.FC = () => {
   const { camera, scene, size } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
-  const last = useRef({ at: 0, view: new THREE.Matrix4() })
+  const last = useRef({ at: 0, view: new THREE.Matrix4(), movedAt: 0, pending: true })
 
   useFrame(() => {
     const now = performance.now()
-    const moved = !last.current.view.equals(camera.matrixWorld)
-    const wait = moved || dirty ? BUSY_MS : IDLE_MS
-    if (now - last.current.at < wait) return
-    last.current.at = now
-    last.current.view.copy(camera.matrixWorld)
-    dirty = false
+    const st = last.current
+    if (!st.view.equals(camera.matrixWorld)) {
+      st.view.copy(camera.matrixWorld); st.movedAt = now; st.pending = true
+      return
+    }
+    if (dirty) { dirty = false; st.pending = true }
+    if (st.pending ? now - st.movedAt < SETTLE_MS : now - st.at < IDLE_MS) return
+    st.at = now
+    st.pending = false
 
-    // what can stand in front of a label: the parts themselves, as drawn
-    const solids: THREE.Object3D[] = []
-    scene.traverseVisible((o) => { if ((o as THREE.Mesh).isMesh && partOf(o)) solids.push(o) })
+    // what can stand in front of a label: the parts themselves, as drawn, each with its
+    // bounding sphere in the world worked out once here rather than once per ray
+    // Each part as its own box, in its own frame: whether a label is behind a member is a
+    // question about the member's outline, not about the triangles of its T-slots, and
+    // asking the triangles made the layout after every stop take a third of a second.
+    const solids: Array<{ id: string; sphere: THREE.Sphere; box: THREE.Box3; toLocal: THREE.Matrix4 }> = []
+    scene.traverseVisible((o) => {
+      const m = o as THREE.Mesh
+      if (!m.isMesh) return
+      const id = partOf(o)
+      if (!id) return
+      const g = m.geometry
+      if (!g.boundingSphere) g.computeBoundingSphere()
+      if (!g.boundingBox) g.computeBoundingBox()
+      solids.push({ id, sphere: g.boundingSphere!.clone().applyMatrix4(m.matrixWorld), box: g.boundingBox!, toLocal: m.matrixWorld.clone().invert() })
+    })
+    const local = new THREE.Ray()
+    const hitAt = new THREE.Vector3()
 
     const eye = camera.position
     const cam = camera as THREE.PerspectiveCamera
@@ -93,7 +117,16 @@ const LabelLayout: React.FC = () => {
         const dist = toward.length()
         raycaster.set(eye, toward.normalize())
         raycaster.far = dist
-        const blocked = raycaster.intersectObjects(solids, false).some((hit) => partOf(hit.object) !== e.owner)
+        let blocked = false
+        for (const s of solids) {
+          if (s.id === e.owner || !raycaster.ray.intersectsSphere(s.sphere)) continue
+          const near = raycaster.ray.origin.distanceTo(s.sphere.center) - s.sphere.radius
+          if (near > dist) continue
+          local.copy(raycaster.ray).applyMatrix4(s.toLocal)
+          if (!local.intersectBox(s.box, hitAt)) continue
+          // back in the world, is the box struck before the label is reached?
+          if (hitAt.applyMatrix4(s.toLocal.clone().invert()).distanceTo(eye) < dist) { blocked = true; break }
+        }
         if (blocked) return false
         placed.push(box)
         return true
