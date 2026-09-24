@@ -37,6 +37,9 @@ function facingLabel(p: ProfileData): string {
   return `${long} → ${value >= 0 ? '+' : '−'}${name}`
 }
 
+/** every button that reads or writes a file wears the same coat */
+const FILE_BTN = 'flex items-center justify-center gap-1.5 py-2 px-1 bg-slate-800/60 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800/60 border border-white/5 text-slate-300 rounded-lg text-[10px] font-bold'
+
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
 
 
@@ -1199,53 +1202,61 @@ const Sidebar: React.FC = () => {
                 <span className="font-bold text-emerald-400" data-testid="nesting-yield">{(nesting.yield * 100).toFixed(1)}%</span>
               </div>
             </div>
-            <button onClick={handleExportCutting} data-testid="export-cutting" title={t.hintExportCutting}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
-              <Scissors size={12} /> {t.exportCutting}
-            </button>
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={handleExportBOM} disabled={profiles.length === 0} data-testid="export-bom" title={t.hintExportBOM}
-            className="flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
-            <Download size={14} /> {t.exportBOM}
-          </button>
-          <button onClick={handleExportDxf} disabled={profiles.length + panels.length + fittings.length === 0}
-            data-testid="export-dxf" title={t.hintExportDxf}
-            className="flex items-center justify-center gap-2 py-2 bg-blue-600/70 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
-            <FileCode size={14} /> {t.exportDxf}
-          </button>
+        {/* Four files leave here, all peers: none is more of a deliverable than the others,
+            so none is a bigger or bluer button. The file row below is about the drawing
+            itself; the two quiet words at the foot are for when things go wrong. */}
+        <div className="space-y-1 pt-2 border-t border-white/5">
+          <span className="text-[10px] text-slate-500 uppercase font-bold">{t.exportsGroup}</span>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button onClick={handleExportBOM} disabled={profiles.length === 0} data-testid="export-bom" title={t.hintExportBOM} className={FILE_BTN}>
+              <Download size={13} className="text-blue-400" /> {t.exportBOM}
+            </button>
+            <button onClick={handleExportCutting} disabled={bom.profiles.length === 0} data-testid="export-cutting" title={t.hintExportCutting} className={FILE_BTN}>
+              <Scissors size={13} className="text-blue-400" /> {t.exportCutting}
+            </button>
+            <button onClick={handleExportDxf} disabled={profiles.length + panels.length + fittings.length === 0}
+              data-testid="export-dxf" title={t.hintExportDxf} className={FILE_BTN}>
+              <FileCode size={13} className="text-blue-400" /> {t.exportDxf}
+            </button>
+            <button onClick={handleExportStep} disabled={profiles.length + panels.length + fittings.length === 0}
+              data-testid="export-step" title={t.hintExportStep} className={FILE_BTN}>
+              <Box size={13} className="text-blue-400" /> {t.exportStep}
+            </button>
+          </div>
         </div>
-        <button onClick={handleExportStep} disabled={profiles.length + panels.length + fittings.length === 0}
-          data-testid="export-step" title={t.hintExportStep}
-          className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600/40 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
-          <Box size={14} /> {t.exportStep}
-        </button>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => handleSaveProject(false)} data-testid="export-project" title={t.hintSave}
-            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
-            <Save size={13} /> {savedName ?? t.exportJSON}
-          </button>
-          <button onClick={handleShare} title={t.hintShare} data-testid="share-link"
-            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
-            <Link2 size={13} /> {t.share}
-          </button>
-          <button onClick={handleOpenProject} title={t.hintImport} data-testid="import-project"
-            className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
-            <Upload size={13} /> {t.importJSON}
-          </button>
-          <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportJSON(f); e.target.value = '' }} />
+
+        <div className="space-y-1 pt-2 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-500 uppercase font-bold">{t.projectGroup}</span>
+            {savedName && (
+              <button onClick={() => handleSaveProject(true)} data-testid="save-as" title={t.hintSaveAs}
+                className="text-[10px] text-slate-500 hover:text-slate-300">{t.saveAs}</button>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            <button onClick={() => handleSaveProject(false)} data-testid="export-project" title={savedName ? `${t.hintSave} — ${savedName}` : t.hintSave} className={FILE_BTN}>
+              <Save size={13} /> <span className="truncate">{savedName ?? t.exportJSON}</span>
+            </button>
+            <button onClick={handleOpenProject} title={t.hintImport} data-testid="import-project" className={FILE_BTN}>
+              <Upload size={13} /> {t.importJSON}
+            </button>
+            <button onClick={handleShare} title={t.hintShare} data-testid="share-link" className={FILE_BTN}>
+              <Link2 size={13} /> {t.share}
+            </button>
+            <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportJSON(f); e.target.value = '' }} />
+          </div>
         </div>
-        {savedName && (
-          <button onClick={() => handleSaveProject(true)} data-testid="save-as" title={t.hintSaveAs}
-            className="w-full py-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-300">{t.saveAs}</button>
-        )}
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={handleLogDebug} className="flex items-center justify-center gap-2 py-2 bg-amber-600/20 hover:bg-amber-600/40 text-amber-500 border border-amber-600/30 rounded-lg text-[10px] font-bold"><Bug size={14} /> LOG</button>
+
+        <div className="flex items-center justify-between pt-1 text-[10px]">
+          <button onClick={handleLogDebug} title={t.hintDebugLog} className="flex items-center gap-1 text-slate-600 hover:text-amber-400">
+            <Bug size={11} /> {t.debugLog}
+          </button>
           <button onClick={handleClearAll} data-testid="clear-all" title={t.hintClearAll}
-            className={`flex items-center justify-center gap-2 py-2 border rounded-lg text-[10px] font-bold transition-all ${confirmClear ? 'bg-red-600 text-white border-red-500' : 'bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-400 border-white/5'}`}>
-            <Eraser size={14} /> {confirmClear ? t.clearConfirm : t.clear}
+            className={`flex items-center gap-1 rounded px-1.5 py-0.5 transition-all ${confirmClear ? 'bg-red-600 text-white font-bold' : 'text-slate-600 hover:text-red-400'}`}>
+            <Eraser size={11} /> {confirmClear ? t.clearConfirm : t.clear}
           </button>
         </div>
         </div>
