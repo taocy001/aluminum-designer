@@ -295,3 +295,25 @@ test.describe('Floor and group rules after the rule change', () => {
     expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual([0.71, 0, -0.71])
   })
 })
+
+test.describe('The panel counts what the canvas paints', () => {
+  test.beforeEach(async ({ page }) => { await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200]) })
+
+  // The canvas asked about boards and fittings and the panel did not, so a board through a
+  // post was painted red while the count beside it said there was nothing wrong.
+  test('a board through a post is counted, and pressing the count selects the board', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawMember(page, [300, 0, 0], [300, 600, 0])
+    await drawMember(page, [900, 0, 0], [900, 600, 0])   // the count shows once there are two
+    await toNavigate(page)
+    await page.evaluate(() => (window as any).__aluframe.store.getState().addPanels([{
+      id: 'b-through', width: 400, height: 300, thickness: 18,
+      position: [300, 300, 0], quaternion: [0, 0, 0, 1], material: 'mdf',
+    }]))
+    const c = await conflicts(page)
+    expect(c.ids).toContain('b-through')
+    await expect(page.getByTestId('bom-penetrations')).toHaveText('1 处')
+    await page.getByTestId('bom-penetrations').click()
+    expect((await store(page)).selectedIds).toContain('b-through')
+  })
+})

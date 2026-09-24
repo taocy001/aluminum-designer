@@ -162,7 +162,9 @@ const Sidebar: React.FC = () => {
     return () => clearTimeout(id)
   }, [confirmClear])
 
-  const { trims, conflicts, conflictIds, mismatches, mismatchIds } = useMemo(() => analyzeFrame(profiles, connectors), [profiles, connectors])
+  // the same question the canvas asks: a door through a post is as much a clash as a rail through one
+  const { trims, conflicts, conflictIds, mismatches, mismatchIds } = useMemo(
+    () => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings])
   const selectedIdsSignature = selectedIds.join(',')
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
