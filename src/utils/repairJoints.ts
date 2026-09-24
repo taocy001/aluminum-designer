@@ -108,6 +108,34 @@ function slid(p: ProfileData, axis: THREE.Vector3, by: number): ProfileData {
   return { ...p, position: [Math.round(at.x * 10) / 10, Math.round(at.y * 10) / 10, Math.round(at.z * 10) / 10] }
 }
 
+/** Collect collinear members connected end-to-end so alignment can move the full run together. */
+function runOf(profiles: ProfileData[], who: ProfileData): Set<string> {
+  const run = new Set([who.id])
+  const dir = getProfileDir(who)
+  const queue = [who]
+  while (queue.length) {
+    const m = queue.pop()!
+    const em = getProfileEndpoints(m)
+    for (const p of profiles) {
+      if (run.has(p.id) || Math.abs(getProfileDir(p).dot(dir)) < 0.999) continue
+      const ep = getProfileEndpoints(p)
+      const meets = [em.start, em.end].some((a) => [ep.start, ep.end].some((b) => a.distanceTo(b) <= 1.5))
+      if (meets) { run.add(p.id); queue.push(p) }
+    }
+  }
+  return run
+}
+
+/** how bad the drawing is around several members at once */
+function scoreRun(profiles: ProfileData[], ids: Set<string>): Score {
+  const total: Score = { bad: 0, clashes: 0, links: 0 }
+  for (const id of ids) {
+    const s = scoreAround(profiles, id)
+    total.bad += s.bad; total.clashes += s.clashes; total.links += s.links
+  }
+  return total
+}
+
 export interface Repair {
   /** joints that could not be bolted before, and after */
   before: number
@@ -148,14 +176,21 @@ export function planRepair(input: ProfileData[]): { profiles: ProfileData[]; rep
         const across = new THREE.Vector3().crossVectors(getProfileDir(joint.a), getProfileDir(joint.b))
         if (across.lengthSq() < 1e-6) continue
         across.normalize()
-        for (const by of [5, -5, 10, -10, 15, -15, 20, -20, 30, -30, MAX_SHIFT, -MAX_SHIFT]) {
-          const shifted = profiles.map((p) => (p.id === who.id ? slid(p, across, by) : p))
-          const after = scoreAround(shifted, who.id)
-          if (better(now, after) && !worse(now, after)) {
-            profiles = shifted
-            steps.push({ id: who.id, how: 'slid', by })
-            movedSomething = true; done = true; break
+        // alone first; then, if it is one of a line of members end to end, the whole line
+        const run = runOf(profiles, who)
+        const groups = run.size > 1 ? [new Set([who.id]), run] : [new Set([who.id])]
+        for (const group of groups) {
+          const was = scoreRun(profiles, group)
+          for (const by of [5, -5, 10, -10, 15, -15, 20, -20, 30, -30, MAX_SHIFT, -MAX_SHIFT]) {
+            const shifted = profiles.map((p) => (group.has(p.id) ? slid(p, across, by) : p))
+            const after = scoreRun(shifted, group)
+            if (better(was, after) && !worse(was, after)) {
+              profiles = shifted
+              for (const id of group) steps.push({ id, how: 'slid', by })
+              movedSomething = true; done = true; break
+            }
           }
+          if (done) break
         }
         if (done) break
       }
