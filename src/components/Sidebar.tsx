@@ -11,9 +11,9 @@ import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
 import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS, specDims } from '../utils/specUtils'
-import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize } from '../utils/panelOps'
+import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize, setPanelsMaterial, setPanelsSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
-import { addFittingFromSelection, setFittingOpen } from '../utils/fittingOps'
+import { addFittingFromSelection, setFittingOpen, setFittingsOpen, updateFittings } from '../utils/fittingOps'
 import { downloadText, openProject, saveProject, savedFileName } from '../utils/projectFile'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
@@ -236,6 +236,8 @@ const Sidebar: React.FC = () => {
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
   const selectedPanel = panels.find((b) => selectedIds.includes(b.id))
+  /** every board in the selection, so an edit applies to all of them rather than the first */
+  const pickedPanels = panels.filter((b) => selectedIds.includes(b.id))
   // the member's far end, derived: the model keeps a start, a direction and a length
   const selectedEnd: [number, number, number] = selectedProfile
     ? (() => { const e = getProfileEndpoints(selectedProfile).end; return [e.x, e.y, e.z] })()
@@ -249,6 +251,9 @@ const Sidebar: React.FC = () => {
 
   const clashes = useMemo(() => swingClashes(fittings), [fittings])
   const selectedFitting = fittings.find((f) => selectedIds.includes(f.id))
+  const pickedFittings = fittings.filter((f) => selectedIds.includes(f.id))
+  const pickedPanelIds = () => pickedPanels.map((b) => b.id)
+  const pickedFittingIds = () => pickedFittings.map((f) => f.id)
   const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors])
   const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
@@ -748,6 +753,9 @@ const Sidebar: React.FC = () => {
                 the same way they are named on the drawing: across, up, and into the cabinet. */}
             {selectedFitting && (
               <div className="space-y-2" data-testid="fitting-props">
+                {pickedFittings.length > 1 && (
+                  <div className="text-[10px] text-sky-400 font-mono" data-testid="fitting-multi">{t.editingCount(pickedFittings.length)}</div>
+                )}
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{selectedFitting.kind === 'drawer' ? t.drawerKind : t.doorKind}</span>
                   <span className="font-mono text-sky-400">{selectedFitting.kind === 'door'
@@ -757,19 +765,19 @@ const Sidebar: React.FC = () => {
                 <div className="grid grid-cols-3 gap-1">
                   <NumField label="W" value={selectedFitting.width} step={10}
                     onLive={(v) => v >= 60 && livePart(selectedFitting.id, { width: v })}
-                    onCommit={(v) => updateFitting(selectedFitting.id, { width: Math.max(60, v) })} />
+                    onCommit={(v) => updateFittings(pickedFittingIds(), { width: Math.max(60, v) })} />
                   <NumField label="H" value={selectedFitting.height} step={10}
                     onLive={(v) => v >= 60 && livePart(selectedFitting.id, { height: v })}
-                    onCommit={(v) => updateFitting(selectedFitting.id, { height: Math.max(60, v) })} />
+                    onCommit={(v) => updateFittings(pickedFittingIds(), { height: Math.max(60, v) })} />
                   <NumField label="D" value={selectedFitting.depth} step={10}
                     onLive={(v) => v >= 60 && livePart(selectedFitting.id, { depth: v })}
-                    onCommit={(v) => updateFitting(selectedFitting.id, { depth: Math.max(60, v) })} />
+                    onCommit={(v) => updateFittings(pickedFittingIds(), { depth: Math.max(60, v) })} />
                 </div>
                 {selectedFitting.kind === 'door' && (
                   <div className="grid grid-cols-5 gap-1">
                     {HINGE_ANGLES.map((deg) => (
                       <button key={deg} data-testid={`fitting-angle-${deg}`} title={t.hintHingeAngle}
-                        onClick={() => updateFitting(selectedFitting.id, { swing: deg })}
+                        onClick={() => updateFittings(pickedFittingIds(), { swing: deg })}
                         className={`py-1 rounded-lg text-[9px] font-bold font-mono ${swingOf(selectedFitting) === deg ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                         {deg}°
                       </button>
@@ -780,7 +788,7 @@ const Sidebar: React.FC = () => {
                   <span className="text-slate-500 shrink-0">{t.openAmount}</span>
                   <input type="range" min={0} max={100} step={1} data-testid="fitting-open"
                     value={Math.round((selectedFitting.open ?? 0) * 100)}
-                    onChange={(e) => setFittingOpen(selectedFitting.id, parseFloat(e.target.value) / 100)}
+                    onChange={(e) => setFittingsOpen(pickedFittingIds(), parseFloat(e.target.value) / 100)}
                     className="flex-1 accent-emerald-500" />
                   <span className="font-mono text-slate-400 w-8 text-right">{Math.round((selectedFitting.open ?? 0) * 100)}%</span>
                 </label>
@@ -789,21 +797,24 @@ const Sidebar: React.FC = () => {
 
             {selectedPanel && (
               <div className="space-y-2" data-testid="panel-props">
+                {pickedPanels.length > 1 && (
+                  <div className="text-[10px] text-orange-400 font-mono" data-testid="panel-multi">{t.editingCount(pickedPanels.length)}</div>
+                )}
                 <div className="grid grid-cols-3 gap-1">
                   <NumField label="W" value={selectedPanel.width} step={10}
                     onLive={(v) => v > 0 && livePart(selectedPanel.id, { width: v })}
-                    onCommit={(v) => setPanelSize(selectedPanel.id, { width: v })} />
+                    onCommit={(v) => setPanelsSize(pickedPanelIds(), { width: v })} />
                   <NumField label="H" value={selectedPanel.height} step={10}
                     onLive={(v) => v > 0 && livePart(selectedPanel.id, { height: v })}
-                    onCommit={(v) => setPanelSize(selectedPanel.id, { height: v })} />
+                    onCommit={(v) => setPanelsSize(pickedPanelIds(), { height: v })} />
                   <NumField label="T" value={selectedPanel.thickness} step={1}
                     onLive={(v) => v > 0 && livePart(selectedPanel.id, { thickness: v })}
-                    onCommit={(v) => setPanelSize(selectedPanel.id, { thickness: v })} />
+                    onCommit={(v) => setPanelsSize(pickedPanelIds(), { thickness: v })} />
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.panelMaterial}</span>
                   <select value={selectedPanel.material} data-testid="panel-material"
-                    onChange={(e) => setPanelMaterial(selectedPanel.id, e.target.value as PanelMaterial)}
+                    onChange={(e) => setPanelsMaterial(pickedPanelIds(), e.target.value as PanelMaterial)}
                     className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-orange-400 outline-none">
                     {PANEL_MATERIALS.map((m) => <option key={m} value={m}>{materialLabel(m, language)}</option>)}
                   </select>

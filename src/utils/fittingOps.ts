@@ -73,9 +73,26 @@ function outwardAxis(chosen: ProfileData[], section: number): THREE.Vector3 {
   }
 
   // The selection spans the depth — four uprights round a drawer — so it says nothing about
-  // which side is the front. Ask the frame instead: a cabinet is open at the front and closed
-  // at the back, where the wall units, the backs and the shelf rails are, so the half with
-  // less metal in it is the front.
+  // which side is the front.
+  //
+  // If anything has already been hung on this cabinet, that settles it. A cabinet whose doors
+  // open into the room and whose drawers pull out towards the wall is not a cabinet, and
+  // where the carcase is as deep as it is wide there is nothing to count anyway: the tie went
+  // to whichever axis the comparison happened to prefer.
+  const near = new THREE.Box3().copy(mine).expandByScalar(Math.max(run.x, run.z))
+  for (const f of useStore.getState().fittings) {
+    if (!near.containsPoint(new THREE.Vector3(...f.position))) continue
+    const facing = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...f.quaternion).normalize())
+    facing.y = 0
+    if (facing.lengthSq() < 0.5) continue
+    facing.normalize()
+    return Math.abs(facing.x) > Math.abs(facing.z)
+      ? X.clone().multiplyScalar(Math.sign(facing.x))
+      : Z.clone().multiplyScalar(Math.sign(facing.z))
+  }
+
+  // Nothing hung yet: a cabinet is open at the front and closed at the back, where the backs
+  // and the shelf rails are, so the half with less metal in it is the front.
   const deep = run.z <= run.x ? Z : X
   const mid = centre.dot(deep)
   let front = 0, back = 0
@@ -259,6 +276,29 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
   useToolStore.getState().showToast(
     req.kind === 'drawer' ? t.toastDrawerAdded(made.length, made.length) : t.toastDoorAdded(made.length), 'success')
   return true
+}
+
+/**
+ * The same edit on every door or drawer that was selected, as one step in the history.
+ *
+ * Six doors selected and one hinge angle typed should set six hinge angles.
+ */
+export function updateFittings(ids: string[], updates: Partial<FittingData>): boolean {
+  const { fittings, commitTransform } = useStore.getState()
+  const mine = fittings.filter((f) => ids.includes(f.id) && !f.locked)
+  if (mine.length === 0) return false
+  noteNext(mine.length > 1 ? `edit ${mine.length} fittings` : 'edit fitting')
+  commitTransform({ fittings: mine.map((f) => ({ id: f.id, updates })) })
+  return true
+}
+
+/** Open or shut every selected one together. Looking, not building: no history entry. */
+export function setFittingsOpen(ids: string[], open: number): void {
+  const v = Math.max(0, Math.min(1, open))
+  const { fittings, updateParts } = useStore.getState()
+  const mine = fittings.filter((f) => ids.includes(f.id))
+  if (mine.length === 0) return
+  updateParts({ fittings: mine.map((f) => ({ id: f.id, updates: { open: v } })) })
 }
 
 /** Swing or slide one fitting. Looking, not building, so it leaves no history entry. */

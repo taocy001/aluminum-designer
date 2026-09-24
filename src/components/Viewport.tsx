@@ -13,7 +13,7 @@ import { fittingObb, leafObb } from '../utils/fittingGeometry'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
-import { analyzeFrame, type Conflict } from '../utils/analysis'
+import { analyzeFrame, connectorOBB, type Conflict } from '../utils/analysis'
 import type { SpecMismatch } from '../utils/specCompat'
 import Profile from './Profile'
 import Connector from './Connector'
@@ -125,7 +125,14 @@ const CameraController: React.FC = () => {
   return null
 }
 
-// Resolves frame selection rect → profile IDs (any endpoint or midpoint inside the box)
+/**
+ * Resolves a frame-selection rectangle to the parts inside it.
+ *
+ * Members are caught by their two ends or their middle. Everything else — brackets, boards,
+ * doors and drawers — is caught by its own middle, which is the only point every kind of part
+ * has. Dragging a box round a row of doors and getting the posts behind them is not a
+ * selection anybody asked for.
+ */
 const FrameSelector: React.FC = () => {
   const { camera, size } = useThree()
   const frameSelectRect = useToolStore((s) => s.frameSelectRect)
@@ -144,12 +151,16 @@ const FrameSelector: React.FC = () => {
       return sx >= x1 && sx <= x2 && sy >= y1 && sy <= y2
     }
     const selected: string[] = []
-    for (const profile of useStore.getState().profiles) {
+    const s = useStore.getState()
+    for (const profile of s.profiles) {
       const { start, end } = getProfileEndpoints(profile)
       const mid = start.clone().lerp(end, 0.5)
       if (inside(start) && inside(end) || inside(mid)) selected.push(profile.id)
     }
-    useStore.getState().selectItems(selected)
+    for (const c of s.connectors) if (inside(connectorOBB(c).center)) selected.push(c.id)
+    for (const b of s.panels) if (inside(new THREE.Vector3(...b.position))) selected.push(b.id)
+    for (const f of s.fittings) if (inside(fittingObb(f).center)) selected.push(f.id)
+    s.selectItems(selected)
   }, [frameSelectRect, camera, size, clearFrameSelectRect])
 
   return null

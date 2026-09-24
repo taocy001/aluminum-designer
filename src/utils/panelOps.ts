@@ -4,6 +4,7 @@ import { useToolStore } from '../store/useToolStore'
 import { memberBox } from './dragSnap'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
+import { noteNext } from './opLog'
 import { connectedTo } from './editOps'
 
 /** Board thicknesses that are actually stocked, so a cut list can be ordered as written */
@@ -173,6 +174,45 @@ export function addPanelFromSelection(
   useStore.getState().addPanels([panel], true)
   const t = translations[useToolStore.getState().language]
   useToolStore.getState().showToast(t.toastPanelAdded(Math.round(panel.width), Math.round(panel.height)), 'success')
+  return true
+}
+
+/**
+ * The same edit on every board that was selected, as one step in the history.
+ *
+ * Selecting six shelves and changing the thickness should change six shelves. Editing only
+ * the first one is what "does not support multiple selection" means from the other side of
+ * the screen — the selection was honoured everywhere except where it mattered.
+ */
+export function setPanelsSize(ids: string[], updates: Partial<Pick<PanelData, 'width' | 'height' | 'thickness'>>): boolean {
+  const { panels, commitTransform } = useStore.getState()
+  const t = translations[useToolStore.getState().language]
+  const mine = panels.filter((p) => ids.includes(p.id) && !p.locked)
+  if (mine.length === 0) return false
+  const edits: Array<{ id: string; updates: Partial<PanelData> }> = []
+  for (const panel of mine) {
+    const next = { ...panel, ...updates }
+    if (![next.width, next.height, next.thickness].every((v) => isFinite(v) && v > 0)) continue
+    if (next.width < MIN_SIDE || next.height < MIN_SIDE) continue
+    edits.push({ id: panel.id, updates: {
+      width: Math.round(next.width * 10) / 10,
+      height: Math.round(next.height * 10) / 10,
+      thickness: Math.round(next.thickness * 10) / 10,
+    } })
+  }
+  if (edits.length === 0) { useToolStore.getState().showToast(t.toastPanelTooSmall, 'error'); return false }
+  noteNext(edits.length > 1 ? `resize ${edits.length} boards` : 'resize board')
+  commitTransform({ panels: edits })
+  return true
+}
+
+/** ...and the same for what they are made of */
+export function setPanelsMaterial(ids: string[], material: PanelMaterial): boolean {
+  const { panels, commitTransform } = useStore.getState()
+  const mine = panels.filter((p) => ids.includes(p.id) && !p.locked)
+  if (mine.length === 0) return false
+  noteNext(mine.length > 1 ? `material of ${mine.length} boards` : 'board material')
+  commitTransform({ panels: mine.map((p) => ({ id: p.id, updates: { material } })) })
   return true
 }
 

@@ -195,3 +195,64 @@ describe('an overlay board lies on the frame', () => {
     expect(board.position[2]).toBeGreaterThan(610)
   })
 })
+
+/**
+ * A cabinet whose doors open into the room and whose drawers pull out towards the wall is
+ * not a cabinet. Four uprights round an opening say nothing about which side is the front,
+ * and counting metal either side is a guess — but a door already hung on the same carcase
+ * is an answer, so it is used.
+ */
+describe('a drawer opens the way the cabinet already does', () => {
+  it('follows a door already hung on the same carcase', () => {
+    const box = cabinet(0, 600)
+    load(box)
+    const front = box.filter((p) => p.position[2] === 0 && p.length === 880)
+    useStore.getState().selectItems(front.map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'door', hinge: 'left' })).toBe(true)
+    const door = useStore.getState().fittings[0]
+
+    useStore.getState().selectItems(box.filter((p) => p.length === 880).map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'drawer', frontHeight: 200, count: 1 })).toBe(true)
+    const drawer = useStore.getState().fittings[1]
+
+    const facing = (f: { quaternion: number[] }) =>
+      new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...(f.quaternion as [number, number, number, number])))
+    expect(facing(drawer).dot(facing(door))).toBeGreaterThan(0.9)
+  })
+})
+
+import { rotateSelected, selectionPivot } from '../utils/editOps'
+import { fittingObb } from '../utils/fittingGeometry'
+
+/**
+ * Turning a selection turns it about its own middle. A drawer on its own had no middle as
+ * far as this was concerned — the pivot was built from members and brackets only, and with
+ * neither in the selection it fell back to the world origin, so turning a drawer in a
+ * kitchen sent it several metres across the room.
+ */
+describe('turning a part turns it where it stands', () => {
+  it('a drawer on its own turns about itself', () => {
+    const box = cabinet(0, 600)
+    load(box)
+    useStore.getState().selectItems(box.filter((p) => p.length === 880).map((p) => p.id))
+    expect(addFittingFromSelection({ kind: 'drawer', frontHeight: 200, count: 1 })).toBe(true)
+    const before = fittingObb(useStore.getState().fittings[0]).center.clone()
+
+    useStore.getState().selectItems([useStore.getState().fittings[0].id])
+    expect(rotateSelected('y', 90)).toBe(true)
+    const after = fittingObb(useStore.getState().fittings[0]).center
+    expect(after.distanceTo(before)).toBeLessThan(1)
+  })
+
+  it('and a board on its own does too', () => {
+    const box = cabinet(0, 600)
+    load(box)
+    const back = box.filter((p) => p.position[2] === 600 && p.length === 880)
+    useStore.getState().selectItems(back.map((p) => p.id))
+    const board = panelFromSelection('mdf', 18, 'overlay')!
+    useStore.getState().addPanels([board], false)
+    useStore.getState().selectItems([board.id])
+    const at = new THREE.Vector3(...board.position)
+    expect(selectionPivot([], [], 'center', [board], []).distanceTo(at)).toBeLessThan(1)
+  })
+})
