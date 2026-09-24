@@ -2,13 +2,13 @@
  "version": 3,
  "profiles": [
   {
-   "id": "p-mufoxq5n5d",
+   "id": "p-mufs5qqx3x",
    "spec": "4040",
-   "length": 2200,
+   "length": 2180,
    "position": [
+    20,
     0,
-    0,
-    0
+    20
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -20,13 +20,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoxr0d5e",
+   "id": "p-mufs5rfu3y",
    "spec": "4040",
-   "length": 2200,
+   "length": 2180,
    "position": [
+    20,
     0,
-    0,
-    600
+    580
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -38,31 +38,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoxrib5f",
+   "id": "p-mufs5s483z",
    "spec": "4040",
-   "length": 2200,
-   "position": [
-    900,
-    0,
-    0
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxruh5g",
-   "spec": "4040",
-   "length": 2200,
+   "length": 2180,
    "position": [
     900,
     0,
-    600
+    20
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -74,13 +56,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoxsc65h",
+   "id": "p-mufs5stz40",
    "spec": "4040",
-   "length": 2200,
+   "length": 2180,
    "position": [
-    1800,
+    900,
     0,
-    0
+    580
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -92,13 +74,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoxsol5i",
+   "id": "p-mufs5tie41",
    "spec": "4040",
-   "length": 2200,
+   "length": 2180,
    "position": [
-    1800,
+    1780,
     0,
-    600
+    20
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -110,265 +92,247 @@
    "holes": []
   },
   {
-   "id": "p-mufoxtre5j",
+   "id": "p-mufs5tvd42",
+   "spec": "4040",
+   "length": 2180,
+   "position": [
+    1780,
+    0,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs5urf43",
    "spec": "2040",
    "length": 900,
    "position": [
     0,
-    20,
-    -10
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxu455k",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    0,
-    20,
-    610
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxuof5l",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    900,
-    20,
-    -10
-   ],
-   "quaternion": [
-    1.591027024799559e-16,
-    0.7071067811865476,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxv5u5m",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    900,
-    20,
-    610
-   ],
-   "quaternion": [
-    1.591027024799559e-16,
-    0.7071067811865476,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxvoq5n",
-   "spec": "2040",
-   "length": 600,
-   "position": [
     10,
-    20,
-    0
+    20
    ],
    "quaternion": [
-    0,
-    0,
-    0,
-    1
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p-mufoxw995o",
-   "spec": "2040",
-   "length": 600,
-   "position": [
-    910,
-    20,
-    0
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxwrs5p",
-   "spec": "2040",
-   "length": 600,
-   "position": [
-    1810,
-    20,
-    0
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxxjp5q",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    0,
-    2180,
-    -10
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxy2l5r",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    0,
-    2180,
-    610
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxyn75s",
+   "id": "p-mufs5v5y44",
    "spec": "2040",
    "length": 900,
    "position": [
     900,
-    2180,
-    -10
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865476,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxz4r5t",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    900,
-    2180,
-    610
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865476,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufoxzn85u",
-   "spec": "2040",
-   "length": 600,
-   "position": [
     10,
-    2180,
-    0
+    20
    ],
    "quaternion": [
-    0,
-    0,
-    0,
-    1
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p-mufoy0585v",
+   "id": "p-mufs5vix45",
    "spec": "2040",
-   "length": 600,
+   "length": 900,
    "position": [
-    910,
-    2180,
-    0
+    0,
+    10,
+    580
    ],
    "quaternion": [
-    0,
-    0,
-    0,
-    1
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p-mufoy0q85w",
+   "id": "p-mufs5vuo46",
    "spec": "2040",
-   "length": 600,
+   "length": 900,
    "position": [
-    1810,
-    2180,
-    0
+    900,
+    10,
+    580
    ],
    "quaternion": [
-    0,
-    0,
-    0,
-    1
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p-mufoyprl6b",
+   "id": "p-mufs5wdg47",
    "spec": "2040",
-   "length": 600,
+   "length": 520,
+   "position": [
+    20,
+    10,
+    40
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs5ws648",
+   "spec": "2040",
+   "length": 520,
+   "position": [
+    900,
+    10,
+    40
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs5xb749",
+   "spec": "2040",
+   "length": 520,
+   "position": [
+    1780,
+    10,
+    40
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs5y8d4a",
+   "spec": "2040",
+   "length": 1800,
    "position": [
     0,
+    2190,
+    20
+   ],
+   "quaternion": [
+    0.4999999999999999,
+    0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs5yt84b",
+   "spec": "2040",
+   "length": 1800,
+   "position": [
+    0,
+    2190,
+    580
+   ],
+   "quaternion": [
+    0.4999999999999999,
+    0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs5zav4c",
+   "spec": "2040",
+   "length": 520,
+   "position": [
+    20,
+    2190,
+    40
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs5zu64d",
+   "spec": "2040",
+   "length": 520,
+   "position": [
+    900,
+    2190,
+    40
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs60ir4e",
+   "spec": "2040",
+   "length": 520,
+   "position": [
+    1780,
+    2190,
+    40
+   ],
+   "quaternion": [
+    0,
+    0,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufs6s564r",
+   "spec": "2040",
+   "length": 560,
+   "position": [
+    20,
     1750,
-    0
+    20
    ],
    "quaternion": [
     0,
@@ -380,13 +344,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoyqao6c",
+   "id": "p-mufs6som4s",
    "spec": "2040",
-   "length": 600,
+   "length": 560,
    "position": [
     900,
     1750,
-    0
+    20
    ],
    "quaternion": [
     0,
@@ -398,13 +362,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoys766e",
+   "id": "p-mufs6uf14u",
    "spec": "2040",
-   "length": 600,
+   "length": 560,
    "position": [
     900,
     1150,
-    0
+    20
    ],
    "quaternion": [
     0,
@@ -416,13 +380,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoyss76f",
+   "id": "p-mufs6v0j4v",
    "spec": "2040",
-   "length": 600,
+   "length": 560,
    "position": [
-    1800,
+    1780,
     1150,
-    0
+    20
    ],
    "quaternion": [
     0,
@@ -434,13 +398,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoyuj96h",
+   "id": "p-mufs6x0p4x",
    "spec": "2040",
-   "length": 600,
+   "length": 560,
    "position": [
-    1800,
+    1780,
     1750,
-    0
+    20
    ],
    "quaternion": [
     0,
@@ -452,13 +416,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoywin6j",
+   "id": "p-mufs6yys4z",
    "spec": "2020",
    "length": 900,
    "position": [
     0,
     1690,
-    295
+    300
    ],
    "quaternion": [
     0,
@@ -470,13 +434,13 @@
    "holes": []
   },
   {
-   "id": "p-mufoyxt06k",
+   "id": "p-mufs706c50",
    "spec": "2020",
    "length": 900,
    "position": [
     900,
     1090,
-    295
+    300
    ],
    "quaternion": [
     0,
@@ -490,29 +454,13 @@
  ],
  "connectors": [
   {
-   "id": "c-mufoz2876p",
+   "id": "c-mufs74kx55",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    20,
     40,
-    -10
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    0.7071067811865476,
-    1.7431527984210492e-32,
-    1.570092458683775e-16
-   ]
-  },
-  {
-   "id": "c-mufoz2876q",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    20,
-    2160,
-    -10
+    2180,
+    10
    ],
    "quaternion": [
     1.7431527984210492e-32,
@@ -522,237 +470,317 @@
    ]
   },
   {
-   "id": "c-mufoz2876r",
+   "id": "c-mufs74kx56",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    20,
     40,
-    610
+    2180,
+    570
    ],
    "quaternion": [
-    0.7071067811865475,
-    0.7071067811865476,
     1.7431527984210492e-32,
-    1.570092458683775e-16
-   ]
-  },
-  {
-   "id": "c-mufoz2876s",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    10,
-    2160,
-    580
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    -0.5,
-    0.5,
-    -0.5000000000000001
-   ]
-  },
-  {
-   "id": "c-mufoz2876t",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    880,
-    40,
-    -10
-   ],
-   "quaternion": [
-    -1.5700924586837747e-16,
-    0,
-    0.7071067811865475,
+    -1.570092458683775e-16,
+    -0.7071067811865475,
     0.7071067811865476
    ]
   },
   {
-   "id": "c-mufoz2876u",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    880,
-    2160,
-    -10
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0.7071067811865476,
-    -1.5700924586837747e-16,
-    0
-   ]
-  },
-  {
-   "id": "c-mufoz2876v",
+   "id": "c-mufs74kx57",
    "type": "inside-corner",
    "series": 20,
    "position": [
     920,
-    40,
-    610
+    2180,
+    10
    ],
    "quaternion": [
-    0.7071067811865476,
-    0.7071067811865475,
+    1.7431527984210492e-32,
     -1.570092458683775e-16,
-    -1.7431527984210492e-32
-   ]
-  },
-  {
-   "id": "c-mufoz2876w",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    910,
-    2160,
-    580
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    -0.5,
-    0.5,
-    -0.5000000000000001
-   ]
-  },
-  {
-   "id": "c-mufoz2876x",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1780,
-    40,
-    -10
-   ],
-   "quaternion": [
-    1.7431527984210492e-32,
-    1.570092458683775e-16,
-    0.7071067811865475,
+    -0.7071067811865475,
     0.7071067811865476
    ]
   },
   {
-   "id": "c-mufoz2876y",
+   "id": "c-mufs74kx58",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    1780,
-    2160,
-    -10
+    920,
+    2180,
+    570
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    -1.570092458683775e-16,
+    -0.7071067811865475,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mufs74kx59",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1760,
+    2180,
+    10
    ],
    "quaternion": [
     -0.7071067811865475,
     0.7071067811865476,
-    1.7431527984210492e-32,
-    -1.570092458683775e-16
+    -1.5700924586837747e-16,
+    0
    ]
   },
   {
-   "id": "c-mufoz2876z",
+   "id": "c-mufs74kx5a",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    1780,
-    40,
-    610
+    1760,
+    2180,
+    570
    ],
    "quaternion": [
-    1.7431527984210492e-32,
-    1.570092458683775e-16,
-    0.7071067811865475,
+    -0.7071067811865475,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    0
+   ]
+  },
+  {
+   "id": "c-mufs74kx5b",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    40,
+    20,
+    10
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251565e-16,
+    -5.551115123125783e-17,
+    1
+   ]
+  },
+  {
+   "id": "c-mufs74kx5c",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    880,
+    20,
+    10
+   ],
+   "quaternion": [
+    5.551115123125783e-17,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251565e-16
+   ]
+  },
+  {
+   "id": "c-mufs74kx5d",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    920,
+    20,
+    10
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251565e-16,
+    -5.551115123125783e-17,
+    1
+   ]
+  },
+  {
+   "id": "c-mufs74kx5e",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1760,
+    20,
+    10
+   ],
+   "quaternion": [
+    5.551115123125783e-17,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251565e-16
+   ]
+  },
+  {
+   "id": "c-mufs74kx5f",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    40,
+    20,
+    570
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251565e-16,
+    -5.551115123125783e-17,
+    1
+   ]
+  },
+  {
+   "id": "c-mufs74kx5g",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    880,
+    20,
+    570
+   ],
+   "quaternion": [
+    5.551115123125783e-17,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251565e-16
+   ]
+  },
+  {
+   "id": "c-mufs74kx5h",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    920,
+    20,
+    570
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251565e-16,
+    -5.551115123125783e-17,
+    1
+   ]
+  },
+  {
+   "id": "c-mufs74kx5i",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1760,
+    20,
+    570
+   ],
+   "quaternion": [
+    5.551115123125783e-17,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251565e-16
+   ]
+  },
+  {
+   "id": "c-mufs74kx5j",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    10,
+    20,
+    40
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
     0.7071067811865476
    ]
   },
   {
-   "id": "c-mufoz28770",
+   "id": "c-mufs74kx5k",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    1810,
-    2160,
-    580
+    10,
+    20,
+    560
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mufs74kx5l",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    920,
+    10,
+    40
    ],
    "quaternion": [
     0.5000000000000001,
-    -0.5,
+    0.4999999999999999,
     0.5,
-    -0.5000000000000001
+    -0.5
    ]
   },
   {
-   "id": "c-mufoz28771",
+   "id": "c-mufs74kx5m",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    20,
-    84,
-    -10.00000000000001
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16,
-    0,
-    1
-   ]
-  },
-  {
-   "id": "c-mufoz28772",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    20,
-    84,
-    610
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16,
-    0,
-    1
-   ]
-  },
-  {
-   "id": "c-mufoz28773",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1780,
-    84,
-    -10.00000000000001
-   ],
-   "quaternion": [
-    5.625129991434127e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ]
-  },
-  {
-   "id": "c-mufoz28774",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1780,
-    84,
-    610
-   ],
-   "quaternion": [
-    5.625129991434127e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ]
-  },
-  {
-   "id": "c-mufoz28775",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    20,
+    880,
     10,
-    0
+    560
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ]
+  },
+  {
+   "id": "c-mufs74kx5n",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1770,
+    20,
+    40
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "c-mufs74kx5o",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1760,
+    10,
+    560
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ]
+  },
+  {
+   "id": "c-mufs74kx5p",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    40,
+    2190,
+    40
    ],
    "quaternion": [
     0.5,
@@ -762,157 +790,29 @@
    ]
   },
   {
-   "id": "c-mufoz28776",
+   "id": "c-mufs74kx5q",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    10,
     40,
-    580
+    2190,
+    560
    ],
    "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
+    -0.5,
+    -0.4999999999999999,
+    0.5,
+    -0.5
    ]
   },
   {
-   "id": "c-mufoz28777",
+   "id": "c-mufs74kx5r",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    910,
-    40,
-    20
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "c-mufoz28778",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    910,
-    40,
-    580
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "c-mufoz28779",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1810,
-    40,
-    20
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "c-mufoz2877a",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1810,
-    40,
-    580
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "c-mufoz2877b",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    20,
-    2116,
-    -9.99999999999999
-   ],
-   "quaternion": [
-    1,
-    0,
-    1.1102230246251565e-16,
-    1.1102230246251564e-16
-   ]
-  },
-  {
-   "id": "c-mufoz2877c",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    20,
-    2160,
-    610
-   ],
-   "quaternion": [
-    1,
-    0,
-    1.1102230246251565e-16,
-    1.1102230246251564e-16
-   ]
-  },
-  {
-   "id": "c-mufoz2877d",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1780,
-    2116,
-    -9.99999999999999
-   ],
-   "quaternion": [
-    1.1102230246251565e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ]
-  },
-  {
-   "id": "c-mufoz2877e",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1780,
-    2160,
-    610
-   ],
-   "quaternion": [
-    1.1102230246251565e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ]
-  },
-  {
-   "id": "c-mufoz2877f",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    20,
-    2170,
-    0
+    920,
+    2190,
+    40
    ],
    "quaternion": [
     0.5,
@@ -922,125 +822,61 @@
    ]
   },
   {
-   "id": "c-mufoz2877g",
+   "id": "c-mufs74kx5s",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    10,
-    2116,
-    580
+    920,
+    2190,
+    560
    ],
    "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
+    -0.5,
+    -0.4999999999999999,
+    0.5,
+    -0.5
    ]
   },
   {
-   "id": "c-mufoz2877h",
+   "id": "c-mufs74kx5t",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    910,
-    2160,
-    20
+    1760,
+    2190,
+    40
    ],
    "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
+    0.5,
+    -0.5000000000000001,
+    0.5,
+    0.5
    ]
   },
   {
-   "id": "c-mufoz2877i",
+   "id": "c-mufs74kx5u",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    910,
-    2116,
-    580
+    1760,
+    2190,
+    560
    ],
    "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
+    -0.5,
+    0.4999999999999999,
+    0.5,
+    0.5
    ]
   },
   {
-   "id": "c-mufoz2877j",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1810,
-    2160,
-    20
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ]
-  },
-  {
-   "id": "c-mufoz2877k",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1810,
-    2116,
-    580
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ]
-  },
-  {
-   "id": "c-mufoz2887l",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    -10,
-    1740,
-    20
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ]
-  },
-  {
-   "id": "c-mufoz2887m",
+   "id": "c-mufs74kx5v",
    "type": "inside-corner",
    "series": 20,
    "position": [
     10,
     1740,
-    580
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ]
-  },
-  {
-   "id": "c-mufoz2887n",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    890,
-    1740,
-    20
+    40
    ],
    "quaternion": [
     0.7071067811865475,
@@ -1050,13 +886,13 @@
    ]
   },
   {
-   "id": "c-mufoz2887o",
+   "id": "c-mufs74kx5w",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    890,
+    10,
     1740,
-    580
+    560
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -1066,13 +902,13 @@
    ]
   },
   {
-   "id": "c-mufoz2887p",
+   "id": "c-mufs74kx5x",
    "type": "inside-corner",
    "series": 20,
    "position": [
     890,
-    1140,
-    20
+    1740,
+    40
    ],
    "quaternion": [
     0.7071067811865475,
@@ -1082,13 +918,13 @@
    ]
   },
   {
-   "id": "c-mufoz2887q",
+   "id": "c-mufs74kx5y",
    "type": "inside-corner",
    "series": 20,
    "position": [
     890,
-    1140,
-    580
+    1740,
+    560
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -1098,13 +934,13 @@
    ]
   },
   {
-   "id": "c-mufoz2887r",
+   "id": "c-mufs74kx5z",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    1790,
+    890,
     1140,
-    20
+    40
    ],
    "quaternion": [
     0.7071067811865475,
@@ -1114,13 +950,13 @@
    ]
   },
   {
-   "id": "c-mufoz2887s",
+   "id": "c-mufs74kx60",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    1790,
+    890,
     1140,
-    580
+    560
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -1130,13 +966,13 @@
    ]
   },
   {
-   "id": "c-mufoz2887t",
+   "id": "c-mufs74kx61",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    1790,
-    1740,
-    20
+    1770,
+    1140,
+    40
    ],
    "quaternion": [
     0.7071067811865475,
@@ -1146,13 +982,45 @@
    ]
   },
   {
-   "id": "c-mufoz2887u",
+   "id": "c-mufs74kx62",
    "type": "inside-corner",
    "series": 20,
    "position": [
-    1790,
+    1770,
+    1140,
+    560
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mufs74kx63",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1770,
     1740,
-    580
+    40
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "c-mufs74kx64",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1770,
+    1740,
+    560
    ],
    "quaternion": [
     -0.7071067811865475,
@@ -1164,12 +1032,12 @@
  ],
  "panels": [
   {
-   "id": "b-mufoyqwv6d",
-   "width": 560,
-   "height": 860,
+   "id": "b-mufs6t7f4t",
+   "width": 520,
+   "height": 840,
    "thickness": 18,
    "position": [
-    450,
+    460,
     1750,
     299.9999999999998
    ],
@@ -1182,12 +1050,12 @@
    "material": "mdf"
   },
   {
-   "id": "b-mufoytb06g",
-   "width": 560,
-   "height": 860,
+   "id": "b-mufs6vr34w",
+   "width": 520,
+   "height": 840,
    "thickness": 18,
    "position": [
-    1350,
+    1340,
     1150,
     299.9999999999998
    ],
@@ -1200,12 +1068,12 @@
    "material": "mdf"
   },
   {
-   "id": "b-mufoyva96i",
-   "width": 560,
-   "height": 860,
+   "id": "b-mufs6xpg4y",
+   "width": 520,
+   "height": 840,
    "thickness": 18,
    "position": [
-    1350,
+    1340,
     1750,
     299.9999999999998
    ],
@@ -1220,10 +1088,10 @@
  ],
  "fittings": [
   {
-   "id": "f-mufoyyjf6l",
+   "id": "f-mufs70vt51",
    "kind": "drawer",
    "position": [
-    1350,
+    1340,
     140,
     299.9999999999998
    ],
@@ -1233,18 +1101,18 @@
     0,
     1
    ],
-   "width": 860,
+   "width": 840,
    "height": 200,
-   "depth": 560.0000000000005,
+   "depth": 520.0000000000005,
    "frame": 40,
    "material": "ply",
    "open": 0
   },
   {
-   "id": "f-mufoyyjf6m",
+   "id": "f-mufs70vt52",
    "kind": "drawer",
    "position": [
-    1350,
+    1340,
     340,
     299.9999999999998
    ],
@@ -1254,20 +1122,20 @@
     0,
     1
    ],
-   "width": 860,
+   "width": 840,
    "height": 200,
-   "depth": 560.0000000000005,
+   "depth": 520.0000000000005,
    "frame": 40,
    "material": "ply",
    "open": 0
   },
   {
-   "id": "f-mufoyzwb6n",
+   "id": "f-mufs728r53",
    "kind": "door",
    "position": [
-    450,
-    1100.0000000000002,
-    259.99999999999955
+    460,
+    1090.0000000000002,
+    259.99999999999943
    ],
    "quaternion": [
     0,
@@ -1275,9 +1143,9 @@
     0,
     1
    ],
-   "width": 860,
-   "height": 2120.0000000000005,
-   "depth": 640,
+   "width": 840,
+   "height": 2100.0000000000005,
+   "depth": 600.0000000000002,
    "frame": 40.000000000000455,
    "material": "mdf",
    "open": 0,
@@ -1287,11 +1155,11 @@
    "swing": 110
   },
   {
-   "id": "f-mufoz1bf6o",
+   "id": "f-mufs73nz54",
    "kind": "door",
    "position": [
-    1350,
-    1100.0000000000002,
+    1340,
+    1090.0000000000002,
     259.99999999999943
    ],
    "quaternion": [
@@ -1300,9 +1168,9 @@
     0,
     1
    ],
-   "width": 860,
-   "height": 2120.0000000000005,
-   "depth": 640.0000000000002,
+   "width": 840,
+   "height": 2100.0000000000005,
+   "depth": 600.0000000000002,
    "frame": 40.000000000000455,
    "material": "mdf",
    "open": 0,
