@@ -140,12 +140,20 @@ function drawerParts(f: FittingData): FittingParts {
   }
 }
 
-/** Which way a door swings: the axis it turns about and where that axis sits */
+/**
+ * Which way a door swings: the axis it turns about and where that axis sits.
+ *
+ * On the leaf's *front* face, at its hung edge. Turned about the back face instead, an
+ * eighteen-millimetre leaf opened past ninety degrees swings its own thickness out behind
+ * the axis — into the next door along and back into the frame it hangs on. A cup hinge
+ * carries the leaf forward as it opens so that nothing behind the front plane is ever
+ * reached, and turning about the front edge is the plain-geometry version of that.
+ */
 export function hingeAxis(f: FittingData): { origin: THREE.Vector3; axis: THREE.Vector3; sign: number } {
   const side: HingeSide = f.hinge ?? 'left'
   const w = f.width / 2 + overlayMm(f.overlay)
   const h = f.height / 2 + overlayMm(f.overlay)
-  const z = f.depth / 2 + (f.frame ?? 0)
+  const z = f.depth / 2 + (f.frame ?? 0) + FRONT_BOARD
   switch (side) {
     case 'right':  return { origin: new THREE.Vector3(w, 0, z), axis: new THREE.Vector3(0, 1, 0), sign: 1 }
     case 'top':    return { origin: new THREE.Vector3(0, h, z), axis: new THREE.Vector3(1, 0, 0), sign: 1 }
@@ -156,7 +164,9 @@ export function hingeAxis(f: FittingData): { origin: THREE.Vector3; axis: THREE.
 
 function doorParts(f: FittingData): FittingParts {
   const type = f.hingeType ?? 'cup'
-  const { origin, axis } = hingeAxis(f)
+  const { origin: pivot, axis } = hingeAxis(f)
+  // the hinges themselves are on the back of the leaf, where the cup is bored
+  const origin = pivot.clone().setZ(pivot.z - FRONT_BOARD)
   const n = hingeCount(type, axis.y > 0.5 ? f.height : f.width)
   const span = axis.y > 0.5 ? f.height : f.width
   const hinges: Array<[number, number, number]> = []
