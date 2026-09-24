@@ -166,6 +166,8 @@ const PointerRouter: React.FC = () => {
 
       if (gizmoState.busy) return   // a gizmo handle is pressed; leave the model alone
       if (ts.isDragging || ts.selectMode) { ts.setHoverProfile(null); ts.setHoverPart(null); ts.setHoverEnd(null); ts.setGizmoHover(null); return }
+      // Skip hover projection during camera orbit or pan.
+      if (e.buttons !== 0 && !ts.isDrawing) return
 
       // reaching for an end of the selected member wins over the gizmo, which is centred on
       // it and would otherwise cover the very ends the stretch handles live on
