@@ -64,16 +64,58 @@ function perimeter(w: number, d: number, y: number, postW: number, railW: number
   ]
 }
 
-/** four posts and a rectangle of rails top and bottom — the shape nearly everything starts as */
+/** The same member turned a quarter about its own axis: a 2040 on edge becomes one lying flat */
+function rolled(p: ProfileData | null): ProfileData | null {
+  if (!p) return null
+  const quat = new THREE.Quaternion(...p.quaternion).normalize()
+  const axis = new THREE.Vector3(0, 0, 1).applyQuaternion(quat).normalize()
+  const q = new THREE.Quaternion().setFromAxisAngle(axis, Math.PI / 2).multiply(quat).normalize()
+  return { ...p, quaternion: [q.x, q.y, q.z, q.w] }
+}
+
+/**
+ * Four posts, with the bottom frame standing on the floor beside them and the top frame
+ * laid over the top of them.
+ *
+ * This is one of the ordinary ways to build a carcase, not the only one — a frame can be put
+ * together plenty of other ways and the tool has no opinion about it. It is the default here
+ * because what was the default before is not one of them.
+ *
+ * That was posts running the full height with both rings of rails let in between them, and
+ * it is awkward in three ways somebody notices the first time they build it. The top is
+ * missing a piece at each of the four corners, so a top board will not sit flat without four
+ * notches cut out of it. The top rails hang off the posts by their bolts, when the load could
+ * simply go down the posts. And the bottom frame hangs too, when the easiest thing available
+ * is to stand it on the floor.
+ *
+ * So: the posts and the bottom frame all start at the floor, and the bottom rails butt in
+ * between the posts. The top frame sits on top of the posts and lies flat — twenty
+ * millimetres of height rather than forty, and a continuous surface to put something on. The
+ * two long rails run the full width, so the outside corners are whole.
+ */
 function box(w: number, d: number, h: number, spec: ProfileSpec, bottomY = 0): ProfileData[] {
+  const side = Number(spec.slice(0, 2)) || 20
+  const face = Number(spec.slice(2)) || side
+  const lying = Math.min(side, face)      // how tall the top frame is, laid flat
+  const standing = Math.max(side, face)   // ...and the bottom frame, on edge
+  const postTop = bottomY + h - lying
   const out: Array<ProfileData | null> = []
-  for (const x of [0, w]) for (const z of [0, d]) out.push(bar(V(x, bottomY, z), V(x, bottomY + h, z), spec))
-  for (const y of [bottomY, bottomY + h]) {
-    out.push(bar(V(0, y, 0), V(w, y, 0), spec))
-    out.push(bar(V(0, y, d), V(w, y, d), spec))
-    out.push(bar(V(0, y, 0), V(0, y, d), spec))
-    out.push(bar(V(w, y, 0), V(w, y, d), spec))
-  }
+
+  for (const x of [0, w]) for (const z of [0, d]) out.push(bar(V(x, bottomY, z), V(x, postTop, z), spec))
+
+  // on the floor, between the posts
+  const by = bottomY + standing / 2
+  out.push(bar(V(0, by, 0), V(w, by, 0), spec))
+  out.push(bar(V(0, by, d), V(w, by, d), spec))
+  out.push(bar(V(0, by, 0), V(0, by, d), spec))
+  out.push(bar(V(w, by, 0), V(w, by, d), spec))
+
+  // over the top of them, lying flat; the long pair runs the full width
+  const ty = postTop + lying / 2
+  out.push(rolled(bar(V(0, ty, 0), V(w, ty, 0), spec)))
+  out.push(rolled(bar(V(0, ty, d), V(w, ty, d), spec)))
+  out.push(rolled(bar(V(0, ty, 0), V(0, ty, d), spec)))
+  out.push(rolled(bar(V(w, ty, 0), V(w, ty, d), spec)))
   return keep(out)
 }
 
@@ -90,10 +132,17 @@ export const TEMPLATES: Template[] = [
     ],
     build: ({ w, d, h }) => {
       const out: Array<ProfileData | null> = []
-      for (const x of [0, w]) for (const z of [0, d]) out.push(bar(V(x, 0, z), V(x, h, z), '4040'))
-      for (const y of [40, h]) out.push(...perimeter(w, d, y, 40, 20, '2040'))
+      // the legs carry the top rather than hanging off it, so they stop under it
+      const legTop = h - 20
+      for (const x of [0, w]) for (const z of [0, d]) out.push(bar(V(x, 0, z), V(x, legTop, z), '4040'))
+      // the lower rails are let in between the legs, so they are pushed flush with them; the
+      // top frame is laid over the legs and touches them only from above, so it is not
+      const ty = legTop + 10
+      out.push(...perimeter(w, d, 20, 40, 20, '2040'))
+      for (const [a, b] of [[V(0, ty, 0), V(w, ty, 0)], [V(0, ty, d), V(w, ty, d)],
+        [V(0, ty, 0), V(0, ty, d)], [V(w, ty, 0), V(w, ty, d)]]) out.push(rolled(bar(a, b, '2040')))
       // one rail across the middle so a long top does not sag
-      if (w > 1200) out.push(bar(V(w / 2, h, 0), V(w / 2, h, d), '2040'))
+      if (w > 1200) out.push(rolled(bar(V(w / 2, ty, 0), V(w / 2, ty, d), '2040')))
       return keep(out)
     },
   },
@@ -110,16 +159,21 @@ export const TEMPLATES: Template[] = [
     ],
     build: ({ w, d, shelves, pitch }) => {
       const n = Math.max(2, Math.round(shelves))
-      const h = pitch * (n - 1) + 40
       const out: Array<ProfileData | null> = []
-      for (const x of [0, w]) for (const z of [0, d]) out.push(bar(V(x, 0, z), V(x, h, z), '2020'))
-      for (let i = 0; i < n; i++) {
-        const y = 40 + i * pitch
-        out.push(bar(V(0, y, 0), V(w, y, 0), '2020'))
-        out.push(bar(V(0, y, d), V(w, y, d), '2020'))
-        out.push(bar(V(0, y, 0), V(0, y, d), '2020'))
-        out.push(bar(V(w, y, 0), V(w, y, d), '2020'))
+      // the lowest ring on the floor, the highest one laid over the posts, the rest let in
+      const ring = (y: number, flat = false) => {
+        const four = [
+          bar(V(0, y, 0), V(w, y, 0), '2020'),
+          bar(V(0, y, d), V(w, y, d), '2020'),
+          bar(V(0, y, 0), V(0, y, d), '2020'),
+          bar(V(w, y, 0), V(w, y, d), '2020'),
+        ]
+        out.push(...(flat ? four.map(rolled) : four))
       }
+      const top = 10 + (n - 1) * pitch
+      for (const x of [0, w]) for (const z of [0, d]) out.push(bar(V(x, 0, z), V(x, top, z), '2020'))
+      for (let i = 0; i < n - 1; i++) ring(10 + i * pitch)
+      ring(top + 10, true)
       return keep(out)
     },
   },
