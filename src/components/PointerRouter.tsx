@@ -12,6 +12,7 @@ import { rotateSelected, selectConnected } from '../utils/editOps'
 import { setFittingOpen } from '../utils/fittingOps'
 import { translations } from '../utils/translations'
 import { memberBox } from '../utils/dragSnap'
+import { acceptSuggestion, dismissSuggestion } from '../utils/suggestOps'
 
 /** Where a ray meets a level plane at height `y`, or null when it runs parallel to it */
 function planeHit(ray: THREE.Ray, y: number): THREE.Vector3 | null {
@@ -47,6 +48,8 @@ const PointerRouter: React.FC = () => {
   const pendingDrawDrag = useRef<{ x: number; y: number; id: string; point: THREE.Vector3; shift: boolean; alt: boolean } | null>(null)
   /** a press that landed on a rotation arc, waiting for the release */
   const pendingRotate = useRef<{ x: number; y: number; axis: 'x' | 'y' | 'z'; shift: boolean } | null>(null)
+  /** a left press while a suggestion is showing: on its ghost or not, decided on release */
+  const pendingSuggest = useRef<{ x: number; y: number; onGhost: boolean } | null>(null)
   /**
    * Everything under the cursor and which of them Tab has stepped to. In a dense frame the
    * nearest part is often not the one meant, and nudging the camera until the right one is
@@ -330,6 +333,16 @@ const PointerRouter: React.FC = () => {
         return
       }
 
+      // A suggestion is showing: a click on its ghost takes it, a click anywhere else drops
+      // it (and still does whatever that click does), and a drag is the view turning.
+      pendingSuggest.current = null
+      if (ts.suggestion) {
+        const { cursor, rect } = cursorOf(e)
+        const hit = pickAtScreen(cursor, rayOf(cursor, rect), camera, { width: rect.width, height: rect.height }, [ts.suggestion.cand.member], [])
+        pendingSuggest.current = { x: e.clientX, y: e.clientY, onGhost: !!hit }
+        if (hit) return
+      }
+
       // a press on a move arrow slides the selection along that axis, in either mode.
       // Ctrl/Cmd (add to selection) and Alt (plane drag) are gestures aimed at the model,
       // so they pass straight through the handles.
@@ -480,6 +493,13 @@ const PointerRouter: React.FC = () => {
 
     const onPointerUp = (e: PointerEvent) => {
       pendingDrawDrag.current = null
+
+      const sg = pendingSuggest.current
+      pendingSuggest.current = null
+      if (sg && e.button === 0 && Math.hypot(e.clientX - sg.x, e.clientY - sg.y) <= CLICK_SLOP_PX) {
+        if (sg.onGhost) { acceptSuggestion(); return }
+        dismissSuggestion()
+      }
 
       const rot = pendingRotate.current
       pendingRotate.current = null

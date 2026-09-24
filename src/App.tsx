@@ -9,7 +9,10 @@ import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle, DoorOpen, DoorClosed } from 'lucide-react'
+import { nextSuggestion, dismissSuggestion } from './utils/suggestOps'
+import { computeTrims } from './utils/jointUtils'
+import { getProfileEndpoints } from './utils/geometryCore'
+import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle, DoorOpen, DoorClosed, Lightbulb } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -27,7 +30,7 @@ function App() {
     toasts, showToast, dragConflict, hoverPartId, snapGuides, gizmoHover,
     dragMoved, resize, hoverCandidates, workPlaneY,
     pendingRotate, setPendingRotate, viewMode, setViewMode, helpOpen, toggleHelp, showFittings, toggleFittings,
-    measuring, startMeasuring, stopMeasuring,
+    measuring, startMeasuring, stopMeasuring, suggestion,
   } = useToolStore()
   const t = translations[language]
 
@@ -116,6 +119,8 @@ function App() {
       }
 
       if (e.key === 'Escape') {
+        // the suggestion is the lightest thing on screen, so it goes first
+        if (useToolStore.getState().suggestion) { dismissSuggestion(); return }
         // a turn waiting for its axis is the innermost thing Escape can back out of
         if (pendingRotate) { setPendingRotate(null); return }
         if (measuring) { stopMeasuring(); return }
@@ -132,6 +137,15 @@ function App() {
         e.preventDefault()
         setExactInput(e.key)
         requestAnimationFrame(() => exactInputRef.current?.focus())
+        return
+      }
+
+      // N: suggest the next member. A half-drawn line is given up first — the suggestion
+      // is a member of its own, not the end of that one.
+      if (e.key.toLowerCase() === 'n' && !mod && !measuring) {
+        e.preventDefault()
+        if (isDrawing) cancelDraw()
+        nextSuggestion()
         return
       }
 
@@ -301,7 +315,24 @@ function App() {
           {/* Before the first click: what the start point would attach to. A click that finds
               nothing lands on the work plane, and that used to be invisible until the member
               appeared somewhere else entirely. */}
-          {held !== null && !isDrawing && !isDragging && (
+          {suggestion && (() => {
+            const m = suggestion.cand.member
+            const cut = Math.round(computeTrims(m, [...useStore.getState().profiles, m]).cutLength)
+            const ends = getProfileEndpoints(m)
+            const lo = Math.round(Math.min(ends.start.y, ends.end.y))
+            return (
+              <div data-testid="suggest-card"
+                className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-2xl border border-emerald-400/50 bg-slate-900/90 text-[11px] shadow-lg pointer-events-none z-10 text-center space-y-0.5">
+                <div className="font-mono font-bold text-emerald-300">
+                  {t.suggestNo(suggestion.index)} · {m.spec} · {t.suggestCut} {cut} mm · {t.suggestAt} y={lo}
+                </div>
+                <div className="text-slate-200">{suggestion.cand.reasons.map((r) => t.suggestReason[r] ?? r).join(' · ')}</div>
+                <div className="text-[10px] text-slate-400">{t.suggestHow}</div>
+              </div>
+            )
+          })()}
+
+          {held !== null && !isDrawing && !isDragging && !suggestion && (
             <div data-testid="start-hud"
               className={`absolute bottom-6 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full border text-[11px] font-bold shadow-lg pointer-events-none z-10 ${
                 snapKind ? 'bg-slate-900/90 border-cyan-400/50 text-cyan-200' : 'bg-slate-900/90 border-white/15 text-slate-400'}`}>
@@ -462,6 +493,13 @@ function App() {
               title={t.hintMeasure} aria-label={t.measure}
               className={iconBtn(!!measuring, 'bg-amber-500 text-white shadow-lg')}>
               <Ruler size={14} />
+            </button>
+            {/* The next member the drawing most likely needs, offered as a ghost to click */}
+            <button data-testid="suggest-next" onClick={() => { if (isDrawing) cancelDraw(); nextSuggestion() }}
+              disabled={viewMode || !!measuring}
+              title={t.hintSuggest} aria-label={t.suggest}
+              className={`${iconBtn(!!suggestion, 'bg-emerald-600/30 text-emerald-300')} disabled:opacity-30 disabled:pointer-events-none`}>
+              <Lightbulb size={14} />
             </button>
             <button data-testid="mode-toggle" onClick={() => setViewMode(!viewMode)}
               title={viewMode ? t.hintLook : t.hintBuild} aria-label={viewMode ? t.look : t.build}

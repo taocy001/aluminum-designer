@@ -59,17 +59,53 @@ export function lowestPointY(p: ProfileData): number {
 }
 
 /**
+ * Turn two points into a member the way a hand-drawn one is made: the section, then the way
+ * it is turned, then nudged sideways so its faces meet what it lands on.
+ *
+ * `twin` is a member already in the drawing that this one copies: its roll (which way a 2040
+ * faces) comes with it, because a rail that repeats another is turned the way that one is.
+ * `floorFeet` stands an upright whose foot is within one section of the ground on the ground,
+ * which is where a cabinet's posts stand.
+ */
+export function prepareProfile(
+  start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec, others: ProfileData[],
+  opts: { twin?: ProfileData | null; floorFeet?: boolean } = {},
+): ProfileData | null {
+  let s = start.clone(), e = end.clone()
+  const { twin, floorFeet = false } = opts
+  if (floorFeet) {
+    const dir = e.clone().sub(s).normalize()
+    if (Math.abs(dir.y) > 0.99) {
+      const { w, h } = specDims(spec)
+      const lo = s.y <= e.y ? s : e
+      if (lo.y > 0 && lo.y <= Math.max(w, h)) lo.y = 0
+    }
+  }
+  let built: ProfileData | null
+  if (twin) {
+    // run the same way as the twin, so its quaternion — and with it the roll — carries over
+    const td = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...twin.quaternion).normalize())
+    if (e.clone().sub(s).dot(td) < 0) [s, e] = [e, s]
+    built = buildProfile(s, e, spec)
+    if (built && Math.abs(e.clone().sub(s).normalize().dot(td)) > 0.999) built = { ...built, quaternion: [...twin.quaternion] as [number, number, number, number] }
+  } else {
+    built = buildProfile(s, e, spec)
+  }
+  if (!built) return null
+  return faceAlignOnCreate(built, others)
+}
+
+/**
  * Add a profile. Interference no longer blocks placement — the member is created and the
  * conflicting parts are flagged in red, which keeps modelling fluid.
  */
 export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec): boolean {
   const { showToast, language } = useToolStore.getState()
   const t = translations[language]
-  const built = buildProfile(start, end, spec)
-  if (!built) { showToast(t.toastTooShort, 'error'); return false }
   // a frame is assembled face to face, not centreline to centreline: nudge the new member
   // sideways so the faces its brackets will sit on line up with what it landed on
-  const candidate = faceAlignOnCreate(built, useStore.getState().profiles)
+  const candidate = prepareProfile(start, end, spec, useStore.getState().profiles)
+  if (!candidate) { showToast(t.toastTooShort, 'error'); return false }
   useStore.getState().addProfile(candidate)
   const st = useStore.getState()
   const { conflictIds } = analyzeFrame(st.profiles, st.connectors, st.panels, st.fittings)

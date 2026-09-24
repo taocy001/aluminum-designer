@@ -4,6 +4,8 @@ import { ProfileSpec } from './useStore'
 import type { Axis, ThroughRule } from '../utils/jointUtils'
 import { getThroughRule, setThroughRule as applyThroughRule } from '../utils/jointUtils'
 import type { PivotMode } from '../utils/editOps'
+import type { Candidate } from '../utils/suggest'
+import type { ProfileData } from './useStore'
 
 /**
  * What the pointer is carrying. There is no drawing "mode": picking a profile or a
@@ -35,6 +37,15 @@ interface ToolState {
   viewMode: boolean
   /** the full key list, opened from the corner rather than printed there */
   helpOpen: boolean
+  /**
+   * The member offered by 建议 / Suggest, drawn as a ghost until it is clicked (added),
+   * the empty canvas is clicked (dropped) or Suggest is pressed again (the next one).
+   * `docRef` is the members array it was vetted against: a different one means the
+   * drawing has changed under it.
+   */
+  suggestion: null | { cand: Candidate; index: number; docRef: ProfileData[] }
+  /** suggestions turned down in this run of presses; they come last */
+  suggestSkipped: Set<string>
   /** measuring: null when not, then the first point once it is put down */
   measuring: null | { from: THREE.Vector3 | null; to: THREE.Vector3 | null }
   /**
@@ -164,6 +175,7 @@ interface ToolState {
   toggleFittings: () => void
   setSection: (section: { axis: 'x' | 'y' | 'z'; at: number; flip: boolean } | null) => void
   setBuildStep: (buildStep: number | null) => void
+  setSuggestion: (suggestion: ToolState['suggestion'], skipped?: Set<string>) => void
   startMeasuring: () => void
   setMeasurePoint: (at: THREE.Vector3) => void
   stopMeasuring: () => void
@@ -231,6 +243,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   section: null,
   buildStep: null,
   measuring: null,
+  suggestion: null,
+  suggestSkipped: new Set(),
   pendingRotate: null,
   zoomStep: 0,
   zoomAt: null,
@@ -304,6 +318,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   toggleFittings: () => set((s) => ({ showFittings: !s.showFittings })),
   setSection: (section) => set({ section }),
   setBuildStep: (buildStep) => set({ buildStep }),
+  setSuggestion: (suggestion, skipped) => set(skipped ? { suggestion, suggestSkipped: skipped } : { suggestion }),
   // measuring puts down whatever is in hand: a click has to mean one thing at a time
   startMeasuring: () => set({ measuring: { from: null, to: null }, held: null, activeConnectorType: null, isDrawing: false, selectMode: false }),
   setMeasurePoint: (at) => set((s) => {
