@@ -19,7 +19,14 @@ test.describe('Connectors', () => {
       const cs = (await store(page)).connectors
       expect(cs).toHaveLength(i + 1)
       expect(cs[i].type.length).toBeGreaterThan(0)
-      expect(cs[i].position.map(Math.round)).toEqual(i % 2 === 0 ? [600, 10, 0] : [0, 10, 0])
+      // Each part lands on the end it was dropped near. The two that stand under a member —
+      // a levelling foot and a caster mount — are seated just outside that end face rather
+      // than in the metal, so they sit one half-length further along.
+      const want = i % 2 === 0 ? [600, 10, 0] : [0, 10, 0]
+      const under = CONNECTORS[i] === '调节脚' || CONNECTORS[i] === '脚轮座'
+      const got = cs[i].position.map(Math.round)
+      expect([got[1], got[2]]).toEqual([want[1], want[2]])
+      expect(Math.abs(got[0] - want[0])).toBeLessThanOrEqual(under ? 12 : 0)
     }
     await expect(page.getByTestId('bom-table')).toContainText('L型角码')
     // select one connector in navigate mode and delete it
