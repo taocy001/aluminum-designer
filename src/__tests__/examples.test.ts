@@ -144,6 +144,37 @@ describe('the drawings that ship are buildable', () => {
       expect(struck).toEqual([])
     })
 
+    /**
+     * A shelf hung between two rails is held along two edges; the other two sag under a row
+     * of books and the board can tip off. Every horizontal board is carried on all four.
+     */
+    it('every shelf is carried on all four sides', () => {
+      const { profiles, panels } = load(name)
+      const trims = computeAllTrims(profiles)
+      const metal = profiles.map((p) => trimmedBox(p, trims.get(p.id)!))
+      const loose: string[] = []
+      for (const b of panels) {
+        const q = new THREE.Quaternion(...b.quaternion).normalize()
+        const box = new THREE.Box3()
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+          box.expandByPoint(new THREE.Vector3(sx * b.width / 2, sy * b.height / 2, sz * b.thickness / 2).applyQuaternion(q).add(new THREE.Vector3(...b.position)))
+        }
+        const size = box.getSize(new THREE.Vector3())
+        if (size.y > 40) continue                       // standing: a back or a side
+        const carried = (axis: 'x' | 'z', at: number) => {
+          const other = axis === 'x' ? 'z' : 'x'
+          return metal.some((m) => {
+            const run = Math.min(m.max[axis], box.max[axis]) - Math.max(m.min[axis], box.min[axis])
+            return run >= size[axis] * 0.7 && m.max.y >= box.min.y - 2 && m.min.y <= box.max.y + 2
+              && m.min[other] - 25 <= at && at <= m.max[other] + 25
+          })
+        }
+        const edges = [carried('z', box.min.x), carried('z', box.max.x), carried('x', box.min.z), carried('x', box.max.z)]
+        if (edges.includes(false)) loose.push(`board@${b.position.map(Math.round)} ${edges.map((e) => (e ? '■' : '□')).join('')}`)
+      }
+      expect(loose).toEqual([])
+    })
+
     it('and it is a drawing, not an empty file', () => {
       const { profiles } = load(name)
       expect(profiles.length).toBeGreaterThan(3)
