@@ -1,5 +1,20 @@
 import * as THREE from 'three'
 import type { ScreenPick } from './screenPick'
+import { useToolStore } from '../store/useToolStore'
+
+/**
+ * Is this point on the side of the cut that has been taken away?
+ *
+ * A part that has been cut out of the picture must not be clickable where it used to be.
+ * Otherwise the section view is a trap: you look inside a cabinet, click what you can see,
+ * and get the door that is no longer drawn.
+ */
+export function cutAway(v: THREE.Vector3): boolean {
+  const s = useToolStore.getState().section
+  if (!s) return false
+  const at = v[s.axis]
+  return s.flip ? at < s.at : at > s.at
+}
 
 /**
  * What is actually drawn at a pixel.
@@ -27,6 +42,7 @@ export function frontmostId(scene: THREE.Object3D, ray: THREE.Ray, camera: THREE
   raycaster.set(ray.origin, ray.direction)
   raycaster.camera = camera
   for (const hit of raycaster.intersectObjects(scene.children, true)) {
+    if (cutAway(hit.point)) continue
     let o: THREE.Object3D | null = hit.object
     while (o) {
       const d = o.userData as Record<string, string | undefined>

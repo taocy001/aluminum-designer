@@ -10,6 +10,7 @@ import { readout } from '../utils/measure'
 import SnapMarker from './SnapMarker'
 import { translations } from '../utils/translations'
 import { fittingObb, leafObb } from '../utils/fittingGeometry'
+import { cutAway } from '../utils/frontmost'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
@@ -133,6 +134,33 @@ const CameraController: React.FC = () => {
  * has. Dragging a box round a row of doors and getting the posts behind them is not a
  * selection anybody asked for.
  */
+/**
+ * A cut through the drawing.
+ *
+ * Hiding parts to see inside a cabinet works until the thing you want to see is behind the
+ * part you would have to hide. A plane takes away everything on one side of it wherever it
+ * falls, so the inside of a run of cabinets can be looked at without deciding in advance
+ * which cabinet is in the way.
+ *
+ * The cut is global rather than per material, so the boards, the brackets and the doors go
+ * with the metal. Members come out hollow at the cut, which is what every CAD package does
+ * and what the section of an extrusion actually looks like.
+ */
+const SectionPlane: React.FC = () => {
+  const { gl } = useThree()
+  const section = useToolStore((s) => s.section)
+  useEffect(() => {
+    if (!section) { gl.localClippingEnabled = false; gl.clippingPlanes = []; return }
+    const sign = section.flip ? -1 : 1
+    const n = new THREE.Vector3(
+      section.axis === 'x' ? sign : 0, section.axis === 'y' ? sign : 0, section.axis === 'z' ? sign : 0,
+    )
+    gl.clippingPlanes = [new THREE.Plane(n, -section.at * sign)]
+    return () => { gl.clippingPlanes = [] }
+  }, [gl, section])
+  return null
+}
+
 const FrameSelector: React.FC = () => {
   const { camera, size } = useThree()
   const frameSelectRect = useToolStore((s) => s.frameSelectRect)
@@ -310,6 +338,7 @@ const DevHook: React.FC = () => {
       const rc = new THREE.Raycaster()
       rc.setFromCamera(ndc, camera)
       for (const h of rc.intersectObjects(scene.children, true)) {
+        if (cutAway(h.point)) continue
         let o: THREE.Object3D | null = h.object
         while (o) {
           const d = o.userData as Record<string, string>
@@ -530,6 +559,7 @@ const Viewport: React.FC = () => {
       <ResizeHandles />
       <TransformGizmo />
       <FrameSelector />
+      <SectionPlane />
 
       {/* No damping. drei turns it on by default, which eases the camera toward the cursor
           over several frames — smooth to look at and a quarter of a drag behind your hand.

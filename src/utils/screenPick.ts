@@ -4,6 +4,7 @@ import { getProfileEndpoints, getProfileDir, crossExtentAlong } from './geometry
 import { toScreen, closestParamLineToRay, type ScreenSize } from './pickUtils'
 import { panelCorners } from './panelOps'
 import { fittingObb } from './fittingGeometry'
+import { cutAway } from './frontmost'
 import { obbCorners } from './obb'
 
 /** Extra pixels of slack around a member's rendered body, so thin beams stay easy to hit */
@@ -162,7 +163,10 @@ export function pickCandidatesAtScreen(
     const origin = new THREE.Vector3(...p.position)
     const tRay = closestParamLineToRay(origin, dir, ray)
     const grabT = tRay === null ? origin.distanceTo(world) : THREE.MathUtils.clamp(tRay, 0, p.length)
-    found.push({ score: depth, pick: { kind: 'profile', id: p.id, point: origin.clone().addScaledVector(dir, grabT), depth } })
+    const at = origin.clone().addScaledVector(dir, grabT)
+    // a part the cut has taken away is not there to be clicked
+    if (cutAway(at)) continue
+    found.push({ score: depth, pick: { kind: 'profile', id: p.id, point: at, depth } })
   }
 
   // A board is picked by its face: the cursor has to be inside the projected rectangle.
@@ -181,6 +185,7 @@ export function pickCandidatesAtScreen(
     const outline = hull2d(corners.map((v) => toScreen(v, camera, size)))
     if (!insideQuad(outline, cursor) && distanceToOutline(outline, cursor) > PANEL_SLACK_PX) continue
     const depth = centre.distanceTo(camPos)
+    if (cutAway(centre)) continue
     found.push({ score: depth, pick: { kind: 'panel', id: b.id, point: centre, depth } })
   }
 
@@ -195,6 +200,7 @@ export function pickCandidatesAtScreen(
     const outline = hull2d(corners.map((v) => toScreen(v, camera, size)))
     if (!insideQuad(outline, cursor) && distanceToOutline(outline, cursor) > PANEL_SLACK_PX) continue
     const here = corners.reduce((a, v) => a.add(v), new THREE.Vector3()).multiplyScalar(1 / corners.length)
+    if (cutAway(here)) continue
     found.push({
       score: here.distanceTo(camPos) + FITTING_DEPTH_PENALTY,
       pick: { kind: 'fitting', id: f.id, point: here, depth: here.distanceTo(camPos) },
@@ -204,6 +210,7 @@ export function pickCandidatesAtScreen(
   for (const c of connectors) {
     const world = new THREE.Vector3(...c.position)
     if (world.clone().sub(camPos).dot(fwd) <= NEAR_EPS) continue
+    if (cutAway(world)) continue
     const dist = toScreen(world, camera, size).distanceTo(cursor)
     if (dist > CONNECTOR_RADIUS_PX) continue
     const depth = world.distanceTo(camPos)

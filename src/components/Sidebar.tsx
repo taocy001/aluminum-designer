@@ -145,7 +145,8 @@ const NumField: React.FC<{
 const Sidebar: React.FC = () => {
   const { profiles, connectors, panels, fittings, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
-    workPlaneY, setWorkPlaneY, throughRule, setThroughRule, viewMode, setViewMode } = useToolStore()
+    workPlaneY, setWorkPlaneY, throughRule, setThroughRule, viewMode, setViewMode,
+    section, setSection } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -260,6 +261,21 @@ const Sidebar: React.FC = () => {
 
   // A frame can be perfectly buildable and still sag. The load is the one number the tool
   // cannot know, so it is asked for, and everything else follows from the drawing.
+  // the drawing's extent along each axis, so the cut's slider covers exactly what is there
+  const sectionRange = (axis: 'x' | 'y' | 'z'): [number, number] => {
+    const box = new THREE.Box3()
+    for (const p of profiles) {
+      const { start, end } = getProfileEndpoints(p)
+      box.expandByPoint(start); box.expandByPoint(end)
+    }
+    if (box.isEmpty()) return [0, 1000]
+    return [box.min[axis] - 50, box.max[axis] + 50]
+  }
+  const sectionMid = (axis: 'x' | 'y' | 'z') => {
+    const [lo, hi] = sectionRange(axis)
+    return Math.round((lo + hi) / 2)
+  }
+
   const loadKg = Math.max(0, parseFloat(loadText) || 0)
   const sagging = useMemo(() => saggingMembers(profiles, loadKg), [profiles, loadKg])
   const selectedSag = selectedProfile ? deflect(selectedProfile, profiles, loadKg) : null
@@ -492,6 +508,41 @@ const Sidebar: React.FC = () => {
               </button>
             </div>
             <p className="text-[9px] text-slate-500 mt-1 leading-snug">{t.workPlaneHint}</p>
+          </div>
+
+          {/* A cut through the drawing, for looking inside without hiding anything */}
+          <div className="space-y-1" data-testid="section-block">
+            <div className="flex items-center justify-between">
+              <label className="text-[9px] text-slate-500 font-black uppercase tracking-widest" title={t.sectionHint}>{t.section}</label>
+              <button data-testid="section-off" onClick={() => setSection(null)}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${section ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-blue-600 text-white'}`}>
+                {t.sectionOff}
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {(['x', 'y', 'z'] as const).map((ax) => (
+                <button key={ax} data-testid={`section-${ax}`}
+                  onClick={() => setSection({ axis: ax, at: sectionMid(ax), flip: section?.flip ?? false })}
+                  className={`py-1 rounded-lg text-[10px] font-bold font-mono ${section?.axis === ax ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                  {ax.toUpperCase()}
+                </button>
+              ))}
+              <button data-testid="section-flip" disabled={!section} title={t.sectionFlip}
+                onClick={() => section && setSection({ ...section, flip: !section.flip })}
+                className="py-1 rounded-lg text-[10px] font-bold bg-slate-700/50 hover:bg-slate-700 text-slate-400 disabled:opacity-30">
+                <FlipHorizontal2 size={12} className="mx-auto" />
+              </button>
+            </div>
+            {section && (
+              <label className="flex items-center gap-2 text-[11px]">
+                <input type="range" data-testid="section-at"
+                  min={Math.round(sectionRange(section.axis)[0])} max={Math.round(sectionRange(section.axis)[1])} step={5}
+                  value={Math.round(section.at)}
+                  onChange={(e) => setSection({ ...section, at: parseFloat(e.target.value) })}
+                  className="flex-1 accent-blue-500" />
+                <span className="font-mono text-slate-400 w-12 text-right">{Math.round(section.at)}</span>
+              </label>
+            )}
           </div>
 
           <div>
