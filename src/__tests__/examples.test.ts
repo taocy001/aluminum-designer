@@ -96,6 +96,24 @@ describe('bundled example geometry', () => {
       expect(empty).toEqual([])
     })
 
+    /**
+     * Opened, one at a time. The check above sees every door shut, which is how they were
+     * drawn and not how they are used: a leaf turned about the wrong edge went through the
+     * door beside it and into the frame, in a drawing that had just been declared clean.
+     */
+    it('every door opens all the way without striking anything', () => {
+      const { profiles, connectors, panels, fittings } = load(name)
+      const trims = computeAllTrims(profiles)
+      const struck: string[] = []
+      for (const door of fittings.filter((f) => f.kind === 'door')) {
+        const opened = fittings.map((f) => (f.id === door.id ? { ...f, open: 1 } : f))
+        for (const c of findConflicts(profiles, trims, connectors, panels, opened)) {
+          if (c.a === door.id || c.b === door.id) struck.push(`door@${door.position.map(Math.round)} ${c.depth}mm`)
+        }
+      }
+      expect(struck).toEqual([])
+    })
+
     it('contains profiles with positive dimensions', () => {
       const { profiles } = load(name)
       expect(profiles.length).toBeGreaterThan(3)
