@@ -18,6 +18,7 @@ import { downloadText, openProject, saveProject, savedFileName } from '../utils/
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
+import { buildStep as buildStepFile } from '../utils/step'
 import { TEMPLATES, templateById } from '../utils/templates'
 import { COMFORTABLE_URL, encodeShareLink } from '../utils/shareLink'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
@@ -346,6 +347,10 @@ const Sidebar: React.FC = () => {
   const handleExportDxf = () => {
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.dxf`,
       buildDxf({ profiles, panels, fittings }), 'application/dxf')
+  }
+  const handleExportStep = () => {
+    downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.step`,
+      buildStepFile({ profiles, panels, fittings }), 'application/step')
   }
   const handleSaveProject = async (asNew = false) => {
     const doc = { version: 3, savedAt: new Date().toISOString(), profiles, connectors, panels, fittings }
@@ -1212,6 +1217,11 @@ const Sidebar: React.FC = () => {
             <FileCode size={14} /> {t.exportDxf}
           </button>
         </div>
+        <button onClick={handleExportStep} disabled={profiles.length + panels.length + fittings.length === 0}
+          data-testid="export-step" title={t.hintExportStep}
+          className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600/40 hover:bg-blue-500 disabled:opacity-40 rounded-lg text-[11px] font-bold shadow-lg active:scale-95">
+          <Box size={14} /> {t.exportStep}
+        </button>
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => handleSaveProject(false)} data-testid="export-project" title={t.hintSave}
             className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
