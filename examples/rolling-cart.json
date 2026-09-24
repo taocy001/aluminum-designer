@@ -288,6 +288,78 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "p-mufvmswq12",
+   "spec": "2020",
+   "length": 780,
+   "position": [
+    10,
+    300,
+    10
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmswq13",
+   "spec": "2020",
+   "length": 780,
+   "position": [
+    10,
+    300,
+    490
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmswr15",
+   "spec": "2020",
+   "length": 780,
+   "position": [
+    10,
+    600,
+    10
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmswr16",
+   "spec": "2020",
+   "length": 780,
+   "position": [
+    10,
+    600,
+    490
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -678,7 +750,7 @@
  ],
  "panels": [
   {
-   "id": "b-mufs9iix9x",
+   "id": "b-mufvmswr14",
    "width": 460,
    "height": 760,
    "thickness": 18,
@@ -696,7 +768,7 @@
    "material": "mdf"
   },
   {
-   "id": "b-mufs9k4ya0",
+   "id": "b-mufvmsws17",
    "width": 460,
    "height": 760,
    "thickness": 18,

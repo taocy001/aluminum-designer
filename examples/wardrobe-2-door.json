@@ -450,6 +450,114 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "p-mufvmswu18",
+   "spec": "2040",
+   "length": 880,
+   "position": [
+    20,
+    1750,
+    20
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmswu19",
+   "spec": "2040",
+   "length": 880,
+   "position": [
+    20,
+    1750,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmswv1b",
+   "spec": "2040",
+   "length": 880,
+   "position": [
+    900,
+    1150,
+    20
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmsww1c",
+   "spec": "2040",
+   "length": 880,
+   "position": [
+    900,
+    1150,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmswx1e",
+   "spec": "2040",
+   "length": 880,
+   "position": [
+    900,
+    1750,
+    20
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "p-mufvmswx1f",
+   "spec": "2040",
+   "length": 880,
+   "position": [
+    900,
+    1750,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.5,
+    0.4999999999999999,
+    0.5
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -1028,11 +1136,43 @@
     0.7071067811865476,
     0
    ]
+  },
+  {
+   "id": "c-mufvmswz1h",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1760,
+    20,
+    10
+   ],
+   "quaternion": [
+    5.551115123125783e-17,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251565e-16
+   ]
+  },
+  {
+   "id": "c-mufvmswz1i",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1760,
+    20,
+    570
+   ],
+   "quaternion": [
+    5.551115123125783e-17,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251565e-16
+   ]
   }
  ],
  "panels": [
   {
-   "id": "b-mufs6t7f4t",
+   "id": "b-mufvmswv1a",
    "width": 520,
    "height": 840,
    "thickness": 18,
@@ -1050,7 +1190,7 @@
    "material": "mdf"
   },
   {
-   "id": "b-mufs6vr34w",
+   "id": "b-mufvmsww1d",
    "width": 520,
    "height": 840,
    "thickness": 18,
@@ -1068,7 +1208,7 @@
    "material": "mdf"
   },
   {
-   "id": "b-mufs6xpg4y",
+   "id": "b-mufvmswy1g",
    "width": 520,
    "height": 840,
    "thickness": 18,
