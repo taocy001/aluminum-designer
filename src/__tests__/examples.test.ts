@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { findConflicts } from '../utils/analysis'
-import { computeAllTrims } from '../utils/jointUtils'
+import * as THREE from 'three'
+import { computeAllTrims, trimmedBox } from '../utils/jointUtils'
+import { getProfileEndpoints } from '../utils/geometryCore'
 import { countUnflush } from '../utils/faceAlign'
 import { auditBrackets } from '../utils/bracketSeat'
 import { migrateFittings } from '../utils/migrate'
@@ -70,6 +72,28 @@ describe('bundled example geometry', () => {
     it('passes connector seating checks', () => {
       const { profiles, connectors } = load(name)
       expect(auditBrackets(profiles, connectors).map((f) => `${f.id} ${f.reason} ${f.off}mm`)).toEqual([])
+    })
+
+    /** A trimmed joint end must be occupied by a neighbouring member. */
+    it('fills the space removed by corner trims', () => {
+      const { profiles } = load(name)
+      const trims = computeAllTrims(profiles)
+      const solid = new Map(profiles.map((p) => [p.id, trimmedBox(p, trims.get(p.id)!)]))
+      const empty: string[] = []
+      for (const p of profiles) {
+        const t = trims.get(p.id)!
+        const { start, end } = getProfileEndpoints(p)
+        const dir = end.clone().sub(start).normalize()
+        for (const [tip, cut, sign] of [[start, t.start.trim, 1], [end, t.end.trim, -1]] as const) {
+          if (cut <= 0.5) continue
+          // halfway into the length that was cut away
+          const probe = (tip as THREE.Vector3).clone().addScaledVector(dir, (sign as number) * (cut as number) / 2)
+          if (![...solid].some(([id, box]) => id !== p.id && box.containsPoint(probe))) {
+            empty.push(`${p.spec}@${(tip as THREE.Vector3).toArray().map(Math.round)}`)
+          }
+        }
+      }
+      expect(empty).toEqual([])
     })
 
     it('contains profiles with positive dimensions', () => {
