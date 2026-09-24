@@ -57,6 +57,8 @@ function faceTrimAgainst(endPt: THREE.Vector3, d: THREE.Vector3, r: ProfileData)
 
 /** a corner is shared when two members reach for the same end of the same post */
 const CORNER_TOL = 45
+/** an end this close to the ground is standing on it (mm) */
+const FLOOR_EPS = 1
 
 function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | null, others: ProfileData[]): EndJoint {
   let buttTrim = -Infinity
@@ -84,7 +86,25 @@ function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | nul
     const table = PRIORITY[throughRule]
     const pPri = pAxis ? table[pAxis] : 0
     const qPri = qAxis ? table[qAxis] : 0
-    const weButt = !c.atQEnd || qPri > pPri   // T-joint, or corner where Q has priority
+    /**
+     * An end standing on the floor gives way to nobody.
+     *
+     * "Rails run through" is about the top of a frame: the rail sits across the post and the
+     * load goes straight down it. Applied to the bottom corner it says the same thing, and
+     * there it is nonsense — it cuts forty millimetres off the foot of the post and leaves it
+     * hanging, because nothing can pass underneath a post that is standing on the ground.
+     *
+     * So a vertical member's lower end holds its ground, and whatever meets it there butts
+     * into it instead. Everything above the floor is decided by the rule as before.
+     */
+    const theyStand = (() => {
+      if (qAxis !== 'y') return false
+      const { start: qLo, end: qHi } = getProfileEndpoints(q)
+      const low = qLo.y <= qHi.y ? qLo : qHi
+      return low.y <= FLOOR_EPS && endPt.distanceTo(low) <= CORNER_TOL
+    })()
+    const weStand = pAxis === 'y' && endPt.y <= FLOOR_EPS
+    const weButt = theyStand || (!weStand && (!c.atQEnd || qPri > pPri))
     if (weButt) { anyButt = true; buttTrim = Math.max(buttTrim, toNearFace) }
     else if (pPri > qPri) {
       extend = Math.max(extend, toFarFace)
