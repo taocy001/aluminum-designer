@@ -52,6 +52,8 @@ interface ToolState {
    * taken away. Null for no cut, which is the usual state.
    */
   section: { axis: 'x' | 'y' | 'z'; at: number; flip: boolean } | null
+  /** which assembly step is being shown, or null for the finished thing */
+  buildStep: number | null
   /** what the next camera fit should frame: everything, or just what is selected */
   cameraFitScope: 'all' | 'selection'
   /** R was pressed and is waiting for an axis key; null when no turn is pending */
@@ -161,6 +163,7 @@ interface ToolState {
   toggleHelp: () => void
   toggleFittings: () => void
   setSection: (section: { axis: 'x' | 'y' | 'z'; at: number; flip: boolean } | null) => void
+  setBuildStep: (buildStep: number | null) => void
   startMeasuring: () => void
   setMeasurePoint: (at: THREE.Vector3) => void
   stopMeasuring: () => void
@@ -226,6 +229,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   helpOpen: false,
   showFittings: true,
   section: null,
+  buildStep: null,
   measuring: null,
   pendingRotate: null,
   zoomStep: 0,
@@ -299,6 +303,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
   toggleFittings: () => set((s) => ({ showFittings: !s.showFittings })),
   setSection: (section) => set({ section }),
+  setBuildStep: (buildStep) => set({ buildStep }),
   // measuring puts down whatever is in hand: a click has to mean one thing at a time
   startMeasuring: () => set({ measuring: { from: null, to: null }, held: null, activeConnectorType: null, isDrawing: false, selectMode: false }),
   setMeasurePoint: (at) => set((s) => {

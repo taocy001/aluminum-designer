@@ -22,6 +22,7 @@ import { TEMPLATES, templateById } from '../utils/templates'
 import { COMFORTABLE_URL, encodeShareLink } from '../utils/shareLink'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { repairJoints } from '../utils/repairJoints'
+import { assemblySteps } from '../utils/assembly'
 import { deflect, saggingMembers, SLENDER } from '../utils/deflection'
 import { auditBrackets } from '../utils/bracketSeat'
 import { arraySelected, beginLiveEdit, directionLabel, duplicateSelected, flipProfile, livePart, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
@@ -146,7 +147,7 @@ const Sidebar: React.FC = () => {
   const { profiles, connectors, panels, fittings, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
     workPlaneY, setWorkPlaneY, throughRule, setThroughRule, viewMode, setViewMode,
-    section, setSection } = useToolStore()
+    section, setSection, buildStep, setBuildStep } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -275,6 +276,12 @@ const Sidebar: React.FC = () => {
     const [lo, hi] = sectionRange(axis)
     return Math.round((lo + hi) / 2)
   }
+
+  // The order the parts go on in. Worked out only while it is being looked at — it is a
+  // topological sweep over every joint in the drawing, and nobody needs it while drawing.
+  const steps = useMemo(() => (buildStep === null ? [] : assemblySteps(profiles, connectors, panels, fittings)),
+    [buildStep, profiles, connectors, panels, fittings])
+  const step = buildStep !== null ? steps[buildStep - 1] : undefined
 
   const loadKg = Math.max(0, parseFloat(loadText) || 0)
   const sagging = useMemo(() => saggingMembers(profiles, loadKg), [profiles, loadKg])
@@ -508,6 +515,49 @@ const Sidebar: React.FC = () => {
               </button>
             </div>
             <p className="text-[9px] text-slate-500 mt-1 leading-snug">{t.workPlaneHint}</p>
+          </div>
+
+          {/* What to build first: the one question a drawing does not answer by itself */}
+          <div className="space-y-1" data-testid="build-block">
+            <div className="flex items-center justify-between">
+              <label className="text-[9px] text-slate-500 font-black uppercase tracking-widest" title={t.buildOrderHint}>{t.buildOrder}</label>
+              <button data-testid="build-toggle"
+                onClick={() => setBuildStep(buildStep === null ? 1 : null)}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${buildStep === null ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-emerald-600 text-white'}`}>
+                {buildStep === null ? t.buildShow : t.buildHide}
+              </button>
+            </div>
+            {buildStep !== null && steps.length > 0 && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-1">
+                  <button data-testid="build-prev" disabled={buildStep <= 1}
+                    onClick={() => setBuildStep(Math.max(1, buildStep - 1))}
+                    className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 text-[11px] font-bold">‹</button>
+                  <input type="range" data-testid="build-at" min={1} max={steps.length} step={1} value={buildStep}
+                    onChange={(e) => setBuildStep(parseInt(e.target.value, 10))}
+                    className="flex-1 accent-emerald-500" />
+                  <button data-testid="build-next" disabled={buildStep >= steps.length}
+                    onClick={() => setBuildStep(Math.min(steps.length, buildStep + 1))}
+                    className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 text-[11px] font-bold">›</button>
+                </div>
+                <div className="bg-slate-950/60 rounded-lg p-2 text-[11px] space-y-1" data-testid="build-step">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">{t.buildStepOf(buildStep, steps.length)}</span>
+                    <span className="font-mono text-slate-400">{t.buildAtHeight(step?.atHeight ?? 0)}</span>
+                  </div>
+                  <div className="text-slate-300 font-mono text-[10px]" data-testid="build-parts">
+                    {t.buildParts(step?.profiles.length ?? 0, step?.connectors.length ?? 0,
+                      (step?.panels.length ?? 0) + (step?.fittings.length ?? 0))}
+                  </div>
+                </div>
+                <button data-testid="build-select" onClick={() => {
+                  const s = steps[buildStep - 1]
+                  if (s) useStore.getState().selectItems([...s.profiles, ...s.connectors, ...s.panels, ...s.fittings])
+                }} className="w-full py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold">
+                  {t.buildSelect}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* A cut through the drawing, for looking inside without hiding anything */}

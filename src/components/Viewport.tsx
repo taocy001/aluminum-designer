@@ -11,6 +11,7 @@ import SnapMarker from './SnapMarker'
 import { translations } from '../utils/translations'
 import { fittingObb, leafObb } from '../utils/fittingGeometry'
 import { cutAway } from '../utils/frontmost'
+import { assemblySteps, shownAt } from '../utils/assembly'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
@@ -506,7 +507,14 @@ const SnapGuides: React.FC = () => {
 
 const Viewport: React.FC = () => {
   const { profiles, connectors, panels, fittings, selectedIds } = useStore()
-  const { isDragging, showDimensionLabels, selectMode, showFittings } = useToolStore()
+  const { isDragging, showDimensionLabels, selectMode, showFittings, buildStep } = useToolStore()
+  // Stepping through the build shows what is on by the end of that step and nothing later.
+  // The parts are the same parts; this only decides which of them are drawn.
+  const steps = useMemo(() => (buildStep === null ? null : assemblySteps(profiles, connectors, panels, fittings)),
+    [buildStep, profiles, connectors, panels, fittings])
+  const on = useMemo(() => (steps && buildStep !== null ? shownAt(steps, buildStep) : null), [steps, buildStep])
+  const showing = <T extends { id: string }>(list: T[], kind: 'profiles' | 'connectors' | 'panels' | 'fittings') =>
+    (on ? list.filter((x) => on[kind].has(x.id)) : list)
   const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings])
 
   const orbitEnabled = !isDragging && !selectMode
@@ -530,19 +538,19 @@ const Viewport: React.FC = () => {
 
       <Grid infiniteGrid cellSize={50} sectionSize={500} fadeDistance={6000} fadeStrength={1.5} cellColor="#334155" sectionColor="#475569" position={[0, -0.5, 0]} />
 
-      {profiles.map((p) => (
+      {showing(profiles, 'profiles').map((p) => (
         <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selectedIds.includes(p.id)} conflict={conflictIds.has(p.id)} />
       ))}
 
-      {connectors.map((c) => (
+      {showing(connectors, 'connectors').map((c) => (
         <Connector key={c.id} {...c} isSelected={selectedIds.includes(c.id)} />
       ))}
 
-      {panels.map((b) => (
+      {showing(panels, 'panels').map((b) => (
         <Panel key={b.id} {...b} isSelected={selectedIds.includes(b.id)} />
       ))}
 
-      {showFittings && fittings.map((f) => (
+      {showFittings && showing(fittings, 'fittings').map((f) => (
         <Fitting key={f.id} {...f} isSelected={selectedIds.includes(f.id)} />
       ))}
 
