@@ -60,7 +60,7 @@ const CORNER_TOL = 45
 /** an end this close to the ground is standing on it (mm) */
 const FLOOR_EPS = 1
 
-function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | null, others: ProfileData[]): EndJoint {
+function resolveEnd(self: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | null, others: ProfileData[]): EndJoint {
   let buttTrim = -Infinity
   let anyButt = false
   let extend = 0
@@ -104,12 +104,24 @@ function resolveEnd(endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | nul
       return low.y <= FLOOR_EPS && endPt.distanceTo(low) <= CORNER_TOL
     })()
     const weStand = pAxis === 'y' && endPt.y <= FLOOR_EPS
-    const weButt = theyStand || (!weStand && (!c.atQEnd || qPri > pPri))
+    /**
+     * Whether this is Q's end is asked the way Q asks it about us.
+     *
+     * A rail across the top of a post has its centre line half its own section below the
+     * post's end. Seen from the post, the rail's end is right there, so the post gives way.
+     * Seen from the rail with only the bare end-point test, it lands twenty short of the end
+     * — mid-span — so it butts and cuts back as well. Both gave way, and every such corner
+     * was left an empty block the size of the post's section. Q's end counts as reached when
+     * it lies within our own section, which is exactly when Q would say we reached it.
+     */
+    const { start: qS, end: qE } = getProfileEndpoints(q)
+    const reach = crossExtentAlong(self, getProfileDir(q)) + 1
+    const atQEnd = c.atQEnd || c.axisPoint.distanceTo(qS) <= reach || c.axisPoint.distanceTo(qE) <= reach
+    const weButt = theyStand || (!weStand && (!atQEnd || qPri > pPri))
     if (weButt) { anyButt = true; buttTrim = Math.max(buttTrim, toNearFace) }
     else if (pPri > qPri) {
       extend = Math.max(extend, toFarFace)
-      const { start: qs, end: qe } = getProfileEndpoints(q)
-      cornersClaimed.push(endPt.distanceTo(qs) <= endPt.distanceTo(qe) ? qs : qe)
+      cornersClaimed.push(endPt.distanceTo(qS) <= endPt.distanceTo(qE) ? qS : qE)
     }
   }
 
@@ -150,8 +162,8 @@ export function computeTrims(profile: ProfileData, all: ProfileData[]): ProfileT
   const { start, end } = getProfileEndpoints(profile)
   const dir = getProfileDir(profile)
   const axis = getProfileAxis(profile)
-  const s = resolveEnd(start, dir.clone().negate(), axis, others)
-  const e = resolveEnd(end, dir, axis, others)
+  const s = resolveEnd(profile, start, dir.clone().negate(), axis, others)
+  const e = resolveEnd(profile, end, dir, axis, others)
   let cutLength = round3(profile.length - s.trim - e.trim)
   if (!isFinite(cutLength) || cutLength < 1) cutLength = Math.max(1, profile.length)
   return { start: s, end: e, cutLength }
