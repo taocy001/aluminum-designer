@@ -112,8 +112,7 @@ npm run build
 
 **完整功能清单见 [`docs/FEATURES.md`](docs/FEATURES.md)** —— 每项功能是什么、怎么用、在哪个文件里。
 
-技术说明见 [`DESIGN.md`](DESIGN.md)，后续计划见 [`docs/ROADMAP.md`](docs/ROADMAP.md)，
-参与方式见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+架构与设计约定见 [`docs/DESIGN.md`](docs/DESIGN.md)，后续计划见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
 
 ## 许可
 
