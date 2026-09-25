@@ -7,7 +7,6 @@
 上图是一套 100㎡ 两室两厅里的**全部柜子**——厨房地柜与吊柜、冰箱蒸烤箱高柜、玄关鞋柜、
 电视柜、主次卧衣柜、书桌书架、阳台洗衣柜、餐边柜、浴室柜，一共 12 组。
 358 根型材、636 个连接件、38 块板、29 个门与抽屉，下料总长 256.36 m。
-**是在浏览器里一根一根点出来的**，不是写进数据里的。
 
 这 12 组是 [`examples/flat/`](examples/flat/) 里的 **12 张独立的图**，一组一张，可以直接导入打开，
 物料清单、下料单和 DXF 图纸从侧栏导出。分开放是因为一张图就是一件要做的东西：
@@ -115,8 +114,7 @@ npm run build
 
 **完整功能清单见 [`docs/FEATURES.md`](docs/FEATURES.md)** —— 每项功能是什么、怎么用、在哪个文件里。
 
-设计取舍与踩坑记录见 [`DESIGN.md`](DESIGN.md)，后续计划见 [`docs/ROADMAP.md`](docs/ROADMAP.md)，
-参与方式见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+架构与设计约定见 [`docs/DESIGN.md`](docs/DESIGN.md)，后续计划见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
 
 ## 许可
 

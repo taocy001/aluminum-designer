@@ -1,7 +1,7 @@
 # 功能清单
 
 这份文档列出工具**已经做了的每一件事**：它是什么、怎么用、由哪个文件实现。
-设计取舍与踩坑记录在 [`DESIGN.md`](../DESIGN.md)，还没做的在 [`ROADMAP.md`](ROADMAP.md)。
+设计约定与架构见 [`DESIGN.md`](DESIGN.md)，还没做的在 [`ROADMAP.md`](ROADMAP.md)。
 
 ---
 
