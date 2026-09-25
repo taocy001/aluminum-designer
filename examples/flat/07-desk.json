@@ -1043,7 +1043,7 @@
    "kind": "drawer",
    "position": [
     1150,
-    120.0,
+    120,
     300
    ],
    "quaternion": [
@@ -1057,7 +1057,11 @@
    "depth": 580,
    "frame": 20,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": true,
+    "below": false
+   }
   },
   {
    "id": "f-mueqq7c22o",
@@ -1078,7 +1082,11 @@
    "depth": 580,
    "frame": 20,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": false,
+    "below": true
+   }
   }
  ]
 }

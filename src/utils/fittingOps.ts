@@ -392,6 +392,11 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
         material: 'ply', open: 0,
       })
     }
+    // One above another with nothing between: the edges they share are a gap between two
+    // fronts, and only the outermost two lap over the frame.
+    made.forEach((f, i) => {
+      if (made.length > 1) f.stacked = { above: i < made.length - 1, below: i > 0 }
+    })
   } else {
     made.push({
       id: nextId('f'), kind: 'door',

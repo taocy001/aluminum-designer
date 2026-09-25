@@ -18,6 +18,39 @@ import { specDims } from './specUtils'
  * the frame and the fitting is moved the half-section it was always meant to be moved.
  */
 export function migrateFittings(profiles: ProfileData[], fittings: FittingData[]): FittingData[] {
+  return markStacked(migrateFrame(profiles, fittings))
+}
+
+/**
+ * Drawers one directly above another, in files written before a front knew its neighbour.
+ *
+ * Two drawers fitted to the same opening, face to face with nothing between them, share an
+ * edge: same way round, same width and depth, same place across and in depth, and one's top
+ * where the other's bottom is. That edge is a gap between two fronts, not an overlay onto the
+ * frame — and without the mark each front lapped 15 mm past it into the other one.
+ */
+export function markStacked(fittings: FittingData[]): FittingData[] {
+  const drawers = fittings.filter((f) => f.kind === 'drawer')
+  if (drawers.length < 2) return fittings
+  const same = (a: FittingData, b: FittingData) =>
+    a.id !== b.id && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.depth - b.depth) < 0.5
+    && Math.abs(a.position[0] - b.position[0]) < 0.5 && Math.abs(a.position[2] - b.position[2]) < 0.5
+    && a.quaternion.every((v, i) => Math.abs(v - b.quaternion[i]) < 1e-3)
+  let changed = false
+  const out = fittings.map((f) => {
+    if (f.kind !== 'drawer' || f.stacked) return f
+    const top = f.position[1] + f.height / 2
+    const bottom = f.position[1] - f.height / 2
+    const above = drawers.some((g) => same(f, g) && Math.abs(g.position[1] - g.height / 2 - top) < 0.5)
+    const below = drawers.some((g) => same(f, g) && Math.abs(g.position[1] + g.height / 2 - bottom) < 0.5)
+    if (!above && !below) return f
+    changed = true
+    return { ...f, stacked: { above, below } }
+  })
+  return changed ? out : fittings
+}
+
+function migrateFrame(profiles: ProfileData[], fittings: FittingData[]): FittingData[] {
   if (fittings.every((f) => f.frame !== undefined)) return fittings
   const boxes = profiles.map((p) => ({ p, box: memberBox(p) }))
 

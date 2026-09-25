@@ -57,15 +57,8 @@ export interface Board {
   quaternion: [number, number, number, number]
 }
 
-export interface RunnerRail {
-  /** centre, in the fitting's own frame */
-  position: [number, number, number]
-  length: number
-}
-
 export interface FittingParts {
   boards: Board[]
-  rails: RunnerRail[]
   /** hinge positions along the hung edge, in the fitting's own frame */
   hinges: Array<[number, number, number]>
   /** how far the whole thing travels when fully open: mm for a drawer, degrees for a door */
@@ -88,15 +81,26 @@ export function overlayMm(overlay: Overlay | undefined): number {
   return overlay === 'inset' ? -FRONT_GAP : overlay === 'half' ? OVERLAY_HALF : OVERLAY_FULL
 }
 
-/** The front of a drawer or the leaf of a door: the same board, sized by how it sits */
+/**
+ * The front of a drawer or the leaf of a door: the same board, sized by how it sits.
+ *
+ * Each edge is decided on its own. An edge against the frame laps over it by the overlay,
+ * less the gap; an edge that meets the next drawer's front stops half a gap short of the
+ * line between the two openings, so two stacked fronts have 3 mm between them. Growing all
+ * four edges alike overlaid both fronts onto the same line, and every stacked pair ran 30 mm
+ * into each other.
+ */
 function frontBoard(f: FittingData): Board {
-  const grow = overlayMm(f.overlay) * 2 - FRONT_GAP * 2
+  const lap = overlayMm(f.overlay) - FRONT_GAP
+  const meet = -FRONT_GAP / 2
+  const top = f.kind === 'drawer' && f.stacked?.above ? meet : lap
+  const bottom = f.kind === 'drawer' && f.stacked?.below ? meet : lap
   return {
     role: f.kind === 'door' ? 'panel' : 'front',
-    width: Math.max(20, f.width + grow),
-    height: Math.max(20, f.height + grow),
+    width: Math.max(20, f.width + lap * 2),
+    height: Math.max(20, f.height + top + bottom),
     thickness: FRONT_BOARD,
-    position: [0, 0, f.depth / 2 + (f.frame ?? 0) + FRONT_BOARD / 2],
+    position: [0, (top - bottom) / 2, f.depth / 2 + (f.frame ?? 0) + FRONT_BOARD / 2],
     quaternion: Q_FLAT,
   }
 }
@@ -105,8 +109,11 @@ function frontBoard(f: FittingData): Board {
  * A drawer: a box that slides, and the slide sets every dimension.
  *
  * A side-mount runner takes 12.5 mm between the box and the cabinet side, so the box is
- * 25 mm narrower than the opening. The runner has to be screwed to something, so each side
- * gets a rail at the right height.
+ * 25 mm narrower than the opening. The runner is screwed to the frame beside the opening,
+ * which is the drawing's business rather than the drawer's: a rail drawn here, inside the
+ * opening, was a member nobody would cut — not in the cut list, not in the export, not in
+ * the interference check — and it sat 7.5 mm into the box's own sides. Whether the frame
+ * has something to screw it to is asked by `runnerFaults`.
  */
 function drawerParts(f: FittingData): FittingParts {
   const boxW = f.width - RUNNER_CLEARANCE * 2
@@ -127,13 +134,8 @@ function drawerParts(f: FittingData): FittingParts {
       position: [0, boxY - boxH / 2 + BOX_BOARD / 2, 0], quaternion: Q_LEVEL })
   }
   boards.push(frontBoard(f))
-  const railY = -f.height / 2 + 10
   return {
     boards,
-    rails: [
-      { position: [-f.width / 2 + 10, railY, 0], length: f.depth },
-      { position: [f.width / 2 - 10, railY, 0], length: f.depth },
-    ],
     hinges: [],
     // it comes out far enough to reach the back of the box, less the bit a runner keeps
     travel: Math.max(0, f.depth - 30),
@@ -180,7 +182,7 @@ function doorParts(f: FittingData): FittingParts {
       hinges.push(axis.y > 0.5 ? [origin.x, t, origin.z] : [t, origin.y, origin.z])
     }
   }
-  return { boards: [frontBoard(f)], rails: [], hinges, travel: swingOf(f) }
+  return { boards: [frontBoard(f)], hinges, travel: swingOf(f) }
 }
 
 export function fittingParts(f: FittingData): FittingParts {
@@ -214,13 +216,31 @@ export function leafObb(f: FittingData, open: number): OBB | null {
   const parts = fittingParts(f)
   const leaf = parts.boards.find((b) => b.role === 'panel' || b.role === 'front')
   if (!leaf) return null
-  const at = openTransform({ ...f, open })
+  return boardObb(f, leaf, openTransform({ ...f, open }))
+}
+
+/** one of a fitting's boards, carried wherever the fitting has moved it, in world space */
+function boardObb(f: FittingData, b: Board, at: { position: THREE.Vector3; quaternion: THREE.Quaternion }): OBB {
   const world = new THREE.Quaternion(...f.quaternion).normalize()
-  const centre = new THREE.Vector3(...leaf.position)
+  const centre = new THREE.Vector3(...b.position)
     .applyQuaternion(at.quaternion).add(at.position)
     .applyQuaternion(world).add(new THREE.Vector3(...f.position))
-  const quat = world.clone().multiply(at.quaternion).multiply(new THREE.Quaternion(...leaf.quaternion))
-  return makeOBB(centre, new THREE.Vector3(leaf.width / 2, leaf.height / 2, leaf.thickness / 2), quat)
+  const quat = world.clone().multiply(at.quaternion).multiply(new THREE.Quaternion(...b.quaternion))
+  return makeOBB(centre, new THREE.Vector3(b.width / 2, b.height / 2, b.thickness / 2), quat)
+}
+
+/**
+ * What a fitting is actually made of, where it actually is: every board, at `open`.
+ *
+ * This is what has to miss things. The box round the whole opening is not: a drawer's box
+ * is 26 mm shorter than its opening and 25 mm narrower, so a rail drawn across the top of
+ * the opening — exactly where a drawer divider goes — was inside that box and outside the
+ * drawer, and pulling the drawer out painted the rail red for a collision that cannot
+ * happen. And the front, which laps over the frame, was outside that box altogether.
+ */
+export function fittingSolids(f: FittingData, open: number = f.open ?? 0): OBB[] {
+  const at = openTransform({ ...f, open })
+  return fittingParts(f).boards.map((b) => boardObb(f, b, at))
 }
 
 /**

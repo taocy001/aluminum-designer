@@ -665,7 +665,11 @@
    "depth": 520.0000000000001,
    "frame": 40,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": true,
+    "below": false
+   }
   },
   {
    "id": "f-mufs84jz72",
@@ -686,7 +690,11 @@
    "depth": 520.0000000000001,
    "frame": 40,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": true,
+    "below": true
+   }
   },
   {
    "id": "f-mufs84jz73",
@@ -707,7 +715,11 @@
    "depth": 520.0000000000001,
    "frame": 40,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": false,
+    "below": true
+   }
   }
  ]
 }

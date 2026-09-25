@@ -57,14 +57,6 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
 
   return (
     <group position={f.position} quaternion={quat} userData={{ fittingId: id }}>
-      {/* the rails a drawer's runners are screwed to do not move with it */}
-      {parts.rails.map((r, i) => (
-        <mesh key={`r${i}`} position={r.position} raycast={() => null}>
-          <boxGeometry args={[20, 20, r.length]} />
-          <meshStandardMaterial color="#9aa5b1" metalness={0.3} roughness={0.6} />
-        </mesh>
-      ))}
-
       {/* hinges stay on the carcase edge whatever the door does */}
       {parts.hinges.map((h, i) => (
         <mesh key={`h${i}`} position={h} raycast={() => null}>

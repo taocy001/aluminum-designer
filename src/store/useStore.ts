@@ -125,6 +125,13 @@ export interface FittingData {
   /** how far it opens (degrees); older files fall back to what the mechanism allows */
   swing?: number
   overlay?: Overlay
+  /**
+   * Drawers fitted one above another in the same opening: which of this front's edges meet
+   * the next drawer's front rather than the frame. Those edges get the 3 mm gap between two
+   * fronts, not an overlay onto a rail that is not there — overlaying both fronts onto the
+   * same line put each one 30 mm into its neighbour.
+   */
+  stacked?: { above?: boolean; below?: boolean }
   locked?: boolean
 }
 
