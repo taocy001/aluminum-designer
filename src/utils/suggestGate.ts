@@ -8,7 +8,7 @@ import { unflushPairs } from './faceAlign'
 import { findSpecMismatches, sharedEdge } from './specCompat'
 import { joints, unbuildable } from './repairJoints'
 import { auditBrackets } from './bracketSeat'
-import { fittingObb } from './fittingGeometry'
+import { fittingSolids } from './fittingGeometry'
 import { lowestPointY, MIN_LENGTH } from './profileFactory'
 import { panelBox, shelfEdges, type ShelfEdge } from './shelfSupport'
 import { specDims } from './specUtils'
@@ -52,7 +52,8 @@ export function neighbourhood(member: ProfileData, doc: SuggestDoc): SuggestDoc 
     profiles: doc.profiles.filter((p) => memberBox(p).intersectsBox(box)),
     connectors: doc.connectors.filter((c) => box.containsPoint(new THREE.Vector3(...c.position))),
     panels: doc.panels.filter((b) => panelBox(b).intersectsBox(box)),
-    fittings: doc.fittings.filter((f) => obbBox(fittingObb(f)).intersectsBox(box) || obbBox(fittingObb({ ...f, open: 1 })).intersectsBox(box)),
+    // what the fitting is made of, shut and fully open — its front laps outside its opening
+    fittings: doc.fittings.filter((f) => [...fittingSolids(f, 0), ...fittingSolids(f, 1)].some((o) => obbBox(o).intersectsBox(box))),
   }
 }
 

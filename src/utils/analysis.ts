@@ -6,7 +6,7 @@ import { getProfileDir } from './geometryCore'
 import { specDims } from './specUtils'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
 import { findSpecMismatches, type SpecMismatch } from './specCompat'
-import { fittingObb } from './fittingGeometry'
+import { fittingObb, fittingSolids } from './fittingGeometry'
 
 /** members closer than this are considered touching, not interfering (mm) */
 const TOUCH_TOL = 1
@@ -81,13 +81,16 @@ export function findConflicts(
   profiles: ProfileData[], trims: Map<string, ProfileTrims>, connectors: ConnectorData[] = [],
   panels: PanelData[] = [], fittings: FittingData[] = [],
 ): Conflict[] {
-  const boxes: Array<{ id: string; obb: OBB }> = profiles.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) }))
+  /** `fit` is the index into `fittings` of the drawer or door a board belongs to */
+  const boxes: Array<{ id: string; obb: OBB; fit?: number }> = profiles.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) }))
   // Include connector, board and fitting boxes with contact tolerances.
   const members = boxes.length
   for (const c of connectors) boxes.push({ id: c.id, obb: connectorOBB(c) })
   const parts = boxes.length
   for (const b of panels) boxes.push({ id: b.id, obb: panelOBB(b) })
-  for (const f of fittings) boxes.push({ id: f.id, obb: fittingObb(f) })
+  // A drawer or a door is judged by its boards — the box, the front, the leaf — where they
+  // are at its current opening, not by the block round its opening. See `fittingSolids`.
+  fittings.forEach((f, k) => { for (const obb of fittingSolids(f)) boxes.push({ id: f.id, obb, fit: k }) })
 
   // Use sweep-and-prune along X to select candidate pairs, preserving pair order.
   const spans = boxes.map((b, i) => {
@@ -116,10 +119,10 @@ export function findConflicts(
   // is shut it would of course meet the door, and saying so paints a wardrobe's inside
   // drawers red for being inside a wardrobe. A door swinging into its neighbour is still
   // reported: the neighbour is beside it, not in front of it.
-  const firstFitting = parts + panels.length
   const behindShutDoor = (i: number, j: number): boolean => {
-    if (i < firstFitting || j < firstFitting) return false
-    const a = fittings[i - firstFitting], b = fittings[j - firstFitting]
+    const fi = boxes[i].fit, fj = boxes[j].fit
+    if (fi === undefined || fj === undefined) return false
+    const a = fittings[fi], b = fittings[fj]
     const [moving, door] = (a.open ?? 0) > 0 && b.kind === 'door' && !(b.open ?? 0) ? [a, b]
       : (b.open ?? 0) > 0 && a.kind === 'door' && !(a.open ?? 0) ? [b, a] : [null, null]
     if (!moving || !door) return false
@@ -131,18 +134,26 @@ export function findConflicts(
       && Math.abs(d.dot(leaf.axes[0])) <= leaf.half.x && Math.abs(d.dot(leaf.axes[1])) <= leaf.half.y
   }
 
+  // a fitting is several boxes, so one pair of parts can meet more than once: the deepest
+  // meeting is the one reported, in the place the pair first came up
   const out: Conflict[] = []
+  const seen = new Map<string, number>()
   for (const [i, j] of pairs) {
+    if (boxes[i].id === boxes[j].id) continue           // a drawer's own boards meet each other
     if (behindShutDoor(i, j)) continue
     const tol = i >= parts || j >= parts ? BOARD_TOUCH_TOL
       : i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL
     const depth = obbPenetration(boxes[i].obb, boxes[j].obb, tol)
     if (depth <= 0) continue
-    out.push({
+    const c: Conflict = {
       a: boxes[i].id, b: boxes[j].id,
       depth: Math.round(depth * 100) / 100,
       region: regionOf(boxes[i].obb, boxes[j].obb),
-    })
+    }
+    const key = `${c.a}|${c.b}`
+    const k = seen.get(key)
+    if (k === undefined) { seen.set(key, out.length); out.push(c) }
+    else if (c.depth > out[k].depth) out[k] = c
   }
   return out
 }

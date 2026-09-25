@@ -1885,7 +1885,11 @@
    "depth": 630.0000000000002,
    "frame": 20,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": true,
+    "below": false
+   }
   },
   {
    "id": "f-mufsceuw24",
@@ -1906,7 +1910,11 @@
    "depth": 630.0000000000002,
    "frame": 20,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": false,
+    "below": true
+   }
   },
   {
    "id": "f-mufscgce25",

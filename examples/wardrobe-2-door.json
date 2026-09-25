@@ -1244,9 +1244,14 @@
    "width": 840,
    "height": 200,
    "depth": 520.0000000000005,
-   "frame": 40,
+   "frame": 20,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": true,
+    "below": false
+   },
+   "overlay": "inset"
   },
   {
    "id": "f-mufs70vt52",
@@ -1265,9 +1270,14 @@
    "width": 840,
    "height": 200,
    "depth": 520.0000000000005,
-   "frame": 40,
+   "frame": 20,
    "material": "ply",
-   "open": 0
+   "open": 0,
+   "stacked": {
+    "above": false,
+    "below": true
+   },
+   "overlay": "inset"
   },
   {
    "id": "f-mufs728r53",
