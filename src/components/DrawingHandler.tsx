@@ -297,7 +297,8 @@ const DrawingHandler: React.FC = () => {
       </Html>}
 
       {held === 'profile' && !isDragging && (!isDrawing || !xform) && hoverFace && (
-        <FacePatch face={hoverFace} anchor={hoverAnchor ?? undefined} color="#22d3ee" role="target" />
+        <FacePatch face={hoverFace} anchor={hoverAnchor ?? undefined} color="#22d3ee" role="target"
+          fillOpacity={0.32} lineWidth={4} />
       )}
       {held === 'profile' && !isDragging && xform && <DrawContactGuides contacts={xform.contacts} language={language} />}
 
@@ -305,7 +306,8 @@ const DrawingHandler: React.FC = () => {
           While placing a connector the ghost itself shows the spot, and the marker would
           sit right on top of a part that is only a few tens of millimetres across. */}
       {held === 'profile' && snapPoint && !xform?.contacts.some((c) => c.end === 'end') && (
-        <SnapMarker position={!isDrawing && hoverAnchor ? hoverAnchor : isDrawing && previewEnd ? previewEnd : snapPoint} kind={snapKind ?? 'endpoint'} />
+        <SnapMarker position={!isDrawing && hoverAnchor ? hoverAnchor : isDrawing && previewEnd ? previewEnd : snapPoint}
+          kind={!isDrawing && hoverFace ? 'candidate' : snapKind ?? 'endpoint'} size={!isDrawing && hoverFace ? 0.02 : 0.032} />
       )}
 
       {/* Hover cursor on the floor when not snapped */}

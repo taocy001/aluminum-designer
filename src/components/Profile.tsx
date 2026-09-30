@@ -22,8 +22,11 @@ const Profile: React.FC<ProfileProps> = ({
   id, spec, length, position, quaternion, trims, isSelected = false, conflict = false, locked = false,
 }) => {
   const isDraggingThis = useToolStore((s) => s.isDragging && (s.dragProfileId === id || id in s.dragGroupOrigins))
-  const isSnapTarget = useToolStore((s) => s.hoverTargetId === id || s.snapRefIds.includes(id))
-  const isHovered = useToolStore((s) => !s.isDragging && s.hoverProfileId === id)
+  // Drawing identifies a particular face. Keep the body neutral so its hover tint
+  // does not compete with that face; dragging retains its existing target feedback.
+  const faceFeedbackOnly = useToolStore((s) => s.held === 'profile' && !s.isDragging)
+  const isSnapTarget = useToolStore((s) => s.hoverTargetId === id || s.snapRefIds.includes(id)) && !faceFeedbackOnly
+  const isHovered = useToolStore((s) => !s.isDragging && s.hoverProfileId === id) && !faceFeedbackOnly
 
   const geometry = useMemo(() => {
     const shape = getProfileShape(spec)
