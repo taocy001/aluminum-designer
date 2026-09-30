@@ -8,8 +8,7 @@ import { connectorSeatAt, seatFor } from '../utils/bracketSeat'
 import { frontmostId, promoteFrontmost } from '../utils/frontmost'
 import { readout } from '../utils/measure'
 import SnapMarker from './SnapMarker'
-import { FacePatch } from './SnapFaces'
-import { profileFace, profileFaceForWorldAxis, type ProfileFace } from '../utils/profileFaces'
+import EditAlignmentGuides from './EditAlignmentGuides'
 import { translations } from '../utils/translations'
 import { fittingObb, leafObb } from '../utils/fittingGeometry'
 import { cutAway } from '../utils/frontmost'
@@ -492,71 +491,6 @@ const ConflictMarkers: React.FC<{ conflicts: Conflict[] }> = ({ conflicts }) => 
   </>
 )
 
-/** Show the two actual faces being aligned, with a line for coordinate-only relations. */
-const SnapGuides: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims }) => {
-  const guides = useToolStore((s) => s.snapGuides)
-  const isDragging = useToolStore((s) => s.isDragging)
-  const dragProfileId = useToolStore((s) => s.dragProfileId)
-  const profiles = useStore((s) => s.profiles)
-  if (!isDragging || guides.length === 0) return null
-
-  const faces = new Map<string, { face: ProfileFace; moving: boolean }>()
-  const relations = guides.map((g, i) => {
-    const ref = profiles.find((p) => p.id === g.refId)
-    if (!ref) return null
-    if (g.kind === 'endpoint') {
-      const moving = profiles.find((p) => p.id === dragProfileId)
-      if (!moving) return null
-      const a = getProfileEndpoints(moving), b = getProfileEndpoints(ref)
-      for (const [movingPoint, movingSide] of [[a.start, -1], [a.end, 1]] as const) {
-        for (const [refPoint, refSide] of [[b.start, -1], [b.end, 1]] as const) {
-          if (movingPoint.distanceToSquared(refPoint) > 0.01 ** 2) continue
-          // These are the actual ends participating in a centreline joint. Their planes
-          // may meet at an angle; showing both is not a claim that they are parallel.
-          const movingFace = profileFace(moving, { profileId: moving.id, axis: 2, side: movingSide }, trims.get(moving.id))
-          const refFace = profileFace(ref, { profileId: ref.id, axis: 2, side: refSide }, trims.get(ref.id))
-          faces.set(`${moving.id}-2-${movingSide}`, { face: movingFace, moving: true })
-          faces.set(`${ref.id}-2-${refSide}`, { face: refFace, moving: false })
-          return <Line key={`endpoint-${i}`} points={[refFace.center, movingFace.center]} color="#22d3ee" lineWidth={1.5}
-            dashed dashSize={4} gapSize={3} depthTest={false} depthWrite={false} raycast={() => {}} />
-        }
-      }
-      return null
-    }
-    const moving = profiles.find((p) => p.id === g.movingId)
-    const refFace = g.refSide === undefined ? null : profileFaceForWorldAxis(ref, g.axis, g.refSide, trims.get(ref.id))
-    const movingFace = !moving || g.movingSide === undefined ? null : profileFaceForWorldAxis(moving, g.axis, g.movingSide, trims.get(moving.id))
-    for (const [face, isMoving] of [[refFace, false], [movingFace, true]] as const) {
-      if (face) faces.set(`${face.profileId}-${face.axis}-${face.side}`, { face, moving: isMoving })
-    }
-    if (refFace && movingFace) {
-      return <Line key={`${g.axis}-${i}`} points={[refFace.center, movingFace.center]} color="#22d3ee" lineWidth={1.5}
-        dashed dashSize={8} gapSize={5} depthTest={false} depthWrite={false} raycast={() => {}} />
-    }
-    // A centre alignment, or a rotated AABB boundary, is only a reference coordinate.
-    // In particular, never paint the empty AABB plane as if it were a metal face.
-    const { start, end } = getProfileEndpoints(ref)
-    const mid = start.clone().lerp(end, 0.5)
-    const span = Math.max(start.distanceTo(end), 400) * 1.6
-    // a long line lying on the shared coordinate, along the two axes it is not fixed on
-    const dirs: Array<[number, number, number]> = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-    const along = dirs[(g.axis + 1) % 3]
-    const base = [mid.x, mid.y, mid.z]
-    base[g.axis] = g.coord
-    const a: [number, number, number] = [base[0] - along[0] * span, base[1] - along[1] * span, base[2] - along[2] * span]
-    const b: [number, number, number] = [base[0] + along[0] * span, base[1] + along[1] * span, base[2] + along[2] * span]
-    return <Line key={`${g.axis}-${i}`} points={[a, b]} color="#22d3ee" lineWidth={1.5} dashed dashSize={12} gapSize={8}
-      depthTest={false} depthWrite={false} raycast={() => {}} />
-  })
-  return (
-    <>
-      {relations}
-      {[...faces].map(([key, { face, moving }]) => <FacePatch key={key} face={face}
-        color={moving ? '#fbbf24' : '#22d3ee'} role={moving ? 'moving' : 'target'} />)}
-    </>
-  )
-}
-
 const Viewport: React.FC = () => {
   const { profiles, connectors, panels, fittings, selectedIds, throughRule } = useStore()
   const { isDragging, showDimensionLabels, selectMode, showFittings, buildStep } = useToolStore()
@@ -612,7 +546,7 @@ const Viewport: React.FC = () => {
       <LabelLayout />
       <ConflictMarkers conflicts={conflicts} />
       <MismatchMarkers mismatches={mismatches} />
-      <SnapGuides trims={trims} />
+      <EditAlignmentGuides trims={trims} />
 
       <DrawingHandler />
       <SuggestionGhost />

@@ -110,8 +110,18 @@ const DrawingHandler: React.FC = () => {
     if (!alignmentFace || !hoverFace) return []
     const normal = new THREE.Vector3(...hoverFace.normal)
     const center = new THREE.Vector3(...hoverFace.center)
-    return alignmentFace.corners.filter((point) => Math.abs(new THREE.Vector3(...point).sub(center).dot(normal)) < 0.001)
-  }, [alignmentFace, hoverFace])
+    const edge = alignmentFace.corners.filter((point) => Math.abs(new THREE.Vector3(...point).sub(center).dot(normal)) < 0.001)
+    if (edge.length !== 2 || alignmentFace.axis === 2 || !pendingPoint) return edge
+    // A T joint belongs to a small part of the through rail's long edge. Emphasize
+    // the chosen position, rather than suggesting that its entire side is the joint.
+    const a = new THREE.Vector3(...edge[0]), b = new THREE.Vector3(...edge[1])
+    const along = b.clone().sub(a).normalize(), length = a.distanceTo(b)
+    const at = THREE.MathUtils.clamp(pendingPoint.clone().sub(a).dot(along), 0, length)
+    const { hw, hh } = specDims(activeSpec)
+    const half = Math.max(20, hw, hh)
+    return [a.clone().addScaledVector(along, Math.max(0, at - half)).toArray(),
+      a.clone().addScaledVector(along, Math.min(length, at + half)).toArray()] as [number, number, number][]
+  }, [alignmentFace, hoverFace, pendingPoint, activeSpec])
 
   const axisColor = drawAxis ? AXIS_COLORS[drawAxis] : '#94a3b8'
   const drawDist = startPoint && currentPoint ? startPoint.distanceTo(currentPoint) : 0

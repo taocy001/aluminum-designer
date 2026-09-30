@@ -40,12 +40,20 @@ const DragHandler: React.FC = () => {
 
   useEffect(() => {
     const canvas = gl.domElement
+    const finishGesture = () => {
+      canvas.dispatchEvent(new Event('aluframe:consume-pointer'))
+      const ts = useToolStore.getState()
+      ts.stopDrag(); ts.stopResize(); ts.setDragConflict(false)
+    }
     const unsubscribe = useToolStore.subscribe((state, previous) => {
       if (!state.resize) resizingGesture.current = null
       if (state.isDragging && !previous.isDragging) {
         // A touch gesture can deliberately start free without a physical Shift key.
         dragBaseFree.current = state.dragFree && (!shiftHeld.current || pointerKind.current === 'touch')
       }
+      if ((previous.isDragging || previous.resize) && (state.held !== previous.held
+        || state.activeSpec !== previous.activeSpec || state.selectMode !== previous.selectMode
+        || state.measuring !== previous.measuring)) finishGesture()
     })
 
     const onPointerDown = (e: PointerEvent) => {
@@ -55,6 +63,11 @@ const DragHandler: React.FC = () => {
     const editable = (target: EventTarget | null) => target instanceof HTMLElement
       && (target.isContentEditable || !!target.closest('input, textarea, select'))
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !editable(e.target)) {
+        const ts = useToolStore.getState()
+        if (ts.isDragging || ts.resize) finishGesture()
+        return
+      }
       if (e.key !== 'Shift' || e.repeat || editable(e.target)) return
       shiftHeld.current = true
       const ts = useToolStore.getState()

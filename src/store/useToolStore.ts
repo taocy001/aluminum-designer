@@ -74,7 +74,7 @@ interface ToolState {
   /** Faces selected while starting/ending a drawn member, in the target's local axes. */
   drawStartFace: ProfileFaceRef | null
   drawSnapFace: ProfileFaceRef | null
-  /** Optional real end plane used to align a new section at a drawing start edge. */
+  /** Optional physical boundary used to align a new section at an end or T-joint edge. */
   drawStartAlignmentFace: ProfileFaceRef | null
   drawSnapAlignmentFace: ProfileFaceRef | null
   /** Shared numeric input so the visible ghost and either placement action agree. */

@@ -164,7 +164,7 @@ export function drawingContacts(
   const alignment = faces.startAlignmentFace
   const startTarget = faces.startFace && referenceProfiles.find((p) => p.id === faces.startFace!.profileId)
   const alignmentTarget = alignment && referenceProfiles.find((p) => p.id === alignment.profileId)
-  if (!status.blocked && startTarget && alignment?.axis === 2 && alignmentTarget?.id === startTarget.id) {
+  if (!status.blocked && startTarget && alignment && alignmentTarget?.id === startTarget.id) {
     const startReference = profileFace(startTarget, faces.startFace!, resolve(startTarget))
     const startCap = memberFaces.find((face) => face.axis === 2 && face.side === -1)!
     // Only a draw outward from the chosen surface accepts this second constraint.

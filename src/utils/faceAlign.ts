@@ -18,7 +18,7 @@ interface Shift { axis: THREE.Vector3; amount: number }
 
 export interface DrawingFaceOptions {
   startFace?: ProfileFaceRef | null
-  /** An end plane whose outer edge the new section shares while its end seats on startFace. */
+  /** A boundary plane the new section shares while its end seats on startFace. */
   startAlignmentFace?: ProfileFaceRef | null
   endFace?: ProfileFaceRef | null
   /** For a face-constrained drawing, this is the actual cut length requested by the user. */
@@ -203,7 +203,7 @@ export function constrainDrawingFaces(
   // A side-face edge pick carries two separate choices: the new cut end rests on
   // that face, and its outer section side is flush with the target's actual end.
   // Keep ordinary cap picks on their legacy corner/through-member path above.
-  if (start?.kind === 'end' && options.startAlignmentFace?.axis === 2
+  if (start?.kind === 'end' && options.startAlignmentFace
     && options.startAlignmentFace.profileId === options.startFace?.profileId) {
     const alignment = constraint(options.startAlignmentFace, false, true)
     if (alignment && alignment !== 'oblique' && alignment.kind === 'side') moveSideTo(alignment)

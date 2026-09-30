@@ -165,3 +165,137 @@ describe('drawing starts at a horizontal physical end edge', () => {
     }
   })
 })
+
+describe('drawing starts above a horizontal T interface', () => {
+  const crossbar = () => rail('crossbar', V(-400, 100, 0), V(400, 100, 0))
+  const stem = () => rail('stem', V(0, 100, 10), V(0, 100, 410))
+  const topHit = (p: ProfileData, point = V(0, 110, 7)): MeshHit => ({ profileId: p.id, point, normal: V(0, 1, 0) })
+
+  it('keeps the through-member top and centers the new column on the real interface', () => {
+    const a = crossbar(), b = stem()
+    for (const point of [V(0, 110, 7), V(0, 110, 0), V(5, 110, 7)]) {
+      const { result } = pick([a, b], topHit(a, point))
+      expect(result.face).toEqual({ profileId: a.id, axis: 1, side: 1 })
+      expect(result.alignmentFace?.profileId).toBe(a.id)
+      expect(result.alignmentFace?.axis).not.toBe(2)
+      const alignment = profileFace(a, result.alignmentFace!)
+      expect(alignment.normal[2]).toBeCloseTo(1)
+      expect(alignment.center[2]).toBeCloseTo(10)
+      expect(result.point.distanceTo(V(0, 100, 0))).toBeLessThan(1e-6)
+    }
+  })
+
+  it('still chooses the stem and its own cap when that top is actually hit', () => {
+    const a = crossbar(), b = stem()
+    const { result } = pick([a, b], surfaceHit(b, 1, -1))
+    expect(result.face?.profileId).toBe(b.id)
+    expect(result.alignmentFace).toEqual({ profileId: b.id, axis: 2, side: -1 })
+    expect(result.point.distanceTo(V(0, 100, 10))).toBeLessThan(1e-6)
+  })
+
+  it.each([0, Math.PI / 2, Math.PI, Math.PI * 3 / 2])('handles a rotated T at yaw %s with either stored stem direction', (angle) => {
+    const yaw = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), angle)
+    const rotated = (point: THREE.Vector3) => point.clone().applyQuaternion(yaw)
+    const a = rail('crossbar', rotated(V(-400, 100, 0)), rotated(V(400, 100, 0)))
+    for (const reverse of [false, true]) {
+      const near = rotated(V(0, 100, 10)), far = rotated(V(0, 100, 410))
+      const b = rail('stem', reverse ? far : near, reverse ? near : far)
+      const { result } = pick([a, b], topHit(a, rotated(V(0, 110, 7))))
+      expect(result.face?.profileId).toBe(a.id)
+      expect(result.alignmentFace).toBeDefined()
+      expect(result.point.distanceTo(V(0, 100, 0))).toBeLessThan(1e-6)
+      const alignment = profileFace(a, result.alignmentFace!)
+      expect(new THREE.Vector3(...alignment.normal).distanceTo(rotated(V(0, 0, 1)))).toBeLessThan(1e-6)
+    }
+  })
+
+  it('supports the bottom interface when drawing down from the through member', () => {
+    const a = crossbar(), b = stem()
+    const { result } = pick([a, b], { profileId: a.id, point: V(0, 90, 7), normal: V(0, -1, 0) })
+    expect(result.face).toEqual({ profileId: a.id, axis: 1, side: -1 })
+    expect(result.alignmentFace?.profileId).toBe(a.id)
+    expect(result.point.distanceTo(V(0, 100, 0))).toBeLessThan(1e-6)
+  })
+
+  it('uses an automatically cut-back stem instead of its construction endpoint', () => {
+    const a = crossbar()
+    const b = buildProfile(V(0, 100, 0), V(0, 100, 400), '2020', 'automatic-stem')!
+    const profiles = [a, b]
+    expect(profileBodyEndpoints(b, computeTrims(b, profiles)).start.z).toBeCloseTo(10)
+    const { result } = pick(profiles, topHit(a))
+    expect(result.alignmentFace?.profileId).toBe(a.id)
+    expect(profileFace(a, result.alignmentFace!).center[2]).toBeCloseTo(10)
+    expect(result.point.distanceTo(V(0, 100, 0))).toBeLessThan(1e-6)
+  })
+
+  it.each([{ origin: -10, trim: 20 }, { origin: 25, trim: -15 }])('finds a stem with a real start determined by %o', ({ origin, trim }) => {
+    const a = crossbar(), b = rail('cut-stem', V(0, 100, origin), V(0, 100, 410))
+    b.fixedTrims = { start: trim, end: 0 }
+    const { result } = pick([a, b], topHit(a))
+    expect(result.alignmentFace?.profileId).toBe(a.id)
+    expect(profileFace(a, result.alignmentFace!).center[2]).toBeCloseTo(10)
+  })
+
+  it('accepts different sections whose actual top faces meet', () => {
+    const a = { ...crossbar(), spec: '4040' as const }
+    const b = rail('narrow-stem', V(0, 110, 20), V(0, 110, 410))
+    const { result } = pick([a, b], topHit(a, V(3, 120, 17)))
+    expect(result.alignmentFace?.profileId).toBe(a.id)
+    expect(profileFace(a, result.alignmentFace!).center[2]).toBeCloseTo(20)
+    expect(result.point.distanceTo(V(0, 100, 0))).toBeLessThan(1e-6)
+  })
+
+  it('captures the junction center on a 4040 top including a recessed slot hit', () => {
+    const a = { ...crossbar(), spec: '4040' as const }
+    const b = { ...rail('wide-stem', V(0, 100, 20), V(0, 100, 410)), spec: '4040' as const }
+    for (const hit of [topHit(a, V(0, 120, 0)),
+      { profileId: a.id, point: V(0, 117, 0), normal: V(0, 0, 1) },
+      { profileId: a.id, point: V(0, 115, -14), normal: V(0, 0, 1) }]) {
+      const { result } = pick([a, b], hit)
+      expect(result.face, JSON.stringify(hit.point)).toEqual({ profileId: a.id, axis: 1, side: 1 })
+      expect(result.alignmentFace?.profileId).toBe(a.id)
+      expect(result.point.distanceTo(V(0, 100, 0))).toBeLessThan(1e-6)
+      expect(profileFace(a, result.alignmentFace!).center[2]).toBeCloseTo(20)
+      expect(result.normal?.distanceTo(hit.normal)).toBeLessThan(1e-6)
+    }
+  })
+
+  it('rejects a shorter interface that does not reach the selected top', () => {
+    const a = { ...crossbar(), spec: '4040' as const }
+    const b = rail('shorter-stem', V(0, 100, 20), V(0, 100, 410))
+    const { result, legacy } = pick([a, b], topHit(a, V(0, 120, 17)))
+    expect(result.alignmentFace).toBeUndefined()
+    expect(result).toEqual(legacy)
+  })
+
+  it('rejects gaps, penetrations, height-only edge contact, parallel neighbours and oblique caps', () => {
+    const a = crossbar()
+    const gapped = rail('gap', V(0, 100, 11), V(0, 100, 410))
+    const overlapping = rail('overlap', V(0, 100, 9), V(0, 100, 410))
+    const raised = rail('raised', V(0, 120, 10), V(0, 120, 410))
+    const parallel = rail('parallel', V(-400, 100, 20), V(400, 100, 20))
+    const oblique = rail('oblique', V(0, 100, 10), V(300, 100, 410))
+    const rolled = stem()
+    rolled.quaternion = new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), Math.PI / 4).toArray()
+    for (const b of [gapped, overlapping, raised, parallel, oblique, rolled]) {
+      const { result, legacy } = pick([a, b], topHit(a))
+      expect(result.alignmentFace, b.id).toBeUndefined()
+      expect(result, b.id).toEqual(legacy)
+    }
+  })
+
+  it('does not extend an interface through empty space along the supporting side', () => {
+    const a = crossbar(), b = stem()
+    const { result, legacy } = pick([a, b], topHit(a, V(60, 110, 7)), { scale: 0.1 })
+    expect(result.alignmentFace).toBeUndefined()
+    expect(result).toEqual(legacy)
+  })
+
+  it('keeps the work-plane height restriction for T interfaces', () => {
+    const a = crossbar(), b = stem()
+    expect(pick([a, b], topHit(a), { planeY: 100 }).result.alignmentFace).toBeDefined()
+    const { result, legacy } = pick([a, b], topHit(a), { planeY: 250 })
+    expect(result.alignmentFace).toBeUndefined()
+    expect(result).toEqual(legacy)
+  })
+})

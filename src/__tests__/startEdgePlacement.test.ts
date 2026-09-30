@@ -184,3 +184,51 @@ it('ignores a stale alignment from a different member instead of moving off the 
   expect(hinted.contacts).toEqual(plain.contacts)
   expect(hinted.contacts[0].kind).toBe('contact')
 })
+
+it.each([
+  { alongX: true, side: 1 as const }, { alongX: true, side: -1 as const },
+  { alongX: false, side: 1 as const }, { alongX: false, side: -1 as const },
+])('seats an upright on the through member at a T joint: %o', ({ alongX, side }) => {
+  const through = fixed(alongX ? V(-500, 400, 0) : V(0, 400, -500), alongX ? V(500, 400, 0) : V(0, 400, 500), 'through')
+  const branch = { ...fixed(V(0, 400, 0), alongX ? V(0, 400, side * 500) : V(side * 500, 400, 0), 'branch'),
+    fixedTrims: { start: 20, end: 0 } }
+  const axis = alongX ? 2 : 0
+  const faces = { startFace: profileFaceForWorldAxis(through, 1, 1)!, startAlignmentFace: profileFaceForWorldAxis(through, axis, side)! }
+  const profiles = [through, branch]
+  const preview = prepareDrawingPreview(V(0, 400, 0), V(0, 800, 0), '2020', profiles, faces, '365')!
+  expect(preview.blocked).toBe(false)
+  expect(preview.issue).toBeNull()
+  expect(preview.position.y).toBeCloseTo(420)
+  expect(preview.position.getComponent(axis)).toBeCloseTo(side * 10)
+  expect(preview.cutLength).toBe(365)
+  const contact = preview.contacts.find((c) => c.kind === 'contact')!
+  expect(contact.referenceFace.profileId).toBe('through')
+  expect(contact.patch!.length).toBeGreaterThanOrEqual(3)
+  expect(contact.patch!.every((point) => Math.abs(point[1] - 420) < 0.001)).toBe(true)
+  const aligned = preview.contacts.find((c) => c.purpose === 'alignment')!
+  expect(aligned.referenceFace.profileId).toBe('through')
+  expect(aligned.memberFace!.corners.every((point) => Math.abs(point[axis] - side * 20) < 0.001)).toBe(true)
+  expect(profileFace(branch, { profileId: 'branch', axis: 2, side: -1 }).center[axis]).toBeCloseTo(side * 20)
+  expect(preview.referenceProfiles).toEqual(profiles)
+})
+
+it('commits a T-joint upright once, preserving both original solids and the preview', () => {
+  const through = fixed(V(-500, 400, 0), V(500, 400, 0), 'through')
+  const branch = { ...fixed(V(0, 400, 0), V(0, 400, 500), 'branch'), fixedTrims: { start: 20, end: 0 } }
+  const profiles = [through, branch]
+  useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [], throughRule: 'rails' })
+  const before = useStore.getState().past.length
+  const start = V(0, 400, 0), end = V(0, 800, 0)
+  const faces = { startFace: profileFaceForWorldAxis(through, 1, 1)!, startAlignmentFace: profileFaceForWorldAxis(through, 2, 1)! }
+  const preview = prepareDrawingPreview(start, end, '4040', profiles, faces, '365')!
+  const input = drawingInput(start, end, faces, '365')!
+  expect(tryAddProfile(start, input.end, '4040', input.faces)).toBe(true)
+  const placed = useStore.getState().profiles
+  expect(placed.slice(0, 2)).toEqual(profiles)
+  expect(placed[2].position).toEqual(preview.profile.position)
+  expect(placed[2].length).toEqual(preview.profile.length)
+  expect(placed[2].fixedTrims).toEqual(preview.profile.fixedTrims)
+  expect(useStore.getState().past.length).toBe(before + 1)
+  useStore.getState().undo()
+  expect(useStore.getState().profiles).toEqual(profiles)
+})

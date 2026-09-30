@@ -373,7 +373,7 @@ function App() {
                 snapKind ? 'bg-slate-900/90 border-cyan-400/50 text-cyan-200' : 'bg-slate-900/90 border-white/15 text-slate-400'}`}>
               {t.startsOn}：{snapKind ? (t.snapNames[snapKind] ?? snapKind) : t.startsOnPlane(workPlaneY)}
               {drawSnapFace && <span data-testid="start-face-kind"> · {faceName(drawSnapFace)}</span>}
-              {drawSnapAlignmentFace && <span data-testid="start-edge-kind"> · {t.drawEdgeAlignment}：{faceName(drawSnapAlignmentFace)}</span>}
+              {drawSnapAlignmentFace && <span data-testid="start-edge-kind"> · {drawSnapAlignmentFace.axis === 2 ? t.drawEdgeAlignment : t.drawJointAlignment}：{faceName(drawSnapAlignmentFace)}</span>}
             </div>
           )}
 
@@ -416,7 +416,7 @@ function App() {
               {!!drawingPreview?.contacts.length && <div data-testid="draw-face-hud" className="basis-full flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] md:text-[11px] leading-tight">
                 {drawingPreview.contacts.map((contact) => <span key={`${contact.end}-${contact.purpose ?? 'contact'}`} data-testid={`draw-${contact.end}-${contact.purpose ?? 'contact'}`}
                   className={contact.kind === 'rejected' ? 'text-rose-300' : 'text-cyan-300'}>
-                  {contact.purpose === 'alignment' ? t.drawEdgeAlignment : `${t.drawEnds[contact.end]} · ${t.drawContactKinds[contact.kind]}`} · {faceName(contact.referenceFace)}
+                  {contact.purpose === 'alignment' ? (contact.referenceFace.axis === 2 ? t.drawEdgeAlignment : t.drawJointAlignment) : `${t.drawEnds[contact.end]} · ${t.drawContactKinds[contact.kind]}`} · {faceName(contact.referenceFace)}
                   <span className="ml-1 font-mono opacity-80">({contact.referenceAnchor.map((v) => Math.round(v)).join(', ')}) mm</span>
                 </span>)}
                 <span className="text-slate-400"><span className="text-amber-300">{t.drawNewFace}</span> · <span className="text-cyan-300">{t.drawReferenceFace}</span></span>
