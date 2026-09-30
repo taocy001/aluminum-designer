@@ -161,7 +161,9 @@ function computeTrimsWithGeometry(profile: ProfileData, all: ProfileData[], geom
  *  CORNER_TOL past the partner's end, and no section is wider than 40 (mm) */
 const REACH = CORNER_TOL + 60
 
-export function computeAllTrims(all: ProfileData[]): Map<string, ProfileTrims> {
+/** Reuse neighbours and geometry only within one unchanged scene, resolving requested
+ * members lazily. A moved member or changed joint rule requires a new resolver. */
+export function createTrimResolver(all: ProfileData[]): (profile: ProfileData) => ProfileTrims {
   const geometry = new Map(all.map((p) => [p, profileGeometry(p)]))
   // Resolve member ends against spatially nearby members.
   const boxes = all.map((p) => {
@@ -177,13 +179,23 @@ export function computeAllTrims(all: ProfileData[]): Map<string, ProfileTrims> {
       near[order[a]].push(order[b]); near[order[b]].push(order[a])
     }
   }
-  const map = new Map<string, ProfileTrims>()
-  all.forEach((p, i) => {
+  const indices = new Map(all.map((p, i) => [p, i]))
+  const resolved = new Map<ProfileData, ProfileTrims>()
+  return (p) => {
+    const cached = resolved.get(p)
+    if (cached) return cached
+    const i = indices.get(p)
     // Preserve drawing order when resolving ties.
-    const mine = [...near[i], i].sort((a, b) => a - b).map((k) => all[k])
-    map.set(p.id, computeTrimsWithGeometry(p, mine, geometry))
-  })
-  return map
+    const mine = i === undefined ? all : [...near[i], i].sort((a, b) => a - b).map((k) => all[k])
+    const trims = computeTrimsWithGeometry(p, mine, geometry)
+    resolved.set(p, trims)
+    return trims
+  }
+}
+
+export function computeAllTrims(all: ProfileData[]): Map<string, ProfileTrims> {
+  const resolve = createTrimResolver(all)
+  return new Map(all.map((p) => [p.id, resolve(p)]))
 }
 
 /** Trimmed (as-built) axis-aligned box of a member */

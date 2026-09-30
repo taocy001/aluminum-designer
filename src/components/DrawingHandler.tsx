@@ -12,13 +12,19 @@ import { specDims } from '../utils/specUtils'
 import { connectorSeatAt } from '../utils/bracketSeat'
 import Connector from './Connector'
 import { translations } from '../utils/translations'
+import { prepareDrawingPreview } from '../utils/drawPreview'
+import { profileFace } from '../utils/profileFaces'
+import { computeTrims } from '../utils/jointUtils'
+import { FacePatch } from './SnapFaces'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 /** a left press that travels this far orbits the camera instead of placing a point */
 const ORBIT_SLOP_PX = 5
 
 const DrawingHandler: React.FC = () => {
-  const { isDrawing, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides } = useToolStore()
+  const { isDrawing, isDragging, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides, drawStartFace, drawSnapFace } = useToolStore()
+  const profiles = useStore((s) => s.profiles)
+  const throughRule = useStore((s) => s.throughRule)
   const { camera, size, scene, gl } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
 
@@ -71,15 +77,17 @@ const DrawingHandler: React.FC = () => {
     geo.computeVertexNormals()
     return geo
   }, [activeSpec])
+  useEffect(() => () => previewGeo.dispose(), [previewGeo])
 
   const xform = useMemo(() => {
     if (!isDrawing || !startPoint || !currentPoint) return null
-    const dist = startPoint.distanceTo(currentPoint)
-    if (dist < 0.1) return null
-    const dir = new THREE.Vector3().subVectors(currentPoint, startPoint).normalize()
-    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir)
-    return { pos: startPoint.clone(), quat, scale: dist }
-  }, [isDrawing, startPoint, currentPoint])
+    return prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles)
+  }, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule])
+
+  const faces = useMemo(() => [drawStartFace, drawSnapFace].map((face) => {
+    const target = face && profiles.find((p) => p.id === face.profileId)
+    return target && face ? profileFace(target, face, computeTrims(target, profiles)) : null
+  }), [drawStartFace, drawSnapFace, profiles, throughRule])
 
   const axisColor = drawAxis ? AXIS_COLORS[drawAxis] : '#94a3b8'
   const drawDist = startPoint && currentPoint ? startPoint.distanceTo(currentPoint) : 0
@@ -96,9 +104,9 @@ const DrawingHandler: React.FC = () => {
 
     const meshHit = hitMember(ray)
     // Pass 1: which axis is the user pulling along?
-    const first = resolveAxisEnd(origin, ray, cursor, camera, size, profiles, ts.lockedAxis, meshHit)
+    const first = resolveAxisEnd(origin, ray, cursor, camera, size, profiles, ts.lockedAxis, meshHit, ts.drawSnapFace)
     if (!first) {
-      ts.updateDraw({ startPoint: origin.clone(), currentPoint: origin.clone(), snapPoint: null, drawAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null })
+      ts.updateDraw({ startPoint: origin.clone(), currentPoint: origin.clone(), snapPoint: null, drawAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null, drawSnapFace: null })
       return
     }
     // Horizontal members are lifted so they rest on the floor instead of sinking into it
@@ -107,7 +115,7 @@ const DrawingHandler: React.FC = () => {
 
     const res = start.equals(origin)
       ? first
-      : resolveAxisEnd(start, ray, cursor, camera, size, profiles, first.axis, meshHit)
+      : resolveAxisEnd(start, ray, cursor, camera, size, profiles, first.axis, meshHit, ts.drawSnapFace)
     if (!res) return
 
     ts.updateDraw({
@@ -116,6 +124,7 @@ const DrawingHandler: React.FC = () => {
       snapPoint: res.snapKind === 'grid' ? null : res.end.clone(),
       snapKind: res.snapKind,
       hoverTargetId: res.targetId,
+      drawSnapFace: res.face,
       drawAxis: res.axis,
       alignGuides: res.guide ? [{ from: res.guide.from.toArray() as any, to: res.guide.to.toArray() as any }] : [],
     })
@@ -143,11 +152,11 @@ const DrawingHandler: React.FC = () => {
       return
     }
     const profiles = useStore.getState().profiles
-    const pick = pickPoint(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY)
+    const pick = pickPoint(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
     hoverNormal.current = pick.normal ?? null
     if (pick.kind === 'none') { ts.setHover(null, null); ts.updateDraw({ alignGuides: [] }); return }
     const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
-    ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null)
+    ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null, pick.face ?? null)
     ts.updateDraw({ alignGuides: (pick.guides ?? []).map((g) => ({ from: g.from.toArray() as any, to: g.to.toArray() as any })) })
   }, [camera, size, updateEnd, hitMember])
 
@@ -185,9 +194,9 @@ const DrawingHandler: React.FC = () => {
     }
 
     if (!ts.isDrawing) {
-      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray), ts.workPlaneY)
+      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
       if (pick.kind === 'none') return
-      ts.beginDraw(pick.point)
+      ts.beginDraw(pick.point, pick.face)
       return
     }
 
@@ -249,10 +258,17 @@ const DrawingHandler: React.FC = () => {
       {/* Member preview: a neutral ghost. The axis colour lives on the centreline and the
           HUD instead, so a member being drawn along X is never mistaken for one flagged red. */}
       {held === 'profile' && xform && (
-        <mesh position={xform.pos} quaternion={xform.quat} scale={[1, 1, xform.scale]} geometry={previewGeo} raycast={() => null}>
+        <mesh position={xform.position} quaternion={xform.quaternion} scale={[1, 1, xform.cutLength]} geometry={previewGeo} raycast={() => null}
+          userData={{ drawingPreview: true, previewProfile: xform.profile }}>
           <meshStandardMaterial color="#cbd5e1" metalness={0.2} roughness={0.7} transparent opacity={0.6} depthWrite={false} />
         </mesh>
       )}
+
+      {/* The selected local face stays visible even when an end cap is only a few pixels. */}
+      {held === 'profile' && !isDragging && faces.map((face, i) => face && (
+        <FacePatch key={`${i}-${face.profileId}-${face.axis}-${face.side}`} face={face}
+          color={i === 0 ? '#fbbf24' : '#22d3ee'} role={i === 0 ? 'start' : 'target'} />
+      ))}
 
       {/* Snap indicator (endpoint / centerline / alignment) — constant screen size.
           While placing a connector the ghost itself shows the spot, and the marker would

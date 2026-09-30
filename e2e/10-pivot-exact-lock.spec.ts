@@ -98,15 +98,25 @@ test.describe('Rotation pivot', () => {
   })
 
   test('the gizmo moves onto the pivot, so the choice is visible', async ({ page }) => {
-    await page.waitForTimeout(150)
+    const member = await ends(page)
+    // The X probe only offsets X; the Y probe only offsets Y. Their unaffected
+    // coordinates give the actual rendered anchor, independent of zoom-dependent size.
     const at = () => page.evaluate(() => {
-      const h = (window as any).__aluframe.gizmoHandles?.() ?? []
-      return h.length ? h[0].position.map((v: number) => Math.round(v)) : null
+      const handles = (window as any).__aluframe.gizmoHandles?.() ?? []
+      const x = handles.find((h: any) => h.kind === 'move' && h.axis === 'x')
+      const y = handles.find((h: any) => h.kind === 'move' && h.axis === 'y')
+      return x && y ? [y.position[0], x.position[1], x.position[2]].map((v: number) => Math.round(v) || 0) : null
     })
-    const centre = await at()
+    const centre = member.start.map((v: number, i: number) => Math.round((v + member.end[i]) / 2) || 0)
+    expect(await pivot(page)).toBe('center')
+    await expect.poll(at).toEqual(centre)
     await page.keyboard.press('p')
-    await page.waitForTimeout(150)
+    expect(await pivot(page)).toBe('start')
+    await expect.poll(at).toEqual(member.start)
     expect(await at()).not.toEqual(centre)
+    await page.keyboard.press('p')
+    expect(await pivot(page)).toBe('end')
+    await expect.poll(at).toEqual(member.end)
   })
 })
 

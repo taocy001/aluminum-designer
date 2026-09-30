@@ -21,13 +21,13 @@ export function clean(v: number): number {
   return r === 0 ? 0 : r
 }
 
-export function buildProfile(start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec): ProfileData | null {
+export function buildProfile(start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec, id?: string): ProfileData | null {
   const length = start.distanceTo(end)
   if (!isFinite(length) || length < MIN_LENGTH) return null
   const direction = end.clone().sub(start).normalize()
   const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction)
   return {
-    id: nextId('p'),
+    id: id ?? nextId('p'),
     spec,
     length: Math.round(length * 100) / 100,
     position: [clean(start.x), clean(start.y), clean(start.z)],
@@ -69,7 +69,7 @@ export function lowestPointY(p: ProfileData): number {
  */
 export function prepareProfile(
   start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec, others: ProfileData[],
-  opts: { twin?: ProfileData | null; floorFeet?: boolean } = {},
+  opts: { twin?: ProfileData | null; floorFeet?: boolean; id?: string } = {},
 ): ProfileData | null {
   let s = start.clone(), e = end.clone()
   const { twin, floorFeet = false } = opts
@@ -86,10 +86,10 @@ export function prepareProfile(
     // run the same way as the twin, so its quaternion — and with it the roll — carries over
     const td = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...twin.quaternion).normalize())
     if (e.clone().sub(s).dot(td) < 0) [s, e] = [e, s]
-    built = buildProfile(s, e, spec)
+    built = buildProfile(s, e, spec, opts.id)
     if (built && Math.abs(e.clone().sub(s).normalize().dot(td)) > 0.999) built = { ...built, quaternion: [...twin.quaternion] as [number, number, number, number] }
   } else {
-    built = buildProfile(s, e, spec)
+    built = buildProfile(s, e, spec, opts.id)
   }
   if (!built) return null
   return faceAlignOnCreate(built, others)

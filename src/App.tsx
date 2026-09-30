@@ -13,15 +13,16 @@ import { connectorLabel } from './utils/connectorCatalog'
 import { nextSuggestion, dismissSuggestion } from './utils/suggestOps'
 import { computeTrims } from './utils/jointUtils'
 import { getProfileEndpoints } from './utils/geometryCore'
+import { profileFace, type ProfileFaceRef } from './utils/profileFaces'
 import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle, DoorOpen, DoorClosed, Lightbulb } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 
 function App() {
-  const { clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
+  const { profiles, clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
   const {
-    language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind,
+    language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace,
     held, putDown, triggerCameraReset, zoomBy, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
     pivotMode, cyclePivotMode, quickMenuAt, openQuickMenu, closeQuickMenu,
@@ -34,6 +35,14 @@ function App() {
     measuring, startMeasuring, stopMeasuring, suggestion,
   } = useToolStore()
   const t = translations[language]
+  const faceName = (ref: ProfileFaceRef) => {
+    if (ref.axis === 2) return t.faceNames[`2:${ref.side}`]
+    const member = profiles.find((p) => p.id === ref.profileId)
+    if (!member) return t.faceNames[`${ref.axis}:${ref.side}`]
+    const { normal } = profileFace(member, ref)
+    const worldAxis = normal.findIndex((v) => Math.abs(v) > 1 - 1e-6)
+    return worldAxis < 0 ? t.obliqueFace : t.faceDirection('XYZ'[worldAxis], normal[worldAxis])
+  }
 
   // Exact-length input while drawing
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -332,8 +341,8 @@ function App() {
           {/* what the drag has locked onto right now */}
           {isDragging && snapGuides.length > 0 && (
             <div data-testid="snap-hud"
-              style={{ top: hudTop }} className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/50 text-[11px] font-bold text-cyan-200 shadow-lg pointer-events-none z-10">
-              {[...new Set(snapGuides.map((g) => t.snapAlign[g.kind] ?? g.kind))].join(' · ')}
+              style={{ top: hudTop }} className="absolute left-1/2 -translate-x-1/2 w-max max-w-[calc(100vw-1rem)] text-center px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/50 text-[11px] font-bold text-cyan-200 shadow-lg pointer-events-none z-10">
+              {snapGuides.map((g) => `${t.snapAlign[g.kind] ?? g.kind}${g.kind === 'endpoint' ? '' : ` · ${'XYZ'[g.axis]}=${Number(g.coord.toFixed(3))} mm`}`).join(' / ')}
             </div>
           )}
 
@@ -359,9 +368,10 @@ function App() {
 
           {held !== null && !isDrawing && !isDragging && !suggestion && (
             <div data-testid="start-hud"
-              className={`absolute bottom-6 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full border text-[11px] font-bold shadow-lg pointer-events-none z-10 ${
+              className={`absolute bottom-6 left-1/2 -translate-x-1/2 w-max max-w-[calc(100vw-1rem)] text-center px-3 py-1.5 rounded-full border text-[11px] font-bold shadow-lg pointer-events-none z-10 ${
                 snapKind ? 'bg-slate-900/90 border-cyan-400/50 text-cyan-200' : 'bg-slate-900/90 border-white/15 text-slate-400'}`}>
               {t.startsOn}：{snapKind ? (t.snapNames[snapKind] ?? snapKind) : t.startsOnPlane(workPlaneY)}
+              {drawSnapFace && <span data-testid="start-face-kind"> · {faceName(drawSnapFace)}</span>}
             </div>
           )}
 
@@ -401,6 +411,11 @@ function App() {
                 <button onClick={confirmPreciseLength} disabled={!preciseInput} title={t.hintConfirmLength}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-[11px] font-bold text-white">↵</button>
               </div>
+              {(drawStartFace || drawSnapFace) && <div data-testid="draw-face-hud" className="basis-full text-center text-[10px] md:text-[11px] leading-tight">
+                {drawStartFace && <span className="text-amber-300">{t.drawStartFace}：{faceName(drawStartFace)}</span>}
+                {drawStartFace && drawSnapFace && <span className="mx-2 text-slate-500">→</span>}
+                {drawSnapFace && <span className="text-cyan-300">{t.drawTargetFace}：{faceName(drawSnapFace)}</span>}
+              </div>}
             </div>
           )}
 

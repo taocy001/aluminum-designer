@@ -5,6 +5,8 @@ import type { Axis, ThroughRule } from '../utils/jointUtils'
 import type { PivotMode } from '../utils/editOps'
 import type { Candidate } from '../utils/suggest'
 import type { ProfileData } from './useStore'
+import type { ProfileFaceRef } from '../utils/profileFaces'
+import type { SnapGuide } from '../utils/dragSnap'
 
 /** The profile or connector held for placement, reflected by the sidebar selection and preview. */
 export type HeldKind = 'profile' | 'connector'
@@ -69,6 +71,9 @@ interface ToolState {
   snapKind: string | null
   /** member the cursor/end is attaching to (highlighted in the scene) */
   hoverTargetId: string | null
+  /** Faces selected while starting/ending a drawn member, in the target's local axes. */
+  drawStartFace: ProfileFaceRef | null
+  drawSnapFace: ProfileFaceRef | null
   /** incremented when a digit is typed while drawing → focus the exact-length input */
   preciseFocusRequest: number
   preciseSeed: string
@@ -88,7 +93,7 @@ interface ToolState {
   /** members the current drag is aligning to, highlighted while it lasts */
   snapRefIds: string[]
   /** what the drag snapped to, for the alignment lines and the HUD */
-  snapGuides: Array<{ axis: 0 | 1 | 2; kind: string; coord: number; refId: string }>
+  snapGuides: SnapGuide[]
   dragMoved: boolean
   /** true while the dragged parts interfere with something — drives the cursor */
   dragConflict: boolean
@@ -158,9 +163,9 @@ interface ToolState {
   zoomToPoint: (at: [number, number, number]) => void
   clearZoom: () => void
 
-  beginDraw: (origin: THREE.Vector3) => void
-  updateDraw: (patch: Partial<Pick<ToolState, 'startPoint' | 'currentPoint' | 'snapPoint' | 'drawAxis' | 'alignGuides' | 'snapKind' | 'hoverTargetId'>>) => void
-  setHover: (point: THREE.Vector3 | null, snap: THREE.Vector3 | null, kind?: string | null, targetId?: string | null) => void
+  beginDraw: (origin: THREE.Vector3, face?: ProfileFaceRef | null) => void
+  updateDraw: (patch: Partial<Pick<ToolState, 'startPoint' | 'currentPoint' | 'snapPoint' | 'drawAxis' | 'alignGuides' | 'snapKind' | 'hoverTargetId' | 'drawStartFace' | 'drawSnapFace'>>) => void
+  setHover: (point: THREE.Vector3 | null, snap: THREE.Vector3 | null, kind?: string | null, targetId?: string | null, face?: ProfileFaceRef | null) => void
   cancelDraw: () => void
   setLockedAxis: (axis: Axis | null) => void
   requestPreciseFocus: (seed: string) => void
@@ -234,6 +239,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   alignGuides: [],
   snapKind: null,
   hoverTargetId: null,
+  drawStartFace: null,
+  drawSnapFace: null,
   preciseFocusRequest: 0,
   preciseSeed: '',
 
@@ -275,10 +282,12 @@ export const useToolStore = create<ToolState>((set, get) => ({
   putDown: () => set({
     held: null, isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
     snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null, selectMode: false,
+    drawStartFace: null, drawSnapFace: null,
   }),
   setActiveSpec: (spec) => set({ activeSpec: spec, held: 'profile', selectMode: false }),
   setActiveConnector: (type) => set({
     activeConnectorType: type, held: type ? 'connector' : null, selectMode: false,
+    drawStartFace: null, drawSnapFace: null,
     ...(type ? {} : { isDrawing: false, startPoint: null, currentPoint: null, snapPoint: null }),
   }),
   setLanguage: (language) => set({ language }),
@@ -290,7 +299,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
     set({
       viewMode,
       ...(viewMode ? { held: null, activeConnectorType: null, isDrawing: false, selectMode: false,
-        startPoint: null, currentPoint: null, pendingRotate: null, isFrameSelecting: false,
+        startPoint: null, currentPoint: null, drawStartFace: null, drawSnapFace: null, pendingRotate: null, isFrameSelecting: false,
+        drawOrigin: null, snapPoint: null, snapKind: null, hoverTargetId: null, drawAxis: null, lockedAxis: null, alignGuides: [],
         frameSelectStart: null, frameSelectCurrent: null, frameSelectRect: null, suggestion: null } : {}),
     })
   },
@@ -300,7 +310,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setBuildStep: (buildStep) => set({ buildStep }),
   setSuggestion: (suggestion, skipped) => set(skipped ? { suggestion, suggestSkipped: skipped } : { suggestion }),
   // measuring puts down whatever is in hand: a click has to mean one thing at a time
-  startMeasuring: () => set({ measuring: { from: null, to: null }, held: null, activeConnectorType: null, isDrawing: false, selectMode: false }),
+  startMeasuring: () => set({ measuring: { from: null, to: null }, held: null, activeConnectorType: null, isDrawing: false, selectMode: false, drawStartFace: null, drawSnapFace: null }),
   setMeasurePoint: (at) => set((s) => {
     if (!s.measuring || !s.measuring.from) return { measuring: { from: at.clone(), to: null } }
     if (!s.measuring.to) return { measuring: { from: s.measuring.from, to: at.clone() } }
@@ -311,15 +321,17 @@ export const useToolStore = create<ToolState>((set, get) => ({
   clearZoom: () => set({ zoomStep: 0, zoomAt: null }),
   zoomToPoint: (at) => set({ zoomAt: at }),
 
-  beginDraw: (origin) => set({
+  beginDraw: (origin, face = null) => set({
     isDrawing: true, drawOrigin: origin.clone(), startPoint: origin.clone(), currentPoint: origin.clone(),
     snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null,
+    drawStartFace: face, drawSnapFace: null,
   }),
   updateDraw: (patch) => set(patch),
-  setHover: (point, snap, kind = null, targetId = null) => set({ currentPoint: point, snapPoint: snap, snapKind: kind, hoverTargetId: targetId }),
+  setHover: (point, snap, kind = null, targetId = null, face = null) => set({ currentPoint: point, snapPoint: snap, snapKind: kind, hoverTargetId: targetId, drawSnapFace: face }),
   cancelDraw: () => set({
     isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
     snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null,
+    drawStartFace: null, drawSnapFace: null,
   }),
   setLockedAxis: (lockedAxis) => set({ lockedAxis }),
   requestPreciseFocus: (seed) => set((s) => ({ preciseFocusRequest: s.preciseFocusRequest + 1, preciseSeed: seed })),
@@ -337,7 +349,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setSnapGuides: (guides) => {
     const cur = get().snapGuides
     const same = cur.length === guides.length && guides.every((g, i) =>
-      cur[i].axis === g.axis && cur[i].kind === g.kind && Math.abs(cur[i].coord - g.coord) < 0.01 && cur[i].refId === g.refId)
+      cur[i].axis === g.axis && cur[i].kind === g.kind && Math.abs(cur[i].coord - g.coord) < 0.001 && cur[i].refId === g.refId
+      && cur[i].movingId === g.movingId && cur[i].movingSide === g.movingSide && cur[i].refSide === g.refSide)
     if (!same) set({ snapGuides: guides })
   },
   markDragMoved: () => { if (!get().dragMoved) set({ dragMoved: true }) },

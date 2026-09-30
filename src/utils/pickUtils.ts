@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import type { ProfileData } from '../store/useStore'
 import { getProfileEndpoints, getProfileDir, closestOnSegment, type Axis } from './geometryCore'
 import { GRID_STEP, roundToGrid } from './specUtils'
+import type { ProfileFaceRef } from './profileFaces'
+import { profileSideAt } from './profileShapes'
 
 export interface ScreenSize { width: number; height: number }
 
@@ -14,6 +16,9 @@ const AXES: Record<Axis, THREE.Vector3> = {
 
 /** Pixel threshold for snapping */
 export const SNAP_PX = 18
+/** Ends are small targets: give them a wider capture area than a mid-span joint. */
+export const END_SNAP_PX = 24
+const END_RELEASE_PX = 32
 /** Clicking a member body this close (mm) to one of its ends snaps to that end */
 const END_ZONE = 25
 /** how far off a raised work plane a point may sit and still count as on it (mm) */
@@ -74,6 +79,7 @@ export interface PickResult {
   profileId?: string
   /** outward normal of the surface the pointer was over, when a body was hit */
   normal?: THREE.Vector3
+  face?: ProfileFaceRef
   /** floor picks: guides to the endpoints whose X/Z the point was aligned with */
   guides?: { from: THREE.Vector3; to: THREE.Vector3 }[]
 }
@@ -83,6 +89,26 @@ export const ALIGN_PX = 12
 /** A ray hit on a member's rendered body, already classified by DrawingHandler */
 export interface MeshHit { profileId: string; point: THREE.Vector3; normal: THREE.Vector3 }
 
+/** The actual local face facing an approaching member; never an axis-aligned bounding box. */
+export function faceFacing(p: ProfileData, toward: THREE.Vector3): ProfileFaceRef {
+  const local = toward.clone().applyQuaternion(new THREE.Quaternion(...p.quaternion).normalize().invert())
+  const components = [local.x, local.y, local.z]
+  let axis: 0 | 1 | 2 = 0
+  for (const k of [1, 2] as const) if (Math.abs(components[k]) > Math.abs(components[axis])) axis = k
+  return { profileId: p.id, axis, side: components[axis] >= 0 ? 1 : -1 }
+}
+
+const endFace = (p: ProfileData, end: boolean): ProfileFaceRef => ({ profileId: p.id, axis: 2, side: end ? 1 : -1 })
+
+/** The face a slot belongs to, kept separate from its actual triangle normal for connectors. */
+function referenceFaceFromHit(p: ProfileData, hit: MeshHit): ProfileFaceRef {
+  const inverse = new THREE.Quaternion(...p.quaternion).normalize().invert()
+  const normal = hit.normal.clone().applyQuaternion(inverse)
+  if (Math.abs(normal.z) > 0.9) return endFace(p, normal.z > 0)
+  const point = hit.point.clone().sub(new THREE.Vector3(...p.position)).applyQuaternion(inverse)
+  return { profileId: p.id, ...profileSideAt(p.spec, point, normal) }
+}
+
 /** Map a hit on a member body to its model point: end-cap → centerline end, side face → centerline point (grid, end zones snap to the ends) */
 export function modelPointFromHit(hit: MeshHit, profiles: ProfileData[], ray?: THREE.Ray): PickResult | null {
   const p = profiles.find((q) => q.id === hit.profileId)
@@ -90,13 +116,13 @@ export function modelPointFromHit(hit: MeshHit, profiles: ProfileData[], ray?: T
   const { start, end } = getProfileEndpoints(p)
   const dir = getProfileDir(p)
   const nd = hit.normal.dot(dir)
-  if (Math.abs(nd) > 0.9) return { point: (nd > 0 ? end : start).clone(), kind: 'endpoint', profileId: p.id, normal: hit.normal.clone() }
+  if (Math.abs(nd) > 0.9) return { point: (nd > 0 ? end : start).clone(), kind: 'endpoint', profileId: p.id, normal: hit.normal.clone(), face: endFace(p, nd > 0) }
   // side face: measure along the centerline where the sight line passes it (avoids the surface-depth offset)
   const tRay = ray ? closestParamLineToRay(start, dir, ray) : null
   const t = tRay !== null && tRay !== undefined ? THREE.MathUtils.clamp(tRay, 0, p.length) : hit.point.clone().sub(start).dot(dir)
-  if (t <= END_ZONE) return { point: start.clone(), kind: 'endpoint', profileId: p.id }
-  if (t >= p.length - END_ZONE) return { point: end.clone(), kind: 'endpoint', profileId: p.id }
-  return { point: start.clone().addScaledVector(dir, roundToGrid(t)), kind: 'segment', profileId: p.id, normal: hit.normal.clone() }
+  if (t <= END_ZONE) return { point: start.clone(), kind: 'endpoint', profileId: p.id, normal: hit.normal.clone(), face: endFace(p, false) }
+  if (t >= p.length - END_ZONE) return { point: end.clone(), kind: 'endpoint', profileId: p.id, normal: hit.normal.clone(), face: endFace(p, true) }
+  return { point: start.clone().addScaledVector(dir, roundToGrid(t)), kind: 'segment', profileId: p.id, normal: hit.normal.clone(), face: referenceFaceFromHit(p, hit) }
 }
 
 /**
@@ -124,7 +150,7 @@ function centrelineOnPlane(p: ProfileData, planeY: number, ray: THREE.Ray): THRE
  */
 export function pickPoint(
   ray: THREE.Ray, cursor: THREE.Vector2, camera: THREE.Camera, size: ScreenSize, profiles: ProfileData[],
-  meshHit?: MeshHit | null, planeY = 0,
+  meshHit?: MeshHit | null, planeY = 0, previousFace?: ProfileFaceRef | null,
 ): PickResult {
   // Restrict snaps to a raised work plane; at floor level, allow candidates at all heights.
   const held = planeY !== 0
@@ -135,17 +161,23 @@ export function pickPoint(
   const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
   const hitDepth = meshHit ? meshHit.point.distanceTo(camPos) : Infinity
   let best: PickResult | null = null
-  let bestPx = SNAP_PX
+  let bestPx = END_SNAP_PX
+  let retained: { pick: PickResult; px: number } | null = null
   for (const p of profiles) {
     const { start, end } = getProfileEndpoints(p)
     for (const ep of [start, end]) {
       if (!onPlane(ep)) continue
       const px = toScreen(ep, camera, size).distanceTo(cursor)
-      if (px >= bestPx) continue
       if (meshHit && meshHit.profileId !== p.id && ep.distanceTo(camPos) > hitDepth + 1) continue
-      bestPx = px; best = { point: ep.clone(), kind: 'endpoint', profileId: p.id }
+      const face = endFace(p, ep === end)
+      const pick: PickResult = { point: ep.clone(), kind: 'endpoint', profileId: p.id, face,
+        ...(meshHit?.profileId === p.id ? { normal: meshHit.normal.clone() } : {}) }
+      if (previousFace?.profileId === p.id && previousFace.axis === 2 && previousFace.side === face.side && px < END_RELEASE_PX) retained = { pick, px }
+      if (px >= bestPx) continue
+      bestPx = px; best = pick
     }
   }
+  if (retained && (!best || retained.px <= bestPx + 5)) return retained.pick
   if (best) return best
   if (meshHit) {
     const m = modelPointFromHit(meshHit, profiles, ray)
@@ -155,7 +187,7 @@ export function pickPoint(
     if (m && held) {
       const p = profiles.find((q) => q.id === meshHit.profileId)
       const at = p ? centrelineOnPlane(p, planeY, ray) : null
-      if (at) return { point: at, kind: 'segment', profileId: meshHit.profileId, normal: meshHit.normal.clone() }
+      if (at && p) return { point: at, kind: 'segment', profileId: meshHit.profileId, normal: meshHit.normal.clone(), face: referenceFaceFromHit(p, meshHit) }
     }
   }
 
@@ -217,6 +249,7 @@ export interface AxisEndResult {
   snapPoint: THREE.Vector3 | null
   /** member the end attaches to (T-joint / endpoint) */
   targetId: string | null
+  face: ProfileFaceRef | null
   /** alignment guide: end aligned with a remote endpoint along the axis */
   guide: { from: THREE.Vector3; to: THREE.Vector3 } | null
 }
@@ -229,7 +262,7 @@ export interface AxisEndResult {
  */
 export function resolveAxisEnd(
   start: THREE.Vector3, ray: THREE.Ray, cursor: THREE.Vector2, camera: THREE.Camera, size: ScreenSize,
-  profiles: ProfileData[], lockedAxis: Axis | null, meshHit?: MeshHit | null,
+  profiles: ProfileData[], lockedAxis: Axis | null, meshHit?: MeshHit | null, previousFace?: ProfileFaceRef | null,
 ): AxisEndResult | null {
   const s0 = toScreen(start, camera, size)
   const m = cursor.clone().sub(s0)
@@ -259,10 +292,12 @@ export function resolveAxisEnd(
   let snapKind: EndSnapKind = 'grid'
   let snapPoint: THREE.Vector3 | null = null
   let targetId: string | null = null
+  let face: ProfileFaceRef | null = null
   let guide: AxisEndResult['guide'] = null
 
   // 1. endpoints lying on the axis line
-  let bestPx = SNAP_PX
+  let bestPx = END_SNAP_PX
+  let retainedEnd: { px: number; t: number; point: THREE.Vector3; face: ProfileFaceRef } | null = null
   for (const p of profiles) {
     const { start: ps, end: pe } = getProfileEndpoints(p)
     for (const ep of [ps, pe]) {
@@ -271,8 +306,16 @@ export function resolveAxisEnd(
       const lateral = start.clone().addScaledVector(axisDir, t).distanceTo(ep)
       if (lateral >= 1) continue
       const px = pxOf(t)
-      if (px < bestPx) { bestPx = px; length = t; snapKind = 'endpoint'; snapPoint = ep.clone(); targetId = p.id }
+      const targetFace = endFace(p, ep === pe)
+      if (previousFace?.profileId === p.id && previousFace.axis === 2 && previousFace.side === targetFace.side && px < END_RELEASE_PX) {
+        retainedEnd = { px, t, point: ep.clone(), face: targetFace }
+      }
+      if (px < bestPx) { bestPx = px; length = t; snapKind = 'endpoint'; snapPoint = ep.clone(); targetId = p.id; face = endFace(p, ep === pe) }
     }
+  }
+  if (retainedEnd && (snapKind === 'grid' || retainedEnd.px <= bestPx + 5)) {
+    length = retainedEnd.t; snapKind = 'endpoint'; snapPoint = retainedEnd.point
+    targetId = retainedEnd.face.profileId; face = retainedEnd.face
   }
 
   // 2. crossing centerlines (T-joint): axis line passes through another member's centerline
@@ -283,13 +326,15 @@ export function resolveAxisEnd(
       const r = lineSegmentClosest(start, axisDir, ps, pe)
       if (r.dist >= 1 || Math.abs(r.t1) < 1) continue
       const px = pxOf(r.t1)
-      if (px < bestPx) { bestPx = px; length = Math.round(r.t1 * 1000) / 1000; snapKind = 'joint'; snapPoint = r.point2.clone(); targetId = p.id }
+      if (px < bestPx) { bestPx = px; length = Math.round(r.t1 * 1000) / 1000; snapKind = 'joint'; snapPoint = r.point2.clone(); targetId = p.id; face = faceFacing(p, start.clone().sub(r.point2)) }
     }
   }
 
   // 3. body under the cursor: project its centerline point onto the axis
   if (snapKind === 'grid' && meshHit) {
-    const mp = modelPointFromHit(meshHit, profiles, ray)
+    const hitProfile = profiles.find((p) => p.id === meshHit.profileId)
+    // Reuse the same generous end target as the first click, including its retained face.
+    const mp = hitProfile ? pickPoint(ray, cursor, camera, size, [hitProfile], meshHit, 0, previousFace) : null
     if (mp && mp.profileId) {
       const t = Math.round(mp.point.clone().sub(start).dot(axisDir) * 1000) / 1000
       if (Math.abs(t) >= 1) {
@@ -297,6 +342,7 @@ export function resolveAxisEnd(
         length = t
         snapKind = onAxis.distanceTo(mp.point) < 1 ? (mp.kind === 'endpoint' ? 'endpoint' : 'joint') : 'align'
         snapPoint = mp.point.clone(); targetId = mp.profileId
+        face = mp.face ?? null
         if (snapKind === 'align') guide = { from: mp.point.clone(), to: onAxis }
       }
     }
@@ -304,22 +350,32 @@ export function resolveAxisEnd(
 
   // 4. align the length with any endpoint's axis coordinate
   if (snapKind === 'grid') {
-    bestPx = SNAP_PX
+    bestPx = END_SNAP_PX
+    let retainedAlign: { px: number; t: number; point: THREE.Vector3; face: ProfileFaceRef } | null = null
     for (const p of profiles) {
       const { start: ps, end: pe } = getProfileEndpoints(p)
       for (const ep of [ps, pe]) {
         const t = Math.round(ep.clone().sub(start).dot(axisDir) * 1000) / 1000
         if (Math.abs(t) < 1) continue
         const px = pxOf(t)
-        if (px < bestPx) { bestPx = px; length = t; snapKind = 'align'; guide = { from: ep.clone(), to: start.clone().addScaledVector(axisDir, t) }; targetId = p.id }
+        const targetFace = endFace(p, ep === pe)
+        if (previousFace?.profileId === p.id && previousFace.axis === 2 && previousFace.side === targetFace.side && px < END_RELEASE_PX) {
+          retainedAlign = { px, t, point: ep.clone(), face: targetFace }
+        }
+        if (px < bestPx) { bestPx = px; length = t; snapKind = 'align'; guide = { from: ep.clone(), to: start.clone().addScaledVector(axisDir, t) }; targetId = p.id; face = endFace(p, ep === pe) }
       }
+    }
+    if (retainedAlign && (snapKind === 'grid' || retainedAlign.px <= bestPx + 5)) {
+      length = retainedAlign.t; snapKind = 'align'
+      guide = { from: retainedAlign.point, to: start.clone().addScaledVector(axisDir, length) }
+      targetId = retainedAlign.face.profileId; face = retainedAlign.face
     }
   }
 
   const sign = length >= 0 ? 1 : -1
   const dir = axisDir.clone().multiplyScalar(sign)
   const end = start.clone().addScaledVector(axisDir, length)
-  return { axis, dir, end, length: Math.abs(length), snapKind, snapPoint, targetId, guide }
+  return { axis, dir, end, length: Math.abs(length), snapKind, snapPoint, targetId, guide, face }
 }
 
 export { GRID_STEP, closestOnSegment }

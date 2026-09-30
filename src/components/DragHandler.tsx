@@ -4,74 +4,19 @@ import { useThree } from '@react-three/fiber'
 import { useToolStore } from '../store/useToolStore'
 import { noteNext } from '../utils/opLog'
 import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData } from '../store/useStore'
-import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
+import { getProfileDir } from '../utils/geometryCore'
 import { closestParamLineToRay } from '../utils/pickUtils'
-import { computeDragSnap, alignThreshold, ALIGN_PX } from '../utils/dragSnap'
+import { computeDragSnap, alignThreshold, ALIGN_PX, snapProfilePosition, type Axis3 } from '../utils/dragSnap'
 import { pixelsToWorld } from './ResizeHandles'
 import { MIN_LENGTH } from '../utils/profileFactory'
 import { movingPartsConflict } from '../utils/analysis'
 import { lowestPointY } from '../utils/profileFactory'
 import { roundToGrid } from '../utils/specUtils'
-import { toScreen } from '../utils/pickUtils'
 
-/** endpoint snapping while dragging: generous on screen, capped in world units */
-const SNAP_PX = 24
-const SNAP_MAX_MM = 60
-/**
- * Always snap within this world distance, however far the camera is zoomed out.
- *
- * It has to stay well under the smallest move anybody makes on purpose. At 20 mm it was
- * exactly the size of a deliberate nudge, so a rail asked to come down 20 mm landed back on
- * the endpoint it started from and the move looked impossible.
- */
-const SNAP_MIN_MM = 6
-
-/**
- * An arrow drag is a measured adjustment, not a placement: the axis is already chosen and
- * the distance is the whole point. Snapping stays, but only close enough to catch a part
- * that is nearly there, never far enough to swallow the move.
- */
-const AXIS_SNAP_PX = 10
+/** An axis arrow makes measured adjustments, so its snap window stays tight. */
 const AXIS_SNAP_MAX_MM = 12
 /** a press near an end face only starts a stretch once the pointer travels this far */
 const RESIZE_SLOP_PX = 4
-
-/**
- * Snap either end of the moved profile to any endpoint of the others.
- * Measured in pixels (like the drawing tool) so the pull feels the same at any zoom,
- * with a world-space cap so a distant endpoint never grabs the member.
- */
-function snapProfilePosition(
-  p: ProfileData, newStart: THREE.Vector3, others: ProfileData[],
-  camera: THREE.Camera, size: { width: number; height: number }, tight = false,
-): { position: THREE.Vector3; refId: string | null } {
-  const maxMm = tight ? AXIS_SNAP_MAX_MM : SNAP_MAX_MM
-  const minMm = tight ? 2 : SNAP_MIN_MM
-  const maxPx = tight ? AXIS_SNAP_PX : SNAP_PX
-  const { start, end } = getProfileEndpoints({ ...p, position: [newStart.x, newStart.y, newStart.z] })
-  const offset = end.clone().sub(start)
-  const dir = getProfileDir(p)
-  let best: THREE.Vector3 | null = null
-  let bestRef: string | null = null
-  let bestPx = maxPx
-  for (const o of others) {
-    // Endpoints join members that meet at an angle. Two parallel members side by side are a
-    // different intent — they belong face to face, which the alignment snap handles.
-    if (Math.abs(getProfileDir(o).dot(dir)) > 0.99) continue
-    const eps = getProfileEndpoints(o)
-    for (const ep of [eps.start, eps.end]) {
-      const epPx = toScreen(ep, camera, size)
-      for (const [corner, candidate] of [[start, ep], [end, ep.clone().sub(offset)]] as const) {
-        const world = ep.distanceTo(corner)
-        if (world > maxMm) continue
-        const px = epPx.distanceTo(toScreen(corner, camera, size))
-        const effective = world <= minMm ? Math.min(px, maxPx - 1) : px
-        if (effective < bestPx) { bestPx = effective; best = candidate.clone(); bestRef = o.id }
-      }
-    }
-  }
-  return { position: best ?? newStart, refId: best ? bestRef : null }
-}
 
 /** How far the group would sink below the floor at the given offset (0 when clear) */
 function groupSink(profiles: ProfileData[], origins: Record<string, [number, number, number]>, delta: THREE.Vector3): number {
@@ -89,12 +34,43 @@ const DragHandler: React.FC = () => {
   // gesture state lives in refs: the effect below is re-created whenever R3F state changes,
   // so anything kept in its closure would be lost between two pointer events
   const resizingGesture = useRef<ReturnType<typeof useToolStore.getState>['resize']>(null)
+  const shiftHeld = useRef(false)
+  const dragBaseFree = useRef(false)
+  const pointerKind = useRef('mouse')
 
   useEffect(() => {
     const canvas = gl.domElement
-    const unsubscribe = useToolStore.subscribe((state) => {
+    const unsubscribe = useToolStore.subscribe((state, previous) => {
       if (!state.resize) resizingGesture.current = null
+      if (state.isDragging && !previous.isDragging) {
+        // A touch gesture can deliberately start free without a physical Shift key.
+        dragBaseFree.current = state.dragFree && (!shiftHeld.current || pointerKind.current === 'touch')
+      }
     })
+
+    const onPointerDown = (e: PointerEvent) => {
+      pointerKind.current = e.pointerType
+      if (e.pointerType !== 'touch') shiftHeld.current = e.shiftKey
+    }
+    const editable = (target: EventTarget | null) => target instanceof HTMLElement
+      && (target.isContentEditable || !!target.closest('input, textarea, select'))
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Shift' || e.repeat || editable(e.target)) return
+      shiftHeld.current = true
+      const ts = useToolStore.getState()
+      if (!ts.isDragging) return
+      ts.setDragFree(true)
+      // Feedback responds to the key itself, even while the pointer is stationary.
+      ts.setSnapRefs([])
+      ts.setSnapGuides([])
+    }
+    const releaseShift = () => {
+      if (!shiftHeld.current) return
+      shiftHeld.current = false
+      const ts = useToolStore.getState()
+      if (ts.isDragging) ts.setDragFree(dragBaseFree.current)
+    }
+    const onKeyUp = (e: KeyboardEvent) => { if (e.key === 'Shift' && !e.shiftKey) releaseShift() }
 
     const rayFor = (e: { clientX: number; clientY: number }) => {
       const rect = canvas.getBoundingClientRect()
@@ -202,9 +178,14 @@ const DragHandler: React.FC = () => {
       const lead = all.find((p) => p.id === dragProfileId)
       const leadOrigin = new THREE.Vector3(...(dragGroupOrigins[dragProfileId] ?? dragOriginPos.toArray()))
       const leadNew = leadOrigin.clone().add(delta)
-      leadNew.x = roundToGrid(leadNew.x); leadNew.y = roundToGrid(leadNew.y); leadNew.z = roundToGrid(leadNew.z)
+      const lockedAxis = ts.dragAxis ? { x: 0, y: 1, z: 2 }[ts.dragAxis] as Axis3 : null
+      const allowedAxes: Axis3[] = lockedAxis !== null ? [lockedAxis] : dragVertical ? [1] : [0, 2]
+      for (const axis of allowedAxes) {
+        const key = (['x', 'y', 'z'] as const)[axis]
+        leadNew[key] = roundToGrid(leadNew[key])
+      }
       const endpointSnap = single && lead && dragKind === 'profile' && !ts.dragFree
-        ? snapProfilePosition(lead, leadNew, others, camera, size, ts.dragAxis !== null)
+        ? snapProfilePosition(lead, leadNew, others, camera, size, lockedAxis, allowedAxes)
         : { position: leadNew, refId: null }
       const snapped = endpointSnap.position
       const joinedAtEndpoint = endpointSnap.refId !== null
@@ -235,25 +216,22 @@ const DragHandler: React.FC = () => {
         const threshold = ts.dragAxis !== null
           ? AXIS_SNAP_MAX_MM
           : alignThreshold(dragged, pixelsToWorld(ALIGN_PX, camDist, camera, size.height))
-        const snap = computeDragSnap(dragged, proposed, others, threshold)
-        // an axis-locked move only takes the pull on its own axis; announcing the others
-        // would point at alignments the part was never allowed to make
-        const lockedAxis = ts.dragAxis ? { x: 0, y: 1, z: 2 }[ts.dragAxis] : dragVertical ? 1 : null
-        const guides = lockedAxis === null ? snap.guides : snap.guides.filter((g) => g.axis === lockedAxis)
-        if (lockedAxis !== null) {
-          if (lockedAxis !== 0) snap.offset.x = 0
-          if (lockedAxis !== 1) snap.offset.y = 0
-          if (lockedAxis !== 2) snap.offset.z = 0
-        }
+        const snap = computeDragSnap(dragged, proposed, others, threshold, ts.snapGuides, allowedAxes)
         groupDelta.add(snap.offset)
-        ts.setSnapRefs(guides.length ? snap.refIds : [])
-        ts.setSnapGuides(guides)
+        ts.setSnapRefs(snap.refIds)
+        ts.setSnapGuides(snap.guides)
       }
 
       // keep the whole group on or above the floor, whatever each part's orientation is,
       // and do it last so no snap can push it back under
       const sink = groupSink(dragged, dragGroupOrigins, groupDelta)
-      if (sink < 0) groupDelta.y -= sink
+      if (sink < 0) {
+        groupDelta.y -= sink
+        // Lifting can change the joint and its cut ends as well as its Y plane. These
+        // guides were solved before the floor correction and must not claim a false fit.
+        ts.setSnapRefs([])
+        ts.setSnapGuides([])
+      }
 
       const updates: Array<{ id: string; updates: Partial<ProfileData> }> = []
       for (const pid of dragIds) {
@@ -315,12 +293,20 @@ const DragHandler: React.FC = () => {
       useToolStore.getState().stopDrag()
     }
 
+    canvas.addEventListener('pointerdown', onPointerDown, true)
     canvas.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', releaseShift)
     return () => {
       unsubscribe()
+      canvas.removeEventListener('pointerdown', onPointerDown, true)
       canvas.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', releaseShift)
     }
   }, [gl, camera, size])
 

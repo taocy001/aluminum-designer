@@ -397,7 +397,7 @@ test.describe('Snap feedback and reach', () => {
     const to = await w2c(page, [250, 10, 35])
     await dragHold(page, from, to)
     await expect(page.getByTestId('snap-hud')).toBeVisible()
-    await expect(page.getByTestId('snap-hud')).toContainText(/贴面|齐边|中线/)
+    await expect(page.getByTestId('snap-hud')).toContainText(/侧面贴合|端面对齐|齐边|中线/)
     const guides = await page.evaluate(() => (window as any).__aluframe.tool.getState().snapGuides.length)
     expect(guides).toBeGreaterThan(0)
     await page.mouse.up()
