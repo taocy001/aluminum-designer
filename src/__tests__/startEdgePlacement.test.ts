@@ -5,7 +5,7 @@ import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { constrainDrawingFaces } from '../utils/faceAlign'
 import { buildProfile, prepareProfilePlacement, tryAddProfile } from '../utils/profileFactory'
-import { drawingInput, prepareDrawingPreview } from '../utils/drawPreview'
+import { drawingInput, drawingStartAnchor, prepareDrawingPreview } from '../utils/drawPreview'
 import { drawingContacts } from '../utils/drawContacts'
 import { computeTrims, setThroughRule, trimmedBox } from '../utils/jointUtils'
 import { profileFace, profileFaceForWorldAxis } from '../utils/profileFaces'
@@ -231,4 +231,64 @@ it('commits a T-joint upright once, preserving both original solids and the prev
   expect(useStore.getState().past.length).toBe(before + 1)
   useStore.getState().undo()
   expect(useStore.getState().profiles).toEqual(profiles)
+})
+
+it.each(['2020', '2040', '4040'] as const)('shows the actual %s foot before clicking on either side of a T joint', (spec) => {
+  const through = fixed(V(-500, 400, 0), V(500, 400, 0), 'through')
+  const branch = { ...fixed(V(0, 400, 0), V(0, 400, 500), 'branch'), fixedTrims: { start: 20, end: 0 } }
+  const profiles = [through, branch]
+  const before = JSON.stringify(profiles)
+  for (const target of profiles) {
+    const start = target === through ? V(0, 400, 0) : V(0, 400, 20)
+    const startFace = profileFaceForWorldAxis(target, 1, 1)!
+    const startAlignmentFace = target === through ? profileFaceForWorldAxis(target, 2, 1)!
+      : { profileId: target.id, axis: 2 as const, side: -1 as const }
+    const anchor = drawingStartAnchor(start, spec, profiles, startFace, startAlignmentFace)
+    const final = prepareDrawingPreview(start, start.clone().add(V(0, 600, 0)), spec, profiles, { startFace, startAlignmentFace }, '365')!
+    for (let i = 0; i < 3; i++) expect(anchor[i]).toBeCloseTo(final.position.getComponent(i))
+    expect(anchor[1]).toBe(420)
+    expect(target === through ? anchor[2] < 20 : anchor[2] > 20).toBe(true)
+    if (spec === '2020') expect(anchor[2]).toBeCloseTo(target === through ? 10 : 30)
+    expect(start.toArray()).toEqual(target === through ? [0, 400, 0] : [0, 400, 20])
+  }
+  expect(JSON.stringify(profiles)).toBe(before)
+})
+
+it.each([-1, 1] as const)('previews the chosen edge on a reversed T joint with vertical direction %s', (vertical) => {
+  const through = fixed(V(500, 400, 0), V(-500, 400, 0), 'through')
+  const branch = { ...fixed(V(0, 400, 0), V(0, 400, -500), 'branch'), fixedTrims: { start: 20, end: 0 } }
+  const start = V(0, 400, 0), profiles = [through, branch]
+  const startFace = profileFaceForWorldAxis(through, 1, vertical)!
+  const startAlignmentFace = profileFaceForWorldAxis(through, 2, -1)!
+  const anchor = drawingStartAnchor(start, '2020', profiles, startFace, startAlignmentFace)
+  expect(anchor[1]).toBeCloseTo(400 + vertical * 20)
+  expect(anchor[2]).toBeCloseTo(-10)
+})
+
+it('keeps ordinary face-only hover projection without guessing a draw direction', () => {
+  const beam = fixed(V(0, 400, 0), V(500, 400, 0), 'beam')
+  const cap = profileFace(beam, { profileId: beam.id, axis: 2, side: 1 })
+  const anchor = drawingStartAnchor(V(500, 400, 0), '2020', [beam], cap)
+  for (let i = 0; i < 3; i++) expect(anchor[i]).toBeCloseTo(cap.center[i])
+})
+
+it.each(['2020', '2040'] as const)('keeps the selected %s starting section independent of temporary and actual far-end neighbours', (spec) => {
+  const through = fixed(V(-500, 400, 0), V(500, 400, 0), 'through')
+  const branch = { ...fixed(V(0, 400, 0), V(0, 400, 500), 'branch'), fixedTrims: { start: 20, end: 0 } }
+  const start = V(0, 400, 0), end = V(0, 1000, 0)
+  const faces = { startFace: profileFaceForWorldAxis(through, 1, 1)!, startAlignmentFace: profileFaceForWorldAxis(through, 2, 1)! }
+  const baseline = prepareDrawingPreview(start, end, spec, [through, branch], faces, '365')!
+  for (const height of [500, 765]) {
+    const neighbour = fixed(V(0, height, -100), V(0, height, 100), 'neighbour', '2040')
+    neighbour.quaternion = new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), Math.PI / 2).toArray()
+    const profiles = [through, branch, neighbour]
+    const anchor = drawingStartAnchor(start, spec, profiles, faces.startFace, faces.startAlignmentFace)
+    const preview = prepareDrawingPreview(start, end, spec, profiles, faces, '365')!
+    expect(preview.issue).toBeNull()
+    expect(preview.quaternion.toArray()).toEqual(baseline.quaternion.toArray())
+    for (let i = 0; i < 3; i++) {
+      expect(preview.position.getComponent(i)).toBeCloseTo(baseline.position.getComponent(i))
+      expect(anchor[i]).toBeCloseTo(preview.position.getComponent(i))
+    }
+  }
 })

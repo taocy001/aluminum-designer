@@ -48,7 +48,8 @@ const SnapMarker: React.FC<{ position: THREE.Vector3 | [number, number, number];
   const faceMarker = kind === 'contact' || kind === 'candidate'
   return (
     <sprite position={pos} scale={[size, size, 1]} renderOrder={faceMarker ? 38 : 20} raycast={() => null}
-      userData={kind === 'contact' ? { drawingContactMarker: true } : undefined}>
+      userData={kind === 'contact' ? { drawingContactMarker: true }
+        : kind === 'candidate' || kind === 'start' ? { drawingStartMarker: true, phase: kind } : undefined}>
       <spriteMaterial map={texture} transparent depthTest={false} depthWrite={!faceMarker} sizeAttenuation={false} />
     </sprite>
   )

@@ -13,12 +13,11 @@ import { specDims } from '../utils/specUtils'
 import { connectorSeatAt } from '../utils/bracketSeat'
 import Connector from './Connector'
 import { translations } from '../utils/translations'
-import { drawingInput, prepareDrawingPreview } from '../utils/drawPreview'
+import { drawingInput, drawingStartAnchor, prepareDrawingPreview } from '../utils/drawPreview'
 import { profileFace } from '../utils/profileFaces'
 import { computeTrims } from '../utils/jointUtils'
 import { FacePatch } from './SnapFaces'
 import { DrawContactGuides } from './DrawContactGuides'
-import { closestPointOnFace } from '../utils/drawContacts'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 /** a left press that travels this far orbits the camera instead of placing a point */
@@ -100,8 +99,10 @@ const DrawingHandler: React.FC = () => {
     return target && pendingFace ? profileFace(target, pendingFace, computeTrims(target, profiles)) : null
   }, [pendingFace, profiles, throughRule])
   const pendingPoint = isDrawing ? startPoint : currentPoint
-  const hoverAnchor = hoverFace && pendingPoint ? closestPointOnFace(hoverFace, pendingPoint) : null
   const pendingAlignment = isDrawing ? drawStartAlignmentFace : drawSnapAlignmentFace
+  const hoverAnchor = useMemo(() => hoverFace && pendingPoint
+    ? drawingStartAnchor(pendingPoint, activeSpec, profiles, hoverFace, pendingAlignment) : null,
+  [pendingPoint, activeSpec, profiles, hoverFace, pendingAlignment])
   const alignmentFace = useMemo(() => {
     const target = pendingAlignment && profiles.find((p) => p.id === pendingAlignment.profileId)
     return target && pendingAlignment ? profileFace(target, pendingAlignment, computeTrims(target, profiles)) : null

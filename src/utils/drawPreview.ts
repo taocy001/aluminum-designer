@@ -3,7 +3,8 @@ import type { ProfileData, ProfileSpec } from '../store/useStore'
 import { prepareProfilePlacement } from './profileFactory'
 import { computeTrims } from './jointUtils'
 import type { DrawingFaceOptions } from './faceAlign'
-import { drawingContacts } from './drawContacts'
+import { closestPointOnFace, drawingContacts } from './drawContacts'
+import type { FacePoint, ProfileFace, ProfileFaceRef } from './profileFaces'
 
 /** Resolve the numeric drawing input once for the ghost, HUD, mouse and Enter commits. */
 export function drawingInput(start: THREE.Vector3, end: THREE.Vector3, faces: DrawingFaceOptions, input = '') {
@@ -33,4 +34,21 @@ export function prepareDrawingPreview(start: THREE.Vector3, end: THREE.Vector3, 
     .addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion), trims.start.trim)
   return { profile, referenceProfiles, trims, position, quaternion, contacts, issue: placement.issue, blocked: placement.blocked,
     cutLength: isFinite(trims.cutLength) && trims.cutLength > 0.1 ? trims.cutLength : 1 }
+}
+
+/** The visible start is the future cut-end centre, not the centreline construction
+ * point or the alignment edge. Paired references imply an outward start; use the
+ * same section roll, side offset and cut calculation as the real drawing preview.
+ * This provisional member is never rendered or stored. */
+export function drawingStartAnchor(
+  start: THREE.Vector3, spec: ProfileSpec, profiles: ProfileData[], face: ProfileFace,
+  alignment?: ProfileFaceRef | null,
+): FacePoint {
+  const fallback = closestPointOnFace(face, start)
+  if (!alignment || alignment.profileId !== face.profileId) return fallback
+  const end = start.clone().addScaledVector(new THREE.Vector3(...face.normal), 100)
+  const preview = prepareDrawingPreview(start, end, spec, profiles,
+    { startFace: face, startAlignmentFace: alignment }, '100')
+  if (!preview || preview.blocked || !preview.contacts.some((c) => c.end === 'start' && c.kind === 'contact')) return fallback
+  return preview.position.toArray() as FacePoint
 }

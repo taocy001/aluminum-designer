@@ -23,8 +23,8 @@ function rayAt(c: THREE.Camera, px: THREE.Vector2) {
   ray.setFromCamera(new THREE.Vector2(px.x / size.width * 2 - 1, 1 - px.y / size.height * 2), c)
   return ray.ray
 }
-function pick(profiles: ProfileData[], hit: MeshHit | null, options: { scale?: number; planeY?: number; cursor?: THREE.Vector2 } = {}) {
-  const c = camera(options.scale)
+function pick(profiles: ProfileData[], hit: MeshHit | null, options: { scale?: number; planeY?: number; cursor?: THREE.Vector2; view?: THREE.Camera } = {}) {
+  const c = options.view ?? camera(options.scale)
   const cursor = options.cursor ?? toScreen(hit?.point ?? V(0, 0, 0), c, size)
   const ray = rayAt(c, cursor)
   return { result: pickDrawingStart(ray, cursor, c, size, profiles, hit, options.planeY),
@@ -297,5 +297,94 @@ describe('drawing starts above a horizontal T interface', () => {
     const { result, legacy } = pick([a, b], topHit(a), { planeY: 250 })
     expect(result.alignmentFace).toBeUndefined()
     expect(result).toEqual(legacy)
+  })
+})
+
+describe('occupied T faces do not replace usable start surfaces', () => {
+  const crossbar = () => rail('crossbar', V(-400, 100, 0), V(400, 100, 0))
+  const stem = () => rail('stem', V(0, 100, 10), V(0, 100, 410))
+
+  it.each(['cap', 'side'] as const)('recovers the nearby top when the seam triangle belongs to its occupied %s', (kind) => {
+    const a = crossbar(), b = stem()
+    const hit = { profileId: kind === 'cap' ? b.id : a.id, point: V(0, 105, 10), normal: V(0, 0, kind === 'cap' ? -1 : 1) }
+    const { result } = pick([a, b], hit)
+    expect(result.face).toEqual({ profileId: a.id, axis: 1, side: 1 })
+    expect(result.alignmentFace?.profileId).toBe(a.id)
+    expect(result.point.distanceTo(V(0, 100, 0))).toBeLessThan(1e-6)
+    expect(result.normal?.distanceTo(hit.normal)).toBeLessThan(1e-6)
+  })
+
+  it('recovers the bottom when the occupied seam is viewed from below', () => {
+    const a = crossbar(), b = stem(), view = camera()
+    view.position.set(850, -900, 950); view.lookAt(200, 100, 0); view.updateMatrixWorld()
+    const { result } = pick([a, b], { profileId: b.id, point: V(0, 95, 10), normal: V(0, 0, -1) }, { view })
+    expect(result.face).toEqual({ profileId: a.id, axis: 1, side: -1 })
+    expect(result.alignmentFace?.profileId).toBe(a.id)
+  })
+
+  it('does not recover toward a surface edge-on to the viewing ray', () => {
+    const a = crossbar(), b = stem(), view = camera()
+    view.position.set(850, 100, 950); view.lookAt(200, 100, 0); view.updateMatrixWorld()
+    const { result, legacy } = pick([a, b], { profileId: b.id, point: V(0, 100, 10), normal: V(0, 0, -1) }, { view })
+    expect(result).toEqual(legacy)
+  })
+
+  it('keeps the 12-pixel limit when looking directly at an occupied cap away from its outer edge', () => {
+    const a = crossbar(), b = stem()
+    const { result, legacy } = pick([a, b], { profileId: b.id, point: V(0, 100, 10), normal: V(0, 0, -1) }, { scale: 10 })
+    expect(result).toEqual(legacy)
+  })
+
+  it('preserves free caps and exposed parts of partially occupied caps', () => {
+    const a = crossbar(), b = stem()
+    const taller = { ...stem(), spec: '4040' as const }
+    const shortA = rail('short-crossbar', V(-5, 100, 0), V(5, 100, 0))
+    const cases = [
+      { profiles: [b], hit: { profileId: b.id, point: V(0, 105, 10), normal: V(0, 0, -1) } },
+      { profiles: [a, taller], hit: { profileId: taller.id, point: V(0, 115, 10), normal: V(0, 0, -1) } },
+      { profiles: [shortA, taller], hit: { profileId: taller.id, point: V(15, 105, 10), normal: V(0, 0, -1) } },
+    ]
+    for (const { profiles, hit } of cases) {
+      const { result, legacy } = pick(profiles, hit)
+      expect(result).toEqual(legacy)
+      expect(result.face?.axis).toBe(2)
+    }
+  })
+
+  it('does not rescue a detached or oblique neighbouring cap', () => {
+    const a = crossbar()
+    const gap = rail('gap', V(0, 100, 11), V(0, 100, 410))
+    const oblique = rail('oblique', V(0, 100, 10), V(300, 100, 410))
+    for (const b of [gap, oblique]) {
+      const { result, legacy } = pick([a, b], { profileId: b.id,
+        point: new THREE.Vector3(...b.position).add(V(0, 5, 0)), normal: getProfileDir(b).negate() })
+      expect(result).toEqual(legacy)
+    }
+  })
+
+  it('preserves a real top hit beyond the edge zone when legacy endpoint capture chooses an occupied cap', () => {
+    const a = { ...rail('through', V(0, 400, 0), V(1000, 400, 0)), spec: '4040' as const }
+    const b = { ...rail('branch', V(500, 400, 0), V(500, 400, 500)), spec: '4040' as const, fixedTrims: { start: 20, end: 0 } }
+    const view = new THREE.PerspectiveCamera(45, size.width / size.height, 1, 100000)
+    view.position.set(1300, 1400, 1400); view.lookAt(450, 400, 50); view.updateMatrixWorld(); view.updateProjectionMatrix()
+    // Real browser ray: pointer projected from [500,400,20] hits this top at z=47.6.
+    const hit = { profileId: b.id, point: V(516, 420, 47.6), normal: V(0, 1, 0) }
+    const { result, legacy } = pick([a, b], hit, { view })
+    expect(legacy.face).toEqual({ profileId: b.id, axis: 2, side: -1 })
+    expect(result.face).toEqual({ profileId: b.id, axis: 1, side: 1 })
+    expect(result.kind).toBe('segment')
+    expect(result.alignmentFace).toBeUndefined()
+    expect(result.point.distanceTo(V(500, 400, 50))).toBeLessThan(1e-6)
+    const free = pick([b], hit, { view })
+    expect(free.result).toEqual(free.legacy)
+    expect(free.result.face?.axis).toBe(2)
+  })
+
+  it('does not redirect a higher top toward an occupied cap below that surface', () => {
+    const a = { ...crossbar(), spec: '4040' as const }
+    const b = rail('lower-stem', V(0, 100, 20), V(0, 100, 410))
+    const { result, legacy } = pick([a, b], { profileId: a.id, point: V(0, 120, 0), normal: V(0, 1, 0) })
+    expect(result).toEqual(legacy)
+    expect(result.alignmentFace).toBeUndefined()
   })
 })

@@ -78,7 +78,7 @@ function shiftForJoint(a: ProfileData, b: ProfileData, at: THREE.Vector3): Shift
  * Turn the section a quarter turn if that makes more of its joints flush than leaving it.
  * Returns the turned member, or null when turning is no help or there is nothing to turn.
  */
-function tryRoll(candidate: ProfileData, others: ProfileData[]): ProfileData | null {
+function tryRoll(candidate: ProfileData, others: ProfileData[], startOnly = false): ProfileData | null {
   const { w, h } = specDims(candidate.spec)
   if (w === h) return null                      // square: nothing to turn
 
@@ -87,7 +87,7 @@ function tryRoll(candidate: ProfileData, others: ProfileData[]): ProfileData | n
     let n = 0
     for (const b of others) {
       const eb = getProfileEndpoints(b)
-      const touch = [start, end]
+      const touch = (startOnly ? [start] : [start, end])
         .map((pt) => ({ pt, d: closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) }))
         .sort((x, y) => x.d - y.d)[0]
       if (touch.d > JOINT_TOL) continue
@@ -109,11 +109,11 @@ function tryRoll(candidate: ProfileData, others: ProfileData[]): ProfileData | n
  * Align a new member's bracket faces with the existing members it meets.
  * Apply the adjustment at creation without moving existing members.
  */
-export function faceAlignOnCreate(candidate: ProfileData, others: ProfileData[]): ProfileData {
+export function faceAlignOnCreate(candidate: ProfileData, others: ProfileData[], startOnly = false): ProfileData {
   if (others.length === 0) return candidate
 
   // Try a quarter-turn of rectangular sections before shifting them to align slot planes.
-  const rolled = tryRoll(candidate, others)
+  const rolled = tryRoll(candidate, others, startOnly)
   if (rolled) return rolled
 
   const { start, end } = getProfileEndpoints(candidate)
@@ -121,7 +121,7 @@ export function faceAlignOnCreate(candidate: ProfileData, others: ProfileData[])
 
   for (const b of others) {
     const eb = getProfileEndpoints(b)
-    const touch = [start, end]
+    const touch = (startOnly ? [start] : [start, end])
       .map((pt) => ({ pt, d: closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) }))
       .sort((x, y) => x.d - y.d)[0]
     if (touch.d > JOINT_TOL) continue

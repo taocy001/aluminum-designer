@@ -102,7 +102,16 @@ export function prepareProfilePlacement(
     built = buildProfile(s, e, spec, opts.id)
   }
   if (!built) return null
-  const profile = faceAlignOnCreate(built, others)
+  const pairedTarget = opts.startFace && opts.startAlignmentFace?.profileId === opts.startFace.profileId
+    ? others.find((p) => p.id === opts.startFace!.profileId) : undefined
+  const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...built.quaternion))
+  const normalOf = (ref: NonNullable<DrawingFaceOptions['startFace']>) => new THREE.Vector3()
+    .setComponent(ref.axis, ref.side).applyQuaternion(new THREE.Quaternion(...pairedTarget!.quaternion).normalize())
+  // A chosen seat and edge fix the starting section. An incidental joint at the
+  // changing far end must not move or rotate it after the user has picked it.
+  const startOnly = !!pairedTarget && normalOf(opts.startFace!).dot(direction) > 1 - 1e-6
+    && Math.abs(normalOf(opts.startAlignmentFace!).dot(direction)) < 1e-6
+  const profile = faceAlignOnCreate(built, others, startOnly)
   return opts.startFace || opts.endFace
     ? constrainDrawingFaces(profile, others, opts)
     : { profile, issue: null, blocked: false }
