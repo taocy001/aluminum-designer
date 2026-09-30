@@ -23,7 +23,7 @@ const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3
 function App() {
   const { profiles, throughRule, clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
   const {
-    language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace,
+    language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace,
     drawLengthInput: preciseInput, setDrawLengthInput: setPreciseInput,
     held, putDown, triggerCameraReset, zoomBy, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
@@ -61,8 +61,8 @@ function App() {
   }, [showToast, t])
   const preciseInputRef = useRef<HTMLInputElement>(null)
   const drawingPreview = useMemo(() => isDrawing && startPoint && currentPoint
-    ? prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles, { startFace: drawStartFace, endFace: drawSnapFace }, preciseInput)
-    : null, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule, drawStartFace, drawSnapFace, preciseInput])
+    ? prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles, { startFace: drawStartFace, endFace: drawSnapFace, startAlignmentFace: drawStartAlignmentFace }, preciseInput)
+    : null, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule, drawStartFace, drawSnapFace, drawStartAlignmentFace, preciseInput])
   const endContact = drawingPreview?.contacts.find((contact) => contact.end === 'end')
   const invalidLengthInput = preciseInput.trim() !== '' && (!Number.isFinite(Number(preciseInput)) || Number(preciseInput) < 10)
 
@@ -90,12 +90,12 @@ function App() {
       return
     }
     if (preciseInput.trim() === '') { showToast(t.toastNeedLength, 'info'); return }
-    const input = drawingInput(startPoint, currentPoint, { startFace: drawStartFace, endFace: drawSnapFace }, preciseInput)
+    const input = drawingInput(startPoint, currentPoint, { startFace: drawStartFace, endFace: drawSnapFace, startAlignmentFace: drawStartAlignmentFace }, preciseInput)
     if (!input) { showToast(t.toastTooShort, 'error'); return }
     if (!tryAddProfile(startPoint, input.end, activeSpec, input.faces)) return
     cancelDraw()
     setPreciseInput('')
-  }, [preciseInput, startPoint, currentPoint, activeSpec, drawStartFace, drawSnapFace, cancelDraw, showToast, t])
+  }, [preciseInput, startPoint, currentPoint, activeSpec, drawStartFace, drawSnapFace, drawStartAlignmentFace, cancelDraw, showToast, t])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -373,6 +373,7 @@ function App() {
                 snapKind ? 'bg-slate-900/90 border-cyan-400/50 text-cyan-200' : 'bg-slate-900/90 border-white/15 text-slate-400'}`}>
               {t.startsOn}：{snapKind ? (t.snapNames[snapKind] ?? snapKind) : t.startsOnPlane(workPlaneY)}
               {drawSnapFace && <span data-testid="start-face-kind"> · {faceName(drawSnapFace)}</span>}
+              {drawSnapAlignmentFace && <span data-testid="start-edge-kind"> · {t.drawEdgeAlignment}：{faceName(drawSnapAlignmentFace)}</span>}
             </div>
           )}
 
@@ -413,9 +414,9 @@ function App() {
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-[11px] font-bold text-white">↵</button>
               </div>
               {!!drawingPreview?.contacts.length && <div data-testid="draw-face-hud" className="basis-full flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] md:text-[11px] leading-tight">
-                {drawingPreview.contacts.map((contact) => <span key={contact.end} data-testid={`draw-${contact.end}-contact`}
+                {drawingPreview.contacts.map((contact) => <span key={`${contact.end}-${contact.purpose ?? 'contact'}`} data-testid={`draw-${contact.end}-${contact.purpose ?? 'contact'}`}
                   className={contact.kind === 'rejected' ? 'text-rose-300' : 'text-cyan-300'}>
-                  {t.drawEnds[contact.end]} · {t.drawContactKinds[contact.kind]} · {faceName(contact.referenceFace)}
+                  {contact.purpose === 'alignment' ? t.drawEdgeAlignment : `${t.drawEnds[contact.end]} · ${t.drawContactKinds[contact.kind]}`} · {faceName(contact.referenceFace)}
                   <span className="ml-1 font-mono opacity-80">({contact.referenceAnchor.map((v) => Math.round(v)).join(', ')}) mm</span>
                 </span>)}
                 <span className="text-slate-400"><span className="text-amber-300">{t.drawNewFace}</span> · <span className="text-cyan-300">{t.drawReferenceFace}</span></span>

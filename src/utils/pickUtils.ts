@@ -102,7 +102,7 @@ export function faceFacing(p: ProfileData, toward: THREE.Vector3): ProfileFaceRe
 const endFace = (p: ProfileData, end: boolean): ProfileFaceRef => ({ profileId: p.id, axis: 2, side: end ? 1 : -1 })
 
 /** The face a slot belongs to, kept separate from its actual triangle normal for connectors. */
-function referenceFaceFromHit(p: ProfileData, hit: MeshHit): ProfileFaceRef {
+export function referenceFaceFromHit(p: ProfileData, hit: MeshHit): ProfileFaceRef {
   const inverse = new THREE.Quaternion(...p.quaternion).normalize().invert()
   const normal = hit.normal.clone().applyQuaternion(inverse)
   if (Math.abs(normal.z) > 0.9) return endFace(p, normal.z > 0)

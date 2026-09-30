@@ -40,15 +40,16 @@ const ContactPatch: React.FC<{ points: FacePoint[]; normal: FacePoint }> = ({ po
 /** Match drag feedback: the new member is amber, the existing reference is cyan. */
 export const DrawContactGuides: React.FC<{ contacts: DrawingContact[]; language: Language }> = ({ contacts, language }) => <>
   {contacts.map((contact) => {
-    const { end, kind, referenceFace, memberFace, referenceAnchor, memberAnchor, patch } = contact
+    const { end, kind, purpose, referenceFace, memberFace, referenceAnchor, memberAnchor, patch } = contact
     const rejected = kind === 'rejected'
     const touching = kind === 'contact'
     const anchor = rejected ? referenceAnchor : memberAnchor
-    const label = language === 'zh' ? (end === 'start' ? '起' : '终') : (end === 'start' ? 'Start' : 'End')
+    const label = purpose === 'alignment' ? (language === 'zh' ? '齐边' : 'Flush edge')
+      : language === 'zh' ? (end === 'start' ? '起' : '终') : (end === 'start' ? 'Start' : 'End')
     const color = rejected ? REJECTED_COLOR : MEMBER_COLOR
     const hasSpan = new THREE.Vector3(...referenceAnchor).distanceToSquared(new THREE.Vector3(...memberAnchor)) > 1e-6
-    return <group key={`${end}-${referenceFace.profileId}-${kind}`} userData={{
-      drawingContact: true, end, kind, referenceAnchor, memberAnchor,
+    return <group key={`${end}-${purpose ?? 'contact'}-${referenceFace.profileId}-${kind}`} userData={{
+      drawingContact: true, end, kind, purpose, referenceAnchor, memberAnchor,
       referenceFace: { profileId: referenceFace.profileId, axis: referenceFace.axis, side: referenceFace.side },
       memberFace: memberFace && { profileId: memberFace.profileId, axis: memberFace.axis, side: memberFace.side },
       patch,
@@ -65,8 +66,8 @@ export const DrawContactGuides: React.FC<{ contacts: DrawingContact[]; language:
       {touching && patch && patch.length >= 3 && <ContactPatch points={patch} normal={referenceFace.normal} />}
       {touching && <SnapMarker position={memberAnchor} kind="contact" size={0.022} />}
       <Html position={anchor} zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
-        <div data-testid={`draw-contact-${end}`} data-kind={kind}
-          style={{ color, borderColor: `${color}66`, transform: end === 'start' ? 'translate(calc(-100% - 12px), -50%)' : 'translate(12px, -50%)' }}
+        <div data-testid={`draw-${purpose ?? 'contact'}-${end}`} data-kind={kind}
+          style={{ color, borderColor: `${color}66`, transform: purpose === 'alignment' ? 'translate(12px, 12px)' : end === 'start' ? 'translate(calc(-100% - 12px), -50%)' : 'translate(12px, -50%)' }}
           className="pointer-events-none select-none whitespace-nowrap rounded border bg-slate-900/85 px-1.5 py-0.5 text-[10px] font-bold leading-tight">
           {label}
         </div>

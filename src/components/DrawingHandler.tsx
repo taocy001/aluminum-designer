@@ -5,6 +5,7 @@ import { Html, Line } from '@react-three/drei'
 import { useToolStore } from '../store/useToolStore'
 import { useStore } from '../store/useStore'
 import { getProfileShape } from '../utils/profileShapes'
+import { pickDrawingStart } from '../utils/pickDrawingStart'
 import { pickPoint, resolveAxisEnd, type MeshHit } from '../utils/pickUtils'
 import SnapMarker from './SnapMarker'
 import { floorY, tryAddProfile, placeConnector } from '../utils/profileFactory'
@@ -24,7 +25,7 @@ const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3
 const ORBIT_SLOP_PX = 5
 
 const DrawingHandler: React.FC = () => {
-  const { isDrawing, isDragging, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides, drawStartFace, drawSnapFace, drawLengthInput, language } = useToolStore()
+  const { isDrawing, isDragging, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace, drawLengthInput, language } = useToolStore()
   const profiles = useStore((s) => s.profiles)
   const throughRule = useStore((s) => s.throughRule)
   const { camera, size, scene, gl } = useThree()
@@ -83,8 +84,8 @@ const DrawingHandler: React.FC = () => {
 
   const xform = useMemo(() => {
     if (!isDrawing || !startPoint || !currentPoint) return null
-    return prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles, { startFace: drawStartFace, endFace: drawSnapFace }, drawLengthInput)
-  }, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule, drawStartFace, drawSnapFace, drawLengthInput])
+    return prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles, { startFace: drawStartFace, endFace: drawSnapFace, startAlignmentFace: drawStartAlignmentFace }, drawLengthInput)
+  }, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawLengthInput])
   const invalidLengthInput = drawLengthInput.trim() !== '' && (!Number.isFinite(Number(drawLengthInput)) || Number(drawLengthInput) < 10)
   const previewEnd = xform && xform.position.clone().addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(xform.quaternion), xform.cutLength)
   const faceMessage = invalidLengthInput ? translations[language].toastTooShort
@@ -100,6 +101,17 @@ const DrawingHandler: React.FC = () => {
   }, [pendingFace, profiles, throughRule])
   const pendingPoint = isDrawing ? startPoint : currentPoint
   const hoverAnchor = hoverFace && pendingPoint ? closestPointOnFace(hoverFace, pendingPoint) : null
+  const pendingAlignment = isDrawing ? drawStartAlignmentFace : drawSnapAlignmentFace
+  const alignmentFace = useMemo(() => {
+    const target = pendingAlignment && profiles.find((p) => p.id === pendingAlignment.profileId)
+    return target && pendingAlignment ? profileFace(target, pendingAlignment, computeTrims(target, profiles)) : null
+  }, [pendingAlignment, profiles, throughRule])
+  const alignmentEdge = useMemo(() => {
+    if (!alignmentFace || !hoverFace) return []
+    const normal = new THREE.Vector3(...hoverFace.normal)
+    const center = new THREE.Vector3(...hoverFace.center)
+    return alignmentFace.corners.filter((point) => Math.abs(new THREE.Vector3(...point).sub(center).dot(normal)) < 0.001)
+  }, [alignmentFace, hoverFace])
 
   const axisColor = drawAxis ? AXIS_COLORS[drawAxis] : '#94a3b8'
   const drawDist = startPoint && currentPoint ? startPoint.distanceTo(currentPoint) : 0
@@ -132,7 +144,7 @@ const DrawingHandler: React.FC = () => {
 
     // The selected start face may offset the section sideways. Resolve the target
     // along that actual section axis while keeping the original construction point.
-    const startPreview = prepareDrawingPreview(start, res.end, ts.activeSpec, profiles, { startFace: ts.drawStartFace })
+    const startPreview = prepareDrawingPreview(start, res.end, ts.activeSpec, profiles, { startFace: ts.drawStartFace, startAlignmentFace: ts.drawStartAlignmentFace })
     if (startPreview && !startPreview.blocked) {
       const offset = new THREE.Vector3(...startPreview.profile.position).sub(start)
       offset.addScaledVector(res.dir, -offset.dot(res.dir))
@@ -176,11 +188,13 @@ const DrawingHandler: React.FC = () => {
       return
     }
     const profiles = useStore.getState().profiles
-    const pick = pickPoint(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
+    const pick: ReturnType<typeof pickDrawingStart> = ts.held === 'profile'
+      ? pickDrawingStart(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
+      : pickPoint(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
     hoverNormal.current = pick.normal ?? null
     if (pick.kind === 'none') { ts.setHover(null, null); ts.updateDraw({ alignGuides: [] }); return }
     const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
-    ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null, pick.face ?? null)
+    ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null, pick.face ?? null, pick.alignmentFace ?? null)
     ts.updateDraw({ alignGuides: (pick.guides ?? []).map((g) => ({ from: g.from.toArray() as any, to: g.to.toArray() as any })) })
   }, [camera, size, updateEnd, hitMember])
 
@@ -218,17 +232,17 @@ const DrawingHandler: React.FC = () => {
     }
 
     if (!ts.isDrawing) {
-      const pick = pickPoint(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
+      const pick = pickDrawingStart(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
       if (pick.kind === 'none') return
-      ts.beginDraw(pick.point, pick.face)
+      ts.beginDraw(pick.point, pick.face, pick.alignmentFace)
       return
     }
 
     updateEnd(ray, cursor)
-    const { startPoint: s, currentPoint: c, activeSpec, drawStartFace, drawSnapFace, drawLengthInput } = useToolStore.getState()
+    const { startPoint: s, currentPoint: c, activeSpec, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawLengthInput } = useToolStore.getState()
     if (!s || !c) return
     if (s.distanceTo(c) < 1) return // no direction yet — ignore the click
-    const input = drawingInput(s, c, { startFace: drawStartFace, endFace: drawSnapFace }, drawLengthInput)
+    const input = drawingInput(s, c, { startFace: drawStartFace, endFace: drawSnapFace, startAlignmentFace: drawStartAlignmentFace }, drawLengthInput)
     if (!input) return
     if (tryAddProfile(s, input.end, activeSpec, input.faces)) ts.cancelDraw()
   }, [camera, size, updateEnd, hitMember])
@@ -300,6 +314,11 @@ const DrawingHandler: React.FC = () => {
         <FacePatch face={hoverFace} anchor={hoverAnchor ?? undefined} color="#22d3ee" role="target"
           fillOpacity={0.32} lineWidth={4} />
       )}
+      {held === 'profile' && !isDragging && (!isDrawing || !xform) && alignmentFace && <>
+        <FacePatch face={alignmentFace} color="#22d3ee" role="alignment" showNormal={false} fillOpacity={0.1} lineWidth={2} />
+        {alignmentEdge.length === 2 && <Line points={alignmentEdge} color="#67e8f9" lineWidth={5}
+          depthTest={false} depthWrite={false} renderOrder={30} raycast={() => null} />}
+      </>}
       {held === 'profile' && !isDragging && xform && <DrawContactGuides contacts={xform.contacts} language={language} />}
 
       {/* Snap indicator (endpoint / centerline / alignment) — constant screen size.

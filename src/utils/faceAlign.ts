@@ -18,6 +18,8 @@ interface Shift { axis: THREE.Vector3; amount: number }
 
 export interface DrawingFaceOptions {
   startFace?: ProfileFaceRef | null
+  /** An end plane whose outer edge the new section shares while its end seats on startFace. */
+  startAlignmentFace?: ProfileFaceRef | null
   endFace?: ProfileFaceRef | null
   /** For a face-constrained drawing, this is the actual cut length requested by the user. */
   exactLength?: number
@@ -154,7 +156,7 @@ export function constrainDrawingFaces(
   let issue: DrawingFaceIssue | null = null
   const dir = getProfileDir(candidate)
   type Constraint = { normal: THREE.Vector3; plane: number; kind: 'side' | 'end'; direction: number }
-  const constraint = (ref: ProfileFaceRef | null | undefined, end: boolean): Constraint | 'oblique' | null => {
+  const constraint = (ref: ProfileFaceRef | null | undefined, end: boolean, alignCap = false): Constraint | 'oblique' | null => {
     const target = ref && others.find((p) => p.id === ref.profileId)
     if (!ref || !target) return null
     const face = profileFace(target, ref, computeTrims(target, others))
@@ -171,7 +173,7 @@ export function constrainDrawingFaces(
         if (Math.abs(point.clone().sub(center).dot(edge)) > half + crossExtentAlong(profile, edge) + 0.001) return null
       }
     }
-    if (ref.axis === 2 && Math.abs(direction) < 1 - 1e-6) return null
+    if (!alignCap && ref.axis === 2 && Math.abs(direction) < 1 - 1e-6) return null
     if (Math.abs(direction) > 1 - 1e-6) return { normal, plane: centerPlane(face.center, normal), kind: 'end', direction }
     if (Math.abs(direction) < 1e-6) {
       const rotation = new THREE.Quaternion(...profile.quaternion).normalize()
@@ -198,6 +200,14 @@ export function constrainDrawingFaces(
     return true
   }
   if (start?.kind === 'side') moveSideTo(start)
+  // A side-face edge pick carries two separate choices: the new cut end rests on
+  // that face, and its outer section side is flush with the target's actual end.
+  // Keep ordinary cap picks on their legacy corner/through-member path above.
+  if (start?.kind === 'end' && options.startAlignmentFace?.axis === 2
+    && options.startAlignmentFace.profileId === options.startFace?.profileId) {
+    const alignment = constraint(options.startAlignmentFace, false, true)
+    if (alignment && alignment !== 'oblique' && alignment.kind === 'side') moveSideTo(alignment)
+  }
   const end = constraint(options.endFace, true)
   let acceptedEnd: Constraint | null = null
   if (end === 'oblique' || (end?.kind === 'end' && end.direction > 0)) issue = 'face-end-conflict'

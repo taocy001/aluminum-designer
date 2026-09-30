@@ -7,6 +7,8 @@ import { profileFace, type FacePoint, type ProfileFace } from './profileFaces'
 export interface DrawingContact {
   end: 'start' | 'end'
   kind: 'contact' | 'flush' | 'align' | 'rejected'
+  /** An additional edge alignment, separate from the end's physical attachment. */
+  purpose?: 'alignment'
   referenceFace: ProfileFace
   memberFace: ProfileFace | null
   referenceAnchor: FacePoint
@@ -158,6 +160,22 @@ export function drawingContacts(
     const aligned = samePlane(reference, cap) ? cap : memberFaces.find((face) =>
       vector(reference.normal).dot(vector(face.normal)) > 1 - NORMAL_EPS && samePlane(reference, face))
     contacts.push(contact ?? (aligned ? fallback('align', aligned) : fallback('rejected')))
+  }
+  const alignment = faces.startAlignmentFace
+  const startTarget = faces.startFace && referenceProfiles.find((p) => p.id === faces.startFace!.profileId)
+  const alignmentTarget = alignment && referenceProfiles.find((p) => p.id === alignment.profileId)
+  if (!status.blocked && startTarget && alignment?.axis === 2 && alignmentTarget?.id === startTarget.id) {
+    const startReference = profileFace(startTarget, faces.startFace!, resolve(startTarget))
+    const startCap = memberFaces.find((face) => face.axis === 2 && face.side === -1)!
+    // Only a draw outward from the chosen surface accepts this second constraint.
+    // A sideways legacy cap pick must not acquire an incidental alignment label.
+    if (vector(startReference.normal).dot(vector(startCap.normal)) < -1 + NORMAL_EPS && samePlane(startReference, startCap)) {
+      const referenceFace = profileFace(alignmentTarget, alignment, resolve(alignmentTarget))
+      const memberFace = memberFaces.find((face) => face.axis !== 2
+        && vector(referenceFace.normal).dot(vector(face.normal)) > 1 - NORMAL_EPS && samePlane(referenceFace, face))
+      if (memberFace) contacts.push({ end: 'start', kind: 'align', purpose: 'alignment', referenceFace,
+        memberFace, ...closestAnchors(referenceFace, memberFace), patch: null })
+    }
   }
   return contacts
 }
