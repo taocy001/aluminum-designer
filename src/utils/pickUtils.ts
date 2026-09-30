@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import type { ProfileData } from '../store/useStore'
 import { getProfileEndpoints, getProfileDir, closestOnSegment, type Axis } from './geometryCore'
 import { GRID_STEP, roundToGrid } from './specUtils'
-import type { ProfileFaceRef } from './profileFaces'
+import { profileBodyEndpoints, type ProfileFaceRef } from './profileFaces'
+import { computeTrims, createTrimResolver } from './jointUtils'
 import { profileSideAt } from './profileShapes'
 
 export interface ScreenSize { width: number; height: number }
@@ -336,6 +337,13 @@ export function resolveAxisEnd(
     // Reuse the same generous end target as the first click, including its retained face.
     const mp = hitProfile ? pickPoint(ray, cursor, camera, size, [hitProfile], meshHit, 0, previousFace) : null
     if (mp && mp.profileId) {
+      if (hitProfile && mp.face?.axis === 2) {
+        const t = mp.point.clone().sub(start).dot(axisDir)
+        if (start.clone().addScaledVector(axisDir, t).distanceTo(mp.point) >= 1) {
+          const ends = profileBodyEndpoints(hitProfile, computeTrims(hitProfile, profiles))
+          mp.point = (mp.face.side > 0 ? ends.end : ends.start).clone()
+        }
+      }
       const t = Math.round(mp.point.clone().sub(start).dot(axisDir) * 1000) / 1000
       if (Math.abs(t) >= 1) {
         const onAxis = start.clone().addScaledVector(axisDir, t)
@@ -352,8 +360,11 @@ export function resolveAxisEnd(
   if (snapKind === 'grid') {
     bestPx = END_SNAP_PX
     let retainedAlign: { px: number; t: number; point: THREE.Vector3; face: ProfileFaceRef } | null = null
+    const resolveTrims = createTrimResolver(profiles)
     for (const p of profiles) {
-      const { start: ps, end: pe } = getProfileEndpoints(p)
+      // A remote guide refers to the visible end plane, not the construction endpoint.
+      // Keep the centreline convention above for actual corner/through joints.
+      const { start: ps, end: pe } = profileBodyEndpoints(p, resolveTrims(p))
       for (const ep of [ps, pe]) {
         const t = Math.round(ep.clone().sub(start).dot(axisDir) * 1000) / 1000
         if (Math.abs(t) < 1) continue

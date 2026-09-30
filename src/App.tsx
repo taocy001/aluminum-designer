@@ -63,6 +63,7 @@ function App() {
   const drawingPreview = useMemo(() => isDrawing && startPoint && currentPoint
     ? prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles, { startFace: drawStartFace, endFace: drawSnapFace }, preciseInput)
     : null, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule, drawStartFace, drawSnapFace, preciseInput])
+  const endContact = drawingPreview?.contacts.find((contact) => contact.end === 'end')
   const invalidLengthInput = preciseInput.trim() !== '' && (!Number.isFinite(Number(preciseInput)) || Number(preciseInput) < 10)
 
   // Exact value for a gesture already under way: a move that has travelled, or a stretch
@@ -396,7 +397,7 @@ function App() {
                 <span>{drawAxis ? `${t.axisNames[drawAxis]}${lockedAxis ? ' 🔒 (X/Y/Z)' : ''}` : t.pickDirection}</span>
                 <span className="opacity-60">|</span>
                 <span data-testid="draw-length">{invalidLengthInput ? '—' : (drawingPreview?.cutLength ?? 0).toFixed(0)} mm</span>
-                {snapKind && snapKind !== 'grid' && (<><span className="opacity-60">|</span><span data-testid="snap-kind" className="text-cyan-300">{t.snapNames[snapKind] ?? snapKind}</span></>)}
+                {snapKind && snapKind !== 'grid' && (<><span className="opacity-60">|</span><span data-testid="snap-kind" className="text-cyan-300">{endContact ? t.drawContactKinds[endContact.kind] : t.snapNames[snapKind] ?? snapKind}</span></>)}
               </div>
               <div className="flex items-center gap-1 bg-slate-700/80 border border-white/10 rounded-full overflow-hidden">
                 <input ref={preciseInputRef} type="text" inputMode="decimal" value={preciseInput} data-testid="precise-input" aria-label={t.exactLength} aria-invalid={invalidLengthInput}
@@ -411,10 +412,13 @@ function App() {
                 <button onClick={confirmPreciseLength} disabled={!preciseInput || invalidLengthInput || !drawingPreview || drawingPreview.blocked} title={t.hintConfirmLength}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-[11px] font-bold text-white">↵</button>
               </div>
-              {(drawStartFace || drawSnapFace) && <div data-testid="draw-face-hud" className="basis-full text-center text-[10px] md:text-[11px] leading-tight">
-                {drawStartFace && <span className="text-amber-300">{t.drawStartFace}：{faceName(drawStartFace)}</span>}
-                {drawStartFace && drawSnapFace && <span className="mx-2 text-slate-500">→</span>}
-                {drawSnapFace && <span className="text-cyan-300">{t.drawTargetFace}：{faceName(drawSnapFace)}</span>}
+              {!!drawingPreview?.contacts.length && <div data-testid="draw-face-hud" className="basis-full flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] md:text-[11px] leading-tight">
+                {drawingPreview.contacts.map((contact) => <span key={contact.end} data-testid={`draw-${contact.end}-contact`}
+                  className={contact.kind === 'rejected' ? 'text-rose-300' : 'text-cyan-300'}>
+                  {t.drawEnds[contact.end]} · {t.drawContactKinds[contact.kind]} · {faceName(contact.referenceFace)}
+                  <span className="ml-1 font-mono opacity-80">({contact.referenceAnchor.map((v) => Math.round(v)).join(', ')}) mm</span>
+                </span>)}
+                <span className="text-slate-400"><span className="text-amber-300">{t.drawNewFace}</span> · <span className="text-cyan-300">{t.drawReferenceFace}</span></span>
               </div>}
             </div>
           )}

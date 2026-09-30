@@ -259,3 +259,19 @@ describe('slot walls identify their owning outer reference face', () => {
     expect(cap.face).toEqual({ profileId: p.id, axis: 2, side: 1 })
   })
 })
+
+describe('remote drawing alignment uses the visible end plane', () => {
+  it.each([100, -50])('aligns to the physical end with a %s mm end cut', (endCut) => {
+    const c = cam()
+    const reference = buildProfile(new THREE.Vector3(0, 10, 0), new THREE.Vector3(600, 10, 0), '2020')!
+    reference.fixedTrims = { start: 0, end: endCut }
+    const origin = new THREE.Vector3(0, 10, 300)
+    const target = new THREE.Vector3(600 - endCut, 10, 300)
+    const px = toScreen(target, c, size)
+    const result = resolveAxisEnd(origin, rayAt(c, px), px, c, size, [reference], 'x')!
+    expect(result.snapKind).toBe('align')
+    expect(result.end.x).toBeCloseTo(target.x)
+    expect(result.guide!.from.x).toBeCloseTo(target.x)
+    expect(result.face).toEqual({ profileId: reference.id, axis: 2, side: 1 })
+  })
+})

@@ -16,6 +16,8 @@ import { drawingInput, prepareDrawingPreview } from '../utils/drawPreview'
 import { profileFace } from '../utils/profileFaces'
 import { computeTrims } from '../utils/jointUtils'
 import { FacePatch } from './SnapFaces'
+import { DrawContactGuides } from './DrawContactGuides'
+import { closestPointOnFace } from '../utils/drawContacts'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 /** a left press that travels this far orbits the camera instead of placing a point */
@@ -91,10 +93,13 @@ const DrawingHandler: React.FC = () => {
     : xform?.issue === 'face-end-conflict' ? translations[language].faceEndConflict
     : xform?.issue === 'face-too-short' ? translations[language].toastTooShort : null
 
-  const faces = useMemo(() => [drawStartFace, drawSnapFace].map((face) => {
-    const target = face && profiles.find((p) => p.id === face.profileId)
-    return target && face ? profileFace(target, face, computeTrims(target, profiles)) : null
-  }), [drawStartFace, drawSnapFace, profiles, throughRule])
+  const pendingFace = isDrawing ? drawStartFace : drawSnapFace
+  const hoverFace = useMemo(() => {
+    const target = pendingFace && profiles.find((p) => p.id === pendingFace.profileId)
+    return target && pendingFace ? profileFace(target, pendingFace, computeTrims(target, profiles)) : null
+  }, [pendingFace, profiles, throughRule])
+  const pendingPoint = isDrawing ? startPoint : currentPoint
+  const hoverAnchor = hoverFace && pendingPoint ? closestPointOnFace(hoverFace, pendingPoint) : null
 
   const axisColor = drawAxis ? AXIS_COLORS[drawAxis] : '#94a3b8'
   const drawDist = startPoint && currentPoint ? startPoint.distanceTo(currentPoint) : 0
@@ -120,10 +125,22 @@ const DrawingHandler: React.FC = () => {
     const start = origin.clone()
     if (first.axis !== 'y') start.y = Math.max(start.y, floorY(ts.activeSpec))
 
-    const res = start.equals(origin)
+    let res = start.equals(origin)
       ? first
       : resolveAxisEnd(start, ray, cursor, camera, size, profiles, first.axis, meshHit, ts.drawSnapFace)
     if (!res) return
+
+    // The selected start face may offset the section sideways. Resolve the target
+    // along that actual section axis while keeping the original construction point.
+    const startPreview = prepareDrawingPreview(start, res.end, ts.activeSpec, profiles, { startFace: ts.drawStartFace })
+    if (startPreview && !startPreview.blocked) {
+      const offset = new THREE.Vector3(...startPreview.profile.position).sub(start)
+      offset.addScaledVector(res.dir, -offset.dot(res.dir))
+      if (offset.lengthSq() > 1e-6) {
+        const adjusted = resolveAxisEnd(start.clone().add(offset), ray, cursor, camera, size, profiles, res.axis, meshHit, ts.drawSnapFace)
+        if (adjusted) res = { ...adjusted, end: adjusted.end.clone().sub(offset) }
+      }
+    }
 
     ts.updateDraw({
       startPoint: start,
@@ -261,7 +278,7 @@ const DrawingHandler: React.FC = () => {
       )}
 
       {/* Start marker */}
-      {isDrawing && startPoint && <SnapMarker position={xform?.position ?? startPoint} kind="start" size={0.022} />}
+      {isDrawing && startPoint && !xform?.contacts.some((c) => c.end === 'start') && <SnapMarker position={xform?.position ?? hoverAnchor ?? startPoint} kind="start" size={0.022} />}
 
       {/* Member preview: a neutral ghost. The axis colour lives on the centreline and the
           HUD instead, so a member being drawn along X is never mistaken for one flagged red. */}
@@ -279,17 +296,16 @@ const DrawingHandler: React.FC = () => {
         </div>
       </Html>}
 
-      {/* The selected local face stays visible even when an end cap is only a few pixels. */}
-      {held === 'profile' && !isDragging && faces.map((face, i) => face && (
-        <FacePatch key={`${i}-${face.profileId}-${face.axis}-${face.side}`} face={face}
-          color={i === 0 ? '#fbbf24' : xform?.issue === 'face-end-conflict' ? '#fb7185' : '#22d3ee'} role={i === 0 ? 'start' : 'target'} />
-      ))}
+      {held === 'profile' && !isDragging && (!isDrawing || !xform) && hoverFace && (
+        <FacePatch face={hoverFace} anchor={hoverAnchor ?? undefined} color="#22d3ee" role="target" />
+      )}
+      {held === 'profile' && !isDragging && xform && <DrawContactGuides contacts={xform.contacts} language={language} />}
 
       {/* Snap indicator (endpoint / centerline / alignment) — constant screen size.
           While placing a connector the ghost itself shows the spot, and the marker would
           sit right on top of a part that is only a few tens of millimetres across. */}
-      {held === 'profile' && snapPoint && (
-        <SnapMarker position={isDrawing && previewEnd ? previewEnd : snapPoint} kind={snapKind ?? 'endpoint'} />
+      {held === 'profile' && snapPoint && !xform?.contacts.some((c) => c.end === 'end') && (
+        <SnapMarker position={!isDrawing && hoverAnchor ? hoverAnchor : isDrawing && previewEnd ? previewEnd : snapPoint} kind={snapKind ?? 'endpoint'} />
       )}
 
       {/* Hover cursor on the floor when not snapped */}
@@ -301,7 +317,7 @@ const DrawingHandler: React.FC = () => {
       )}
 
       {/* Alignment guides */}
-      {alignGuides.map((g, i) => (
+      {(!isDrawing || !xform?.contacts.some((c) => c.end === 'end')) && alignGuides.map((g, i) => (
         <Line key={i} points={[g.from, g.to]} color="#a78bfa" lineWidth={1} dashed dashSize={8} gapSize={5} />
       ))}
 

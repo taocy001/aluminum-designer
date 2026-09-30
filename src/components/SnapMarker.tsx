@@ -9,6 +9,17 @@ const SnapMarker: React.FC<{ position: THREE.Vector3 | [number, number, number];
     const c = document.createElement('canvas'); c.width = 64; c.height = 64
     const ctx = c.getContext('2d')!
     const color = COLORS[kind] ?? COLORS.grid
+    if (kind === 'contact') {
+      // An open, two-colour reticle leaves the actual joint visible underneath it.
+      ctx.lineWidth = 5
+      for (let quadrant = 0; quadrant < 4; quadrant++) {
+        ctx.strokeStyle = quadrant % 2 === 0 ? '#fbbf24' : '#22d3ee'
+        ctx.beginPath()
+        ctx.arc(32, 32, 24, (quadrant * 90 + 12) * Math.PI / 180, (quadrant * 90 + 78) * Math.PI / 180)
+        ctx.stroke()
+      }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t
+    }
     ctx.lineWidth = 6; ctx.strokeStyle = color; ctx.fillStyle = color + 'aa'
     ctx.beginPath()
     // Outline the connector seat without covering its preview.
@@ -35,8 +46,9 @@ const SnapMarker: React.FC<{ position: THREE.Vector3 | [number, number, number];
   useEffect(() => () => texture.dispose(), [texture])
   const pos = position instanceof THREE.Vector3 ? position : new THREE.Vector3(...position)
   return (
-    <sprite position={pos} scale={[size, size, 1]} renderOrder={20} raycast={() => null}>
-      <spriteMaterial map={texture} transparent depthTest={false} sizeAttenuation={false} />
+    <sprite position={pos} scale={[size, size, 1]} renderOrder={kind === 'contact' ? 38 : 20} raycast={() => null}
+      userData={kind === 'contact' ? { drawingContactMarker: true } : undefined}>
+      <spriteMaterial map={texture} transparent depthTest={false} depthWrite={kind !== 'contact'} sizeAttenuation={false} />
     </sprite>
   )
 }

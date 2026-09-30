@@ -3,6 +3,7 @@ import type { ProfileData, ProfileSpec } from '../store/useStore'
 import { prepareProfilePlacement } from './profileFactory'
 import { computeTrims } from './jointUtils'
 import type { DrawingFaceOptions } from './faceAlign'
+import { drawingContacts } from './drawContacts'
 
 /** Resolve the numeric drawing input once for the ghost, HUD, mouse and Enter commits. */
 export function drawingInput(start: THREE.Vector3, end: THREE.Vector3, faces: DrawingFaceOptions, input = '') {
@@ -26,9 +27,10 @@ export function prepareDrawingPreview(start: THREE.Vector3, end: THREE.Vector3, 
   const { profile } = placement
   const referenceProfiles = placement.referenceProfiles ?? profiles
   const trims = computeTrims(profile, [...referenceProfiles, profile])
+  const contacts = drawingContacts(profile, trims, referenceProfiles, resolved.faces, placement)
   const quaternion = new THREE.Quaternion(...profile.quaternion).normalize()
   const position = new THREE.Vector3(...profile.position)
     .addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion), trims.start.trim)
-  return { profile, referenceProfiles, trims, position, quaternion, issue: placement.issue, blocked: placement.blocked,
+  return { profile, referenceProfiles, trims, position, quaternion, contacts, issue: placement.issue, blocked: placement.blocked,
     cutLength: isFinite(trims.cutLength) && trims.cutLength > 0.1 ? trims.cutLength : 1 }
 }
