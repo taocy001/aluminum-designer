@@ -74,6 +74,16 @@ describe('how far a span bends', () => {
     // buildProfile stands a 2040 the stiff way up, so there is nothing to suggest
     expect(d.turnHelps).toBe(false)
   })
+
+  it('does not mistake nearby columns separated by a 9 mm gap for supports', () => {
+    const rail = P(0, 400, 0, 600, 400, 0)
+    const posts = [P(0, 0, 29, 0, 800, 29), P(600, 0, 29, 600, 800, 29)]
+    expect(deflect(rail, [rail, ...posts], 20)).toBeNull()
+    const frame = shelf(2000)
+    const before = deflect(frame[2], frame, 20)!
+    const phantom = P(1000, 0, 29, 1000, 800, 29)
+    expect(deflect(frame[2], [...frame, phantom], 20)).toEqual(before)
+  })
 })
 
 /** Intermediate contacts divide a rail into supported spans. */

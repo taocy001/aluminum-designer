@@ -64,14 +64,18 @@ describe('a board fitted to four floor rails lies on them', () => {
     expect(b.max.z).toBeCloseTo(590, 1)
   })
 
-  it('and whichever way it was fitted, all four edges are carried', () => {
+  it('a board clipped to the inner opening needs additional bearing below it', () => {
     for (const fit of ['overlay', 'inset'] as const) {
       const c = cabinet()
       load(c.all)
       useStore.getState().selectItems(c.bottom.map((p) => p.id))
       const board = panelFromSelection('mdf', 18, fit)!
       const edges = shelfEdges([board], useStore.getState().profiles)
-      expect(edges.filter((e) => e.carried).length).toBe(4)
+      const b = slab(board)
+      // The 20 mm rail ends at x/z=10; touching that edge has zero bearing area.
+      expect(b.min.x).toBeCloseTo(10)
+      expect(b.min.z).toBeCloseTo(10)
+      expect(edges.filter((e) => e.carried).length).toBe(0)
     }
   })
 })
@@ -92,7 +96,7 @@ describe('a board fitted to the top ring', () => {
 
 describe('what carries a shelf', () => {
   const board = (y: number): PanelData => ({
-    id: 'b', width: 580, height: 580, thickness: 18, position: [300, y, 300], quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2], material: 'mdf',
+    id: 'b', width: 600, height: 600, thickness: 18, position: [300, y, 300], quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2], material: 'mdf',
   })
   const rails = [P(0, 440, 0, 600, 440, 0), P(0, 440, 600, 600, 440, 600), P(0, 440, 0, 0, 440, 600), P(600, 440, 0, 600, 440, 600)]
   it('a board resting on the rails is carried on four sides', () => {
@@ -103,5 +107,36 @@ describe('what carries a shelf', () => {
   })
   it('a board under the rails is carried on none', () => {
     expect(shelfEdges([board(430 - 9)], rails).filter((e) => e.carried).length).toBe(0)
+  })
+  it('rails separated from all board edges by a 10 mm gap carry none', () => {
+    const far = [P(-20, 440, 0, -20, 440, 600), P(620, 440, 0, 620, 440, 600),
+      P(0, 440, -20, 600, 440, -20), P(0, 440, 620, 600, 440, 620)]
+    expect(shelfEdges([board(459)], far).filter((e) => e.carried)).toEqual([])
+  })
+
+  it('a rising rail touching the underside only at its tip carries no whole edge', () => {
+    const sloped = [P(0, 200, 0, 600, 438, 0)]
+    expect(shelfEdges([board(459)], sloped).filter((e) => e.carried)).toEqual([])
+  })
+
+  it('a 1 mm vertical gap is not resting contact', () => {
+    expect(shelfEdges([board(460)], rails).filter((e) => e.carried)).toEqual([])
+  })
+
+  it('checks a rotated board along its real sides, not the sides of its world AABB', () => {
+    const q = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 4)
+      .multiply(new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), -Math.PI / 2))
+    const b = { ...board(19), position: [0, 19, 0] as [number, number, number], quaternion: q.toArray() as PanelData['quaternion'] }
+    const bounds = slab(b), lo = bounds.min.x, hi = bounds.max.x, near = lo + 5
+    const far = [P(near, 0, lo, near, 0, hi), P(-near, 0, lo, -near, 0, hi),
+      P(lo, 0, near, hi, 0, near), P(lo, 0, -near, hi, 0, -near)]
+    const edges = shelfEdges([b], far)
+    expect(edges.filter((e) => e.carried)).toEqual([])
+    expect(edges.every((e) => Math.abs(e.a.distanceTo(e.b) - 600) < 0.01)).toBe(true)
+
+    const point = (x: number, y: number) => V(x, y, 0).applyQuaternion(q)
+    const bearing = [[-290, -300, -290, 300], [290, -300, 290, 300],
+      [-300, -290, 300, -290], [-300, 290, 300, 290]].map(([x0, y0, x1, y1]) => buildProfile(point(x0, y0), point(x1, y1), '2020')!)
+    expect(shelfEdges([b], bearing).filter((e) => e.carried)).toHaveLength(4)
   })
 })

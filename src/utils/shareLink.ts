@@ -1,8 +1,11 @@
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import { parseProjectDocument, type ProjectDocument } from './document'
+import type { ThroughRule } from './jointUtils'
 
 /** Encode project data as compact arrays, deflate it and store it in a URL fragment. */
 
 export interface ShareDoc {
+  throughRule?: ThroughRule
   profiles: ProfileData[]
   connectors: ConnectorData[]
   panels: PanelData[]
@@ -12,74 +15,78 @@ export interface ShareDoc {
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-const r3 = (n: number) => Math.round(n * 1000) / 1000
-
-/**
- * Columns rather than records.
- *
- * `[{id, spec, length}, {id, spec, length}]` spends most of its bytes on the words `id`,
- * `spec` and `length`. The same data as parallel arrays says each word once.
- */
+/** Compact columns, with complete manufacturing and lock state. Old v1 links remain readable. */
 function pack(doc: ShareDoc): unknown[] {
+  const checked = parseProjectDocument(doc)
   return [
-    1,
-    doc.profiles.map((p) => [p.spec, r3(p.length), p.position.map(r3), p.quaternion.map(r3), p.locked ? 1 : 0]),
-    doc.connectors.map((c) => [c.type, c.series ?? 20, c.position.map(r3), c.quaternion.map(r3)]),
-    doc.panels.map((b) => [r3(b.width), r3(b.height), r3(b.thickness), b.position.map(r3), b.quaternion.map(r3), b.material]),
-    doc.fittings.map((f) => [
-      f.kind, r3(f.width), r3(f.height), r3(f.depth), f.position.map(r3), f.quaternion.map(r3),
+    2, checked.throughRule,
+    checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes]),
+    checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked]),
+    checked.panels.map((b) => [b.width, b.height, b.thickness, b.position, b.quaternion, b.material, !!b.locked]),
+    checked.fittings.map((f) => [
+      f.kind, f.width, f.height, f.depth, f.position, f.quaternion,
       f.material, f.hinge ?? '', f.hingeType ?? '', f.overlay ?? '', f.swing ?? 0,
+      f.frame, f.stacked ?? null, !!f.locked,
     ]),
   ]
 }
 
-function unpack(raw: unknown): ShareDoc {
-  const [version, profiles, connectors, panels, fittings] = raw as [number, unknown[], unknown[], unknown[], unknown[]]
-  if (version !== 1) throw new Error('unknown link version')
+function unpack(raw: unknown): ProjectDocument {
+  if (!Array.isArray(raw)) throw new Error('invalid link')
+  const version = raw[0]
+  if (version !== 1 && version !== 2) throw new Error('unknown link version')
+  const [profiles, connectors, panels, fittings] = raw.slice(version === 2 ? 2 : 1) as unknown[][]
+  if (raw.length !== (version === 2 ? 6 : 5)
+    || ![profiles, connectors, panels, fittings].every(Array.isArray)) throw new Error('incomplete link')
+  const throughRule = version === 2 ? raw[1] : 'rails'
   let n = 0
   const id = (p: string) => `${p}-s${(n++).toString(36)}`
-  return {
+  return parseProjectDocument({
+    throughRule,
     profiles: (profiles ?? []).map((row) => {
-      const [spec, length, position, quaternion, locked] = row as [string, number, number[], number[], number]
+      const [spec, length, position, quaternion, locked, miterCuts, holes] = row as [string, number, number[], number[], number, ProfileData['miterCuts'], ProfileData['holes']]
       return {
         id: id('p'), spec: spec as ProfileData['spec'], length,
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
-        miterCuts: [], holes: [], ...(locked ? { locked: true } : {}),
+        miterCuts: miterCuts ?? [], holes: holes ?? [], ...(locked ? { locked: true } : {}),
       }
     }),
     connectors: (connectors ?? []).map((row) => {
-      const [type, series, position, quaternion] = row as [string, number, number[], number[]]
+      const [type, series, position, quaternion, locked] = row as [string, number, number[], number[], boolean]
       return {
-        id: id('c'), type, series: series as ConnectorData['series'],
+        id: id('c'), type, ...(locked ? { locked: true } : {}), series: series as ConnectorData['series'],
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
       }
     }),
     panels: (panels ?? []).map((row) => {
-      const [width, height, thickness, position, quaternion, material] = row as [number, number, number, number[], number[], string]
+      const [width, height, thickness, position, quaternion, material, locked] = row as [number, number, number, number[], number[], string, boolean]
       return {
-        id: id('b'), width, height, thickness,
+        id: id('b'), width, height, thickness, ...(locked ? { locked: true } : {}),
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
         material: material as PanelData['material'],
       }
     }),
     fittings: (fittings ?? []).map((row) => {
-      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing] =
-        row as [string, number, number, number, number[], number[], string, string, string, string, number]
+      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked] =
+        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean]
       return {
         id: id('f'), kind: kind as FittingData['kind'], width, height, depth,
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
         material: material as PanelData['material'], open: 0,
+        ...(frame !== undefined ? { frame } : {}),
+        ...(stacked ? { stacked } : {}),
+        ...(locked ? { locked: true } : {}),
         ...(hinge ? { hinge: hinge as FittingData['hinge'] } : {}),
         ...(hingeType ? { hingeType: hingeType as FittingData['hingeType'] } : {}),
         ...(overlay ? { overlay: overlay as FittingData['overlay'] } : {}),
         ...(swing ? { swing } : {}),
       }
     }),
-  }
+  })
 }
 
 /** base64url: '+' and '/' are not safe in a URL, and '=' is only padding */
@@ -102,8 +109,18 @@ async function deflate(text: string): Promise<Uint8Array> {
 }
 
 async function inflate(bytes: Uint8Array): Promise<string> {
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
-  return new Response(stream).text()
+  if (bytes.length > 1_000_000) throw new Error('link too large')
+  const reader = new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.length
+    if (size > 5_000_000) { await reader.cancel(); throw new Error('project too large') }
+    chunks.push(value)
+  }
+  return new Blob(chunks as BlobPart[]).text()
 }
 
 /** The whole drawing as a link to this page */
@@ -129,6 +146,7 @@ export function takeShareLink(): string | null {
 }
 
 /** The drawing a payload carries */
-export async function decodeShare(payload: string): Promise<ShareDoc> {
+export async function decodeShare(payload: string): Promise<ProjectDocument> {
+  if (payload.length > 1_400_000) throw new Error('link too large')
   return unpack(JSON.parse(await inflate(fromUrlSafe(payload))))
 }

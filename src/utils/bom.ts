@@ -43,7 +43,7 @@ export function buildBom(
   const profileRows = new Map<string, BomRow>()
   let totalCutLength = 0
   for (const p of profiles) {
-    const cut = Math.round(trims.get(p.id)?.cutLength ?? p.length)
+    const cut = cutDimension(trims.get(p.id)?.cutLength ?? p.length)
     totalCutLength += trims.get(p.id)?.cutLength ?? p.length
     const key = `${p.spec}-${cut}`
     const row = profileRows.get(key) ?? { kind: 'profile' as const, key, label: p.spec, spec: p.spec, length: cut, qty: 0 }
@@ -93,7 +93,11 @@ export function buildBom(
   }
   // only the parts a butt joint actually needs count against the bracket suggestion
   const placedBrackets = connectors.filter((c) => connectorEntry(c.type)?.isCornerBracket).length
-  const placedCaps = connectors.filter((c) => c.type === 'end-cap').length
+  const placedCaps = new Map<ConnectorSeries, number>()
+  for (const c of connectors.filter((c) => c.type === 'end-cap')) {
+    const series = c.series ?? 20
+    placedCaps.set(series, (placedCaps.get(series) ?? 0) + 1)
+  }
 
   const suggested: BomRow[] = []
   const bracketEntry = CONNECTOR_CATALOG.find((c) => c.type === 'bracket')!
@@ -108,10 +112,8 @@ export function buildBom(
   let freeEnds = 0
   for (const qty of freeEndsBySeries.values()) freeEnds += qty
   // caps are suggested per series, because a 20 cap does not fit a 40 post
-  let capsCovered = placedCaps
   for (const [series, qty] of [...freeEndsBySeries].sort((a, b) => a[0] - b[0])) {
-    const missing = Math.max(0, qty - capsCovered)
-    capsCovered = Math.max(0, capsCovered - qty)
+    const missing = Math.max(0, qty - (placedCaps.get(series) ?? 0))
     if (missing === 0) continue
     suggested.push({
       kind: 'suggested', key: `suggest-cap-${series}`, spec: `${series}`,
@@ -132,22 +134,25 @@ export function buildBom(
       })
     }
     if (f.kind === 'drawer') {
-      const key = `runner-${Math.round(f.depth)}`
+      const depth = cutDimension(f.depth)
+      const key = `runner-${depth}`
       const row = connectorRows.get(key) ?? {
         kind: 'connector' as const, key,
-        label: language === 'zh' ? `抽屉滑轨 ${Math.round(f.depth)}mm` : `Drawer runner ${Math.round(f.depth)} mm`,
+        label: language === 'zh' ? `抽屉滑轨 ${depth}mm` : `Drawer runner ${depth} mm`,
         spec: language === 'zh' ? '侧装一对' : 'side-mount pair', qty: 0,
       }
       row.qty++
       connectorRows.set(key, row)
     } else {
       const type: HingeType = f.hingeType ?? 'cup'
-      const n = hingeCount(type, f.height)
-      const key = `hinge-${type}`
+      const span = f.hinge === 'top' || f.hinge === 'bottom' ? f.width : f.height
+      const n = hingeCount(type, span)
+      const length = cutDimension(span)
+      const key = type === 'continuous' ? `hinge-${type}-${length}` : `hinge-${type}`
       const names = {
         cup: language === 'zh' ? '35 杯铰' : '35 mm cup hinge',
         slot: language === 'zh' ? '型材合页' : 'T-slot leaf hinge',
-        continuous: language === 'zh' ? `长排合页 ${Math.round(f.height)}mm` : `Piano hinge ${Math.round(f.height)} mm`,
+        continuous: language === 'zh' ? `长排合页 ${length}mm` : `Piano hinge ${length} mm`,
       }
       const row = connectorRows.get(key) ?? { kind: 'connector' as const, key, label: names[type], spec: '', qty: 0 }
       row.qty += n
@@ -155,7 +160,7 @@ export function buildBom(
     }
   }
   for (const b of [...panels, ...fittingBoards]) {
-    const w = Math.round(b.width), h = Math.round(b.height)
+    const w = cutDimension(b.width), h = cutDimension(b.height)
     // the same board turned on its side is the same cut, so the pair is ordered
     const [a1, a2] = w >= h ? [w, h] : [h, w]
     totalBoardArea += (a1 * a2) / 1e6
@@ -183,6 +188,11 @@ export function buildBom(
   }
 }
 
+/** Millimetres to the same 0.001 mm precision used by joint geometry and project links. */
+function cutDimension(value: number): number {
+  return Math.round(value * 1000) / 1000
+}
+
 /** CSV with fixed English headers, so downstream tools do not depend on the UI language */
 export function bomToCsv(bom: BomResult, overall: string): string {
   const lines = ['Category,Item,Spec,Cut length (mm),Quantity']
@@ -192,7 +202,7 @@ export function bomToCsv(bom: BomResult, overall: string): string {
   for (const r of bom.panels) lines.push(`Board,"${r.label}","${r.spec}",,${r.qty}`)
   for (const r of bom.suggested) lines.push(`Suggested,"${r.label}",${r.spec},,${r.qty}`)
   lines.push(`Summary,Overall WxDxH,${overall},,`)
-  lines.push(`Summary,Total cut length (mm),,${Math.round(bom.totalCutLength)},`)
+  lines.push(`Summary,Total cut length (mm),,${cutDimension(bom.totalCutLength)},`)
   lines.push(`Summary,Board area (m2),,${bom.totalBoardArea.toFixed(2)},`)
   return lines.join('\n')
 }

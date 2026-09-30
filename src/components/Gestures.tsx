@@ -42,24 +42,38 @@ const Gestures: React.FC = () => {
     // ── press and hold: the menu the space bar opens, for anything without a space bar ─
     let hold: number | null = null
     let twoFingerAt = 0
+    let twoFingerMoved = false
+    let twoFingerStarts = new Map<number, { x: number; y: number }>()
     const cancelHold = () => { if (hold !== null) { window.clearTimeout(hold); hold = null } }
+    const consumePointer = () => canvas.dispatchEvent(new Event('aluframe:consume-pointer'))
 
     const onTouchStart = (e: TouchEvent) => {
       cancelHold()
-      if (e.touches.length === 2) { twoFingerAt = Date.now(); return }
-      if (e.touches.length !== 1) return
+      if (e.touches.length === 2) {
+        twoFingerAt = Date.now()
+        twoFingerMoved = false
+        twoFingerStarts = new Map(Array.from(e.touches, (t) => [t.identifier, { x: t.clientX, y: t.clientY }]))
+        consumePointer()
+        return
+      }
+      if (e.touches.length !== 1 || twoFingerAt) { twoFingerAt = 0; return }
       const t = e.touches[0]
       const x = t.clientX, y = t.clientY
       hold = window.setTimeout(() => {
         hold = null
+        consumePointer()
         useToolStore.getState().openQuickMenu(x, y)
       }, HOLD_MS)
     }
     const onTouchMove = (e: TouchEvent) => {
+      if (twoFingerAt) {
+        for (const t of Array.from(e.touches)) {
+          const origin = twoFingerStarts.get(t.identifier)
+          if (!origin || Math.hypot(t.clientX - origin.x, t.clientY - origin.y) > HOLD_SLOP) twoFingerMoved = true
+        }
+      }
       if (hold === null || e.touches.length !== 1) { cancelHold(); return }
       const t = e.touches[0]
-      const start = canvas.getBoundingClientRect()
-      void start
       if (Math.hypot(t.clientX - lastStart.x, t.clientY - lastStart.y) > HOLD_SLOP) cancelHold()
     }
     const lastStart = { x: 0, y: 0 }
@@ -69,17 +83,20 @@ const Gestures: React.FC = () => {
     const onTouchEnd = (e: TouchEvent) => {
       cancelHold()
       // both fingers lifted quickly, having gone nowhere: a two-finger tap
-      if (e.touches.length === 0 && twoFingerAt && Date.now() - twoFingerAt < 300) {
+      if (e.touches.length !== 0) return
+      if (twoFingerAt && !twoFingerMoved && Date.now() - twoFingerAt < 300 && !useToolStore.getState().viewMode) {
         useStore.getState().undo()
       }
       twoFingerAt = 0
+      twoFingerStarts.clear()
     }
+    const onTouchCancel = () => { cancelHold(); twoFingerAt = 0; twoFingerStarts.clear() }
 
     canvas.addEventListener('touchstart', rememberStart, { passive: true })
     canvas.addEventListener('touchstart', onTouchStart, { passive: true })
     canvas.addEventListener('touchmove', onTouchMove, { passive: true })
     canvas.addEventListener('touchend', onTouchEnd, { passive: true })
-    canvas.addEventListener('touchcancel', cancelHold, { passive: true })
+    canvas.addEventListener('touchcancel', onTouchCancel, { passive: true })
 
     return () => {
       canvas.removeEventListener('wheel', onWheel)
@@ -87,7 +104,7 @@ const Gestures: React.FC = () => {
       canvas.removeEventListener('touchstart', onTouchStart)
       canvas.removeEventListener('touchmove', onTouchMove)
       canvas.removeEventListener('touchend', onTouchEnd)
-      canvas.removeEventListener('touchcancel', cancelHold)
+      canvas.removeEventListener('touchcancel', onTouchCancel)
       cancelHold()
     }
   }, [gl, camera, controls])

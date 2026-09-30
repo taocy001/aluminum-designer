@@ -257,7 +257,7 @@ test.describe('Full screen', () => {
     if (!went) await expect(page.getByTestId('toasts')).toContainText('全屏')
   })
 
-  test('Shift+F is the same switch, and F still frames the drawing', async ({ page }) => {
+  test('F frames the selected member', async ({ page }) => {
     await openApp(page)
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 0, 0])

@@ -10,7 +10,7 @@ import { decodeShare, takeShareLink } from './utils/shareLink'
 import { translations } from './utils/translations'
 
 const snapshotOf = (s: ReturnType<typeof useStore.getState>): Doc => ({
-  profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings,
+  profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings, throughRule: s.throughRule,
 })
 import { auditBrackets } from './utils/bracketSeat'
 import { gizmoState } from './components/TransformGizmo'
@@ -75,7 +75,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
 {
   let prev = snapshotOf(useStore.getState())
   const unchanged = (a: Doc, b: Doc) => a.profiles === b.profiles && a.connectors === b.connectors
-    && a.panels === b.panels && a.fittings === b.fittings
+    && a.panels === b.panels && a.fittings === b.fittings && a.throughRule === b.throughRule
   const flush = () => {
     const next = snapshotOf(useStore.getState())
     if (unchanged(prev, next)) return
@@ -97,18 +97,19 @@ if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
 }
 
 /** Consume shared project data from the URL before rendering the app. */
-{
+const root = ReactDOM.createRoot(document.getElementById('root')!)
+async function start() {
   const payload = takeShareLink()
   if (payload) {
-    decodeShare(payload).then((doc) => {
+    root.render(<div role="status" className="p-6 text-slate-200">{useToolStore.getState().language === 'zh' ? '正在打开工程…' : 'Opening project…'}</div>)
+    try {
+      const doc = await decodeShare(payload)
       useStore.getState().loadDocument(doc)
       useToolStore.getState().showToast(translations[useToolStore.getState().language].toastSharedOpened, 'success')
-    }).catch(() => { /* a link we cannot read is not a link for us */ })
+    } catch {
+      useToolStore.getState().showToast(translations[useToolStore.getState().language].toastImportFailed, 'error')
+    }
   }
+  root.render(<React.StrictMode><App /></React.StrictMode>)
 }
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+void start()

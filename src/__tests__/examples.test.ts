@@ -6,6 +6,8 @@ import { getProfileEndpoints } from '../utils/geometryCore'
 import { countUnflush } from '../utils/faceAlign'
 import { auditBrackets } from '../utils/bracketSeat'
 import { migrateFittings } from '../utils/migrate'
+import { parseProjectDocument } from '../utils/document'
+import { runnerFaults } from '../utils/runnerMount'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 
 interface Doc {
@@ -45,6 +47,10 @@ describe('bundled example geometry', () => {
   })
 
   describe.each(files)('%s', (name) => {
+    it('loads as a complete validated project', () => {
+      const source = docs.get(name)!
+      expect(parseProjectDocument(source).profiles).toHaveLength(source.profiles.length)
+    })
     it('has no interference reported between modelled parts', () => {
       const { profiles, connectors, panels, fittings } = load(name)
       const clashes = findConflicts(profiles, computeAllTrims(profiles), connectors, panels, fittings)
@@ -120,8 +126,9 @@ describe('bundled example geometry', () => {
     })
 
     /**
-     * A shelf hung between two rails is held along two edges; the other two sag under a row
-     * of books and the board can tip off. Every horizontal board is carried on all four.
+     * The inset cut size ends at the perimeter rails' inside faces. Those touching edge
+     * lines have no bearing area. Shipping examples therefore have separate bearing rails
+     * under the board; verify a full 20 mm bearing width independently of shelfEdges.
      */
     it('identifies support geometry along each shelf edge', () => {
       const { profiles, panels } = load(name)
@@ -140,16 +147,23 @@ describe('bundled example geometry', () => {
           const other = axis === 'x' ? 'z' : 'x'
           return metal.some((m) => {
             const run = Math.min(m.max[axis], box.max[axis]) - Math.max(m.min[axis], box.min[axis])
-            // resting on it: the rail's top face against the board's underside, not merely
-            // level with the board beside it
-            return run >= size[axis] * 0.7 && Math.abs(m.max.y - box.min.y) <= 2
-              && m.min[other] - 25 <= at && at <= m.max[other] + 25
+            const bearing = Math.min(m.max[other], box.max[other]) - Math.max(m.min[other], box.min[other])
+            // A whole 2020 face lies beneath the board. A zero-area edge touch or a rail
+            // separated vertically cannot satisfy this check, even if the UI has a tolerance.
+            const centre = (m.min[other] + m.max[other]) / 2
+            return run >= size[axis] * 0.7 && bearing >= 19.99
+              && Math.abs(m.max.y - box.min.y) <= 0.01 && Math.abs(centre - at) <= 30
           })
         }
         const edges = [carried('z', box.min.x), carried('z', box.max.x), carried('x', box.min.z), carried('x', box.max.z)]
         if (edges.includes(false)) loose.push(`board@${b.position.map(Math.round)} ${edges.map((e) => (e ? '■' : '□')).join('')}`)
       }
       expect(loose).toEqual([])
+    })
+
+    it('identifies mounting geometry for both drawer runners', () => {
+      const { profiles, panels, fittings } = load(name)
+      expect(runnerFaults(profiles, computeAllTrims(profiles), fittings, panels)).toEqual([])
     })
 
     it('contains profiles with positive dimensions', () => {

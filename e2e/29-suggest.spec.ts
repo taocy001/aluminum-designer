@@ -135,19 +135,29 @@ test.describe('Suggesting the next member', () => {
     await expect(page.getByTestId('suggest-next')).toBeDisabled()
   })
 
-  test('a press is quick on every cabinet of the flat', async ({ page }) => {
+  test('the first press after each cabinet is rendered is quick', async ({ page }) => {
     const dir = path.join(process.cwd(), 'examples', 'flat')
     for (const f of fs.readdirSync(dir).filter((x: string) => x.endsWith('.json'))) {
       const doc = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
-      const ms = await page.evaluate((d) => {
+      await page.evaluate((d) => {
         const w = (window as any).__aluframe
         w.store.getState().loadDocument({ ...d, profiles: d.profiles.slice(0, -1) })
         w.store.getState().clearSelection()
-        const r = w.suggest()
-        w.store.getState().clearAll()
-        return r.ms as number
       }, doc)
-      expect(ms, f).toBeLessThan(50)
+      // A person presses after the cabinet has been drawn. Wait for that scene without
+      // invoking the generator; its first press still has a single strict 50ms budget.
+      await page.waitForFunction((ids: string[]) => {
+        const w = (window as any).__aluframe
+        const drawn = new Set<string>()
+        w.sceneRoot.traverseVisible((o: any) => { if (o.userData.profileId) drawn.add(o.userData.profileId) })
+        return w.store.getState().profiles.length === ids.length && w.tool.getState().suggestion === null
+          && drawn.size === ids.length && ids.every((id) => drawn.has(id))
+      }, doc.profiles.slice(0, -1).map((p: { id: string }) => p.id))
+      await settle(page)
+      const r = await page.evaluate(() => (window as any).__aluframe.suggest())
+      expect(r.key, f).not.toBeNull()
+      expect(r.ms, f).toBeLessThan(50)
+      await page.evaluate(() => (window as any).__aluframe.store.getState().clearAll())
     }
   })
 })

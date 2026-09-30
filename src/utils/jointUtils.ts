@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { ProfileData } from '../store/useStore'
 import { specDims } from './specUtils'
-import { getProfileEndpoints, getProfileDir, getProfileAxis, crossExtentAlong, round3, endContactsBody, closestOnSegment, JOINT_EPS, type Axis } from './geometryCore'
+import { getProfileEndpoints, getProfileDir, getProfileAxis, crossExtentAlong, round3, endContactsBody, closestOnSegment, JOINT_EPS, profileGeometry, type ProfileGeometry, type Axis } from './geometryCore'
 
 export type { Axis }
 export { getProfileDir, getProfileAxis, crossExtentAlong }
@@ -48,11 +48,11 @@ export interface ProfileTrims {
 }
 
 /** how far along `d` this end sits from the near face of `r`'s body: + cut back, − extend */
-function faceTrimAgainst(endPt: THREE.Vector3, d: THREE.Vector3, r: ProfileData): number {
-  const { start, end } = getProfileEndpoints(r)
+function faceTrimAgainst(endPt: THREE.Vector3, d: THREE.Vector3, r: ProfileData, geometry?: ProfileGeometry): number {
+  const { start, end } = geometry ?? getProfileEndpoints(r)
   const { point } = closestOnSegment(endPt, start, end)
   const along = endPt.clone().sub(point).dot(d)
-  return round3(along + crossExtentAlong(r, d))
+  return round3(along + crossExtentAlong(r, d, geometry))
 }
 
 /** a corner is shared when two members reach for the same end of the same post */
@@ -60,7 +60,7 @@ const CORNER_TOL = 45
 /** an end this close to the ground is standing on it (mm) */
 const FLOOR_EPS = 1
 
-function resolveEnd(self: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | null, others: ProfileData[]): EndJoint {
+function resolveEnd(self: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3, pAxis: Axis | null, others: ProfileData[], geometry?: Map<ProfileData, ProfileGeometry>): EndJoint {
   let buttTrim = -Infinity
   let anyButt = false
   let extend = 0
@@ -70,14 +70,15 @@ function resolveEnd(self: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3
   const cornersClaimed: THREE.Vector3[] = []
 
   for (const q of others) {
-    const qAxis = getProfileAxis(q)
+    const qGeometry = geometry?.get(q)
+    const qAxis = qGeometry ? qGeometry.axis : getProfileAxis(q)
     if (pAxis && qAxis && pAxis === qAxis) {
       // coaxial continuation: a parallel member whose end meets ours → plain end-to-end, never trimmed or extended
-      const { start: qs, end: qe } = getProfileEndpoints(q)
+      const { start: qs, end: qe } = qGeometry ?? getProfileEndpoints(q)
       if (endPt.distanceTo(qs) <= JOINT_EPS || endPt.distanceTo(qe) <= JOINT_EPS) { continues = true; partners++ }
       continue
     }
-    const c = endContactsBody(endPt, pDir, q)
+    const c = endContactsBody(endPt, pDir, q, 1, qGeometry)
     if (!c) continue
     partners++
     const toNearFace = round3(c.along + c.extentAlong)   // cut back so our end sits on Q's near face
@@ -89,14 +90,14 @@ function resolveEnd(self: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3
     /** Preserve the lower end of a vertical member on the floor, regardless of the corner policy. */
     const theyStand = (() => {
       if (qAxis !== 'y') return false
-      const { start: qLo, end: qHi } = getProfileEndpoints(q)
+      const { start: qLo, end: qHi } = qGeometry ?? getProfileEndpoints(q)
       const low = qLo.y <= qHi.y ? qLo : qHi
       return low.y <= FLOOR_EPS && endPt.distanceTo(low) <= CORNER_TOL
     })()
     const weStand = pAxis === 'y' && endPt.y <= FLOOR_EPS
     /** Classify the contact at Q's end using this member's section extent, symmetrically with Q. */
-    const { start: qS, end: qE } = getProfileEndpoints(q)
-    const reach = crossExtentAlong(self, getProfileDir(q)) + 1
+    const { start: qS, end: qE } = qGeometry ?? getProfileEndpoints(q)
+    const reach = crossExtentAlong(self, qGeometry?.dir ?? getProfileDir(q), geometry?.get(self)) + 1
     const atQEnd = c.atQEnd || c.axisPoint.distanceTo(qS) <= reach || c.axisPoint.distanceTo(qE) <= reach
     const weButt = theyStand || (!weStand && (!atQEnd || qPri > pPri))
     if (weButt) { anyButt = true; buttTrim = Math.max(buttTrim, toNearFace) }
@@ -116,12 +117,13 @@ function resolveEnd(self: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3
     const pPri = table[pAxis]
     let cornerTrim = -Infinity
     for (const r of others) {
-      const rAxis = getProfileAxis(r)
+      const rGeometry = geometry?.get(r)
+      const rAxis = rGeometry ? rGeometry.axis : getProfileAxis(r)
       if (!rAxis || rAxis === pAxis || table[rAxis] <= pPri) continue
-      const { start: rs, end: re } = getProfileEndpoints(r)
+      const { start: rs, end: re } = rGeometry ?? getProfileEndpoints(r)
       const shares = cornersClaimed.some((c) => c.distanceTo(rs) <= CORNER_TOL || c.distanceTo(re) <= CORNER_TOL)
       if (!shares) continue
-      cornerTrim = Math.max(cornerTrim, faceTrimAgainst(endPt, pDir, r))
+      cornerTrim = Math.max(cornerTrim, faceTrimAgainst(endPt, pDir, r, rGeometry))
     }
     if (isFinite(cornerTrim)) return { trim: cornerTrim, partners, butt: cornerTrim > 0, continues }
   }
@@ -139,12 +141,17 @@ function resolveEnd(self: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3
 
 /** Compute how each end of `profile` should be trimmed/extended so members butt cleanly. */
 export function computeTrims(profile: ProfileData, all: ProfileData[]): ProfileTrims {
+  return computeTrimsWithGeometry(profile, all)
+}
+
+function computeTrimsWithGeometry(profile: ProfileData, all: ProfileData[], geometry?: Map<ProfileData, ProfileGeometry>): ProfileTrims {
   const others = all.filter((o) => o.id !== profile.id)
-  const { start, end } = getProfileEndpoints(profile)
-  const dir = getProfileDir(profile)
-  const axis = getProfileAxis(profile)
-  const s = resolveEnd(profile, start, dir.clone().negate(), axis, others)
-  const e = resolveEnd(profile, end, dir, axis, others)
+  const own = geometry?.get(profile)
+  const { start, end } = own ?? getProfileEndpoints(profile)
+  const dir = own?.dir ?? getProfileDir(profile)
+  const axis = own ? own.axis : getProfileAxis(profile)
+  const s = resolveEnd(profile, start, dir.clone().negate(), axis, others, geometry)
+  const e = resolveEnd(profile, end, dir, axis, others, geometry)
   let cutLength = round3(profile.length - s.trim - e.trim)
   if (!isFinite(cutLength) || cutLength < 1) cutLength = Math.max(1, profile.length)
   return { start: s, end: e, cutLength }
@@ -155,9 +162,10 @@ export function computeTrims(profile: ProfileData, all: ProfileData[]): ProfileT
 const REACH = CORNER_TOL + 60
 
 export function computeAllTrims(all: ProfileData[]): Map<string, ProfileTrims> {
+  const geometry = new Map(all.map((p) => [p, profileGeometry(p)]))
   // Resolve member ends against spatially nearby members.
   const boxes = all.map((p) => {
-    const { start, end } = getProfileEndpoints(p)
+    const { start, end } = geometry.get(p)!
     return new THREE.Box3().setFromPoints([start, end]).expandByScalar(REACH)
   })
   const order = all.map((_, i) => i).sort((a, b) => boxes[a].min.x - boxes[b].min.x)
@@ -173,7 +181,7 @@ export function computeAllTrims(all: ProfileData[]): Map<string, ProfileTrims> {
   all.forEach((p, i) => {
     // Preserve drawing order when resolving ties.
     const mine = [...near[i], i].sort((a, b) => a - b).map((k) => all[k])
-    map.set(p.id, computeTrims(p, mine))
+    map.set(p.id, computeTrimsWithGeometry(p, mine, geometry))
   })
   return map
 }

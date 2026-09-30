@@ -158,6 +158,36 @@ describe('bill of materials', () => {
     expect(csv).toMatch(/Fastener,"螺栓 M5×10"/)
     expect(csv).toContain('Summary,Overall WxDxH,620x20x810')
   })
+
+  it('preserves different fractional cut lengths and board sizes', () => {
+    const all = [P(0, 100, 0, 1000.1, 100, 0), P(0, 100, 100, 1000.4, 100, 100)]
+    const panels = [300.1, 300.4].map((width, i) => ({ id: `b${i}`, width, height: 400,
+      thickness: 18, material: 'mdf', position: [0, 0, 0], quaternion: [0, 0, 0, 1] })) as never
+    const bom = buildBom(all, [], computeAllTrims(all), 'en', panels)
+    expect(bom.profiles.map((r) => r.length).sort()).toEqual([1000.1, 1000.4])
+    expect(bom.panels).toHaveLength(2)
+    expect(bomToCsv(bom, '')).toContain('1000.1')
+    expect(bomToCsv(bom, '')).toContain('Summary,Total cut length (mm),,2000.5,')
+  })
+
+  it('deducts end caps only from their own series', () => {
+    const all = [P(0, 0, 0, 0, 800, 0), P(200, 0, 0, 200, 800, 0, '4040')]
+    const bom = buildBom(all, [connector('end-cap', 40)], computeAllTrims(all), 'en')
+    expect(bom.suggested.find((r) => r.key === 'suggest-cap-20')!.qty).toBe(2)
+    expect(bom.suggested.find((r) => r.key === 'suggest-cap-40')!.qty).toBe(1)
+  })
+
+  it('orders hinges by the hung edge and keeps piano hinge lengths separate', () => {
+    const door = (id: string, width: number, height: number, hingeType: string, hinge = 'left') => ({
+      id, kind: 'door', width, height, depth: 400, material: 'mdf', position: [0, 1000, 0],
+      quaternion: [0, 0, 0, 1], hingeType, hinge, open: 0,
+    })
+    const fittings = [door('a', 600, 800, 'continuous'), door('b', 600, 1800, 'continuous'), door('top', 1600, 500, 'cup', 'top')] as never
+    const bom = buildBom([], [], new Map(), 'en', [], fittings)
+    expect(bom.connectors.find((r) => r.key === 'hinge-continuous-800')!.qty).toBe(1)
+    expect(bom.connectors.find((r) => r.key === 'hinge-continuous-1800')!.qty).toBe(1)
+    expect(bom.connectors.find((r) => r.key === 'hinge-cup')!.qty).toBe(3)
+  })
 })
 
 describe('degenerate placements still produce a usable orientation', () => {
@@ -321,6 +351,7 @@ describe('a foot picks the member that is standing on it', () => {
 
 import { autoConnect } from '../utils/autoConnect'
 import { useStore } from '../store/useStore'
+import { auditBrackets } from '../utils/bracketSeat'
 
 /**
  * A levelling foot stands under the post; a bracket bolts the rail to its side. They are not
@@ -342,6 +373,24 @@ describe('fitting the feet first does not cost you the brackets', () => {
   const load = (profiles: ProfileData[]) =>
     useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [] } as never)
 
+  it('automatic feet use the same actual end seat as manual placement', () => {
+    const post = P(0, 0, 0, 0, 800, 0)
+    load([post])
+    expect(autoConnect('foot').placed).toBe(1)
+    const c = useStore.getState().connectors[0]
+    const manual = connectorSeatAt('foot', V(0, 0, 0), [post])
+    expect(c.position).toEqual(manual.position)
+    expect(c.quaternion).toEqual(manual.quaternion)
+    expect(c.position).toEqual([0, -10, 0])
+    expect(findConflicts([post], computeAllTrims([post]), [c])).toEqual([])
+  })
+
+  it('a three-way corner is not installed with only two members', () => {
+    load([P(0, 0, 0, 0, 800, 0), P(0, 10, 0, 600, 10, 0)])
+    expect(autoConnect('corner-3way').placed).toBe(0)
+    expect(useStore.getState().connectors).toEqual([])
+  })
+
   it('places the same number of brackets whether or not the feet went on first', () => {
     load(bay())
     const bare = autoConnect('inside-corner').placed
@@ -353,5 +402,17 @@ describe('fitting the feet first does not cost you the brackets', () => {
     expect(feet).toBe(4)
     const after = autoConnect('inside-corner').placed
     expect(after).toBe(bare)
+  })
+
+  it('never avoids crowding by leaving a flange floating at a shared post', () => {
+    load([P(0, 0, 0, 0, 800, 0), P(0, 400, 0, 600, 400, 0), P(0, 400, 0, 0, 400, 400)])
+    const before = useStore.getState().past.length
+    autoConnect('bracket')
+    const after = useStore.getState()
+    expect(auditBrackets(after.profiles, after.connectors)).toEqual([])
+    expect(after.connectors.every((c) => c.position[0] !== 58)).toBe(true)
+    expect(after.past).toHaveLength(before + 1)
+    after.undo()
+    expect(useStore.getState().connectors).toEqual([])
   })
 })

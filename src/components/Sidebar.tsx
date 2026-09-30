@@ -14,7 +14,8 @@ import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize, setPanelsMaterial, setPanelsSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
 import { addFittingFromSelection, setFittingOpen, setFittingsOpen, updateFittings } from '../utils/fittingOps'
-import { downloadText, openProject, saveProject, savedFileName } from '../utils/projectFile'
+import { downloadText, forgetSavedFile, openProject, saveProject, savedFileName } from '../utils/projectFile'
+import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
@@ -26,7 +27,9 @@ import { repairJoints } from '../utils/repairJoints'
 import { assemblySteps } from '../utils/assembly'
 import { deflect, saggingMembers, SLENDER } from '../utils/deflection'
 import { auditBrackets } from '../utils/bracketSeat'
-import { arraySelected, beginLiveEdit, directionLabel, duplicateSelected, flipProfile, livePart, mirrorSelected, orientationDegrees, rotateSelected, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
+import { runnerFaults } from '../utils/runnerMount'
+import { shelfEdges } from '../utils/shelfSupport'
+import { arraySelected, directionLabel, duplicateSelected, flipProfile, liveParts, mirrorSelected, orientationDegrees, rotateSelected, selectionLocked as areSelectedLocked, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 /** "40 side faces ↑" and the like, so the roll is something you can read off the panel */
 function facingLabel(p: ProfileData): string {
@@ -82,28 +85,29 @@ const NumField: React.FC<{
   value: number
   onCommit: (v: number) => void
   /** shown straight away as it is typed, without an undo entry of its own */
-  onLive?: (v: number) => void
+  onLive?: (v: number, pushHistory: boolean) => boolean
   step?: number
   className?: string
   label?: string
-}> = ({ value, onCommit, onLive, step = 5, className = '', label }) => {
+  name?: string
+}> = ({ value, onCommit, onLive, step = 5, className = '', label, name }) => {
   const [text, setText] = useState(String(Math.round(value * 100) / 100))
   const [focused, setFocused] = useState(false)
   /** one history entry covers the whole edit, taken the first time it shows anything */
   const started = useRef(false)
   const live = (v: number) => {
     if (!onLive) return
-    if (!started.current) { started.current = true; beginLiveEdit() }
-    onLive(v)
+    if (onLive(v, !started.current)) started.current = true
   }
   useEffect(() => { if (!focused) setText(String(Math.round(value * 100) / 100)) }, [value, focused])
   const commit = () => {
     const v = parseFloat(text)
-    // With a live preview the store already holds the new value, so there is nothing left
-    // for `onCommit` to change — the snapshot taken when the preview started is what makes
-    // it undoable. Without a preview, this is the whole edit.
-    if (isFinite(v) && Math.abs(v - value) > 1e-6) onCommit(v)
-    else if (!isFinite(v)) setText(String(Math.round(value * 100) / 100))
+    if (isFinite(v)) {
+      if (onLive) live(v)
+      else if (Math.abs(v - value) > 1e-6) onCommit(v)
+    }
+    // Invalid drafts never become geometry; reflect the last accepted value on blur.
+    setText(String(Math.round(value * 100) / 100))
   }
   return (
     <label className={`flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500 ${className}`}>
@@ -111,7 +115,7 @@ const NumField: React.FC<{
         <span className="text-[9px] font-bold w-3" style={{ color: AXIS_COLOR[label] ?? '#64748b' }}>{label}</span>
       )}
       <input
-        type="number" step={step} value={text}
+        type="number" step={step} value={text} aria-label={name ?? label}
         onFocus={() => setFocused(true)}
         onChange={(e) => {
           setText(e.target.value)
@@ -128,7 +132,8 @@ const NumField: React.FC<{
             const from = isFinite(parseFloat(text)) ? parseFloat(text) : value
             const next = Math.round((from + by) * 100) / 100
             setText(String(next))
-            onCommit(next)
+              if (onLive) onLive(next, true)
+              else onCommit(next)
             started.current = false
           }
           e.stopPropagation()
@@ -140,13 +145,14 @@ const NumField: React.FC<{
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, panels, fittings, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument } = useStore()
+  const { profiles, connectors, panels, fittings, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument, throughRule, setThroughRule } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
-    workPlaneY, setWorkPlaneY, throughRule, setThroughRule, viewMode, setViewMode,
+    workPlaneY, setWorkPlaneY, viewMode, setViewMode,
     section, setSection, buildStep, setBuildStep } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!confirmClear) return
@@ -156,7 +162,7 @@ const Sidebar: React.FC = () => {
 
   // the same question the canvas asks: a door through a post is as much a clash as a rail through one
   const { trims, conflicts, conflictIds, mismatches, mismatchIds } = useMemo(
-    () => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings])
+    () => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings, throughRule])
   const selectedIdsSignature = selectedIds.join(',')
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -199,13 +205,13 @@ const Sidebar: React.FC = () => {
    * no room for both, and the drawing is what you came for. It starts out of the way, and
    * the rail that opens it sits along the edge where a thumb already is.
    */
-  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 720)
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   useEffect(() => {
-    const onResize = () => setNarrow(window.innerWidth < 720)
+    const onResize = () => setNarrow(window.innerWidth < 768)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 720)
+  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   // section state is remembered per browser, and selecting something opens the properties
   const [open, setOpen] = useState<Record<SectionKey, boolean>>(() => {
     try {
@@ -222,6 +228,10 @@ const Sidebar: React.FC = () => {
       try { localStorage.setItem('aluminum-designer-sections', JSON.stringify(next)) } catch { /* ignore */ }
       return next
     })
+    const frame = requestAnimationFrame(() => {
+      scrollRef.current?.querySelector('[data-testid="section-properties"]')?.scrollIntoView({ block: 'nearest' })
+    })
+    return () => cancelAnimationFrame(frame)
   }, [selectedIdsSignature])
 
   const toggle = (key: SectionKey) => setOpen((prev) => {
@@ -233,11 +243,14 @@ const Sidebar: React.FC = () => {
   const rotAngleValid = isFinite(rotAngle) && rotAngle % 360 !== 0
   const arrayValid = isFinite(parseFloat(arrayCountText)) && parseFloat(arrayCountText) >= 1
     && isFinite(parseFloat(arraySpacingText)) && Math.abs(parseFloat(arraySpacingText)) >= 1
+  const drawerHeight = parseFloat(drawerHeightText), drawerCount = parseFloat(drawerCountText)
+  const drawerInputsValid = Number.isFinite(drawerHeight) && drawerHeight >= 60
+    && Number.isInteger(drawerCount) && drawerCount >= 1 && drawerCount <= 8
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
-  const selectedPanel = panels.find((b) => selectedIds.includes(b.id))
   /** Boards affected by a selection-wide edit. */
   const pickedPanels = panels.filter((b) => selectedIds.includes(b.id))
+  const selectedPanel = pickedPanels.find((b) => !b.locked) ?? pickedPanels[0]
   // the member's far end, derived: the model keeps a start, a direction and a length
   const selectedEnd: [number, number, number] = selectedProfile
     ? (() => { const e = getProfileEndpoints(selectedProfile).end; return [e.x, e.y, e.z] })()
@@ -245,16 +258,17 @@ const Sidebar: React.FC = () => {
   const selectedProfileCount = profiles.filter((p) => selectedIds.includes(p.id)).length
   const selTrim = selectedProfile ? trims.get(selectedProfile.id) : undefined
   // the lock button reads locked only when everything selected is locked, matching the toggle
-  const selectionLocked = selectedIds.length > 0
-    && profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
-    && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
+  const selectionLocked = areSelectedLocked({ profiles, connectors, panels, fittings }, selectedIds)
 
   const clashes = useMemo(() => swingClashes(fittings), [fittings])
-  const selectedFitting = fittings.find((f) => selectedIds.includes(f.id))
   const pickedFittings = fittings.filter((f) => selectedIds.includes(f.id))
+  const selectedFitting = pickedFittings.find((f) => !f.locked) ?? pickedFittings[0]
   const pickedPanelIds = () => pickedPanels.map((b) => b.id)
   const pickedFittingIds = () => pickedFittings.map((f) => f.id)
-  const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors])
+  const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors, throughRule])
+  const runnerProblems = useMemo(() => runnerFaults(profiles, trims, fittings, panels), [profiles, trims, fittings, panels])
+  const supports = useMemo(() => shelfEdges(panels, profiles, trims), [panels, profiles, trims])
+  const unconfirmedEdges = supports.filter((edge) => !edge.carried)
   const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
@@ -277,16 +291,19 @@ const Sidebar: React.FC = () => {
 
   // Compute assembly steps only while the assembly panel is active.
   const steps = useMemo(() => (buildStep === null ? [] : assemblySteps(profiles, connectors, panels, fittings)),
-    [buildStep, profiles, connectors, panels, fittings])
+    [buildStep, profiles, connectors, panels, fittings, throughRule])
   const step = buildStep !== null ? steps[buildStep - 1] : undefined
 
   const loadKg = Math.max(0, parseFloat(loadText) || 0)
-  const sagging = useMemo(() => saggingMembers(profiles, loadKg), [profiles, loadKg])
+  const sagging = useMemo(() => saggingMembers(profiles, loadKg), [profiles, loadKg, throughRule])
   const selectedSag = selectedProfile ? deflect(selectedProfile, profiles, loadKg) : null
 
   const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels, fittings), [profiles, connectors, trims, language, panels, fittings])
   const stockMm = Math.max(500, parseFloat(stockText) || 6000)
   const nesting = useMemo(() => nestProfiles(bom.profiles, stockMm), [bom.profiles, stockMm])
+  const reviewCount = conflicts.length + edgeMismatches.length + bracketFaults.length + runnerProblems.length
+    + clashes.length + sagging.length + nesting.unsatisfied.reduce((sum, item) => sum + item.qty, 0)
+  const notifyExport = () => { if (reviewCount) showToast(t.toastExportReview(reviewCount), 'info') }
   const totalCut = bom.totalCutLength
   const buttEnds = bom.buttEnds
   // how many of the joints that want a bracket actually have one, so the headline stops
@@ -322,31 +339,38 @@ const Sidebar: React.FC = () => {
   const handleExportBOM = () => {
     const dims = overall ? `${Math.round(overall.x)}x${Math.round(overall.z)}x${Math.round(overall.y)}` : ''
     downloadText('BOM.csv', '﻿' + bomToCsv(bom, dims), 'text/csv;charset=utf-8;')
+    notifyExport()
   }
   // Download stock allocation and cuts as CSV.
   const handleExportCutting = () => {
     downloadText(`aluframe-cutting-${new Date().toISOString().slice(0, 10)}.csv`,
       '\ufeff' + nestingCsv(nesting, stockMm), 'text/csv;charset=utf-8')
+    notifyExport()
   }
   // Copy an encoded project link to the clipboard, subject to the link-length limit.
   const handleShare = async () => {
-    const link = await encodeShareLink({ profiles, connectors, panels, fittings })
-    if (link.length > COMFORTABLE_URL * 8) { showToast(t.toastShareTooBig, 'error'); return }
-    await navigator.clipboard?.writeText(link)
-    showToast(t.toastShared(Math.max(1, Math.round(link.length / 1024))), 'success')
+    try {
+      const link = await encodeShareLink({ profiles, connectors, panels, fittings, throughRule })
+      if (link.length > COMFORTABLE_URL * 8) { showToast(t.toastShareTooBig, 'error'); return }
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
+      await navigator.clipboard.writeText(link)
+      showToast(t.toastShared(Math.max(1, Math.round(link.length / 1024))), 'success')
+    } catch { showToast(t.toastClipboardFailed, 'error') }
   }
   const handleExportDxf = () => {
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.dxf`,
       buildDxf({ profiles, panels, fittings }), 'application/dxf')
+    notifyExport()
   }
   const handleExportStep = () => {
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.step`,
       buildStepFile({ profiles, panels, fittings, connectors }), 'application/step')
+    notifyExport()
   }
   const handleSaveProject = async (asNew = false) => {
-    const doc = { version: 3, savedAt: new Date().toISOString(), profiles, connectors, panels, fittings }
+    const doc = { profiles, connectors, panels, fittings, throughRule }
     const suggested = savedFileName() ?? `aluframe-${new Date().toISOString().slice(0, 10)}.json`
-    const r = await saveProject(JSON.stringify(doc, null, 2), suggested, asNew)
+    const r = await saveProject(serializeProjectDocument(doc), suggested, asNew)
     if (r.outcome === 'cancelled') return
     setSavedName(savedFileName())
     showToast(
@@ -361,30 +385,27 @@ const Sidebar: React.FC = () => {
     if (!picked) { fileRef.current?.click(); return }
     try {
       applyDocument(JSON.parse(picked.text))
+      picked.accept()
       setSavedName(savedFileName())
       showToast(t.toastImported, 'success')
     } catch { showToast(t.toastImportFailed, 'error') }
   }
   /** A saved drawing, checked before it replaces the one on screen. Throws if it is not one. */
-  const applyDocument = (doc: {
-    profiles?: ProfileData[]; connectors?: ConnectorData[]; panels?: PanelData[]; fittings?: FittingData[]
-  }) => {
-    const ok = Array.isArray(doc.profiles) && doc.profiles.every((p: ProfileData) =>
-      typeof p.id === 'string' && ALL_SPECS.includes(p.spec) && isFinite(p.length) &&
-      Array.isArray(p.position) && p.position.length === 3 && Array.isArray(p.quaternion) && p.quaternion.length === 4)
-    if (!ok) throw new Error('bad doc')
-    loadDocument({
-      profiles: doc.profiles!.map((p: ProfileData) => ({ ...p, miterCuts: p.miterCuts ?? [], holes: p.holes ?? [] })),
-      connectors: Array.isArray(doc.connectors) ? doc.connectors : [],
-      panels: Array.isArray(doc.panels) ? doc.panels : [],
-      fittings: Array.isArray(doc.fittings) ? doc.fittings : [],
-    })
-  }
+  const applyDocument = (doc: unknown) => loadDocument(parseProjectDocument(doc))
   const handleImportJSON = (file: File) => {
     file.text().then((txt) => {
       applyDocument(JSON.parse(txt))
+      forgetSavedFile()
+      setSavedName(null)
       showToast(t.toastImported, 'success')
     }).catch(() => showToast(t.toastImportFailed, 'error'))
+  }
+  const handleCopyLog = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
+      await navigator.clipboard.writeText(opLogText())
+      showToast(t.toastOpLogCopied, 'success')
+    } catch { showToast(t.toastClipboardFailed, 'error') }
   }
 
   const jointText = (j?: { butt: boolean; trim: number; partners: number }) => {
@@ -420,7 +441,7 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* one scroll container for all sections: on a short window nothing gets squeezed away */}
-      <div className="flex-1 overflow-y-auto min-h-0" data-testid="sidebar-scroll">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0" data-testid="sidebar-scroll">
       <Section id="components" title={t.components} open={open.components} onToggle={() => toggle('components')}>
         <div className="space-y-4">
           <div>
@@ -448,6 +469,7 @@ const Sidebar: React.FC = () => {
                     ))}
                   </div>
                   <button data-testid="template-place" onClick={() => {
+                    if (viewMode) setViewMode(false)
                     const values: Record<string, number> = {}
                     for (const prm of chosenTemplate.params) values[prm.key] = templateParams[prm.key] ?? prm.value
                     const made = chosenTemplate.build(values)
@@ -480,7 +502,7 @@ const Sidebar: React.FC = () => {
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.throughRule}</label>
             <div className="grid grid-cols-2 gap-1" title={t.throughRuleHint}>
               {([['rails', t.throughRails], ['posts', t.throughPosts]] as const).map(([rule, label]) => (
-                <button key={rule} onClick={() => setThroughRule(rule)} data-testid={`through-${rule}`}
+                <button key={rule} disabled={viewMode} onClick={() => setThroughRule(rule)} data-testid={`through-${rule}`} aria-pressed={throughRule === rule}
                   title={t.throughRuleHint}
                   className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
                     throughRule === rule ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
@@ -613,23 +635,24 @@ const Sidebar: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
                     <span className="text-[9px] text-slate-500 font-bold">{t.drawerHeight}</span>
-                    <input type="number" step={10} value={drawerHeightText} data-testid="drawer-height"
+                    <input type="number" min={60} step={10} value={drawerHeightText} data-testid="drawer-height" aria-label={t.drawerHeight}
                       onChange={(e) => setDrawerHeightText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
                       className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
                   </label>
                   <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 w-20 focus-within:border-blue-500">
                     <span className="text-[9px] text-slate-500 font-bold">{t.drawerCount}</span>
-                    <input type="number" min={1} max={8} step={1} value={drawerCountText} data-testid="drawer-count"
+                    <input type="number" min={1} max={8} step={1} value={drawerCountText} data-testid="drawer-count" aria-label={t.drawerCount}
                       onChange={(e) => setDrawerCountText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
                       className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
                   </label>
                 </div>
                 <button
-                  onClick={() => addFittingFromSelection({ kind: 'drawer', frontHeight: parseFloat(drawerHeightText), count: parseFloat(drawerCountText) })}
-                  data-testid="add-drawer" title={t.drawerHint} disabled={selectedProfileCount < 2}
+                  onClick={() => addFittingFromSelection({ kind: 'drawer', frontHeight: drawerHeight, count: drawerCount })}
+                  data-testid="add-drawer" title={t.drawerHint} disabled={viewMode || selectedProfileCount < 2 || !drawerInputsValid}
                   className="w-full flex items-center justify-center gap-1 py-1.5 bg-sky-600/80 hover:bg-sky-600 disabled:opacity-40 rounded-lg text-[10px] font-bold">
                   <Archive size={12} />{t.drawer}
                 </button>
+                {!drawerInputsValid && <p className="text-[10px] text-amber-300" role="status">{t.toastInvalidFitting}</p>}
 
                 <div className="grid grid-cols-4 gap-1 pt-0.5">
                   {(['left', 'right', 'top', 'bottom'] as const).map((side) => (
@@ -666,7 +689,7 @@ const Sidebar: React.FC = () => {
                 </div>
                 <button
                   onClick={() => addFittingFromSelection({ kind: 'door', hinge: hingeSide, hingeType, overlay, swing })}
-                  data-testid="add-door" title={t.hintAddDoor} disabled={selectedProfileCount < 2}
+                  data-testid="add-door" title={t.hintAddDoor} disabled={viewMode || selectedProfileCount < 2}
                   className="w-full flex items-center justify-center gap-1 py-1.5 bg-amber-600/80 hover:bg-amber-600 disabled:opacity-40 rounded-lg text-[10px] font-bold">
                   <DoorOpen size={12} />{t.addDoor}
                 </button>
@@ -698,18 +721,20 @@ const Sidebar: React.FC = () => {
               <span className="text-[10px] font-black uppercase text-slate-400">{t.properties}</span>
               <div className="flex items-center gap-1">
                 <button onClick={toggleLockSelected} title={t.lockHint} data-testid="lock-toggle"
+                  disabled={viewMode} aria-pressed={selectionLocked} aria-label={selectionLocked ? t.unlock : t.lock}
                   className={`p-1.5 rounded-lg ${selectionLocked ? 'text-amber-400 bg-amber-400/10' : 'text-slate-400 hover:bg-white/5'}`}>
                   {selectionLocked ? <Lock size={14} /> : <LockOpen size={14} />}
                 </button>
-                <button onClick={removeSelected} disabled={selectionLocked} data-testid="delete-selected" title={selectionLocked ? t.toastLocked : t.delete}
+                <button onClick={removeSelected} disabled={viewMode || selectionLocked} data-testid="delete-selected" aria-label={t.delete} title={selectionLocked ? t.toastLocked : t.delete}
                   className="text-red-400 hover:bg-red-400/10 disabled:opacity-30 p-1.5 rounded-lg"><Trash2 size={14} /></button>
               </div>
             </div>
             {selectedProfile && (
-              <div className="space-y-3">
+              <fieldset disabled={viewMode} className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.spec}</span>
                   <select value={selectedProfile.spec} onChange={(e) => setProfileSpec(selectedProfile.id, e.target.value as ProfileSpec)}
+                    aria-label={t.spec}
                     className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-blue-400 outline-none">
                     {ALL_SPECS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -720,13 +745,13 @@ const Sidebar: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.length}</span>
-                  <NumField value={selectedProfile.length} onCommit={(v) => setProfileLength(selectedProfile.id, v)} />
+                  <NumField name={t.length} value={selectedProfile.length} onCommit={(v) => setProfileLength(selectedProfile.id, v)} />
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.position}</span>
                   <div className="grid grid-cols-3 gap-1">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
-                      <NumField key={ax} label={ax} value={selectedProfile.position[i]} onCommit={(v) => {
+                      <NumField key={ax} label={ax} name={`${t.position} ${ax}`} value={selectedProfile.position[i]} onCommit={(v) => {
                         const pos = [...selectedProfile.position] as [number, number, number]
                         pos[i] = v
                         setProfilePosition(selectedProfile.id, pos)
@@ -756,7 +781,7 @@ const Sidebar: React.FC = () => {
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.endPosition}</span>
                   <div className="grid grid-cols-3 gap-1">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
-                      <NumField key={ax} label={ax} value={selectedEnd[i]} onCommit={(v) => {
+                      <NumField key={ax} label={ax} name={`${t.endPosition} ${ax}`} value={selectedEnd[i]} onCommit={(v) => {
                         const to = [...selectedEnd] as [number, number, number]
                         to[i] = v
                         setProfileEnd(selectedProfile.id, to)
@@ -765,7 +790,7 @@ const Sidebar: React.FC = () => {
                   </div>
                 </div>
                 <div className="bg-slate-950/60 rounded-lg p-2 text-[11px] space-y-1">
-                  <div className="flex justify-between"><span className="text-slate-500">{t.cutLength}</span><span className="font-mono text-emerald-400 font-bold" data-testid="cut-length">{Math.round(selTrim?.cutLength ?? selectedProfile.length)} mm</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">{t.cutLength}</span><span className="font-mono text-emerald-400 font-bold" data-testid="cut-length">{Math.round((selTrim?.cutLength ?? selectedProfile.length) * 1000) / 1000} mm</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">{t.joints} A</span><span className="font-mono text-slate-300">{jointText(selTrim?.start)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">{t.joints} B</span><span className="font-mono text-slate-300">{jointText(selTrim?.end)}</span></div>
                   {selectedSag && (
@@ -773,6 +798,7 @@ const Sidebar: React.FC = () => {
                       <span className="text-slate-500" title={t.hintDeflection}>{t.deflection}</span>
                       <span className="flex items-center gap-1">
                         <input type="number" min={0} step={5} value={loadText} data-testid="deflection-load"
+                          aria-label={t.assumedLoad}
                           onChange={(e) => setLoadText(e.target.value)}
                           className="w-12 bg-slate-950 border border-white/5 rounded px-1 py-0.5 text-[10px] font-mono text-slate-300 outline-none text-right" />
                         <span className="text-slate-600 text-[10px]">kg</span>
@@ -790,10 +816,10 @@ const Sidebar: React.FC = () => {
                   <button onClick={() => flipProfile(selectedProfile.id)} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
                   <button onClick={() => duplicateSelected()} title={`${t.duplicate} (Ctrl+D)`} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><Copy size={12} />{t.duplicate}</button>
                 </div>
-              </div>
+              </fieldset>
             )}
             {selectedConnector && !selectedProfile && (
-              <div className="space-y-3">
+              <fieldset disabled={viewMode} className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.connectorProps}</span>
                   <span className="text-emerald-400 font-mono">{connectorLabel(selectedConnector.type, language)}</span>
@@ -803,6 +829,7 @@ const Sidebar: React.FC = () => {
                   <select
                     value={selectedConnector.series ?? 20}
                     data-testid="connector-series"
+                    aria-label={t.series}
                     onChange={(e) => setConnectorSeries(selectedConnector.id, Number(e.target.value) as 20 | 30 | 40)}
                     className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-emerald-400 outline-none"
                   >
@@ -837,7 +864,7 @@ const Sidebar: React.FC = () => {
                   <span className="text-slate-500">{t.orientation}</span>
                   <span className="font-mono text-slate-300" data-testid="connector-orientation">{orientationDegrees(selectedConnector.quaternion).join(' / ')}</span>
                 </div>
-              </div>
+              </fieldset>
             )}
 
             {/* A drawer and a door are one part each, so their size is three numbers, named
@@ -853,19 +880,19 @@ const Sidebar: React.FC = () => {
                     ? `${({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[selectedFitting.hinge ?? 'left']} · ${swingOf(selectedFitting)}°`
                     : ''}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1">
-                  <NumField label="W" value={selectedFitting.width} step={10}
-                    onLive={(v) => v >= 60 && livePart(selectedFitting.id, { width: v })}
+                <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-3 gap-1">
+                  <NumField label="W" name={t.widthMm} value={selectedFitting.width} step={10}
+                    onLive={(v, history) => liveParts(pickedFittingIds(), { width: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { width: Math.max(60, v) })} />
-                  <NumField label="H" value={selectedFitting.height} step={10}
-                    onLive={(v) => v >= 60 && livePart(selectedFitting.id, { height: v })}
+                  <NumField label="H" name={t.heightMm} value={selectedFitting.height} step={10}
+                    onLive={(v, history) => liveParts(pickedFittingIds(), { height: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { height: Math.max(60, v) })} />
-                  <NumField label="D" value={selectedFitting.depth} step={10}
-                    onLive={(v) => v >= 60 && livePart(selectedFitting.id, { depth: v })}
+                  <NumField label="D" name={t.depthMm} value={selectedFitting.depth} step={10}
+                    onLive={(v, history) => liveParts(pickedFittingIds(), { depth: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { depth: Math.max(60, v) })} />
-                </div>
+                </fieldset>
                 {selectedFitting.kind === 'door' && (
-                  <div className="grid grid-cols-5 gap-1">
+                  <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-5 gap-1">
                     {HINGE_ANGLES.map((deg) => (
                       <button key={deg} data-testid={`fitting-angle-${deg}`} title={t.hintHingeAngle}
                         onClick={() => updateFittings(pickedFittingIds(), { swing: deg })}
@@ -873,7 +900,7 @@ const Sidebar: React.FC = () => {
                         {deg}°
                       </button>
                     ))}
-                  </div>
+                  </fieldset>
                 )}
                 <label className="flex items-center gap-2 text-[11px]">
                   <span className="text-slate-500 shrink-0">{t.openAmount}</span>
@@ -887,34 +914,35 @@ const Sidebar: React.FC = () => {
             )}
 
             {selectedPanel && (
-              <div className="space-y-2" data-testid="panel-props">
+              <fieldset disabled={viewMode || selectedPanel.locked} className="space-y-2" data-testid="panel-props">
                 {pickedPanels.length > 1 && (
                   <div className="text-[10px] text-orange-400 font-mono" data-testid="panel-multi">{t.editingCount(pickedPanels.length)}</div>
                 )}
                 <div className="grid grid-cols-3 gap-1">
-                  <NumField label="W" value={selectedPanel.width} step={10}
-                    onLive={(v) => v > 0 && livePart(selectedPanel.id, { width: v })}
+                  <NumField label="W" name={t.widthMm} value={selectedPanel.width} step={10}
+                    onLive={(v, history) => liveParts(pickedPanelIds(), { width: v }, history)}
                     onCommit={(v) => setPanelsSize(pickedPanelIds(), { width: v })} />
-                  <NumField label="H" value={selectedPanel.height} step={10}
-                    onLive={(v) => v > 0 && livePart(selectedPanel.id, { height: v })}
+                  <NumField label="H" name={t.heightMm} value={selectedPanel.height} step={10}
+                    onLive={(v, history) => liveParts(pickedPanelIds(), { height: v }, history)}
                     onCommit={(v) => setPanelsSize(pickedPanelIds(), { height: v })} />
-                  <NumField label="T" value={selectedPanel.thickness} step={1}
-                    onLive={(v) => v > 0 && livePart(selectedPanel.id, { thickness: v })}
+                  <NumField label="T" name={t.thicknessMm} value={selectedPanel.thickness} step={1}
+                    onLive={(v, history) => liveParts(pickedPanelIds(), { thickness: v }, history)}
                     onCommit={(v) => setPanelsSize(pickedPanelIds(), { thickness: v })} />
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.panelMaterial}</span>
                   <select value={selectedPanel.material} data-testid="panel-material"
+                    aria-label={t.panelMaterial}
                     onChange={(e) => setPanelsMaterial(pickedPanelIds(), e.target.value as PanelMaterial)}
                     className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-orange-400 outline-none">
                     {PANEL_MATERIALS.map((m) => <option key={m} value={m}>{materialLabel(m, language)}</option>)}
                   </select>
                 </div>
-              </div>
+              </fieldset>
             )}
 
             {/* A board fitted to whatever members are selected: door, back, shelf, drawer front */}
-            {selectedProfileCount >= 2 && (
+            {selectedProfileCount >= 2 && !viewMode && (
               <div className="grid grid-cols-2 gap-1">
                 <button onClick={() => addPanelFromSelection()} data-testid="add-panel" title={t.addPanelHint}
                   className="flex items-center justify-center gap-1 py-1.5 bg-orange-600/80 hover:bg-orange-600 rounded-lg text-[10px] font-bold">
@@ -928,7 +956,7 @@ const Sidebar: React.FC = () => {
             )}
 
             {/** Rotation controls for movable selections. */}
-            <div className="space-y-1 pt-1 border-t border-white/5" data-testid="rotate-block">
+            <fieldset disabled={viewMode || selectionLocked} className="space-y-1 pt-1 border-t border-white/5" data-testid="rotate-block">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-slate-500 uppercase font-bold">{t.rotate3d}</span>
                 <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500">
@@ -960,10 +988,10 @@ const Sidebar: React.FC = () => {
                   <span className="font-mono text-slate-300" data-testid="profile-orientation">{orientationDegrees(selectedProfile.quaternion).join(' / ')}</span>
                 </div>
               )}
-            </div>
+            </fieldset>
 
             {/** Mirror and array controls. */}
-            <div className="space-y-1 pt-1 border-t border-white/5" data-testid="repeat-block">
+            <fieldset disabled={viewMode} className="space-y-1 pt-1 border-t border-white/5" data-testid="repeat-block">
               <span className="text-[10px] text-slate-500 uppercase font-bold">{t.mirror} / {t.array}</span>
               <div className="grid grid-cols-3 gap-1">
                 {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
@@ -1000,7 +1028,7 @@ const Sidebar: React.FC = () => {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
             {selectedIds.length > 1 && (
               <div className="text-[10px] text-slate-400 pt-1 border-t border-white/5">{t.selected(selectedIds.length)}</div>
             )}
@@ -1014,11 +1042,11 @@ const Sidebar: React.FC = () => {
       </Section>
 
       <div className="grid grid-cols-2 gap-2 px-4 py-2 border-b border-white/5 shrink-0">
-        <button onClick={undo} disabled={past.length === 0} title={`${t.undo} (Ctrl+Z)`}
+        <button onClick={undo} disabled={viewMode || past.length === 0} title={`${t.undo} (Ctrl+Z)`}
           className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold">
           <Undo2 size={13} /> {t.undo}
         </button>
-        <button onClick={redo} disabled={future.length === 0} title={`${t.redo} (Ctrl+Y)`}
+        <button onClick={redo} disabled={viewMode || future.length === 0} title={`${t.redo} (Ctrl+Y)`}
           className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold">
           <Redo2 size={13} /> {t.redo}
         </button>
@@ -1034,6 +1062,31 @@ const Sidebar: React.FC = () => {
         </span>}
       >
         <div className="space-y-3">
+        <div data-testid="manufacturing-checks" className="rounded-lg border border-white/10 bg-slate-950/50 p-2 space-y-2 text-[10px]">
+          <div className="font-bold text-slate-300">{t.manufacturingChecks}</div>
+          <div className={reviewCount ? 'text-amber-300' : 'text-slate-300'} data-testid="manufacturing-result">
+            {reviewCount ? t.manufacturingCount(reviewCount) : t.manufacturingClear}
+          </div>
+          {runnerProblems.length > 0 && (
+            <button data-testid="runner-mount-warning" onClick={() => useStore.getState().selectItems([...new Set(runnerProblems.map((f) => f.id))])}
+              className="w-full text-left text-amber-300 hover:text-white">
+              {t.runnerMount} · {t.runnerFaultCount(runnerProblems.length)}
+            </button>
+          )}
+          {nesting.unsatisfied.length > 0 && (
+            <div data-testid="nesting-unsatisfied" className="text-red-300 space-y-1">
+              <div className="font-bold">{t.nestingUnsatisfied} ({stockMm} mm)</div>
+              {nesting.unsatisfied.map((item) => <div key={`${item.spec}-${item.length}`} className="font-mono">{item.spec} · {item.length} mm × {item.qty}</div>)}
+            </div>
+          )}
+          {supports.length > 0 && (
+            <div data-testid="shelf-support-range" className="text-slate-400">
+              {t.shelfSupport} · {supports.filter((edge) => edge.carried).length}/{supports.length}
+              {unconfirmedEdges.length > 0 && <div>{t.shelfUnknownEdges(unconfirmedEdges.length)}</div>}
+            </div>
+          )}
+          <p className="text-slate-400 leading-relaxed">{t.estimateBoundary}</p>
+        </div>
         <div className="grid grid-cols-3 gap-1.5 text-center">
           <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.totalProfiles}</div><div className="text-sm font-mono font-bold text-blue-400" data-testid="bom-count">{profiles.length}</div></div>
           <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.totalLength}</div><div className="text-sm font-mono font-bold text-blue-400">{(totalCut / 1000).toFixed(2)}m</div></div>
@@ -1068,7 +1121,7 @@ const Sidebar: React.FC = () => {
         )}
         {/** Joint alignment controls. */}
         {profiles.length > 1 && (
-          <button data-testid="repair-joints" title={t.alignFacesHint}
+          <button data-testid="repair-joints" title={t.alignFacesHint} disabled={viewMode}
             onClick={() => {
               const r = repairJoints()
               showToast(r.steps.length ? t.toastRepaired(r.before - r.after, r.after) : t.toastRepairNothing,
@@ -1117,7 +1170,7 @@ const Sidebar: React.FC = () => {
             <span className="font-mono" data-testid="bom-sagging">{t.saggingCount(sagging.length, loadKg)}</span>
           </div>
         )}
-        {(bom.profiles.length > 0 || bom.connectors.length > 0) && (
+        {(bom.profiles.length > 0 || bom.connectors.length > 0 || bom.panels.length > 0) && (
           <div className="max-h-44 overflow-y-auto rounded-lg border border-white/5 text-[10px] font-mono" data-testid="bom-table">
             {bom.profiles.map((r) => (
               <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
@@ -1188,7 +1241,7 @@ const Sidebar: React.FC = () => {
         <div className="space-y-1 pt-2 border-t border-white/5">
           <span className="text-[10px] text-slate-500 uppercase font-bold">{t.exportsGroup}</span>
           <div className="grid grid-cols-2 gap-1.5">
-            <button onClick={handleExportBOM} disabled={profiles.length === 0} data-testid="export-bom" title={t.hintExportBOM} className={FILE_BTN}>
+            <button onClick={handleExportBOM} disabled={profiles.length + connectors.length + panels.length + fittings.length === 0} data-testid="export-bom" title={t.hintExportBOM} className={FILE_BTN}>
               <Download size={13} className="text-blue-400" /> {t.exportBOM}
             </button>
             <button onClick={handleExportCutting} disabled={bom.profiles.length === 0} data-testid="export-cutting" title={t.hintExportCutting} className={FILE_BTN}>
@@ -1198,7 +1251,7 @@ const Sidebar: React.FC = () => {
               data-testid="export-dxf" title={t.hintExportDxf} className={FILE_BTN}>
               <FileCode size={13} className="text-blue-400" /> {t.exportDxf}
             </button>
-            <button onClick={handleExportStep} disabled={profiles.length + panels.length + fittings.length === 0}
+            <button onClick={handleExportStep} disabled={profiles.length + connectors.length + panels.length + fittings.length === 0}
               data-testid="export-step" title={t.hintExportStep} className={FILE_BTN}>
               <Box size={13} className="text-blue-400" /> {t.exportStep}
             </button>
@@ -1231,7 +1284,7 @@ const Sidebar: React.FC = () => {
           <button onClick={handleLogDebug} title={t.hintDebugLog} className="flex items-center gap-1 text-slate-600 hover:text-amber-400">
             <Bug size={11} /> {t.debugLog}
           </button>
-          <button onClick={handleClearAll} data-testid="clear-all" title={t.hintClearAll}
+          <button onClick={handleClearAll} disabled={viewMode} data-testid="clear-all" title={t.hintClearAll}
             className={`flex items-center gap-1 rounded px-1.5 py-0.5 transition-all ${confirmClear ? 'bg-red-600 text-white font-bold' : 'text-slate-600 hover:text-red-400'}`}>
             <Eraser size={11} /> {confirmClear ? t.clearConfirm : t.clear}
           </button>
@@ -1256,7 +1309,7 @@ const Sidebar: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-1">
             <button data-testid="op-log-copy" title={t.hintOpLog} disabled={log.length === 0}
-              onClick={() => { navigator.clipboard?.writeText(opLogText()); showToast(t.toastOpLogCopied, 'success') }}
+              onClick={handleCopyLog}
               className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold text-slate-300">
               {t.opLogCopy}
             </button>

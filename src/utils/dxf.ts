@@ -1,8 +1,9 @@
 import * as THREE from 'three'
 import type { FittingData, PanelData, ProfileData } from '../store/useStore'
-import { computeAllTrims, trimmedBox } from './jointUtils'
-import { fittingParts } from './fittingGeometry'
-import { panelCorners } from './panelOps'
+import { computeAllTrims } from './jointUtils'
+import { fittingParts, fittingSolids } from './fittingGeometry'
+import { panelOBB, trimmedOBB } from './analysis'
+import { obbCorners } from './obb'
 
 /**
  * R12 ASCII DXF export using LINE and TEXT entities.
@@ -43,7 +44,7 @@ class Dxf {
 
   /** Draw dimensions as lines and text. */
   dim(layer: string, a: Pt, b: Pt, off: number, vertical = false): void {
-    const label = String(Math.round(Math.hypot(b[0] - a[0], b[1] - a[1])))
+    const label = n(Math.hypot(b[0] - a[0], b[1] - a[1]))
     if (vertical) {
       const x = Math.max(a[0], b[0]) + off
       this.line(layer, [a[0], a[1]], [x + 20, a[1]])
@@ -82,15 +83,35 @@ const VIEWS = [
 ] as const
 
 /** Outline of a box as seen in a view: the projection of its eight corners, as a rectangle */
-function projectBox(box: THREE.Box3, view: typeof VIEWS[number]): { min: Pt; max: Pt } {
+function projectPoints(points: THREE.Vector3[], view: typeof VIEWS[number]): { min: Pt; max: Pt } {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
-  for (const sx of [box.min.x, box.max.x]) for (const sy of [box.min.y, box.max.y]) for (const sz of [box.min.z, box.max.z]) {
-    const v = new THREE.Vector3(sx, sy, sz)
+  for (const v of points) {
     const px = view.x(v), py = view.y(v)
     x0 = Math.min(x0, px); x1 = Math.max(x1, px)
     y0 = Math.min(y0, py); y1 = Math.max(y1, py)
   }
   return { min: [x0, y0], max: [x1, y1] }
+}
+
+/** The convex outline of a solid's actual projected corners, including rotated members. */
+function silhouette(points: THREE.Vector3[], view: typeof VIEWS[number]): Pt[] {
+  const unique = new Map<string, Pt>()
+  for (const p of points) {
+    const xy: Pt = [view.x(p), view.y(p)]
+    unique.set(`${n(xy[0])},${n(xy[1])}`, xy)
+  }
+  const ordered = [...unique.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  const cross = (a: Pt, b: Pt, c: Pt) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+  const half = (list: Pt[]) => {
+    const out: Pt[] = []
+    for (const p of list) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], p) <= 1e-6) out.pop()
+      out.push(p)
+    }
+    return out
+  }
+  if (ordered.length <= 2) return ordered
+  return [...half(ordered).slice(0, -1), ...half([...ordered].reverse()).slice(0, -1)]
 }
 
 export interface DxfInput {
@@ -109,47 +130,24 @@ export function buildDxf({ profiles, panels, fittings }: DxfInput): string {
   const d = new Dxf()
   const trims = computeAllTrims(profiles)
 
-  // every part's box, once; each view is a different projection of the same boxes
-  const memberBoxes = profiles.map((p) => trimmedBox(p, trims.get(p.id)!))
-  const boardBoxes = panels.map((b) => {
-    const box = new THREE.Box3()
-    for (const c of panelCorners(b)) box.expandByPoint(c)
-    // a board has thickness the corners do not carry, and an elevation shows it
-    box.expandByScalar(b.thickness / 2)
-    return box
-  })
-  const fittingBoxes = fittings.map((f) => {
-    const box = new THREE.Box3()
-    const q = new THREE.Quaternion(...f.quaternion).normalize()
-    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
-      box.expandByPoint(new THREE.Vector3(sx * f.width / 2, sy * f.height / 2, sz * f.depth / 2)
-        .applyQuaternion(q).add(new THREE.Vector3(...f.position)))
-    }
-    return box
-  })
-
-  const whole = new THREE.Box3()
-  for (const b of [...memberBoxes, ...boardBoxes, ...fittingBoxes]) whole.union(b)
-  if (whole.isEmpty()) whole.set(new THREE.Vector3(), new THREE.Vector3())
+  const members = profiles.map((p) => obbCorners(trimmedOBB(p, trims.get(p.id)!)))
+  const boards = panels.map((b) => obbCorners(panelOBB(b)))
+  const fittingBoards = fittings.flatMap((f) => fittingSolids(f).map(obbCorners))
+  const whole = [...members, ...boards, ...fittingBoards].flat()
+  if (!whole.length) whole.push(new THREE.Vector3())
 
   let cursor = 0
   for (const view of VIEWS) {
-    const bounds = projectBox(whole, view)
+    const bounds = projectPoints(whole, view)
     const dx = cursor - bounds.min[0]
     const dy = -bounds.min[1]
     const at = (p: Pt): Pt => [p[0] + dx, p[1] + dy]
 
-    for (const box of memberBoxes) {
-      const r = projectBox(box, view)
-      d.rect('MEMBERS', at(r.min), at(r.max))
-    }
-    for (const box of boardBoxes) {
-      const r = projectBox(box, view)
-      d.rect('BOARDS', at(r.min), at(r.max))
-    }
-    for (const box of fittingBoxes) {
-      const r = projectBox(box, view)
-      d.rect('FITTINGS', at(r.min), at(r.max))
+    for (const [layer, solids] of [['MEMBERS', members], ['BOARDS', boards], ['FITTINGS', fittingBoards]] as const) {
+      for (const solid of solids) {
+        const outline = silhouette(solid, view)
+        for (let i = 0; i < outline.length; i++) d.line(layer, at(outline[i]), at(outline[(i + 1) % outline.length]))
+      }
     }
 
     const lo = at(bounds.min), hi = at(bounds.max)
@@ -164,9 +162,9 @@ export function buildDxf({ profiles, panels, fittings }: DxfInput): string {
 
   // Lay out and label each board outline.
   const sheet: Array<{ w: number; h: number; label: string }> = [
-    ...panels.map((b) => ({ w: b.width, h: b.height, label: `${Math.round(b.width)}x${Math.round(b.height)}x${b.thickness} ${b.material}` })),
+    ...panels.map((b) => ({ w: b.width, h: b.height, label: `${n(b.width)}x${n(b.height)}x${b.thickness} ${b.material}` })),
     ...fittings.flatMap((f) => fittingParts(f).boards.map((b) => ({
-      w: b.width, h: b.height, label: `${Math.round(b.width)}x${Math.round(b.height)}x${b.thickness} ${f.kind}/${b.role}`,
+      w: b.width, h: b.height, label: `${n(b.width)}x${n(b.height)}x${b.thickness} ${f.kind}/${b.role}`,
     }))),
   ]
   if (sheet.length > 0) {

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { FittingData, HingeSide, HingeType, Overlay } from '../store/useStore'
-import { makeOBB, obbPenetration, type OBB } from './obb'
+import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
 
 /**
  * Shared board geometry for fitting rendering, cut lists and collision checks.
@@ -218,15 +218,32 @@ export function fittingSolids(f: FittingData, open: number = f.open ?? 0): OBB[]
 export function swingClashes(fittings: FittingData[]): Array<[string, string]> {
   const doors = fittings.filter((f) => f.kind === 'door')
   const out: Array<[string, string]> = []
-  const steps = [0.35, 0.7, 1]
+  // At most 1 degree per sample. Cache the leaves once per door and reject separated swept
+  // boxes before testing pairs. This covers one door moving while its neighbour stays at
+  // 0, half-open or fully open, plus both moving together. It remains a sampled simulation,
+  // not a continuous collision certificate for every independent pair of hinge angles.
+  const samples = doors.map((door) => {
+    const count = Math.max(24, Math.ceil(swingOf(door)))
+    const leaves = Array.from({ length: count + 1 }, (_, i) => leafObb(door, i / count)!)
+    const bounds = new THREE.Box3()
+    for (const leaf of leaves) for (const point of obbCorners(leaf)) bounds.expandByPoint(point)
+    return { leaves, count, bounds }
+  })
   for (let i = 0; i < doors.length; i++) {
     for (let j = i + 1; j < doors.length; j++) {
+      const a = samples[i], b = samples[j]
+      if (!a.bounds.intersectsBox(b.bounds)) continue
       let hit = false
-      for (const t of steps) {
-        const a = leafObb(doors[i], t)
-        const b = leafObb(doors[j], t)
-        if (!a || !b) continue
-        if (obbPenetration(a, b, 2) > 2) { hit = true; break }
+      const clashes = (u: OBB, v: OBB) => obbPenetration(u, v, 2) > 2
+      const count = Math.max(a.count, b.count)
+      for (let k = 0; k <= count && !hit; k++) {
+        const ai = Math.round(k * a.count / count), bi = Math.round(k * b.count / count)
+        hit = clashes(a.leaves[ai], b.leaves[bi])
+        for (const fixed of [0, 0.5, 1]) {
+          if (hit) break
+          hit = clashes(a.leaves[ai], b.leaves[Math.round(fixed * b.count)])
+            || clashes(a.leaves[Math.round(fixed * a.count)], b.leaves[bi])
+        }
       }
       if (hit) out.push([doors[i].id, doors[j].id])
     }

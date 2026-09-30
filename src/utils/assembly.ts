@@ -1,25 +1,16 @@
-import * as THREE from 'three'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
-import { getProfileDir, getProfileEndpoints, closestOnSegment } from './geometryCore'
+import { getProfileDir } from './geometryCore'
+import { computeAllTrims, trimmedBox } from './jointUtils'
+import { connectorOBB, trimmedOBB } from './analysis'
+import { obbPenetration, type OBB } from './obb'
 
 /**
- * What to build first.
- *
- * The drawing says what the thing is; it says nothing about the order the pieces go on in,
- * and that is the question everybody actually has in front of a pile of extrusion. None of
- * the tools this one is measured against answers it.
- *
- * The order is not a preference, it is a constraint: you cannot bolt a rail to a post that is
- * not standing yet, and a post is standing when whatever holds its foot is there. So the
- * sweep is topological — take everything whose supports are already placed, lowest first,
- * and repeat. Ties are broken by height and then by position, so the same drawing always
- * gives the same instructions.
+ * Suggest assembly steps from member contact and height, starting each disconnected group
+ * from its lowest member. Stability, fastener insertion and tool access are not checked.
  */
 
-/** how close two members have to be to count as bolted together (mm) */
-const JOINT_TOL = 30
 /** a member whose foot is this close to the floor stands on its own */
-const GROUND_TOL = 25
+const GROUND_TOL = 1
 /** as many parts as fit in one step before it is worth splitting */
 const STEP_MAX = 10
 
@@ -37,23 +28,19 @@ export interface Step {
   atHeight: number
 }
 
-function lowest(p: ProfileData): number {
-  const { start, end } = getProfileEndpoints(p)
-  return Math.min(start.y, end.y)
+/** Contact between the actual boxes, allowing only numerical/placement noise (0.1 mm). */
+export function bodiesTouch(a: OBB, b: OBB, tolerance = 0.1): boolean {
+  const expanded = { ...a, half: a.half.clone().addScalar(tolerance + 1e-6) }
+  return obbPenetration(expanded, b) > 0
 }
 
 /** which members each one is bolted to */
-function neighbours(profiles: ProfileData[]): Map<string, string[]> {
-  const ends = new Map(profiles.map((p) => [p.id, getProfileEndpoints(p)]))
+function neighbours(profiles: ProfileData[], bodies: Map<string, OBB>): Map<string, string[]> {
   const out = new Map<string, string[]>(profiles.map((p) => [p.id, []]))
   for (const a of profiles) {
-    const ea = ends.get(a.id)!
     for (const b of profiles) {
       if (a.id === b.id) continue
-      const eb = ends.get(b.id)!
-      const near = [ea.start, ea.end].some((pt) => closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) <= JOINT_TOL)
-        || [eb.start, eb.end].some((pt) => closestOnSegment(pt, ea.start, ea.end).point.distanceTo(pt) <= JOINT_TOL)
-      if (near) out.get(a.id)!.push(b.id)
+      if (bodiesTouch(bodies.get(a.id)!, bodies.get(b.id)!)) out.get(a.id)!.push(b.id)
     }
   }
   return out
@@ -71,8 +58,13 @@ export function assemblySteps(
   profiles: ProfileData[], connectors: ConnectorData[] = [],
   panels: PanelData[] = [], fittings: FittingData[] = [],
 ): Step[] {
-  if (profiles.length === 0) return []
-  const near = neighbours(profiles)
+  if (profiles.length === 0) return panels.length || fittings.length || connectors.length
+    ? [{ n: 1, profiles: [], connectors: connectors.map((c) => c.id), panels: panels.map((b) => b.id), fittings: fittings.map((f) => f.id), atHeight: 0 }] : []
+  const trims = computeAllTrims(profiles)
+  const bodies = new Map(profiles.map((p) => [p.id, trimmedOBB(p, trims.get(p.id)!)]))
+  const height = new Map(profiles.map((p) => [p.id, trimmedBox(p, trims.get(p.id)!).min.y]))
+  const lowest = (p: ProfileData) => height.get(p.id)!
+  const near = neighbours(profiles, bodies)
   const placed = new Set<string>()
   const steps: Step[] = []
   const left = [...profiles].sort((a, b) => lowest(a) - lowest(b)
@@ -101,13 +93,11 @@ export function assemblySteps(
   // moment both of its flanges have something to sit on.
   const stepOf = new Map<string, number>()
   for (const s of steps) for (const id of s.profiles) stepOf.set(id, s.n - 1)
-  const ends = new Map(profiles.map((p) => [p.id, getProfileEndpoints(p)]))
   for (const c of connectors) {
-    const at = new THREE.Vector3(...c.position)
+    const body = connectorOBB(c)
     let last = 0
     for (const p of profiles) {
-      const e = ends.get(p.id)!
-      if (closestOnSegment(at, e.start, e.end).point.distanceTo(at) <= 60) last = Math.max(last, stepOf.get(p.id) ?? 0)
+      if (bodiesTouch(body, bodies.get(p.id)!)) last = Math.max(last, stepOf.get(p.id) ?? 0)
     }
     steps[last].connectors.push(c.id)
   }

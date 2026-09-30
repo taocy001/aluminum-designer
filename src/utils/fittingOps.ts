@@ -241,6 +241,14 @@ function facing(out: THREE.Vector3): THREE.Quaternion {
 export function addFittingFromSelection(req: FittingRequest): boolean {
   const store = useStore.getState()
   const t = translations[useToolStore.getState().language]
+  if (useToolStore.getState().viewMode) return false
+  if (req.kind === 'drawer') {
+    const height = req.frontHeight ?? 200, count = req.count ?? 1
+    if (!Number.isFinite(height) || height < 60 || !Number.isInteger(count) || count < 1 || count > 8) {
+      useToolStore.getState().showToast(t.toastInvalidFitting, 'error')
+      return false
+    }
+  }
   const ids = new Set(store.selectedIds)
   const chosen = store.profiles.filter((p) => ids.has(p.id))
   if (chosen.length < 2) { useToolStore.getState().showToast(t.toastDrawerNeedsOpening, 'info'); return false }
@@ -311,8 +319,8 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
 
   const made: FittingData[] = []
   if (req.kind === 'drawer') {
-    const frontHeight = Math.max(60, req.frontHeight ?? 200)
-    const count = Math.max(1, Math.min(8, Math.floor(req.count ?? 1)))
+    const frontHeight = req.frontHeight ?? 200
+    const count = req.count ?? 1
     for (let i = 0; i < count; i++) {
       const y = box.min.y + frontHeight * (i + 0.5)
       if (y + frontHeight / 2 > box.max.y + 1) break

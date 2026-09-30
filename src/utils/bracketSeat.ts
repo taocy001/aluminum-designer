@@ -5,6 +5,9 @@ import { flushFace, sharedEdge } from './specCompat'
 import { nearestSlot, slotOffsets } from './specUtils'
 import { connectorEntry, connectorExtent, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector, membersAt } from './connectorFit'
+import { computeAllTrims } from './jointUtils'
+import { trimmedOBB } from './analysis'
+import type { OBB } from './obb'
 
 /**
  * Where a corner bracket actually goes.
@@ -102,8 +105,10 @@ function into(p: ProfileData, at: THREE.Vector3): THREE.Vector3 {
  * face. Both are real parts; they are not the same part.
  */
 export function seatAngle(a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {
-  const intoA = into(a, at)
-  const intoB = into(b, at)
+  return angleSeat(a, b, at, into(a, at), into(b, at))
+}
+
+function angleSeat(a: ProfileData, b: ProfileData, at: THREE.Vector3, intoA: THREE.Vector3, intoB: THREE.Vector3): BracketSeat | null {
   if (Math.abs(intoA.dot(intoB)) > 0.9) return null       // parallel: not a corner
 
   // across the joint: the one direction neither member runs along
@@ -274,58 +279,90 @@ export function seatFor(type: string, a: ProfileData, b: ProfileData, at: THREE.
   return null
 }
 
+/** Try either side of each member; bolt auditing decides which have actual metal beneath. */
+export function seatsFor(type: string, a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat[] {
+  if (!sharedEdge(a.spec, b.spec)) return []
+  if (connectorEntry(type)?.seat !== 'angle') {
+    const seat = seatFor(type, a, b, at)
+    return seat ? [seat] : []
+  }
+  const aDir = into(a, at), bDir = into(b, at)
+  const out: BracketSeat[] = []
+  for (const sa of [1, -1]) for (const sb of [1, -1]) {
+    const seat = angleSeat(a, b, at, aDir.clone().multiplyScalar(sa), bDir.clone().multiplyScalar(sb))
+    if (seat) out.push(seat)
+  }
+  return out
+}
+
 export interface BracketFault {
   id: string
   /** how far it is from where it should be (mm) */
   off: number
-  reason: 'off-seat' | 'no-joint'
+  reason: 'off-seat' | 'no-joint' | 'wrong-series'
   at: THREE.Vector3
 }
 
-/** how far a fitted bracket may sit from its seat before it is wrong (mm) */
-const SEAT_TOL = 3
+/** A bolt has to meet the face and its slot, not just lie near the joint. */
+const FACE_TOL = 0.5
+
+function boltOnFace(point: THREE.Vector3, normal: THREE.Vector3, body: OBB): boolean {
+  const dx = point.x - body.center.x, dy = point.y - body.center.y, dz = point.z - body.center.z
+  for (const i of [0, 1] as const) {
+    const face = body.axes[i], length = body.axes[2]
+    const facing = face.dot(normal)
+    if (Math.abs(facing) < 0.999) continue
+    if (Math.abs(dx * face.x + dy * face.y + dz * face.z - Math.sign(facing) * body.half.getComponent(i)) > FACE_TOL) continue
+    if (Math.abs(dx * length.x + dy * length.y + dz * length.z) > body.half.z + FACE_TOL) continue
+    const across = i === 0 ? 1 : 0
+    const side = body.axes[across]
+    const offset = dx * side.x + dy * side.y + dz * side.z
+    if (slotOffsets(body.half.getComponent(across) * 2).some((slot) => Math.abs(offset - slot) <= 1)) return true
+  }
+  return false
+}
 
 /**
  * Brackets that are not where they could be bolted.
  *
  * Worth checking because nothing else will: a bracket floating beside a joint renders
- * exactly like one bolted to it, and the cut list counts it either way. The seat is the
- * same calculation the placement uses, so this asks whether each part is where the tool
- * would put it now — which catches parts left behind by a member that has since moved, and
- * anything placed by hand in a spot that has no slots under it.
+ * exactly like one bolted to it, and the cut list counts it either way. Check its actual
+ * bolt contact points independently of the seating calculation: both must lie on a slot
+ * of their own member, on the correct face and within that member's cut length.
  */
-export function auditBrackets(profiles: ProfileData[], connectors: ConnectorData[]): BracketFault[] {
+export function auditBrackets(profiles: ProfileData[], connectors: ConnectorData[], trims = computeAllTrims(profiles)): BracketFault[] {
   const faults: BracketFault[] = []
-  const ends = profiles.map((p) => ({ p, ...getProfileEndpoints(p) }))
+  const members = profiles.map((p) => ({ p, body: trimmedOBB(p, trims.get(p.id)!) }))
   for (const c of connectors) {
-    if (!connectorEntry(c.type)?.isCornerBracket) continue
+    const kind = connectorEntry(c.type)?.seat
+    if (kind !== 'angle' && kind !== 'plate') continue
     const here = new THREE.Vector3(...c.position)
-    // the joint it belongs to: the nearest end of any member that butts into another
-    let best: { seat: BracketSeat; d: number } | null = null
-    for (const { p, start, end } of ends) {
-      for (const at of [start, end]) {
-        // Wide enough to still find the joint a bracket was stepped along a post to reach,
-        // which is a legitimate placement and can be a few section widths from the corner.
-        if (at.distanceTo(here) > JOINT_TOL * 6) continue
-        for (const { p: q } of ends) {
-          if (q.id === p.id) continue
-          const { start: qs, end: qe } = getProfileEndpoints(q)
-          if (closestOnSegment(at, qs, qe).point.distanceTo(at) > JOINT_TOL) continue
-          const seat = seatFor(c.type, p, q, at)
-          if (!seat) continue
-          // Sliding along the member a bracket is bolted to is free: a slot runs the whole
-          // length of a profile, so the bolt is still on its slot line. It is what stepping
-          // two brackets apart at a shared post does. Only the offset across the member is
-          // a bracket that is not where it can be bolted.
-          const along = getProfileDir(q)
-          const off = new THREE.Vector3(...seat.position).sub(here)
-          const d = off.clone().addScaledVector(along, -off.dot(along)).length()
-          if (!best || d < best.d) best = { seat, d }
-        }
-      }
+    const quat = new THREE.Quaternion(...c.quaternion).normalize()
+    const x = new THREE.Vector3(1, 0, 0).applyQuaternion(quat)
+    const y = new THREE.Vector3(0, 1, 0).applyQuaternion(quat)
+    const z = new THREE.Vector3(0, 0, 1).applyQuaternion(quat)
+    const k = connectorScale(c.series ?? 20)
+    const alongX = c.type === 't-bracket' ? [-22, 22] : [kind === 'angle' ? 16 : 18]
+    const alongY = c.type === 't-bracket' ? [28] : [kind === 'angle' ? 16 : 18]
+    const supports = (dir: THREE.Vector3, normal: THREE.Vector3, offsets: number[]) => {
+      const bolts = offsets.map((offset) => here.clone().addScaledVector(dir, offset * k))
+      return members.filter(({ body }) => Math.abs(body.axes[2].dot(dir)) > 0.999
+        && bolts.every((bolt) => boltOnFace(bolt, normal, body)))
     }
-    if (!best) { faults.push({ id: c.id, off: Infinity, reason: 'no-joint', at: here }); continue }
-    if (best.d > SEAT_TOL) faults.push({ id: c.id, off: Math.round(best.d * 10) / 10, reason: 'off-seat', at: here })
+    const a = supports(x, kind === 'angle' ? y : z, alongX)
+    const b = supports(y, kind === 'angle' ? x : z, alongY)
+    let pairs = a.flatMap((u) => b.filter((v) => v.p.id !== u.p.id && sharedEdge(u.p.spec, v.p.spec)).map((v) => [u.p, v.p]))
+    if (c.type === 'corner-3way') {
+      // The third arm follows local +Z. Its bolt may enter either adjacent slot face,
+      // but it must land on a third actual member, with the arm's own direction and pitch.
+      const third = [...supports(z, x, [16]), ...supports(z, y, [16])]
+      pairs = pairs.flatMap(([u, v]) => third.filter(({ p }) => p.id !== u.id && p.id !== v.id
+        && sharedEdge(u.spec, p.spec) && sharedEdge(v.spec, p.spec)).map(({ p }) => [u, v, p]))
+    }
+    if (!pairs.length) faults.push({ id: c.id, off: Infinity, reason: 'no-joint', at: here })
+    else if (!pairs.some((parts) => Math.min(...parts.map((p) => seriesOf(p.spec))) === (c.series ?? 20))) {
+      faults.push({ id: c.id, off: 0, reason: 'wrong-series', at: here })
+    }
   }
   return faults
 }

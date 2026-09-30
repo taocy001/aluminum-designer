@@ -1,8 +1,7 @@
 import { create } from 'zustand'
 import * as THREE from 'three'
-import { ProfileSpec } from './useStore'
+import { useStore, type ProfileSpec } from './useStore'
 import type { Axis, ThroughRule } from '../utils/jointUtils'
-import { getThroughRule, setThroughRule as applyThroughRule } from '../utils/jointUtils'
 import type { PivotMode } from '../utils/editOps'
 import type { Candidate } from '../utils/suggest'
 import type { ProfileData } from './useStore'
@@ -256,7 +255,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   showDimensionLabels: true,
   showGizmo: true,
   pivotMode: 'center',
-  throughRule: getThroughRule(),
+  throughRule: useStore.getState().throughRule,
   workPlaneY: 0,
   quickMenuAt: null,
   selectMode: false,
@@ -286,10 +285,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
   triggerCameraReset: (scope = 'all') => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1, cameraFitScope: scope })),
   setPendingRotate: (pendingRotate) => set({ pendingRotate }),
   // going to look puts down whatever is in hand: nothing can be drawn while looking
-  setViewMode: (viewMode) => set({
-    viewMode,
-    ...(viewMode ? { held: null, activeConnectorType: null, isDrawing: false, selectMode: false, startPoint: null, currentPoint: null, pendingRotate: null } : {}),
-  }),
+  setViewMode: (viewMode) => {
+    if (viewMode) { get().stopDrag(); get().stopResize() }
+    set({
+      viewMode,
+      ...(viewMode ? { held: null, activeConnectorType: null, isDrawing: false, selectMode: false,
+        startPoint: null, currentPoint: null, pendingRotate: null, isFrameSelecting: false,
+        frameSelectStart: null, frameSelectCurrent: null, frameSelectRect: null, suggestion: null } : {}),
+    })
+  },
   toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
   toggleFittings: () => set((s) => ({ showFittings: !s.showFittings })),
   setSection: (section) => set({ section }),
@@ -361,7 +365,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
   setPivotMode: (pivotMode) => set({ pivotMode }),
-  setThroughRule: (rule) => { applyThroughRule(rule); set({ throughRule: rule }) },
+  setThroughRule: (rule) => useStore.getState().setThroughRule(rule),
   setWorkPlaneY: (workPlaneY) => set({ workPlaneY: isFinite(workPlaneY) ? Math.max(0, Math.round(workPlaneY)) : 0 }),
   openQuickMenu: (x, y) => set({ quickMenuAt: { x, y } }),
   closeQuickMenu: () => set({ quickMenuAt: null }),
@@ -383,3 +387,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setFrameSelectRect: (rect) => set({ frameSelectRect: rect }),
   clearFrameSelectRect: () => set({ frameSelectRect: null }),
 }))
+
+useStore.subscribe((state, previous) => {
+  if (state.throughRule !== previous.throughRule) useToolStore.setState({ throughRule: state.throughRule })
+})

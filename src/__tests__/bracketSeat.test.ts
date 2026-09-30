@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
 import { setThroughRule } from '../utils/jointUtils'
-import { seatAngle, seatBracket, seatFor, sharedSlotLine } from '../utils/bracketSeat'
+import { auditBrackets, seatAngle, seatBracket, seatFor, sharedSlotLine } from '../utils/bracketSeat'
 import { slotOffsets, nearestSlot } from '../utils/specUtils'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
 
@@ -230,6 +230,27 @@ describe('a cast corner bracket sits inside the corner', () => {
     const plate = seatBracket(rail(), post(), V(0, 10, 0))!
     const d = Math.hypot(...angle.position.map((v, i) => v - plate.position[i]))
     expect(d).toBeGreaterThan(5)
+  })
+
+  it('audits both flanges and the orientation against the actual cut members', () => {
+    const rail = P(0, 400, 0, 600, 400, 0), post = P(0, 0, 0, 0, 800, 0)
+    const seat = seatAngle(rail, post, V(0, 400, 0))!
+    const fitted = { id: 'c', type: 'bracket', ...seat }
+    expect(auditBrackets([rail, post], [fitted])).toEqual([])
+    expect(auditBrackets([rail, post], [{ ...fitted, position: [10, 510, 0] }])).toHaveLength(1)
+    expect(auditBrackets([rail, post], [{ ...fitted, quaternion: [0, Math.SQRT1_2, 0, Math.SQRT1_2] }])).toHaveLength(1)
+    expect(auditBrackets([rail, post], [{ ...fitted, series: 40 }])).toHaveLength(1)
+  })
+
+  it('a three-way connector needs a separately supported third arm', () => {
+    const rail = P(0, 10, 0, 600, 10, 0), post = P(0, 0, 0, 0, 800, 0)
+    const seat = seatAngle(rail, post, V(0, 10, 0))!
+    const c = { id: 'three-way', type: 'corner-3way', ...seat }
+    expect(auditBrackets([rail, post], [c])).toHaveLength(1)
+    const third = P(10, 10, 0, 10, 10, 600)
+    expect(auditBrackets([rail, post, third], [c])).toEqual([])
+    const missingFace = { ...third, position: [20, 10, 0] as [number, number, number] }
+    expect(auditBrackets([rail, post, missingFace], [c])).toHaveLength(1)
   })
 })
 

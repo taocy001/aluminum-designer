@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react'
 import Viewport from './components/Viewport'
 import Sidebar from './components/Sidebar'
 import QuickMenu from './components/QuickMenu'
 import Tooltip from './components/Tooltip'
+import RecoveryNotice from './components/RecoveryNotice'
 import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
@@ -36,6 +37,7 @@ function App() {
 
   // Exact-length input while drawing
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
   useEffect(() => {
     const onChange = () => setIsFullscreen(document.fullscreenElement !== null)
     document.addEventListener('fullscreenchange', onChange)
@@ -90,7 +92,16 @@ function App() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName
       const isInInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+        || (e.target as HTMLElement)?.isContentEditable
       const mod = e.ctrlKey || e.metaKey
+
+      // Text editing and native button activation belong to the focused control.
+      const nativeButtonKey = tag === 'BUTTON' && !mod && (
+        [' ', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)
+        || e.code === 'Space'
+      )
+      if (isInInput || nativeButtonKey) return
+      if (viewMode && mod && ['z', 'y'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
 
       if (mod && e.key.toLowerCase() === 'a') {
         e.preventDefault()
@@ -100,7 +111,6 @@ function App() {
       }
       if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return }
       if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return }
-      if (isInInput) return
 
       // Looking, not building: the view keys still work, the ones that change things do not.
       if (viewMode && !['Escape', 'f', 'F', 'F11', ' '].includes(e.key) && e.code !== 'Space') {
@@ -217,6 +227,20 @@ function App() {
 
   // Frame selection overlay
   const mainRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const [hudTop, setHudTop] = useState(124)
+  useLayoutEffect(() => {
+    const toolbar = toolbarRef.current
+    const viewport = mainRef.current
+    if (!toolbar || !viewport) return
+    const update = () => setHudTop(Math.ceil(toolbar.getBoundingClientRect().bottom) + 8)
+    const observer = new ResizeObserver(update)
+    observer.observe(toolbar)
+    observer.observe(viewport)
+    window.addEventListener('resize', update)
+    update()
+    return () => { observer.disconnect(); window.removeEventListener('resize', update) }
+  }, [])
   const frameRect = isFrameSelecting && frameSelectStart && frameSelectCurrent ? {
     left: Math.min(frameSelectStart.x, frameSelectCurrent.x),
     top: Math.min(frameSelectStart.y, frameSelectCurrent.y),
@@ -226,6 +250,7 @@ function App() {
 
   const handleMainPointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).tagName !== 'CANVAS') return // toolbar / overlays
+    mainRef.current?.focus({ preventScroll: true })
     if (held !== null || e.button !== 0) return
     // Plain selection and clearing are handled by PointerRouter (on release, so orbiting keeps it)
     if (selectMode) startFrameSelect(e.clientX, e.clientY)
@@ -273,23 +298,25 @@ function App() {
     : activeSpec
   /** the toolbar is icons: the name lives in the tooltip and the accessible name */
   const iconBtn = (active: boolean, activeCls: string) =>
-    `flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
+    `flex items-center justify-center gap-1 min-w-11 h-11 px-1 md:px-0 md:min-w-0 md:w-8 md:h-8 rounded-lg shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
   const toolBtn = (active: boolean, activeCls: string) =>
-    `flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
+    `flex items-center gap-1.5 min-h-11 md:min-h-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
+  const advancedTools = `${mobileToolsOpen ? 'flex' : 'hidden'} md:flex flex-wrap md:flex-nowrap justify-center items-center gap-0.5 max-w-full order-2 md:order-none`
+  const mobileLabel = (label: string) => <span className="md:hidden text-[10px] font-bold">{label}</span>
 
   return (
     <div className="w-full h-full bg-[#0f172a] flex flex-col overflow-hidden">
-      <header className="h-14 bg-slate-800 border-b border-white/10 flex items-center px-6 text-white shadow-2xl z-20 shrink-0">
-        <h1 className="text-lg font-black tracking-tighter flex items-center gap-3 uppercase">
+      <header className="h-14 bg-slate-800 border-b border-white/10 flex items-center px-3 md:px-6 gap-2 text-white shadow-2xl z-20 shrink-0">
+        <h1 className="min-w-0 text-sm md:text-lg font-black tracking-tighter flex items-center gap-2 md:gap-3 uppercase">
           <div className="w-6 h-6 bg-blue-500 rounded-sm rotate-45 flex items-center justify-center text-[10px] text-white font-bold">AL</div>
-          {t.title}
+          <span className="truncate">{t.title}</span>
         </h1>
 
         <div className="ml-auto flex items-center gap-3">
           {/* which gizmo handle the pointer is on */}
           {gizmoHover && !isDragging && (
             <div data-testid="gizmo-hint"
-              className="absolute top-[88px] left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-white/15 text-[11px] font-bold text-slate-200 shadow-lg pointer-events-none z-10">
+              style={{ top: hudTop }} className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-white/15 text-[11px] font-bold text-slate-200 shadow-lg pointer-events-none z-10">
               {gizmoHover.kind === 'move' ? t.gizmoMove(gizmoHover.axis.toUpperCase()) : t.gizmoRotate(gizmoHover.axis.toUpperCase())}
             </div>
           )}
@@ -297,7 +324,7 @@ function App() {
           {/* how many parts share these pixels, and which one is highlighted */}
           {!isDragging && !isDrawing && hoverCandidates.count > 1 && (
             <div data-testid="stacked-hud"
-              className="absolute top-[124px] left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-900/90 border border-white/15 text-[10px] font-bold text-slate-300 shadow-lg pointer-events-none z-10">
+              style={{ top: hudTop + 36 }} className="absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-900/90 border border-white/15 text-[10px] font-bold text-slate-300 shadow-lg pointer-events-none z-10">
               {t.stacked(hoverCandidates.index + 1, hoverCandidates.count)}
             </div>
           )}
@@ -305,7 +332,7 @@ function App() {
           {/* what the drag has locked onto right now */}
           {isDragging && snapGuides.length > 0 && (
             <div data-testid="snap-hud"
-              className="absolute top-[88px] left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/50 text-[11px] font-bold text-cyan-200 shadow-lg pointer-events-none z-10">
+              style={{ top: hudTop }} className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/50 text-[11px] font-bold text-cyan-200 shadow-lg pointer-events-none z-10">
               {[...new Set(snapGuides.map((g) => t.snapAlign[g.kind] ?? g.kind))].join(' · ')}
             </div>
           )}
@@ -351,7 +378,7 @@ function App() {
           )}
 
           {isDrawing && (
-            <div className="flex items-center gap-2" data-testid="draw-hud" data-keep-draw>
+            <div style={{ top: hudTop }} className="absolute left-2 right-2 md:static flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 md:bg-transparent rounded-xl p-2 md:p-0" data-testid="draw-hud" data-keep-draw>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-bold border"
                 style={drawAxis
                   ? { color: AXIS_COLORS[drawAxis], borderColor: AXIS_COLORS[drawAxis] + '66', background: AXIS_COLORS[drawAxis] + '15' }
@@ -362,7 +389,7 @@ function App() {
                 {snapKind && snapKind !== 'grid' && (<><span className="opacity-60">|</span><span data-testid="snap-kind" className="text-cyan-300">{t.snapNames[snapKind] ?? snapKind}</span></>)}
               </div>
               <div className="flex items-center gap-1 bg-slate-700/80 border border-white/10 rounded-full overflow-hidden">
-                <input ref={preciseInputRef} type="number" value={preciseInput} data-testid="precise-input"
+                <input ref={preciseInputRef} type="number" value={preciseInput} data-testid="precise-input" aria-label={t.exactLength}
                   onChange={(e) => setPreciseInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') { e.preventDefault(); confirmPreciseLength() }
@@ -380,12 +407,12 @@ function App() {
           {/* Typing a number mid-gesture finishes it exactly: how far to move, or how long
               the member should be. The mouse gets the direction, the keyboard the size. */}
           {exactGesture && (
-            <div className="flex items-center gap-2" data-testid="exact-hud" data-keep-draw>
+            <div style={{ top: hudTop }} className="absolute left-2 right-2 md:static flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 md:bg-transparent rounded-xl p-2 md:p-0" data-testid="exact-hud" data-keep-draw>
               <div className="px-3 py-1.5 rounded-full text-xs font-mono font-bold border text-amber-200 border-amber-400/50 bg-amber-500/10">
                 {exactGesture === 'move' ? t.exactMove : t.exactLength}
               </div>
               <div className="flex items-center gap-1 bg-slate-700/80 border border-white/10 rounded-full overflow-hidden">
-                <input ref={exactInputRef} type="number" value={exactInput} data-testid="exact-input"
+                <input ref={exactInputRef} type="number" value={exactInput} data-testid="exact-input" aria-label={exactGesture === 'move' ? t.exactMove : t.exactLength}
                   onChange={(e) => setExactInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') { e.preventDefault(); confirmExact() }
@@ -405,16 +432,18 @@ function App() {
           </button>
         </div>
       </header>
+      <RecoveryNotice />
 
       {/* Side by side where there is room, stacked where there is not: on a phone the
           drawing takes the screen and the panel is a sheet along the bottom edge. */}
-      <div className="flex-grow flex overflow-hidden flex-col md:flex-row">
+      <div className="flex-grow min-h-0 flex overflow-hidden flex-col md:flex-row">
         <Sidebar />
         <main
           ref={mainRef}
-          className="flex-grow relative min-w-0"
+          className="flex-grow relative min-w-0 min-h-0"
           style={{ cursor: viewportCursor }}
           data-testid="viewport"
+          tabIndex={0} role="region" aria-label={t.title}
           onPointerDown={handleMainPointerDown}
           onPointerMove={handleMainPointerMove}
           onPointerUp={handleMainPointerUp}
@@ -435,7 +464,7 @@ function App() {
               plane — keep their words, because a toolbar that wraps into a column is worse
               than a short label. On a phone there is no row wide enough, and a strip that
               scrolls sideways hides its own end, so there it wraps to two. */}
-          <div className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap md:flex-nowrap whitespace-nowrap max-w-[calc(100%-1rem)] md:overflow-x-auto bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
+          <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap md:flex-nowrap whitespace-nowrap w-[calc(100%-1rem)] md:w-auto max-w-[calc(100%-1rem)] md:overflow-x-auto bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
             {/* What is in hand, and the way to put it down. Not a mode switch: it only ever
                 empties the hand, because filling it is the sidebar's job. */}
             {/* the label is the part's name, but the accessible name says what the button does,
@@ -445,75 +474,89 @@ function App() {
               aria-label={held !== null ? `${t.putDown} ${heldName}` : t.emptyHand}
               className={held !== null
                 ? toolBtn(true, 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/40')
-                : 'flex items-center justify-center w-8 h-8 rounded-lg shrink-0 text-slate-400'}>
+                : 'flex items-center justify-center min-w-11 h-11 md:w-8 md:h-8 rounded-lg shrink-0 text-slate-400'}>
               {held !== null
                 ? <><Pencil size={13} />{heldName}<X size={11} className="opacity-60" /></>
                 : <Hand size={14} />}
             </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="select-toggle" onClick={() => { putDown(); setSelectMode(!selectMode) }}
               title={t.selectMode} aria-label={t.selectMode}
+              aria-pressed={selectMode}
               className={iconBtn(selectMode, 'bg-violet-600/30 text-violet-400')}>
-              <MousePointer2 size={14} />
+              <MousePointer2 size={14} />{mobileLabel(t.selectMode)}
             </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            <div className={advancedTools}>
             {/* One switch for every measurement on the drawing: the cut length on each member
                 and the overall size around it are the same question asked at two scales. */}
             <button onClick={toggleFittings} data-testid="fittings-toggle" title={t.hintShowFittings}
+              aria-pressed={showFittings}
               aria-label={t.showFittings} className={iconBtn(!showFittings, 'bg-slate-600/40 text-slate-100')}>
-              {showFittings ? <DoorOpen size={14} /> : <DoorClosed size={14} />}
+              {showFittings ? <DoorOpen size={14} /> : <DoorClosed size={14} />}{mobileLabel(t.showFittings)}
             </button>
             <button onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labelsHint}
+              aria-pressed={showDimensionLabels}
               aria-label={t.labels} className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
-              <Ruler size={14} />
+              <Ruler size={14} />{mobileLabel(t.labels)}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
+              aria-pressed={showGizmo}
               aria-label={t.rotate3d} className={iconBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
-              <Rotate3d size={14} />
+              <Rotate3d size={14} />{mobileLabel(t.rotate3d)}
             </button>
             {/* Where the selection turns about. The gizmo moves onto it, so the choice is visible. */}
             <button data-testid="pivot-toggle" onClick={cyclePivotMode} title={t.pivotHint}
               aria-label={t.pivotHint}
               className={iconBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
-              <Crosshair size={14} />
+              <Crosshair size={14} />{mobileLabel(pivotMode === 'center' ? t.pivotCenter : pivotMode === 'start' ? t.pivotStart : t.pivotEnd)}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (F11)`}
+              aria-pressed={isFullscreen}
               aria-label={t.fullscreen} className={iconBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
-              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}{mobileLabel(t.fullscreen)}
             </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            </div>
+            <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* Building or looking: two states, so one switch. It shows the state it is in,
                 not the one it would take you to — a button that lies about where you are is
                 worse than one more click. */}
             <button data-testid="measure-toggle" onClick={() => measuring ? stopMeasuring() : startMeasuring()}
+              aria-pressed={!!measuring}
               title={t.hintMeasure} aria-label={t.measure}
               className={iconBtn(!!measuring, 'bg-amber-500 text-white shadow-lg')}>
-              <Ruler size={14} />
+              <Ruler size={14} />{mobileLabel(t.measure)}
             </button>
             {/* The next member the drawing most likely needs, offered as a ghost to click */}
-            <button data-testid="suggest-next" onClick={() => { if (isDrawing) cancelDraw(); nextSuggestion() }}
+            <div className={advancedTools}><button data-testid="suggest-next" onClick={() => { if (isDrawing) cancelDraw(); nextSuggestion() }}
               disabled={viewMode || !!measuring}
               title={t.hintSuggest} aria-label={t.suggest}
               className={`${iconBtn(!!suggestion, 'bg-emerald-600/30 text-emerald-300')} disabled:opacity-30 disabled:pointer-events-none`}>
-              <Lightbulb size={14} />
-            </button>
+              <Lightbulb size={14} />{mobileLabel(t.suggest)}
+            </button></div>
             <button data-testid="mode-toggle" onClick={() => setViewMode(!viewMode)}
+              aria-pressed={viewMode}
               title={viewMode ? t.hintLook : t.hintBuild} aria-label={viewMode ? t.look : t.build}
               className={iconBtn(true, viewMode ? 'bg-emerald-600 text-white shadow-lg' : 'bg-blue-600 text-white shadow-lg')}>
-              {viewMode ? <Eye size={14} /> : <PencilRuler size={14} />}
+              {viewMode ? <Eye size={14} /> : <PencilRuler size={14} />}{mobileLabel(viewMode ? t.look : t.build)}
             </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* The wheel already does this; the buttons are for trackpads and for anyone who
                 would rather press something than learn a gesture. */}
-            <button data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
-              className={iconBtn(false, '')}><Minus size={14} /></button>
+            <div className={advancedTools}><button data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
+              className={iconBtn(false, '')}><Minus size={14} />{mobileLabel(t.zoomOut)}</button>
             <button data-testid="zoom-in" onClick={() => zoomBy(1)} title={t.zoomIn} aria-label={t.zoomIn}
-              className={iconBtn(false, '')}><Plus size={14} /></button>
+              className={iconBtn(false, '')}><Plus size={14} />{mobileLabel(t.zoomIn)}</button></div>
             <button data-testid="fit-view" onClick={() => triggerCameraReset('all')} title={`${t.fitView} (F)`}
               aria-label={t.fitView} className={iconBtn(false, '')}>
-              <Home size={14} />
+              <Home size={14} />{mobileLabel(t.home)}
+            </button>
+            <button data-testid="mobile-tools-toggle" data-keep-draw onClick={() => setMobileToolsOpen(!mobileToolsOpen)}
+              aria-expanded={mobileToolsOpen} aria-label={t.toolbarMore}
+              className="md:hidden flex items-center justify-center min-h-11 px-2 text-[10px] font-bold text-slate-300 rounded-lg bg-slate-700/50">
+              {t.toolbarMore}
             </button>
           </div>
 
@@ -525,7 +568,8 @@ function App() {
               {measuring ? (t.measureHint) : viewMode ? t.look : selectMode ? t.selectMode : held !== null ? `${t.draw} · ${heldName}` : t.emptyHand}
             </div>
             <button data-testid="help-toggle" onClick={toggleHelp} title={t.hintHelp} aria-label={t.help}
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-900/80 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/25 shadow-2xl">
+              aria-expanded={helpOpen}
+              className="flex items-center justify-center w-11 h-11 md:w-7 md:h-7 rounded-full bg-slate-900/80 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/25 shadow-2xl">
               <HelpCircle size={13} />
             </button>
           </div>
@@ -542,7 +586,7 @@ function App() {
           )}
 
           {/* Toasts */}
-          <div className="absolute top-20 right-6 flex flex-col gap-2 items-end pointer-events-none z-20" data-testid="toasts">
+          <div className="absolute top-20 right-6 flex flex-col gap-2 items-end pointer-events-none z-20" data-testid="toasts" role="status" aria-live="polite" aria-atomic="false">
             {toasts.map((toast) => (
               <div key={toast.id} className={`px-4 py-2 rounded-lg text-xs font-bold shadow-2xl border backdrop-blur-md ${
                 toast.kind === 'error' ? 'bg-red-600/80 border-red-400/40 text-white'

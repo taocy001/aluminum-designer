@@ -4,12 +4,11 @@ import { useStore, type ConnectorData, type ProfileData } from '../store/useStor
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame, connectorOBB, trimmedOBB } from './analysis'
 import { obbPenetration, type OBB } from './obb'
-import { specDims } from './specUtils'
 import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector } from './connectorFit'
 import { closestOnSegment, getProfileDir, getProfileEndpoints } from './geometryCore'
 import { flushFace, sharedEdge } from './specCompat'
-import { seatFor } from './bracketSeat'
+import { auditBrackets, connectorSeatAt, seatsFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
 
@@ -79,10 +78,13 @@ export function autoConnect(type: string): AutoConnectResult {
   const { trims } = analyzeFrame(profiles)
   const metal = profiles.map((q) => trimmedOBB(q, trims.get(q.id)!))
   // Deduplicate against existing connectors of the requested type, preserving separate seats for distinct joints.
-  const existing = connectors
-    .filter((c) => connectorEntry(c.type)?.fit === entry.fit)
-    .map((c) => new THREE.Vector3(...c.position))
-  const isFree = (v: THREE.Vector3) => !existing.some((p) => p.distanceTo(v) <= OCCUPIED_MM)
+  const badBrackets = new Set(auditBrackets(profiles, connectors, trims).map((c) => c.id))
+  const active = connectors.filter((c) => c.type !== type || c.locked || !badBrackets.has(c.id))
+  const validExisting = active.filter((c) => connectorEntry(c.type)?.fit === entry.fit
+    && (entry.fit !== 'corner' || !badBrackets.has(c.id)))
+  const occupied = (candidate: ConnectorData) => [...validExisting, ...made].some((c) =>
+    new THREE.Vector3(...c.position).distanceTo(new THREE.Vector3(...candidate.position)) <= 1
+    && Math.abs(new THREE.Quaternion(...c.quaternion).dot(new THREE.Quaternion(...candidate.quaternion))) > 0.999)
 
   const made: ConnectorData[] = []
   let skipped = 0
@@ -105,17 +107,24 @@ export function autoConnect(type: string): AutoConnectResult {
         if (outward.y > -0.9) continue
       }
       wanted.push(at.clone())
-      if (!isFree(at)) { skipped++; continue }
 
       // Where the part goes is a question about bolts, not about points. `seatBracket` puts
       // the back on the face the two members share and each hole on a slot line; a part
       // dropped on the centreline is a marker, not something that can be fitted.
       const partner = partnerAt(at, p, profiles)
-      const seat = partner ? seatFor(type, p, partner, at) : null
+      const candidates = partner ? seatsFor(type, p, partner, at) : []
+      const seat = candidates.find((s) => auditBrackets(profiles, [{ id: 'candidate', type, ...s }], trims).length === 0)
       let position: [number, number, number]
       let quaternion: [number, number, number, number]
       let series: ConnectorSeries
-      if (seat) {
+      if (entry.fit === 'inline' && entry.axes.towards === 'in') {
+        // The model origin is halfway up the foot, while the member endpoint is its top.
+        // Use the same end seat as manual placement and the specific post being processed.
+        const inline = connectorSeatAt(type, at, [p])
+        position = inline.position
+        quaternion = inline.quaternion
+        series = inline.series
+      } else if (seat) {
         position = seat.position
         quaternion = seat.quaternion
         series = seat.series
@@ -136,19 +145,13 @@ export function autoConnect(type: string): AutoConnectResult {
         quaternion = placement.quaternion
         series = placement.series ?? seriesOf(p.spec)
       }
-      // Two rails butting into the same post put a bracket on each of two faces of it, and
-      // those two brackets still meet round the corner of the post. Real assembly steps them
-      // apart along the post, and so does this: a slot runs the length of a profile, so
-      // sliding along it does not move a bolt off its slot line.
-      const part = { id: nextId('c'), type, series, position, quaternion }
-      if (partner) {
-        const along = getProfileDir(partner)
-        const step = specDims(partner.spec).w + 4
-        for (let tries = 0; tries < 8 && crowded(part, made, metal); tries++) {
-          const sign = tries % 2 === 0 ? 1 : -1
-          const by = along.clone().multiplyScalar(sign * step * Math.ceil((tries + 1) / 2))
-          part.position = [position[0] + by.x, position[1] + by.y, position[2] + by.z]
-        }
+      let part = { id: nextId('c'), type, series, position, quaternion }
+      if (occupied(part)) { skipped++; continue }
+      if (entry.fit === 'corner') {
+        const legal = candidates.map((s) => ({ ...part, ...s })).find((c) =>
+          !occupied(c) && auditBrackets(profiles, [c], trims).length === 0 && !crowded(c, [...active, ...made], metal))
+        if (!legal) { unbolted++; continue }
+        part = legal
       }
       made.push(part)
     }
@@ -159,7 +162,7 @@ export function autoConnect(type: string): AutoConnectResult {
     .filter((c) => c.type === type && !c.locked)
     .filter((c) => {
       const v = new THREE.Vector3(...c.position)
-      return !wanted.some((w) => w.distanceTo(v) <= OCCUPIED_MM * 2)
+      return badBrackets.has(c.id) || !wanted.some((w) => w.distanceTo(v) <= OCCUPIED_MM * 2)
     })
     .map((c) => c.id)
 
@@ -168,8 +171,7 @@ export function autoConnect(type: string): AutoConnectResult {
     return { placed: 0, skipped, unbolted, reason: 'nothing-open' }
   }
   noteNext(`fit ${connectorLabel(type, useToolStore.getState().language)}`)
-  if (stale.length > 0) store.removeConnectors(stale, made.length === 0)
-  if (made.length > 0) store.addItems([], made, false)
+  store.commitDocument({ connectors: [...connectors.filter((c) => !stale.includes(c.id)), ...made] })
   useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, stale.length, unbolted), unbolted ? 'info' : 'success')
   return { placed: made.length, skipped, removed: stale.length, unbolted }
 }

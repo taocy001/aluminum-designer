@@ -27,8 +27,9 @@ React 19 + @react-three/fiber（Three.js）+ Zustand + Vite，TypeScript strict�
 
 所有零件都有 `locked`：锁定件仍可见、仍参与吸附与清单，但不被移动或删除。
 
-**工程文件**：JSON，`version: 3`（`Sidebar.tsx` 导出，`projectFile.ts` 读写），
-旧版本由 `migrate.ts` 迁到当前语义。分享链接是同一数据按列打包 + deflate +
+**工程文件**：JSON，`version: 4`（`document.ts` 校验/序列化，`projectFile.ts` 读写），
+包括工程贯通规则，兼容旧版本。四类零件、坐标、尺寸和ID在替换当前工程前统一校验。
+分享链接是工程数据按列打包 + deflate +
 base64url 压进 URL 片段，不经过服务器（`shareLink.ts`）。
 
 ## 2. 坐标与单位
@@ -43,7 +44,7 @@ base64url 压进 URL 片段，不经过服务器（`shareLink.ts`）。
 这几条规则是"画完能下料"的全部依据，每条都有单元测试。
 
 **接头修剪**（`jointUtils.computeTrims`）
-贯通优先级 Y（立柱）> X > Z（侧栏可切换为横梁贯通）。低优先级构件在接头处对接
+贯通默认横梁 X > Z > Y，可在侧栏切换为立柱 Y > X > Z；规则属于工程、可撤销、随保存和分享恢复。低优先级构件在接头处对接
 （切短半个对方截面），高优先级构件在角接处延伸到对方外表面。T 接头端点落在对方
 中线内部即对接。容差接头：端点落在对方截面 ±1mm 内即成接头，多/少几毫米被吸收。
 输出每端 trim 与 cutLength——**下料长度 ≠ 中心线长度**。
@@ -75,9 +76,11 @@ base64url 压进 URL 片段，不经过服务器（`shareLink.ts`）。
 
 ## 4. 交互模型
 
-**没有模式，只有"手里拿着什么"。** `useToolStore.held`：点侧栏规格/连接件即拿在手里，
+**绘制按「手里拿着什么」决定。** `useToolStore.held`：点侧栏规格/连接件即拿在手里，
 点画布落点；再点一次或 Esc 放下。空手点击即选中。三键固定：左键拖空白转视角、
 右键平移、滚轮缩放，与手里拿什么无关。
+框选、测量和查看有独立状态。查看时不允许设计修改或撤销，门抽屉开合仍可模拟。
+全局快捷键不接管输入框编辑和按钮的原生空格激活。触屏长按和双指手势消费原始点击，避免同时绘制。
 
 **拾取两条规则，有先后**（`frontmost.ts` + `screenPick.ts` + `PointerRouter.tsx`）：
 ① 画面上画的是谁，点中的就是谁（对真实网格做射线检测，命中的直接提到最前）；
@@ -92,12 +95,13 @@ base64url 压进 URL 片段，不经过服务器（`shareLink.ts`）。
 
 ```
 useStore（zustand + persist → localStorage）
-  profiles / connectors / panels / fittings + 撤销栈 + 操作日志
+  profiles / connectors / panels / fittings / throughRule + 选择集 + 撤销栈
 useToolStore（运行时，不持久化）
-  held / 选择集 / 绘制态 / 拖拽态 / 视图开关
+  held / 绘制态 / 拖拽态 / 视图开关
 ```
 
-几何判断全部是 `src/utils/` 下的纯函数，不碰 store，所以每条规则都测得到。
+几何计算主要是 `src/utils/` 下可独立测试的函数。编辑操作会读写 store；接头计算读取当前贯通规则。
+操作日志独立持久化，覆盖四类零件与规则修改；预览编辑只产生一条撤销。
 
 ## 6. 模块地图
 
@@ -108,7 +112,7 @@ Profile / Connector / Panel / Fitting（四类零件渲染）、SnapMarker（屏
 TextSprite / LabelLayout / FrameDimensions（标注）、SuggestionGhost（建议预览）、
 Sidebar（组件库/属性/清单）、Gestures（触屏手势）、Tooltip。
 
-**`src/utils/`**（全部纯函数）
+**`src/utils/`**（几何计算与编辑/文件操作）
 
 | 文件 | 职责 |
 |---|---|
@@ -131,7 +135,7 @@ Sidebar（组件库/属性/清单）、Gestures（触屏手势）、Tooltip。
 
 - `npm test`：vitest 单元测试（`src/__tests__`），覆盖每条几何规则与示例自检
   （`examples.test.ts` 读 `examples/` 全部工程：零干涉、接头全部可装、角码落位正确）。
-- `npm run test:e2e`：Playwright 无头 Chromium（`e2e/`，391 个用例），
+- `npm run test:e2e`：Playwright 无头 Chromium（`e2e/`），
   用真实渲染结果模拟点击。跑 e2e 时不要改源码——热更新会换页面。
 - 开发模式下 `window.__aluframe` 暴露测试钩子（store / camera / worldToClient /
   pickAt / conflicts / trims 等）。

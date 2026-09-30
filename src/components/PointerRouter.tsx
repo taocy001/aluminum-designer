@@ -335,15 +335,14 @@ const PointerRouter: React.FC = () => {
         const part = modifierHeld || reachingForEnd(cursor, rect, ray) ? null : gizmoHandleAt(ray)
         if (part?.kind === 'move') {
           const store = useStore.getState()
-          const lead = store.profiles.find((p) => store.selectedIds.includes(p.id))
-            ?? store.panels.find((b) => store.selectedIds.includes(b.id))
-            ?? store.fittings.find((f) => store.selectedIds.includes(f.id))
+          const lead = store.profiles.find((p) => store.selectedIds.includes(p.id) && !p.locked)
+            ?? store.panels.find((b) => store.selectedIds.includes(b.id) && !b.locked)
+            ?? store.fittings.find((f) => store.selectedIds.includes(f.id) && !f.locked)
           if (!lead) return
           const groupOrigins: Record<string, [number, number, number]> = {}
           for (const sid of store.selectedIds) {
             const part2 = partById(store, sid)
             if (!part2 || part2.locked) continue
-            if (store.connectors.some((c) => c.id === sid)) continue   // brackets stay on their joints
             groupOrigins[sid] = [part2.position[0], part2.position[1], part2.position[2]]
           }
           if (Object.keys(groupOrigins).length === 0) return   // everything selected is locked
@@ -445,7 +444,7 @@ const PointerRouter: React.FC = () => {
       // fits and one way it goes on, so dragging it can only move it off the joint — and a
       // bracket sitting next to a joint still looks fitted, which is worse than none at all.
       // A press still selects it, which is what deleting one needs.
-      if (pick.kind === 'connector') return
+      if (pick.kind === 'connector' && store.selectedIds.length === 1) return
 
       // dragging any selected part moves the whole selection, members and boards alike.
       // Locked parts drop out of the group instead of blocking the drag: the rest still moves.
@@ -454,7 +453,7 @@ const PointerRouter: React.FC = () => {
       const groupOrigins: Record<string, [number, number, number]> = {}
       for (const sid of dragGroup) {
         const part = partById(store, sid)
-        if (part && !part.locked && !store.connectors.some((c) => c.id === sid)) {
+        if (part && !part.locked) {
           groupOrigins[sid] = [part.position[0], part.position[1], part.position[2]]
         }
       }
@@ -465,6 +464,7 @@ const PointerRouter: React.FC = () => {
     }
 
     const onPointerUp = (e: PointerEvent) => {
+      if (useToolStore.getState().viewMode) { consumePointer(); return }
       pendingDrawDrag.current = null
 
       const sg = pendingSuggest.current
@@ -505,6 +505,8 @@ const PointerRouter: React.FC = () => {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('input,textarea,select,button,[contenteditable="true"]')) return
       const c = candidates.current
       if (c.list.length < 2) return
       e.preventDefault()
@@ -517,13 +519,32 @@ const PointerRouter: React.FC = () => {
     }
     window.addEventListener('keydown', onKey)
 
+    const consumePointer = () => {
+      pendingClear.current = null
+      pendingSelect.current = null
+      pendingDrawDrag.current = null
+      pendingRotate.current = null
+      pendingSuggest.current = null
+      gizmoState.busy = false
+      const ts = useToolStore.getState()
+      ts.stopDrag()
+      ts.stopResize()
+      if (orbit) orbit.enabled = !ts.selectMode
+    }
+    canvas.addEventListener('aluframe:consume-pointer', consumePointer)
+    const unsubscribe = useToolStore.subscribe((state, previous) => {
+      if (state.viewMode && !previous.viewMode) consumePointer()
+    })
+
     canvas.addEventListener('dblclick', onDoubleClick)
     canvas.addEventListener('pointermove', onPointerMove)
     canvas.addEventListener('pointerdown', onPointerDown)
     canvas.addEventListener('pointerleave', onPointerLeave)
     window.addEventListener('pointerup', onPointerUp)
     return () => {
+      unsubscribe()
       window.removeEventListener('keydown', onKey)
+      canvas.removeEventListener('aluframe:consume-pointer', consumePointer)
       canvas.removeEventListener('dblclick', onDoubleClick)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerdown', onPointerDown)

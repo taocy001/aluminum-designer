@@ -19,7 +19,7 @@ const ORBIT_SLOP_PX = 5
 
 const DrawingHandler: React.FC = () => {
   const { isDrawing, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides } = useToolStore()
-  const { camera, size, scene } = useThree()
+  const { camera, size, scene, gl } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
 
   /** First member body under the ray (the catcher sphere and markers are skipped) */
@@ -45,6 +45,8 @@ const DrawingHandler: React.FC = () => {
 
   // Right-click cancels only when the pointer did not travel (a right-drag is an orbit)
   useEffect(() => {
+    const consumePointer = () => { leftDownRef.current = null; rightDownRef.current = null }
+    gl.domElement.addEventListener('aluframe:consume-pointer', consumePointer)
     const onUp = (e: PointerEvent) => {
       if (e.button !== 2) return   // a left-click release must not consume the pending right-click
       const down = rightDownRef.current
@@ -57,8 +59,11 @@ const DrawingHandler: React.FC = () => {
       ts.showToast(translations[ts.language].toastDrawCancelled, 'info')
     }
     window.addEventListener('pointerup', onUp)
-    return () => window.removeEventListener('pointerup', onUp)
-  }, [])
+    return () => {
+      window.removeEventListener('pointerup', onUp)
+      gl.domElement.removeEventListener('aluframe:consume-pointer', consumePointer)
+    }
+  }, [gl])
 
   const previewGeo = useMemo(() => {
     const shape = getProfileShape(activeSpec)

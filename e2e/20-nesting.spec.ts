@@ -29,9 +29,9 @@ test.describe('How much stock to buy', () => {
 
   test('a 3.6 m rail leaves most of a six-metre bar behind, and it says so', async ({ page }) => {
     // Three of them cannot share a 6 m bar, so that is three bars and a lot of offcut.
-    // The figure is 2370 rather than 2360 because nesting works from the cut length — what
-    // the saw is set to after the joints have been trimmed — not from the drawn length.
-    await expect(page.getByTestId('nesting-summary')).toContainText('2370')
+    // The trimmed piece is 3630 mm. Separating it also consumes the first 3 mm kerf,
+    // leaving 6000 - 3630 - 3 = 2367 mm of reusable stock.
+    await expect(page.getByTestId('nesting-summary')).toContainText('2367')
   })
 
   test('changing the stock length changes the answer', async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe('How much stock to buy', () => {
     await page.waitForTimeout(200)
     const after = await page.getByTestId('nesting-yield').textContent()
     expect(after).not.toBe(before)
-    // 3640 out of 4000 wastes 360; out of 6000 it wastes 2360
+    // The same pieces use a larger share of four-metre stock than six-metre stock.
     expect(parseFloat(after!)).toBeGreaterThan(parseFloat(before!))
   })
 

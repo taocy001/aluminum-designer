@@ -24,6 +24,7 @@ export interface Doc {
   connectors: ConnectorData[]
   panels: PanelData[]
   fittings: FittingData[]
+  throughRule?: 'rails' | 'posts'
 }
 
 let entries: LogEntry[] = []
@@ -33,7 +34,14 @@ let listeners: Array<() => void> = []
 function load(): void {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) entries = JSON.parse(raw) as LogEntry[]
+    const parsed: unknown = raw ? JSON.parse(raw) : []
+    entries = Array.isArray(parsed) ? parsed.filter((entry): entry is LogEntry => {
+      if (!entry || typeof entry !== 'object') return false
+      const { at, label, detail, ids } = entry
+      return typeof at === 'number' && Number.isFinite(at) && Math.abs(at) <= 8.64e15
+        && typeof label === 'string' && typeof detail === 'string'
+        && Array.isArray(ids) && ids.every((id) => typeof id === 'string')
+    }).slice(-MAX_ENTRIES) : []
   } catch { entries = [] }
 }
 load()
@@ -62,11 +70,26 @@ export function opLogText(): string {
   }).join('\n')
 }
 
-type Part = { id: string; position?: [number, number, number]; quaternion?: [number, number, number, number] }
+type Part = ProfileData | ConnectorData | PanelData | FittingData
 
-const v3 = (a: number[]) => `[${a.map((n) => Math.round(n * 10) / 10).join(', ')}]`
-const delta = (a: number[], b: number[]) => a.map((v, i) => Math.round((b[i] - v) * 10) / 10)
-const moved = (a?: number[], b?: number[]) => a && b && a.some((v, i) => Math.abs(v - b[i]) > 0.05)
+const round3 = (v: number) => Math.round(v * 1000) / 1000
+const v3 = (a: number[]) => `[${a.map(round3).join(', ')}]`
+const delta = (a: number[], b: number[]) => a.map((v, i) => round3(b[i] - v))
+const moved = (a: number[], b: number[]) => a.some((v, i) => v !== b[i])
+
+function equalValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b)
+    && a.length === b.length && a.every((value, i) => equalValue(value, b[i]))
+  const left = a as Record<string, unknown>, right = b as Record<string, unknown>
+  const keys = Object.keys(left)
+  return keys.length === Object.keys(right).length && keys.every((key) => Object.hasOwn(right, key) && equalValue(left[key], right[key]))
+}
+
+const valueText = (value: unknown) => value === undefined ? 'unset'
+  : typeof value === 'number' ? String(round3(value))
+  : typeof value === 'string' ? value : JSON.stringify(value)
 
 function kindOf(doc: Doc, id: string): string {
   if (doc.profiles.some((p) => p.id === id)) return 'member'
@@ -88,44 +111,54 @@ export function describeChange(before: Doc, after: Doc): { label: string; detail
 
   const added = [...a.keys()].filter((id) => !b.has(id))
   const removed = [...b.keys()].filter((id) => !a.has(id))
-  if (added.length || removed.length) {
-    const parts: string[] = []
-    if (added.length) parts.push(`+${added.length} ${kindOf(after, added[0])}${added.length > 1 ? 's' : ''}`)
-    if (removed.length) parts.push(`−${removed.length} ${kindOf(before, removed[0])}${removed.length > 1 ? 's' : ''}`)
-    return { label: added.length && !removed.length ? 'add' : removed.length && !added.length ? 'delete' : 'replace',
-      detail: parts.join(', '), ids: [...added, ...removed] }
-  }
-
   // changed in place
   const changes: Array<{ id: string; what: string }> = []
   for (const [id, prev] of b) {
-    const next = a.get(id)!
-    if (prev === next) continue
+    const next = a.get(id)
+    if (!next || prev === next) continue
     const bits: string[] = []
     if (moved(prev.position, next.position)) bits.push(`moved ${v3(delta(prev.position!, next.position!))}`)
-    if (moved(prev.quaternion as number[] | undefined, next.quaternion as number[] | undefined)) bits.push('turned')
+    if (moved(prev.quaternion, next.quaternion)) bits.push('turned')
     const pl = (prev as ProfileData).length, nl = (next as ProfileData).length
-    if (pl !== undefined && nl !== undefined && Math.abs(pl - nl) > 0.05) bits.push(`length ${Math.round(pl)} → ${Math.round(nl)}`)
+    if (pl !== undefined && nl !== undefined && pl !== nl) bits.push(`length ${valueText(pl)} → ${valueText(nl)}`)
     const ps = (prev as ProfileData).spec, ns = (next as ProfileData).spec
     if (ps && ns && ps !== ns) bits.push(`${ps} → ${ns}`)
-    const po = (prev as FittingData).open, no = (next as FittingData).open
-    const onlyOpen = po !== no && bits.length === 0
-    if (onlyOpen) continue                      // looking, not building
     if ((prev as ProfileData).locked !== (next as ProfileData).locked) bits.push((next as ProfileData).locked ? 'locked' : 'unlocked')
+    // `open` is a view state. Every other design field, including nested cut/stack data,
+    // belongs in the record even when an opening gesture happened at the same time.
+    const special = new Set(['id', 'position', 'quaternion', 'length', 'spec', 'locked', 'open'])
+    const oldFields = prev as unknown as Record<string, unknown>
+    const newFields = next as unknown as Record<string, unknown>
+    for (const key of new Set([...Object.keys(oldFields), ...Object.keys(newFields)])) {
+      if (special.has(key) || equalValue(oldFields[key], newFields[key])) continue
+      bits.push(`${key} ${valueText(oldFields[key])} → ${valueText(newFields[key])}`)
+    }
     if (bits.length) changes.push({ id, what: bits.join(', ') })
   }
-  if (changes.length === 0) return null
+  const ruleChanged = (before.throughRule ?? 'rails') !== (after.throughRule ?? 'rails')
+  if (changes.length === 0 && added.length === 0 && removed.length === 0 && !ruleChanged) return null
 
-  const same = changes.every((c) => c.what === changes[0].what)
+  const details: string[] = []
+  const summarise = (ids: string[], doc: Doc, prefix: string) => {
+    const counts = new Map<string, number>()
+    for (const id of ids) { const kind = kindOf(doc, id); counts.set(kind, (counts.get(kind) ?? 0) + 1) }
+    for (const [kind, count] of counts) details.push(`${prefix}${count} ${kind}${count > 1 ? 's' : ''}`)
+  }
+  summarise(added, after, '+')
+  summarise(removed, before, '−')
+  const same = changes.length > 0 && changes.every((c) => c.what === changes[0].what
+    && kindOf(after, c.id) === kindOf(after, changes[0].id))
+  if (same && changes.length > 1) details.push(`${changes.length} ${kindOf(after, changes[0].id)}s ${changes[0].what}`)
+  else for (const change of changes) details.push(`${kindOf(after, change.id)} ${change.what}`)
+  if (ruleChanged) details.push(`throughRule ${before.throughRule ?? 'rails'} → ${after.throughRule ?? 'rails'}`)
   return {
-    label: changes[0].what.startsWith('moved') ? 'move'
+    label: added.length || removed.length ? (added.length && !removed.length ? 'add' : removed.length && !added.length ? 'delete' : 'replace')
+      : !changes.length ? 'edit'
+      : changes[0].what.startsWith('moved') ? 'move'
       : changes[0].what === 'turned' ? 'turn'
       : changes[0].what.startsWith('length') ? 'resize' : 'edit',
-    detail: same && changes.length > 1
-      ? `${changes.length} ${kindOf(after, changes[0].id)}s ${changes[0].what}`
-      : changes.slice(0, 3).map((c) => `${kindOf(after, c.id)} ${c.what}`).join('; ')
-        + (changes.length > 3 ? ` (+${changes.length - 3})` : ''),
-    ids: changes.map((c) => c.id),
+    detail: details.join('; '),
+    ids: [...added, ...removed, ...changes.map((c) => c.id)],
   }
 }
 

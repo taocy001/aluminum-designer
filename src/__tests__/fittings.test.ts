@@ -26,6 +26,21 @@ const load = (profiles: ProfileData[]) =>
 
 beforeEach(() => load([]))
 
+describe('invalid drawer drafts cannot enter a document', () => {
+  it.each([
+    { frontHeight: NaN, count: 1 }, { frontHeight: Infinity, count: 1 }, { frontHeight: 1, count: 1 },
+    { frontHeight: 200, count: NaN }, { frontHeight: 200, count: Infinity }, { frontHeight: 200, count: 0 },
+    { frontHeight: 200, count: 1.5 }, { frontHeight: 200, count: 9 },
+  ])('rejects %j before changing geometry or undo history', (request) => {
+    const profiles = cabinet(0, 600)
+    load(profiles)
+    useStore.getState().selectItems(profiles.map((p) => p.id))
+    const before = useStore.getState()
+    expect(addFittingFromSelection({ kind: 'drawer', ...request })).toBe(false)
+    expect(useStore.getState()).toBe(before)
+  })
+})
+
 /**
  * "Which cabinet is this door on?" was answered with a box query that reached without limit
  * into the depth, on the grounds that depth is the one thing an opening does not describe.
@@ -221,6 +236,25 @@ describe('a drawer opens the way the cabinet already does', () => {
 
 import { rotateSelected, selectionPivot } from '../utils/editOps'
 import { fittingObb } from '../utils/fittingGeometry'
+import { leafObb, swingClashes } from '../utils/fittingGeometry'
+import { obbPenetration } from '../utils/obb'
+import type { FittingData } from '../store/useStore'
+
+describe('doors moving through sampled intermediate openings', () => {
+  const door = (id: string, position: [number, number, number], hinge: 'left' | 'right'): FittingData => ({
+    id, kind: 'door', width: 600, height: 600, depth: 400, frame: 20, material: 'mdf',
+    position, quaternion: [0, 0, 0, 1], hingeType: 'cup', hinge, overlay: 'full', swing: 110, open: 0,
+  })
+  it('finds a collision while one neighbour stays closed, beyond the old three synchronized samples', () => {
+    const a = door('a', [0, 1000, 0], 'left'), b = door('b', [-800, 1000, -600], 'right')
+    expect([0.35, 0.7, 1].every((t) => obbPenetration(leafObb(a, t)!, leafObb(b, t)!, 2) === 0)).toBe(true)
+    expect(obbPenetration(leafObb(a, 0)!, leafObb(b, 1)!, 2)).toBeGreaterThan(18)
+    expect(swingClashes([a, b])).toEqual([['a', 'b']])
+  })
+  it('rejects separated swept outlines before testing motion pairs', () => {
+    expect(swingClashes([door('a', [0, 1000, 0], 'left'), door('b', [5000, 1000, 5000], 'right')])).toEqual([])
+  })
+})
 
 /**
  * Turning a selection turns it about its own middle. A drawer on its own had no middle as

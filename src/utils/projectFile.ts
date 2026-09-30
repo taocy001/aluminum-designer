@@ -84,7 +84,7 @@ export async function saveProject(text: string, suggested: string, asNew = false
 }
 
 /** Open a drawing through the same dialog, remembering it so a later save writes back to it */
-export async function openProject(): Promise<{ text: string; name: string } | null> {
+export async function openProject(): Promise<{ text: string; name: string; accept: () => void } | null> {
   const w = window as PickerWindow
   if (!w.showOpenFilePicker) return null
   try {
@@ -93,8 +93,7 @@ export async function openProject(): Promise<{ text: string; name: string } | nu
       multiple: false,
     })
     const file = await (h as unknown as { getFile: () => Promise<File> }).getFile()
-    handle = h
-    return { text: await file.text(), name: h.name }
+    return { text: await file.text(), name: h.name, accept: () => { handle = h } }
   } catch {
     return null
   }

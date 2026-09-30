@@ -48,8 +48,9 @@ export function acceptSuggestion(): boolean {
   const s = ts.suggestion
   if (!s) return false
   const doc = docOf()
-  // the drawing moved on since this was checked: check it again against what is there now
-  if (s.docRef !== doc.profiles && !vet(s.cand.member, s.cand.claim, doc).ok) {
+  // Acceptance checks the current document and manufacturing rule, including changes
+  // that preserve profile array identity (such as switching the through rule).
+  if (!vet(s.cand.member, s.cand.claim, doc).ok) {
     dismissSuggestion()
     return false
   }
@@ -77,7 +78,8 @@ export function dismissSuggestion(): void {
 // member drawn or moved — makes it a suggestion for a drawing that is no longer there.
 useStore.subscribe((st, prev) => {
   if (accepting || !useToolStore.getState().suggestion) return
-  if (st.profiles !== prev.profiles || st.connectors !== prev.connectors || st.panels !== prev.panels || st.fittings !== prev.fittings) {
+  if (st.profiles !== prev.profiles || st.connectors !== prev.connectors || st.panels !== prev.panels
+    || st.fittings !== prev.fittings || st.throughRule !== prev.throughRule) {
     dismissSuggestion()
   }
 })

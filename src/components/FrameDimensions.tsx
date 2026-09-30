@@ -34,8 +34,9 @@ const Dim: React.FC<{ from: THREE.Vector3; to: THREE.Vector3; tick: THREE.Vector
 const FrameDimensions: React.FC = () => {
   const profiles = useStore((s) => s.profiles)
   const panels = useStore((s) => s.panels)
+  const throughRule = useStore((s) => s.throughRule)
   const show = useToolStore((s) => s.showDimensionLabels)
-  const { trims } = useMemo(() => analyzeFrame(profiles), [profiles])
+  const { trims } = useMemo(() => analyzeFrame(profiles), [profiles, throughRule])
 
   const bounds = useMemo(() => {
     const b = computeFrameBounds(profiles, trims)

@@ -92,6 +92,29 @@ describe('the drawing as a file', () => {
     expect(e.filter((x) => x.layer === 'CUTSHEET').length).toBe(4)
   })
 
+  it('projects board thickness only along its normal, preserving the real width and height', () => {
+    const board: PanelData = { id: 'b', width: 600, height: 400, thickness: 18,
+      position: [0, 0, 0], quaternion: [0, 0, 0, 1], material: 'mdf' }
+    const e = parse(buildDxf({ ...empty, panels: [board] }))
+    expect(e.filter((x) => x.layer === 'DIMS' && x.type === 'TEXT').map((x) => x.text)).toEqual(['600', '400', '600', '18', '18', '400'])
+  })
+
+  it('draws a rotated board as its silhouette rather than its world bounding rectangle', () => {
+    const q = new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), Math.PI / 4)
+    const board: PanelData = { id: 'b', width: 600, height: 400, thickness: 18,
+      position: [0, 0, 0], quaternion: q.toArray(), material: 'mdf' }
+    const front = parse(buildDxf({ ...empty, panels: [board] })).filter((e) => e.layer === 'BOARDS').slice(0, 4)
+    expect(front.every((e) => Math.abs(e.pts[0][0] - e.pts[1][0]) > 1 && Math.abs(e.pts[0][1] - e.pts[1][1]) > 1)).toBe(true)
+  })
+
+  it('uses the actual overlay leaf and its current opening in elevations', () => {
+    const door: FittingData = { id: 'door', kind: 'door', width: 600, height: 800, depth: 400,
+      position: [0, 1000, 0], quaternion: [0, 0, 0, 1], material: 'mdf', frame: 20, overlay: 'full', open: 0 }
+    const closed = parse(buildDxf({ ...empty, fittings: [door] }))
+    expect(closed.filter((x) => x.layer === 'DIMS' && x.type === 'TEXT').map((x) => x.text)).toContain('630')
+    expect(buildDxf({ ...empty, fittings: [door] })).not.toBe(buildDxf({ ...empty, fittings: [{ ...door, open: 1 }] }))
+  })
+
   it('a drawer brings its own boards to the cut sheet', () => {
     const drawer: FittingData = {
       id: 'f1', kind: 'drawer', position: [300, 120, 300], quaternion: [0, 0, 0, 1],

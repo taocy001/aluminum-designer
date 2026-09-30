@@ -88,10 +88,13 @@ const DragHandler: React.FC = () => {
   const { gl, camera, size } = useThree()
   // gesture state lives in refs: the effect below is re-created whenever R3F state changes,
   // so anything kept in its closure would be lost between two pointer events
-  const resizingId = useRef<string | null>(null)
+  const resizingGesture = useRef<ReturnType<typeof useToolStore.getState>['resize']>(null)
 
   useEffect(() => {
     const canvas = gl.domElement
+    const unsubscribe = useToolStore.subscribe((state) => {
+      if (!state.resize) resizingGesture.current = null
+    })
 
     const rayFor = (e: { clientX: number; clientY: number }) => {
       const rect = canvas.getBoundingClientRect()
@@ -112,6 +115,11 @@ const DragHandler: React.FC = () => {
       const store = useStore.getState()
       const profile = store.profiles.find((p) => p.id === rs.id)
       if (!profile) return false
+      if (ts.viewMode || profile.locked) {
+        ts.stopResize()
+        ts.setDragConflict(false)
+        return true
+      }
 
       const dir = getProfileDir(profile)
       const origin = new THREE.Vector3(...rs.origin)
@@ -121,9 +129,9 @@ const DragHandler: React.FC = () => {
 
       // A click near an end face must not resize anything: wait for real pointer travel,
       // and keep the offset between the press point and the end so nothing jumps.
-      if (resizingId.current !== rs.id) {
+      if (resizingGesture.current !== rs) {
         if (Math.hypot(e.clientX - rs.downX, e.clientY - rs.downY) <= RESIZE_SLOP_PX) return true
-        resizingId.current = rs.id
+        resizingGesture.current = rs
         store.snapshotHistory()
         ts.markDragMoved()   // the gesture now owns a history entry; an exact commit must not add a second
       }
@@ -152,6 +160,7 @@ const DragHandler: React.FC = () => {
     }
 
     const applyDrag = (e: { clientX: number; clientY: number }) => {
+      if (useToolStore.getState().viewMode) return
       if (applyResize(e)) return
       const ts = useToolStore.getState()
       const { isDragging, dragKind, dragProfileId, dragStartHit, dragOriginPos, dragGroupOrigins, dragPlane, dragVertical } = ts
@@ -171,6 +180,11 @@ const DragHandler: React.FC = () => {
       if (ts.dragAxis === 'x') { delta.y = 0; delta.z = 0 }
       if (ts.dragAxis === 'z') { delta.x = 0; delta.y = 0 }
       const store = useStore.getState()
+      const leadPart = store.profiles.find((p) => p.id === dragProfileId)
+        ?? store.connectors.find((c) => c.id === dragProfileId)
+        ?? store.panels.find((b) => b.id === dragProfileId)
+        ?? store.fittings.find((f) => f.id === dragProfileId)
+      if (!leadPart || leadPart.locked) { ts.stopDrag(); return }
 
       if (!ts.dragMoved) {
         if (delta.lengthSq() <= 0.25) return
@@ -196,7 +210,7 @@ const DragHandler: React.FC = () => {
       const joinedAtEndpoint = endpointSnap.refId !== null
       const groupDelta = snapped.clone().sub(leadOrigin)
 
-      const dragged = all.filter((p) => dragIds.has(p.id))
+      const dragged = all.filter((p) => dragIds.has(p.id) && !p.locked)
 
       // Alignment: unless Shift asks for free placement, pull the group onto the faces,
       // edges and centrelines of the parts around it — frames are built flush, not near-flush.
@@ -244,7 +258,7 @@ const DragHandler: React.FC = () => {
       const updates: Array<{ id: string; updates: Partial<ProfileData> }> = []
       for (const pid of dragIds) {
         const p = all.find((q) => q.id === pid)
-        if (!p) continue
+        if (!p || p.locked) continue
         const origin = new THREE.Vector3(...(dragGroupOrigins[pid] ?? p.position))
         const np = origin.clone().add(groupDelta)
         updates.push({ id: pid, updates: { position: [np.x, np.y, np.z] } })
@@ -252,7 +266,7 @@ const DragHandler: React.FC = () => {
       const connectorUpdates: Array<{ id: string; updates: Partial<ConnectorData> }> = []
       for (const cid of dragIds) {
         const c = store.connectors.find((q) => q.id === cid)
-        if (!c) continue
+        if (!c || c.locked) continue
         const origin = new THREE.Vector3(...(dragGroupOrigins[cid] ?? c.position))
         const np = origin.clone().add(groupDelta)
         connectorUpdates.push({ id: cid, updates: { position: [np.x, np.y, np.z] } })
@@ -260,7 +274,7 @@ const DragHandler: React.FC = () => {
       const panelUpdates: Array<{ id: string; updates: Partial<PanelData> }> = []
       for (const bid of dragIds) {
         const b = store.panels.find((q) => q.id === bid)
-        if (!b) continue
+        if (!b || b.locked) continue
         const origin = new THREE.Vector3(...(dragGroupOrigins[bid] ?? b.position))
         const np = origin.clone().add(groupDelta)
         panelUpdates.push({ id: bid, updates: { position: [np.x, np.y, np.z] } })
@@ -270,7 +284,7 @@ const DragHandler: React.FC = () => {
       const fittingUpdates: Array<{ id: string; updates: Partial<FittingData> }> = []
       for (const fid of dragIds) {
         const f = store.fittings.find((q) => q.id === fid)
-        if (!f) continue
+        if (!f || f.locked) continue
         const origin = new THREE.Vector3(...(dragGroupOrigins[fid] ?? f.position))
         const np = origin.clone().add(groupDelta)
         fittingUpdates.push({ id: fid, updates: { position: [np.x, np.y, np.z] } })
@@ -290,7 +304,7 @@ const DragHandler: React.FC = () => {
       const ts = useToolStore.getState()
       if (ts.resize) {
         applyResize(e)
-        resizingId.current = null
+        resizingGesture.current = null
         useToolStore.getState().stopResize()
         useToolStore.getState().setDragConflict(false)
         return
@@ -304,6 +318,7 @@ const DragHandler: React.FC = () => {
     canvas.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
     return () => {
+      unsubscribe()
       canvas.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
     }

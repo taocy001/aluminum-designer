@@ -1,11 +1,13 @@
 import * as THREE from 'three'
 import type { PanelData, ProfileData } from '../store/useStore'
 import { computeAllTrims, trimmedBox, type ProfileTrims } from './jointUtils'
+import { panelOBB, trimmedOBB } from './analysis'
+import { bodiesTouch } from './assembly'
 
 /** a board thinner than this, measured upright, is lying down: a shelf, a top, a base (mm) */
 const LYING_MAX = 40
 /** a carrier's top face and the board's underside may differ by this much and still touch (mm) */
-const LEVEL_TOL = 2
+const LEVEL_TOL = 0.1
 /** how far from the edge line a carrier may run and still be the one holding that edge (mm) */
 const EDGE_REACH = 25
 
@@ -35,44 +37,98 @@ export function panelBox(b: PanelData): THREE.Box3 {
   return box
 }
 
+type Point2 = [number, number]
+
+function hull(points: Point2[]): Point2[] {
+  const sorted = points.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  const cross = (a: Point2, b: Point2, c: Point2) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+  const half = (list: Point2[]) => {
+    const out: Point2[] = []
+    for (const p of list) { while (out.length > 1 && cross(out[out.length - 2], out[out.length - 1], p) <= 1e-8) out.pop(); out.push(p) }
+    return out
+  }
+  return [...half(sorted).slice(0, -1), ...half([...sorted].reverse()).slice(0, -1)]
+}
+
+/** Clip an actual projected face to one half-plane in board coordinates. */
+function clip(points: Point2[], axis: 0 | 1, at: number, keepAbove: boolean): Point2[] {
+  const out: Point2[] = []
+  const inside = (p: Point2) => keepAbove ? p[axis] >= at : p[axis] <= at
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length]
+    const ia = inside(a), ib = inside(b)
+    if (ia) out.push(a)
+    if (ia !== ib) {
+      const t = (at - a[axis]) / (b[axis] - a[axis])
+      out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t])
+    }
+  }
+  return out
+}
+
 /**
- * The four edges of every board lying flat, and whether each is carried by metal.
- *
- * A shelf hung between two rails is held along two edges; the other two sag under a row of
- * books and the board can tip off. An edge is carried when a member runs under it for most
- * of its length (70 %), within 25 mm of the edge line, with its top face against the
- * board's underside (to 2 mm). A rail merely level with the board, beside it, holds nothing
- * up — counting it let a board hung at the rails' mid-height pass as carried on all four
- * sides while it rested on nothing — and a rail above the board or below the gap holds
- * nothing either. The example drawings are held to the same test.
+ * Check the board's actual four edges, including a shelf rotated in the horizontal plane.
+ * A bearing face must touch its underside and cover at least 70% of an edge's length within
+ * its inner 25 mm strip. A world AABB only touching the shelf near a corner carries no edge.
+ * Tilted boards are not assigned support by this horizontal-bearing heuristic.
  */
 export function shelfEdges(panels: PanelData[], profiles: ProfileData[], trims?: Map<string, ProfileTrims>): ShelfEdgeState[] {
   const t = trims ?? computeAllTrims(profiles)
-  const metal = profiles.map((p) => ({ id: p.id, box: trimmedBox(p, t.get(p.id)!) }))
+  const metal = profiles.map((p) => ({ id: p.id, box: trimmedBox(p, t.get(p.id)!), body: trimmedOBB(p, t.get(p.id)!) }))
   const out: ShelfEdgeState[] = []
   for (const b of panels) {
     const box = panelBox(b)
-    const size = box.getSize(new THREE.Vector3())
-    if (size.y > LYING_MAX) continue
-    const carrier = (axis: 'x' | 'z', at: number): string | null => {
-      const other = axis === 'x' ? 'z' : 'x'
-      for (const m of metal) {
-        const run = Math.min(m.box.max[axis], box.max[axis]) - Math.max(m.box.min[axis], box.min[axis])
-        if (run >= size[axis] * 0.7 && Math.abs(m.box.max.y - box.min.y) <= LEVEL_TOL
-          && m.box.min[other] - EDGE_REACH <= at && at <= m.box.max[other] + EDGE_REACH) return m.id
+    if (box.getSize(new THREE.Vector3()).y > LYING_MAX) continue
+    const board = panelOBB(b), q = new THREE.Quaternion(...b.quaternion).normalize()
+    const u = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
+    const v = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
+    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
+    const centre = new THREE.Vector3(...b.position)
+    const under = centre.clone().addScaledVector(normal, -Math.sign(normal.y) * b.thickness / 2)
+    const half = [b.width / 2, b.height / 2] as const
+    const world = (x: number, y: number) => under.clone().addScaledVector(u, x).addScaledVector(v, y)
+    const uAxis = Math.abs(u.x) >= Math.abs(u.z) ? 'x' : 'z'
+    const vAxis = uAxis === 'x' ? 'z' : 'x'
+    // All four edge checks use the same actual top faces clipped to this board.
+    // Keep member order so the first carrier is unchanged, and clip each edge from
+    // the read-only board polygon rather than rebuilding its geometry four times.
+    const bearing: { id: string; polygon: Point2[] }[] = []
+    if (!(Math.abs(normal.y) < 1 - 1e-6)) for (const m of metal) {
+      if (Math.abs(m.box.max.y - under.y) > LEVEL_TOL || !bodiesTouch(board, m.body, LEVEL_TOL)) continue
+      // Only a real horizontal top face can bear the board over its projected length.
+      // Projecting the whole body would credit a rising rail whose tip alone touches it.
+      const topAxis = m.body.axes.findIndex((direction) => Math.abs(direction.y) > 1 - 1e-6)
+      if (topAxis < 0) continue
+      const top = m.body.center.clone().addScaledVector(m.body.axes[topAxis],
+        Math.sign(m.body.axes[topAxis].y) * m.body.half.getComponent(topAxis))
+      const sides = [0, 1, 2].filter((i) => i !== topAxis)
+      const face = [-1, 1].flatMap((a) => [-1, 1].map((bb) => top.clone()
+        .addScaledVector(m.body.axes[sides[0]], a * m.body.half.getComponent(sides[0]))
+        .addScaledVector(m.body.axes[sides[1]], bb * m.body.half.getComponent(sides[1]))))
+      let polygon = hull(face.map((p) => { const d = p.sub(centre); return [d.dot(u), d.dot(v)] }))
+      for (const i of [0, 1] as const) {
+        polygon = clip(polygon, i, -half[i], true)
+        polygon = clip(polygon, i, half[i], false)
+      }
+      bearing.push({ id: m.id, polygon })
+    }
+    const carrier = (axis: 0 | 1, sign: number): string | null => {
+      const other = axis === 0 ? 1 : 0
+      for (const m of bearing) {
+        const polygon = clip(m.polygon, axis, sign * (half[axis] - EDGE_REACH), sign > 0)
+        if (polygon.length < 3) continue
+        const span = (i: 0 | 1) => Math.max(...polygon.map((p) => p[i])) - Math.min(...polygon.map((p) => p[i]))
+        if (span(other) >= half[other] * 2 * 0.7 && span(axis) > 0.1) return m.id
       }
       return null
     }
-    const y = box.min.y
-    const edges: Array<[ShelfEdge, 'x' | 'z', number, THREE.Vector3, THREE.Vector3]> = [
-      ['x-', 'z', box.min.x, new THREE.Vector3(box.min.x, y, box.min.z), new THREE.Vector3(box.min.x, y, box.max.z)],
-      ['x+', 'z', box.max.x, new THREE.Vector3(box.max.x, y, box.min.z), new THREE.Vector3(box.max.x, y, box.max.z)],
-      ['z-', 'x', box.min.z, new THREE.Vector3(box.min.x, y, box.min.z), new THREE.Vector3(box.max.x, y, box.min.z)],
-      ['z+', 'x', box.max.z, new THREE.Vector3(box.min.x, y, box.max.z), new THREE.Vector3(box.max.x, y, box.max.z)],
-    ]
-    for (const [edge, axis, at, a, bb] of edges) {
-      const by = carrier(axis, at)
-      out.push({ panelId: b.id, edge, carried: by !== null, a, b: bb, underY: y, by })
+    for (const axis of [0, 1] as const) for (const sign of [-1, 1]) {
+      const direction = axis === 0 ? u : v, label = axis === 0 ? uAxis : vAxis
+      const edge = `${label}${sign * direction[label] < 0 ? '-' : '+'}` as ShelfEdge
+      const a = axis === 0 ? world(sign * half[0], -half[1]) : world(-half[0], sign * half[1])
+      const bb = axis === 0 ? world(sign * half[0], half[1]) : world(half[0], sign * half[1])
+      const by = carrier(axis, sign)
+      out.push({ panelId: b.id, edge, carried: by !== null, a, b: bb, underY: under.y, by })
     }
   }
   return out

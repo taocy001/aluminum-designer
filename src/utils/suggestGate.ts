@@ -1,13 +1,13 @@
 import * as THREE from 'three'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { findConflicts } from './analysis'
-import { computeAllTrims, trimmedBox, type ProfileTrims } from './jointUtils'
-import { getProfileAxis, getProfileEndpoints } from './geometryCore'
+import { computeAllTrims, computeTrims, trimmedBox, type ProfileTrims } from './jointUtils'
+import { closestOnSegment, getProfileAxis, getProfileDir, getProfileEndpoints } from './geometryCore'
 import { memberBox } from './dragSnap'
 import { unflushPairs } from './faceAlign'
-import { findSpecMismatches, sharedEdge } from './specCompat'
-import { joints, unbuildable } from './repairJoints'
-import { auditBrackets } from './bracketSeat'
+import { findSpecMismatches, sharedEdge, crossesSeries, flushFace } from './specCompat'
+import type { Joint } from './repairJoints'
+import { auditBrackets, seatFor } from './bracketSeat'
 import { fittingSolids } from './fittingGeometry'
 import { lowestPointY, MIN_LENGTH } from './profileFactory'
 import { panelBox, shelfEdges, type ShelfEdge } from './shelfSupport'
@@ -25,16 +25,45 @@ export interface SuggestDoc {
 export type Claim =
   | { kind: 'shelf'; panelId: string; edge: ShelfEdge }
   /** both ends join something */
-  | { kind: 'close' }
+  | { kind: 'close'; hardwareId?: string }
   /** one end joins something, the other is left for the next member */
   | { kind: 'open' }
 
 export interface Verdict { ok: boolean; why?: string }
+/** A single suggestion search holds an immutable document. Reuse its existing checks
+ * across candidates with the same neighbours; every proposed result is still checked. */
+export type VetCache = Map<string, Map<string, unknown>>
+
+/** Share a geometry check whose inputs are identical even when unrelated panels or
+ * fittings change the wider neighbourhood key. The cache lives for one search only. */
+export function cachedCheck<T>(cache: VetCache | undefined, name: string, parts: Array<Array<{ id: string }>>, calculate: () => T): T {
+  if (!cache) return calculate()
+  const key = JSON.stringify([name, ...parts.map((items) => items.map((item) => item.id))])
+  const entry = cache.get(key)
+  if (entry?.has('value')) return entry.get('value') as T
+  const value = calculate()
+  cache.set(key, new Map([['value', value]]))
+  return value
+}
 
 /** how far round a new member anything it could disturb can be (mm) */
 export const NEIGHBOURHOOD = 250
 /** an end this close to the ground is standing on it (mm) */
 const FLOOR_EPS = 1
+
+/** The exact same directed endpoint joints as joints(after), restricted to the new member.
+ * Neither check below uses joints between two existing members, so enumerating those again
+ * would add quadratic work without changing either verdict. */
+function memberJoints(member: ProfileData, profiles: ProfileData[]): Joint[] {
+  const out: Joint[] = [], own = getProfileEndpoints(member), direction = getProfileDir(member)
+  for (const p of profiles) {
+    if (p.id === member.id || Math.abs(direction.dot(getProfileDir(p))) > 0.9) continue
+    const other = getProfileEndpoints(p)
+    for (const at of [own.start, own.end]) if (closestOnSegment(at, other.start, other.end).point.distanceTo(at) <= 30) out.push({ a: member, b: p, at })
+    for (const at of [other.start, other.end]) if (closestOnSegment(at, own.start, own.end).point.distanceTo(at) <= 30) out.push({ a: p, b: member, at })
+  }
+  return out
+}
 
 function obbBox(o: OBB): THREE.Box3 {
   const r = new THREE.Vector3()
@@ -46,14 +75,23 @@ function obbBox(o: OBB): THREE.Box3 {
 }
 
 /** everything close enough to the new member to be affected by it */
-export function neighbourhood(member: ProfileData, doc: SuggestDoc): SuggestDoc {
+export function neighbourhood(member: ProfileData, doc: SuggestDoc, cache?: VetCache): SuggestDoc {
   const box = memberBox(member).expandByScalar(NEIGHBOURHOOD)
+  // A search holds one immutable document. Its unchanged world bounds are identical
+  // for every candidate; the candidate box and all four original filters stay fresh.
+  const geometry = cachedCheck(cache, 'neighbourhood-geometry', [doc.profiles, doc.connectors, doc.panels, doc.fittings], () => ({
+    profiles: doc.profiles.map((p) => ({ part: p, box: memberBox(p) })),
+    connectors: doc.connectors.map((c) => ({ part: c, point: new THREE.Vector3(...c.position) })),
+    panels: doc.panels.map((b) => ({ part: b, box: panelBox(b) })),
+    // Both fitting states are evaluated, including fronts outside their openings.
+    fittings: doc.fittings.map((f) => ({ part: f,
+      boxes: [...fittingSolids(f, 0), ...fittingSolids(f, 1)].map(obbBox) })),
+  }))
   return {
-    profiles: doc.profiles.filter((p) => memberBox(p).intersectsBox(box)),
-    connectors: doc.connectors.filter((c) => box.containsPoint(new THREE.Vector3(...c.position))),
-    panels: doc.panels.filter((b) => panelBox(b).intersectsBox(box)),
-    // what the fitting is made of, shut and fully open — its front laps outside its opening
-    fittings: doc.fittings.filter((f) => [...fittingSolids(f, 0), ...fittingSolids(f, 1)].some((o) => obbBox(o).intersectsBox(box))),
+    profiles: geometry.profiles.filter((p) => p.box.intersectsBox(box)).map((p) => p.part),
+    connectors: geometry.connectors.filter((c) => box.containsPoint(c.point)).map((c) => c.part),
+    panels: geometry.panels.filter((b) => b.box.intersectsBox(box)).map((b) => b.part),
+    fittings: geometry.fittings.filter((f) => f.boxes.some((bounds) => bounds.intersectsBox(box))).map((f) => f.part),
   }
 }
 
@@ -85,7 +123,7 @@ function grew(before: Set<string>, after: Iterable<string>): string | null {
  * Compare the candidate neighbourhood before and after insertion using the checks below,
  * including fitting geometry at sampled open positions.
  */
-export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: THREE.Box3 | null): Verdict {
+export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: THREE.Box3 | null, cache?: VetCache): Verdict {
   const { w, h } = specDims(member.spec)
   if (member.length < Math.max(MIN_LENGTH, 2 * Math.max(w, h))) return { ok: false, why: 'short' }
   if (lowestPointY(member) < -0.5) return { ok: false, why: 'floor' }
@@ -97,17 +135,27 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
     if (!room.containsPoint(start) || !room.containsPoint(end)) return { ok: false, why: 'outside' }
   }
 
-  const near = neighbourhood(member, doc)
+  const near = neighbourhood(member, doc, cache)
   const after = [...near.profiles, member]
-
-  // pairs no part is made for are neither suggested nor counted
-  for (const j of joints(after)) {
-    if ((j.a.id === member.id || j.b.id === member.id) && !sharedEdge(j.a.spec, j.b.spec)) return { ok: false, why: 'no-shared-edge' }
+  const key = JSON.stringify([near.profiles, near.connectors, near.panels, near.fittings].map((parts) => parts.map((part) => part.id)))
+  const baseline = cache?.get(key) ?? new Map<string, unknown>()
+  cache?.set(key, baseline)
+  const once = <T,>(name: string, calculate: () => T): T => {
+    if (baseline.has(name)) return baseline.get(name) as T
+    const value = calculate()
+    baseline.set(name, value)
+    return value
   }
 
-  const tb = computeAllTrims(near.profiles)
-  const ta = computeAllTrims(after)
-  const mine = ta.get(member.id)!
+  // pairs no part is made for are neither suggested nor counted
+  const candidateJoints = memberJoints(member, near.profiles)
+  for (const j of candidateJoints) {
+    if (!sharedEdge(j.a.spec, j.b.spec)) return { ok: false, why: 'no-shared-edge' }
+  }
+
+  // Reject unanchored candidates using their own trim calculation before recalculating
+  // every existing member. Accepted candidates still receive all after checks.
+  const mine = computeTrims(member, after)
   if (mine.cutLength < Math.max(MIN_LENGTH, 2 * Math.max(w, h))) return { ok: false, why: 'short' }
 
   // what the member claims to join
@@ -120,44 +168,64 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
   if (claim.kind === 'open' && !(sJoined || eJoined)) return { ok: false, why: 'loose' }
   if (claim.kind === 'shelf' && !(mine.start.partners > 0 && mine.end.partners > 0)) return { ok: false, why: 'loose-end' }
 
+  const tb = once('trims', () => cachedCheck(cache, 'trims', [near.profiles], () => computeAllTrims(near.profiles)))
+  const ta = computeAllTrims(after)
+
   // (a) nothing new passes through anything, shut and open
   const clashes = (ps: ProfileData[], t: Map<string, ProfileTrims>, fs: FittingData[]) =>
     new Set(findConflicts(ps, t, near.connectors, near.panels, fs).map((c) => pairKey(c.a, c.b)))
-  let g = grew(clashes(near.profiles, tb, near.fittings), clashes(after, ta, near.fittings))
+  let g = grew(once('closed-clashes', () => clashes(near.profiles, tb, near.fittings)), clashes(after, ta, near.fittings))
   if (g) return { ok: false, why: `clash ${g}` }
   const opened = near.fittings.map((f) => ({ ...f, open: 1 }))
   if (opened.length) {
-    g = grew(clashes(near.profiles, tb, opened), clashes(after, ta, opened))
+    g = grew(once('open-clashes', () => clashes(near.profiles, tb, opened)), clashes(after, ta, opened))
     if (g) return { ok: false, why: `clash-open ${g}` }
   }
 
   // (c) every joint it makes can be bolted
-  if (unbuildable(after).some((j) => j.a.id === member.id || j.b.id === member.id)) return { ok: false, why: 'unbuildable' }
+  if (candidateJoints.some((j) => sharedEdge(j.a.spec, j.b.spec) && !seatFor('bracket', j.a, j.b, j.at))) return { ok: false, why: 'unbuildable' }
 
   // (d) nothing that could be bolted before stops being boltable
-  const specOf = new Map(after.map((p) => [p.id, p.spec]))
-  const shared = (a: string, b: string) => sharedEdge(specOf.get(a)!, specOf.get(b)!)
-  const unflush = (ps: ProfileData[]) => unflushPairs(ps).filter((u) => shared(u.a, u.b)).map((u) => pairKey(u.a, u.b))
-  g = grew(new Set(unflush(near.profiles)), unflush(after))
-  if (g) return { ok: false, why: `unflush ${g}` }
+  // These two checks depend only on each pair's untrimmed geometry. Adding a member
+  // cannot alter any existing pair, so every new failure must involve that member.
+  // Preserve the full check's insertion order: old→new first, then new→old.
+  const pairs = near.profiles.map((p, i) => ({ p, i })).filter(({ p }) => sharedEdge(p.spec, member.spec))
+  const unflush = pairs.flatMap(({ p, i }) => unflushPairs([p, member]).map((u) => ({
+    key: pairKey(u.a, u.b), order: i + (u.a === member.id ? near.profiles.length : 0),
+  }))).sort((a, b) => a.order - b.order)
+  if (unflush.length) return { ok: false, why: `unflush ${unflush[0].key}` }
   // a joint between two series is a note, not a fault — the drawing it copies has the same
   // ones — but faces that do not meet are a joint nothing can bolt
-  const mism = (ps: ProfileData[]) => findSpecMismatches(ps).filter((m) => m.kind === 'face' && shared(m.a, m.b)).map((m) => pairKey(m.a, m.b))
-  g = grew(new Set(mism(near.profiles)), mism(after))
-  if (g) return { ok: false, why: `mismatch ${g}` }
+  const mismatches = pairs.flatMap(({ p, i }) => {
+    const faults = findSpecMismatches([p, member]).filter((m) => m.kind === 'face')
+    if (!faults.length) return []
+    // A forward series note upgraded to a reverse face fault keeps its original Map
+    // insertion place. Check that first direction independently to retain that ordering.
+    const ends = getProfileEndpoints(p)
+    const touch = [ends.start, ends.end].map((pt) => ({ pt,
+      d: closestOnSegment(pt, start, end).point.distanceTo(pt) })).sort((a, b) => a.d - b.d)[0]
+    const forward = touch.d <= 30 && (crossesSeries(p.spec, member.spec) || !flushFace(p, member, touch.pt))
+    return faults.map((m) => ({ key: pairKey(m.a, m.b), order: i + (forward ? 0 : near.profiles.length) }))
+  }).sort((a, b) => a.order - b.order)
+  if (mismatches.length) return { ok: false, why: `mismatch ${mismatches[0].key}` }
   if (near.connectors.length) {
-    const faults = (ps: ProfileData[]) => auditBrackets(ps, near.connectors).map((f) => f.id)
-    g = grew(new Set(faults(near.profiles)), faults(after))
+    const before = once('brackets', () => cachedCheck(cache, 'brackets', [near.profiles, near.connectors], () => new Set(auditBrackets(near.profiles, near.connectors, tb).map((f) => f.id))))
+    const now = new Set(auditBrackets(after, near.connectors, ta).map((f) => f.id))
+    g = grew(before, now)
     if (g) return { ok: false, why: `bracket ${g}` }
+    if (claim.kind === 'close' && claim.hardwareId
+      && (!before.has(claim.hardwareId) || now.has(claim.hardwareId))) return { ok: false, why: 'hardware-not-restored' }
+  } else if (claim.kind === 'close' && claim.hardwareId) {
+    return { ok: false, why: 'hardware-not-restored' }
   }
 
   // no corner is left empty
-  g = grew(emptyCorners(near.profiles, tb), emptyCorners(after, ta))
+  g = grew(once('empty-corners', () => emptyCorners(near.profiles, tb)), emptyCorners(after, ta))
   if (g) return { ok: false, why: `empty-corner ${g}` }
 
   // (g) a shelf rail carries the edge it was offered for, and no shelf loses one
   if (near.panels.length) {
-    const was = new Set(shelfEdges(near.panels, near.profiles, tb).filter((e) => e.carried).map((e) => `${e.panelId}:${e.edge}`))
+    const was = once('shelves', () => new Set(shelfEdges(near.panels, near.profiles, tb).filter((e) => e.carried).map((e) => `${e.panelId}:${e.edge}`)))
     const now = new Set(shelfEdges(near.panels, after, ta).filter((e) => e.carried).map((e) => `${e.panelId}:${e.edge}`))
     for (const k of was) if (!now.has(k)) return { ok: false, why: `shelf-lost ${k}` }
     if (claim.kind === 'shelf' && !now.has(`${claim.panelId}:${claim.edge}`)) return { ok: false, why: 'shelf-not-carried' }

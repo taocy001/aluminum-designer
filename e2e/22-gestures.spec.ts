@@ -226,7 +226,7 @@ test.describe('Nudging a number', () => {
     await f.fill('')
     await f.type('7')
     await page.waitForTimeout(200)
-    expect(await width(page)).toBe(7)
+    expect(await width(page)).toBe(500) // below the 20 mm minimum: keep the last valid geometry
     await f.type('50')
     await page.waitForTimeout(200)
     expect(await width(page)).toBe(750)

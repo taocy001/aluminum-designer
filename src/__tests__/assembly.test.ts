@@ -52,6 +52,15 @@ describe('what to build first', () => {
     expect(new Set(ids).size).toBe(both.length)
   })
 
+  it('does not treat a 9 mm gap as a connection to a previously placed column', () => {
+    const post = P(0, 0, 29, 0, 800, 29)
+    const rail = P(0, 400, 0, 600, 400, 0)
+    const lower = P(3000, 100, 0, 3000, 250, 0)
+    const steps = assemblySteps([post, rail, lower])
+    const order = steps.flatMap((s) => s.profiles)
+    expect(order.indexOf(lower.id)).toBeLessThan(order.indexOf(rail.id))
+  })
+
   it('the boards and the doors go in after the frame is standing', () => {
     const frame = cabinet()
     const board = { id: 'b1', width: 560, height: 760, thickness: 18, position: [300, 400, -20], quaternion: [0, 0, 0, 1], material: 'mdf' } as never

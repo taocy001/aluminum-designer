@@ -111,6 +111,11 @@ test.describe('Free rotation about any axis', () => {
     const before = (await store(page)).connectors[0].position.map(r)
     await dragWorld(page, [600, 10, 0], [600, 10, 200])
     expect((await store(page)).connectors[0].position.map(r)).toEqual(before)
+    const history = (await store(page)).past
+    await page.getByTestId('viewport').focus()
+    await page.keyboard.press('ArrowRight')
+    expect((await store(page)).connectors[0].position.map(r)).toEqual(before)
+    expect((await store(page)).past).toBe(history)
   })
 
   test('a connector shows where it is but has no field to move it', async ({ page }) => {
@@ -242,7 +247,7 @@ test.describe('Floor and group rules after the rule change', () => {
     expect(ys).toEqual([10, 10])
   })
 
-  test('a connector does not ride along when the members it sits on move', async ({ page }) => {
+  test('an explicitly selected connector moves with its member as one undo step', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await page.getByRole('button', { name: 'L型角码', exact: true }).click()
@@ -251,12 +256,39 @@ test.describe('Floor and group rules after the rule change', () => {
     await clickWorld(page, [300, 10, 0])
     await clickWorld(page, [600, 10, 0], { modifiers: ['Control'] })
     expect((await store(page)).selectedIds).toHaveLength(2)
-    const beforeP = (await store(page)).profiles[0].position.map(r)
-    const beforeC = (await store(page)).connectors[0].position.map(r)
+    const before = await store(page)
+    const beforeP = before.profiles[0].position.map(r)
+    const beforeC = before.connectors[0].position.map(r)
     await page.keyboard.press('ArrowRight')
-    // the member moves, the bracket stays on the joint it was fitted to
     expect((await store(page)).profiles[0].position.map(r)).toEqual([beforeP[0] + 5, beforeP[1], beforeP[2]])
+    expect((await store(page)).connectors[0].position.map(r)).toEqual([beforeC[0] + 5, beforeC[1], beforeC[2]])
+    expect((await store(page)).past).toBe(before.past + 1)
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).profiles[0].position.map(r)).toEqual(beforeP)
     expect((await store(page)).connectors[0].position.map(r)).toEqual(beforeC)
+    await page.keyboard.press('Control+y')
+    expect((await store(page)).profiles[0].position.map(r)).toEqual([beforeP[0] + 5, beforeP[1], beforeP[2]])
+    expect((await store(page)).connectors[0].position.map(r)).toEqual([beforeC[0] + 5, beforeC[1], beforeC[2]])
+  })
+
+  test('an unselected connector stays put when its member moves', async ({ page }) => {
+    await enterDraw(page, '2020')
+    await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await clickWorld(page, [600, 10, 0])
+    await toNavigate(page)
+    await clickWorld(page, [300, 10, 0])
+    const before = await store(page)
+    expect(before.selectedIds).toEqual([before.profiles[0].id])
+    await page.keyboard.press('ArrowRight')
+    expect((await store(page)).profiles[0].position.map(r)).toEqual([
+      r(before.profiles[0].position[0]) + 5, r(before.profiles[0].position[1]), r(before.profiles[0].position[2]),
+    ])
+    expect((await store(page)).connectors).toEqual(before.connectors)
+    expect((await store(page)).past).toBe(before.past + 1)
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).profiles).toEqual(before.profiles)
+    expect((await store(page)).connectors).toEqual(before.connectors)
   })
 
   test('a new conflict between already flagged members is still reported', async ({ page }) => {

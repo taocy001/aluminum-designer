@@ -20,6 +20,8 @@ export interface Bar {
 
 export interface NestResult {
   bars: Bar[]
+  /** Pieces that cannot be supplied by the chosen stock; never counted as usable bars. */
+  unsatisfied: Array<{ spec: string; length: number; qty: number; reason: 'exceeds-stock' }>
   /** per spec: bars needed, metal used, metal left over */
   bySpec: Array<{ spec: string; bars: number; usedMm: number; offcutMm: number; longestOffcut: number }>
   totalBars: number
@@ -31,8 +33,8 @@ export interface NestResult {
  * Nest the profile rows of a cut list onto stock.
  *
  * `stockLength` can be raised for six-metre bars or lowered for whatever is in the rack.
- * A piece longer than the stock cannot be cut from it; it gets a bar of its own and is
- * reported with a negative remainder, which is the honest way to say "this does not fit".
+ * A piece longer than the stock is reported separately, so a purchasing summary cannot
+ * mistake an impossible cut for an executable bar.
  */
 export function nestProfiles(rows: BomRow[], stockLength = STOCK_LENGTH, kerf = KERF): NestResult {
   const bySpecPieces = new Map<string, number[]>()
@@ -45,30 +47,38 @@ export function nestProfiles(rows: BomRow[], stockLength = STOCK_LENGTH, kerf = 
 
   const bars: Bar[] = []
   const bySpec: NestResult['bySpec'] = []
+  const unsatisfied: NestResult['unsatisfied'] = []
+  const unavailable = new Map<string, NestResult['unsatisfied'][number]>()
 
   for (const [spec, pieces] of [...bySpecPieces.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
     pieces.sort((a, b) => b - a)          // longest first: the hardest pieces get the choice
     const open: Bar[] = []
     for (const piece of pieces) {
       if (piece > stockLength) {
-        // longer than anything you can buy: say so rather than quietly splitting it
-        bars.push({ spec, cuts: [piece], remainder: stockLength - piece })
+        const key = `${spec}:${piece}`
+        const item = unavailable.get(key) ?? { spec, length: piece, qty: 0, reason: 'exceeds-stock' as const }
+        item.qty++
+        unavailable.set(key, item)
         continue
       }
-      // the first cut on a bar takes no kerf off the far end that matters; every later one does
-      const fits = open.find((b) => b.remainder - (b.cuts.length ? kerf : 0) >= piece)
+      // Taking the complete remaining length needs no cut. Every separation from a usable
+      // tail consumes a kerf, including the first cut on a new bar. When less than a kerf
+      // remains, the blade exits the factory end and there is no reusable tail.
+      const take = (remaining: number) => Math.abs(remaining - piece) < 1e-6
+        ? 0 : Math.max(0, remaining - piece - kerf)
+      const fits = open.find((b) => b.remainder + 1e-6 >= piece)
       if (fits) {
-        fits.remainder -= piece + (fits.cuts.length ? kerf : 0)
+        fits.remainder = take(fits.remainder)
         fits.cuts.push(piece)
       } else {
-        const bar: Bar = { spec, cuts: [piece], remainder: stockLength - piece }
+        const bar: Bar = { spec, cuts: [piece], remainder: take(stockLength) }
         open.push(bar)
         bars.push(bar)
       }
     }
     const mine = bars.filter((b) => b.spec === spec)
     const usedMm = mine.reduce((n, b) => n + b.cuts.reduce((m, c) => m + c, 0), 0)
-    bySpec.push({
+    if (mine.length) bySpec.push({
       spec, bars: mine.length, usedMm,
       offcutMm: mine.reduce((n, b) => n + Math.max(0, b.remainder), 0),
       longestOffcut: mine.reduce((n, b) => Math.max(n, b.remainder), 0),
@@ -77,21 +87,26 @@ export function nestProfiles(rows: BomRow[], stockLength = STOCK_LENGTH, kerf = 
 
   const bought = bars.length * stockLength
   const used = bySpec.reduce((n, s) => n + s.usedMm, 0)
-  return { bars, bySpec, totalBars: bars.length, yield: bought > 0 ? used / bought : 0 }
+  unsatisfied.push(...unavailable.values())
+  return { bars, unsatisfied, bySpec, totalBars: bars.length, yield: bought > 0 ? used / bought : 0 }
 }
 
 /** The cutting list as CSV: one line per bar, so it can be taken to the saw */
 export function nestingCsv(result: NestResult, stockLength = STOCK_LENGTH): string {
   const lines = ['Spec,Bar,Cuts (mm),Pieces,Offcut (mm)']
+  const dimension = (value: number) => Math.round(value * 1000) / 1000
   const n = new Map<string, number>()
   for (const b of result.bars) {
     const i = (n.get(b.spec) ?? 0) + 1
     n.set(b.spec, i)
-    lines.push(`${b.spec},${i},"${b.cuts.join(' + ')}",${b.cuts.length},${Math.round(b.remainder)}`)
+    lines.push(`${b.spec},${i},"${b.cuts.join(' + ')}",${b.cuts.length},${dimension(b.remainder)}`)
   }
   lines.push('')
+  for (const item of result.unsatisfied) {
+    lines.push(`Unsatisfied,${item.spec},${item.length} mm exceeds ${stockLength} mm,${item.qty},`)
+  }
   for (const s of result.bySpec) {
-    lines.push(`Summary,${s.spec},${s.bars} × ${stockLength}mm,,${Math.round(s.offcutMm)}`)
+    lines.push(`Summary,${s.spec},${s.bars} × ${stockLength}mm,,${dimension(s.offcutMm)}`)
   }
   lines.push(`Summary,Total bars,${result.totalBars},,`)
   lines.push(`Summary,Yield,${(result.yield * 100).toFixed(1)}%,,`)

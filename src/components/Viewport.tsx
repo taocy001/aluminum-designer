@@ -519,16 +519,16 @@ const SnapGuides: React.FC = () => {
 }
 
 const Viewport: React.FC = () => {
-  const { profiles, connectors, panels, fittings, selectedIds } = useStore()
+  const { profiles, connectors, panels, fittings, selectedIds, throughRule } = useStore()
   const { isDragging, showDimensionLabels, selectMode, showFittings, buildStep } = useToolStore()
   // Stepping through the build shows what is on by the end of that step and nothing later.
   // The parts are the same parts; this only decides which of them are drawn.
   const steps = useMemo(() => (buildStep === null ? null : assemblySteps(profiles, connectors, panels, fittings)),
-    [buildStep, profiles, connectors, panels, fittings])
+    [buildStep, profiles, connectors, panels, fittings, throughRule])
   const on = useMemo(() => (steps && buildStep !== null ? shownAt(steps, buildStep) : null), [steps, buildStep])
   const showing = <T extends { id: string }>(list: T[], kind: 'profiles' | 'connectors' | 'panels' | 'fittings') =>
     (on ? list.filter((x) => on[kind].has(x.id)) : list)
-  const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings])
+  const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings, throughRule])
 
   const orbitEnabled = !isDragging && !selectMode
   // One mapping for the whole canvas, whatever is in hand: the buttons must not change

@@ -8,6 +8,8 @@ import { analyzeFrame } from './analysis'
 import { buildProfile, floorY, lowestPointY, nextId } from './profileFactory'
 import { translations } from './translations'
 import { fittingObb } from './fittingGeometry'
+import { ALL_SPECS } from './specUtils'
+import { connectorEntry } from './connectorCatalog'
 
 export type RotAxis = 'x' | 'y' | 'z'
 const AXES: Record<RotAxis, THREE.Vector3> = {
@@ -28,18 +30,12 @@ function selectedProfiles(includeLocked = false): ProfileData[] {
   return profiles.filter((p) => ids.has(p.id) && (includeLocked || !p.locked))
 }
 
-/**
- * Connectors are never transformed, so this is always empty.
- *
- * Once two members are aligned there is exactly one bracket that fits and exactly one way
- * it goes on: astride the joint, on the face the two share. Moving or turning it can only
- * make it wrong, and a wrong bracket is worse than a missing one because it still looks
- * fitted. So a connector can be placed and it can be deleted, and that is the whole set.
- * The signature is kept so the transforms keep reading as "and the connectors" — they just
- * never get any.
- */
-function selectedConnectors(_includeLocked = false): ConnectorData[] {
-  return []
+/** A connector stays fixed on its own, and travels with an explicitly selected assembly. */
+function selectedConnectors(includeLocked = false, includeStandalone = false): ConnectorData[] {
+  const { connectors, selectedIds } = useStore.getState()
+  if (!includeStandalone && selectedIds.length < 2) return []
+  const ids = new Set(selectedIds)
+  return connectors.filter((c) => ids.has(c.id) && (includeLocked || !c.locked))
 }
 
 /** A drawer or a door moves, turns, is mirrored and copied like any other part */
@@ -53,6 +49,28 @@ function selectedPanels(includeLocked = false): PanelData[] {
   const { panels, selectedIds } = useStore.getState()
   const ids = new Set(selectedIds)
   return panels.filter((p) => ids.has(p.id) && (includeLocked || !p.locked))
+}
+
+type PartDocument = Pick<ReturnType<typeof useStore.getState>, 'profiles' | 'connectors' | 'panels' | 'fittings'>
+
+/** Shared by the properties panel and the quick menu; empty or stale selections are unlocked. */
+export function selectionLocked(doc: PartDocument, ids: string[]): boolean {
+  const selected = new Set(ids)
+  const parts = [...doc.profiles, ...doc.connectors, ...doc.panels, ...doc.fittings]
+    .filter((part) => selected.has(part.id))
+  return parts.length > 0 && parts.every((part) => part.locked)
+}
+
+/** Add every kind of part and select the whole copy in one document transaction. */
+function addCopies(copies: PartDocument): void {
+  const store = useStore.getState()
+  const ids = [...copies.profiles, ...copies.connectors, ...copies.panels, ...copies.fittings].map((part) => part.id)
+  store.commitDocument({
+    profiles: [...store.profiles, ...copies.profiles],
+    connectors: [...store.connectors, ...copies.connectors],
+    panels: [...store.panels, ...copies.panels],
+    fittings: [...store.fittings, ...copies.fittings],
+  }, ids)
 }
 
 /** Shift a part's centre by a world delta, rounded the way everything else is */
@@ -95,7 +113,6 @@ function sinkBelowFloor(profiles: ProfileData[], delta: [number, number, number]
 
 /** Move the selection by a world-space delta (mm), applying the floor limit to the whole group. */
 export function nudgeSelected(delta: [number, number, number]): boolean {
-  noteNext('nudge')
   const profiles = selectedProfiles()
   const connectors = selectedConnectors()
   const panels = selectedPanels()
@@ -107,6 +124,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
   if (sink < 0) d[1] -= sink
   if (d.every((v) => Math.abs(v) < 1e-6)) return false   // fully clamped: no move, no history entry
 
+  noteNext('nudge')
   const before = conflictPairsNow()
   useStore.getState().commitTransform({
     profiles: profiles.map((p) => ({
@@ -130,17 +148,17 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
   return true
 }
 
-/** Duplicate the selection (profiles and connectors) and select the copies */
+/** Duplicate all selected parts, including locked references, and select the unlocked copies. */
 export function duplicateSelected(): boolean {
-  noteNext('duplicate')
   const profiles = selectedProfiles(true)
-  const connectors = selectedConnectors(true)
+  const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
+  const fittings = selectedFittings(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
+  noteNext('duplicate')
   const axis = profiles[0] ? getProfileAxis(profiles[0]) : 'y'
   const d: [number, number, number] = axis === 'x' ? [0, 0, 50] : [50, 0, 0]
   const before = conflictPairsNow()
-  const store = useStore.getState()
   const newProfiles = profiles.map((p) => ({
     ...p, id: nextId('p'), locked: false,
     position: [p.position[0] + d[0], p.position[1] + d[1], p.position[2] + d[2]] as [number, number, number],
@@ -153,24 +171,51 @@ export function duplicateSelected(): boolean {
     ...p, id: nextId('b'), locked: false,
     position: [p.position[0] + d[0], p.position[1] + d[1], p.position[2] + d[2]] as [number, number, number],
   }))
-  store.addItems(newProfiles, newConnectors, true)
-  if (newPanels.length) store.addPanels(newPanels, false)
-  toast(t().toastDuplicated(newProfiles.length + newConnectors.length + newPanels.length), 'success')
+  const newFittings = fittings.map((f) => ({
+    ...f, id: nextId('f'), locked: false,
+    position: [f.position[0] + d[0], f.position[1] + d[1], f.position[2] + d[2]] as [number, number, number],
+  }))
+  addCopies({ profiles: newProfiles, connectors: newConnectors, panels: newPanels, fittings: newFittings })
+  toast(t().toastDuplicated(newProfiles.length + newConnectors.length + newPanels.length + newFittings.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
 
 /** Centre of everything in the document, which is the plane a mirror reflects across */
 function documentCentre(): THREE.Vector3 {
-  const { profiles, connectors } = useStore.getState()
+  const { profiles, connectors, panels, fittings } = useStore.getState()
   const min = new THREE.Vector3(Infinity, Infinity, Infinity)
   const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity)
   const add = (v: THREE.Vector3) => { min.min(v); max.max(v) }
   for (const p of profiles) { const { start, end } = getProfileEndpoints(p); add(start); add(end) }
   for (const c of connectors) add(new THREE.Vector3(...c.position))
-  for (const b of useStore.getState().panels) add(new THREE.Vector3(...b.position))
+  for (const b of panels) add(new THREE.Vector3(...b.position))
+  for (const f of fittings) add(new THREE.Vector3(...f.position))
   if (!isFinite(min.x)) return new THREE.Vector3()
   return min.add(max).multiplyScalar(0.5)
+}
+
+/** A world reflection plus one local reflection produces a right-handed orientation. */
+function reflectedQuaternion(
+  quaternion: [number, number, number, number], axis: RotAxis,
+  symmetry: RotAxis | 'swapXY' = 'x',
+): [number, number, number, number] {
+  const q = new THREE.Quaternion(...quaternion).normalize()
+  const reflect = (v: THREE.Vector3) => { v[axis] *= -1; return v }
+  const basis = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)]
+    .map((v) => reflect(v.applyQuaternion(q)))
+  if (symmetry === 'swapXY') [basis[0], basis[1]] = [basis[1], basis[0]]
+  else basis[{ x: 0, y: 1, z: 2 }[symmetry]].negate()
+  const reflected = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(basis[0], basis[1], basis[2])).normalize()
+  return [reflected.x, reflected.y, reflected.z, reflected.w]
+}
+
+/** Each connector uses a symmetry of its actual model, so its arms and mounting face survive. */
+function connectorSymmetry(type: string): RotAxis | 'swapXY' {
+  if (type === 'corner-3way') return 'swapXY'
+  if (type === 'bracket' || type === 'inside-corner' || type === 'gusset') return 'z'
+  if (type === 'hinge') return 'y'
+  return 'x'
 }
 
 /**
@@ -181,15 +226,16 @@ function documentCentre(): THREE.Vector3 {
  * only drop the copy back on top of it. With everything selected the two coincide, which
  * turns the gesture into flipping the whole frame — also a reasonable reading.
  *
- * A reflection is not a rotation, so members are rebuilt from their reflected endpoints
- * rather than having their quaternion flipped; the sections are symmetric, nothing is lost.
+ * The local X reflection preserves rectangular sections and slabs; doors swap their hung
+ * edge so their leaf and opening motion are reflected too.
  */
 export function mirrorSelected(axis: RotAxis = 'x'): boolean {
-  noteNext(`mirror ${axis.toUpperCase()}`)
   const profiles = selectedProfiles(true)
-  const connectors = selectedConnectors(true)
+  const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
+  const fittings = selectedFittings(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
+  noteNext(`mirror ${axis.toUpperCase()}`)
 
   const centre = documentCentre()
   const k = { x: 0, y: 1, z: 2 }[axis] as 0 | 1 | 2
@@ -203,41 +249,46 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
   }
 
   const before = conflictPairsNow()
-  const copies: ProfileData[] = []
-  for (const p of profiles) {
-    const { start, end } = getProfileEndpoints(p)
-    const built = buildProfile(flip(start), flip(end), p.spec)
-    if (built) copies.push({ ...built, miterCuts: p.miterCuts, holes: p.holes })
+  const positionAt = (position: [number, number, number]): [number, number, number] => {
+    const at = flip(new THREE.Vector3(...position))
+    return [round3(at.x), round3(at.y), round3(at.z)]
   }
-  // A connector's own orientation cannot be mirrored without turning it inside out, so the
-  // copy is placed mirrored and left facing the way the original does; a quarter turn in
-  // the panel fixes the rare case where that is wrong.
+  const copies: ProfileData[] = profiles.map((p) => ({
+    ...p, id: nextId('p'), locked: false, position: positionAt(p.position),
+    quaternion: reflectedQuaternion(p.quaternion, axis),
+    holes: p.holes.map((hole) => ({ ...hole, position: [-hole.position[0], hole.position[1], hole.position[2]] })),
+  }))
   const connectorCopies: ConnectorData[] = connectors.map((c2) => {
-    const at = flip(new THREE.Vector3(...c2.position))
-    return { ...c2, id: nextId('c'), locked: false, position: [round3(at.x), round3(at.y), round3(at.z)] as [number, number, number] }
+    return { ...c2, id: nextId('c'), locked: false, position: positionAt(c2.position),
+      quaternion: reflectedQuaternion(c2.quaternion, axis, connectorSymmetry(c2.type)) }
   })
   const panelCopies: PanelData[] = panels.map((b) => {
-    const at = flip(new THREE.Vector3(...b.position))
-    return { ...b, id: nextId('b'), locked: false, position: [round3(at.x), round3(at.y), round3(at.z)] as [number, number, number] }
+    return { ...b, id: nextId('b'), locked: false, position: positionAt(b.position),
+      quaternion: reflectedQuaternion(b.quaternion, axis) }
   })
-  if (copies.length === 0 && connectorCopies.length === 0 && panelCopies.length === 0) return false
-
-  useStore.getState().addItems(copies, connectorCopies, true)
-  if (panelCopies.length) useStore.getState().addPanels(panelCopies, false)
-  toast(t().toastMirrored(copies.length + connectorCopies.length + panelCopies.length), 'success')
+  const fittingCopies: FittingData[] = fittings.map((f) => {
+    const hinge = f.hinge ?? 'left'
+    return { ...f, id: nextId('f'), locked: false, position: positionAt(f.position),
+      quaternion: reflectedQuaternion(f.quaternion, axis),
+      ...(f.kind === 'door' ? { hinge: hinge === 'left' ? 'right' : hinge === 'right' ? 'left' : hinge } : {}),
+    }
+  })
+  addCopies({ profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies })
+  toast(t().toastMirrored(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
 
 /** Repeat the selection along a world axis with the specified count and spacing in millimetres. */
 export function arraySelected(axis: RotAxis, count: number, spacing: number): boolean {
-  noteNext(`array ${axis.toUpperCase()} ×${count} @${spacing}`)
   const profiles = selectedProfiles(true)
-  const connectors = selectedConnectors(true)
+  const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0) return false
+  const fittings = selectedFittings(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
   if (!isFinite(count) || count < 1 || !isFinite(spacing) || Math.abs(spacing) < 1) return false
   const n = Math.min(Math.floor(count), 50)   // a slip of the keyboard must not make 5000 parts
+  noteNext(`array ${axis.toUpperCase()} ×${n} @${spacing}`)
 
   const step = new THREE.Vector3(
     axis === 'x' ? spacing : 0, axis === 'y' ? spacing : 0, axis === 'z' ? spacing : 0,
@@ -246,6 +297,7 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
   const copies: ProfileData[] = []
   const connectorCopies: ConnectorData[] = []
   const panelCopies: PanelData[] = []
+  const fittingCopies: FittingData[] = []
   for (let i = 1; i <= n; i++) {
     const d = step.clone().multiplyScalar(i)
     for (const p of profiles) {
@@ -261,6 +313,7 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
       })
     }
     for (const b of panels) panelCopies.push({ ...b, id: nextId('b'), locked: false, position: shifted(b.position, d) })
+    for (const f of fittings) fittingCopies.push({ ...f, id: nextId('f'), locked: false, position: shifted(f.position, d) })
   }
   // the whole array is lifted as one, so the copies stay in line instead of being clamped apart
   const sink = sinkBelowFloor(copies, [0, 0, 0])
@@ -268,11 +321,11 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
     for (const p of copies) p.position = [p.position[0], round3(p.position[1] - sink), p.position[2]]
     for (const c of connectorCopies) c.position = [c.position[0], round3(c.position[1] - sink), c.position[2]]
     for (const b of panelCopies) b.position = [b.position[0], round3(b.position[1] - sink), b.position[2]]
+    for (const f of fittingCopies) f.position = [f.position[0], round3(f.position[1] - sink), f.position[2]]
   }
 
-  useStore.getState().addItems(copies, connectorCopies, true)
-  if (panelCopies.length) useStore.getState().addPanels(panelCopies, false)
-  toast(t().toastArrayed(copies.length + connectorCopies.length + panelCopies.length), 'success')
+  addCopies({ profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies })
+  toast(t().toastArrayed(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
@@ -291,7 +344,7 @@ export function selectionPivot(
   profiles: ProfileData[], connectors: ConnectorData[], mode: PivotMode = 'center',
   panels: PanelData[] = [], fittings: FittingData[] = [],
 ): THREE.Vector3 {
-  if (mode !== 'center' && profiles.length === 1 && connectors.length === 0) {
+  if (mode !== 'center' && profiles.length === 1 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) {
     const { start, end } = getProfileEndpoints(profiles[0])
     return mode === 'start' ? start : end
   }
@@ -319,13 +372,13 @@ export function pivotApplies(profiles: ProfileData[], connectors: ConnectorData[
  * Profiles and connectors alike — nothing is restricted to 90° steps or to the Y axis.
  */
 export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
-  noteNext(`turn ${axis.toUpperCase()} ${degrees}°`)
   const profiles = selectedProfiles()
   const connectors = selectedConnectors()
   const panels = selectedPanels()
   const fittings = selectedFittings()
   if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
   if (!isFinite(degrees) || degrees % 360 === 0) return false
+  noteNext(`turn ${axis.toUpperCase()} ${degrees}°`)
   const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode, panels, fittings)
   const rot = new THREE.Quaternion().setFromAxisAngle(AXES[axis], THREE.MathUtils.degToRad(degrees))
   const spin = (pos: [number, number, number], quat: [number, number, number, number]) => {
@@ -376,7 +429,12 @@ export function commitExactMove(distance: number): boolean {
   if (!leadOrigin) return false
   const lead = store.profiles.find((p) => p.id === ts.dragProfileId)
     ?? store.connectors.find((c) => c.id === ts.dragProfileId)
-  if (!lead) return false
+    ?? store.panels.find((b) => b.id === ts.dragProfileId)
+    ?? store.fittings.find((f) => f.id === ts.dragProfileId)
+  if (!lead || lead.locked) return false
+  const movingIds = new Set(Object.keys(origins))
+  movingIds.add(lead.id)
+  if (store.connectors.some((c) => c.id === lead.id) && movingIds.size < 2) return false
 
   const travelled = new THREE.Vector3(...lead.position).sub(new THREE.Vector3(...leadOrigin))
   if (ts.dragAxis) {
@@ -386,18 +444,22 @@ export function commitExactMove(distance: number): boolean {
   if (travelled.length() < 0.5) { toast(t().toastNeedDirection, 'info'); return false }
   const delta = travelled.normalize().multiplyScalar(distance)
 
-  const profiles = store.profiles.filter((p) => origins[p.id])
-  const sink = sinkBelowFloor(profiles.map((p) => ({ ...p, position: origins[p.id] })), [delta.x, delta.y, delta.z])
+  const profiles = store.profiles.filter((p) => movingIds.has(p.id) && !p.locked)
+  const sink = sinkBelowFloor(profiles.map((p) => ({ ...p, position: origins[p.id] ?? leadOrigin })), [delta.x, delta.y, delta.z])
   if (sink < 0) delta.y -= sink
 
   const at = (id: string, fallback: [number, number, number]): [number, number, number] => {
-    const o = origins[id] ?? fallback
+    const o = origins[id] ?? (id === lead.id ? leadOrigin : fallback)
     return [round3(o[0] + delta.x), round3(o[1] + delta.y), round3(o[2] + delta.z)]
   }
   store.updateParts({
     profiles: profiles.map((p) => ({ id: p.id, updates: { position: at(p.id, p.position) } })),
-    connectors: store.connectors.filter((c) => origins[c.id])
+    connectors: store.connectors.filter((c) => movingIds.has(c.id) && !c.locked)
       .map((c) => ({ id: c.id, updates: { position: at(c.id, c.position) } })),
+    panels: store.panels.filter((b) => movingIds.has(b.id) && !b.locked)
+      .map((b) => ({ id: b.id, updates: { position: at(b.id, b.position) } })),
+    fittings: store.fittings.filter((f) => movingIds.has(f.id) && !f.locked)
+      .map((f) => ({ id: f.id, updates: { position: at(f.id, f.position) } })),
   })
   ts.stopDrag()
   return true
@@ -410,7 +472,7 @@ export function commitExactLength(length: number): boolean {
   if (!rs) return false
   const store = useStore.getState()
   const profile = store.profiles.find((p) => p.id === rs.id)
-  if (!profile) return false
+  if (!profile || profile.locked) return false
   if (!isFinite(length) || length < 10) { toast(t().toastTooShort); return false }
 
   const dir = getProfileDir(profile)
@@ -523,7 +585,7 @@ export function setProfileSpec(id: string, spec: ProfileSpec): boolean {
 /** Change which extrusion series a connector is made for */
 export function setConnectorSeries(id: string, series: 20 | 30 | 40): boolean {
   const c = useStore.getState().connectors.find((q) => q.id === id)
-  if (!c) return false
+  if (!c || c.locked || ![20, 30, 40].includes(series)) return false
   useStore.getState().commitTransform({ connectors: [{ id, updates: { series } }] })
   return true
 }
@@ -552,10 +614,89 @@ export function beginLiveEdit(): void {
   useStore.getState().snapshotHistory()
 }
 
-export function livePart(id: string, updates: Record<string, unknown>): void {
-  const s = useStore.getState()
-  if (s.profiles.some((p) => p.id === id)) s.updateParts({ profiles: [{ id, updates }] })
-  else if (s.panels.some((p) => p.id === id)) s.updateParts({ panels: [{ id, updates }] })
-  else if (s.fittings.some((f) => f.id === id)) s.updateParts({ fittings: [{ id, updates }] })
-  else if (s.connectors.some((c) => c.id === id)) s.updateParts({ connectors: [{ id, updates }] })
+const PART_FIELDS = {
+  profiles: ['spec', 'length', 'position', 'quaternion', 'miterCuts', 'holes'],
+  connectors: ['type', 'series', 'position', 'quaternion'],
+  panels: ['width', 'height', 'thickness', 'material', 'position', 'quaternion'],
+  fittings: ['kind', 'width', 'height', 'depth', 'frame', 'material', 'open', 'hinge', 'hingeType', 'overlay', 'swing', 'stacked', 'position', 'quaternion'],
+}
+
+const finiteTuple = (value: unknown, length: number): value is number[] => Array.isArray(value)
+  && value.length === length && value.every((v) => typeof v === 'number' && Number.isFinite(v))
+const materialValid = (value: unknown) => ['mdf', 'ply', 'acrylic', 'alu'].includes(value as string)
+
+/** Preview and final input use the same bounds, rounding and lock rules. */
+function validLiveUpdates(kind: keyof PartDocument, part: { locked?: boolean }, updates: Record<string, unknown>): Record<string, unknown> | null {
+  if (part.locked || Object.keys(updates).some((key) => !PART_FIELDS[kind].includes(key))) return null
+  const next: Record<string, unknown> = { ...part, ...updates }
+  const normalised = { ...updates }
+  if ('position' in updates) {
+    if (!finiteTuple(updates.position, 3)) return null
+    normalised.position = updates.position.map(round3)
+  }
+  if ('quaternion' in updates) {
+    if (!finiteTuple(updates.quaternion, 4) || Math.hypot(...updates.quaternion) < 1e-9) return null
+    normalised.quaternion = new THREE.Quaternion(...updates.quaternion as [number, number, number, number]).normalize().toArray()
+  }
+  const numberField = (field: string, min: number, digits = 1, strict = false) => {
+    const value = next[field]
+    if (typeof value !== 'number' || !Number.isFinite(value) || (strict ? value <= min : value < min)) return false
+    if (field in updates) {
+      const scale = 10 ** digits
+      const rounded = Math.round(value * scale) / scale
+      if (strict ? rounded <= min : rounded < min) return false
+      normalised[field] = rounded
+    }
+    return true
+  }
+  if (kind === 'profiles') {
+    if (!numberField('length', 10, 2) || !ALL_SPECS.includes(next.spec as ProfileSpec)) return null
+    if ('holes' in updates && (!Array.isArray(updates.holes) || updates.holes.some((hole) =>
+      !hole || typeof hole.id !== 'string' || !finiteTuple(hole.position, 3)
+      || typeof hole.diameter !== 'number' || !Number.isFinite(hole.diameter) || hole.diameter <= 0))) return null
+    if ('miterCuts' in updates && (!Array.isArray(updates.miterCuts) || updates.miterCuts.some((cut) =>
+      !cut || !['start', 'end'].includes(cut.side) || typeof cut.angle !== 'number' || !Number.isFinite(cut.angle)))) return null
+  } else if (kind === 'connectors') {
+    if (!connectorEntry(next.type as string) || ![20, 30, 40].includes((next.series ?? 20) as number)) return null
+  } else if (kind === 'panels') {
+    if (!numberField('width', 20) || !numberField('height', 20) || !numberField('thickness', 0, 1, true) || !materialValid(next.material)) return null
+  } else {
+    if (!['door', 'drawer'].includes(next.kind as string) || !['width', 'height', 'depth'].every((field) => numberField(field, 60)) || !materialValid(next.material)) return null
+    if ('frame' in updates && !numberField('frame', 0)) return null
+    if ('open' in updates && (!numberField('open', 0, 3) || (next.open as number) > 1)) return null
+    if ('swing' in updates && (!numberField('swing', 0, 3, true) || (next.swing as number) > 180)) return null
+    if ('hinge' in updates && !['left', 'right', 'top', 'bottom'].includes(updates.hinge as string)) return null
+    if ('hingeType' in updates && !['cup', 'slot', 'continuous'].includes(updates.hingeType as string)) return null
+    if ('overlay' in updates && !['full', 'half', 'inset'].includes(updates.overlay as string)) return null
+    if ('stacked' in updates) {
+      const stacked = updates.stacked as FittingData['stacked']
+      if (!stacked || typeof stacked !== 'object' || Object.keys(stacked).some((key) =>
+        !['above', 'below'].includes(key) || typeof stacked[key as keyof typeof stacked] !== 'boolean')) return null
+    }
+  }
+  const changed = Object.entries(normalised).some(([key, value]) => JSON.stringify((part as Record<string, unknown>)[key]) !== JSON.stringify(value))
+  return changed ? normalised : null
+}
+
+/** Apply one valid preview to all selected targets; take history only on its first real change. */
+export function liveParts(ids: string[], updates: Record<string, unknown>, pushHistory = false): boolean {
+  const store = useStore.getState()
+  const selected = new Set(ids)
+  const edits: Parameters<typeof store.updateParts>[0] = {}
+  for (const kind of Object.keys(PART_FIELDS) as Array<keyof PartDocument>) {
+    const changes = store[kind].flatMap((part) => {
+      if (!selected.has(part.id)) return []
+      const validated = validLiveUpdates(kind, part, updates)
+      return validated ? [{ id: part.id, updates: validated }] : []
+    })
+    if (changes.length) edits[kind] = changes
+  }
+  if (Object.keys(edits).length === 0) return false
+  if (pushHistory) store.snapshotHistory()
+  store.updateParts(edits)
+  return true
+}
+
+export function livePart(id: string, updates: Record<string, unknown>, pushHistory = false): boolean {
+  return liveParts([id], updates, pushHistory)
 }

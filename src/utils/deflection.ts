@@ -1,7 +1,11 @@
 import * as THREE from 'three'
 import type { ProfileData } from '../store/useStore'
-import { getProfileDir, getProfileEndpoints, closestOnSegment } from './geometryCore'
+import { getProfileDir, getProfileEndpoints } from './geometryCore'
 import { specDims } from './specUtils'
+import { computeAllTrims, computeTrims, type ProfileTrims } from './jointUtils'
+import { trimmedOBB } from './analysis'
+import { bodiesTouch } from './assembly'
+import type { OBB } from './obb'
 
 /** Young's modulus of the 6xxx aluminium these are extruded from (N/mm²) */
 const E = 69000
@@ -80,19 +84,23 @@ export interface Deflection {
 }
 
 /** Locate contacts along a member, including intermediate supports. Parallel members are excluded. */
-interface Seg { id: string; start: THREE.Vector3; end: THREE.Vector3; dir: THREE.Vector3; mid: THREE.Vector3; reach: number }
+interface Seg { id: string; start: THREE.Vector3; end: THREE.Vector3; dir: THREE.Vector3; mid: THREE.Vector3; reach: number; body: OBB }
 
-function segmentOf(p: ProfileData): Seg {
+function segmentOf(p: ProfileData, trim: ProfileTrims): Seg {
   const { start, end } = getProfileEndpoints(p)
   return {
     id: p.id, start, end, dir: getProfileDir(p),
     mid: start.clone().add(end).multiplyScalar(0.5),
     reach: start.distanceTo(end) / 2,
+    body: trimmedOBB(p, trim),
   }
 }
 
 /** Compute member segments and trimmed bodies once per calculation. */
-const segments = (all: ProfileData[]): Seg[] => all.map(segmentOf)
+const segments = (all: ProfileData[]): Seg[] => {
+  const trims = computeAllTrims(all)
+  return all.map((p) => segmentOf(p, trims.get(p.id)!))
+}
 
 function supportsAlong(me: Seg, segs: Seg[]): number[] {
   const out: number[] = []
@@ -102,7 +110,7 @@ function supportsAlong(me: Seg, segs: Seg[]): number[] {
     // two segments cannot touch if their midpoints are further apart than their two halves
     if (me.mid.distanceTo(b.mid) > me.reach + b.reach + SUPPORT_TOL) continue
     const near = closestParam(me.start, me.end, b.start, b.end)
-    if (near.dist <= SUPPORT_TOL) out.push(near.t)
+    if (near.dist <= SUPPORT_TOL && bodiesTouch(me.body, b.body)) out.push(near.t)
   }
   return out.sort((a, b) => a - b)
 }
@@ -114,7 +122,7 @@ function supportsAlong(me: Seg, segs: Seg[]): number[] {
  * member with nothing under either end is not spanning anything yet.
  */
 export function deflect(p: ProfileData, all: ProfileData[], loadKg: number): Deflection | null {
-  return deflectIn(p, segmentOf(p), segments(all), loadKg)
+  return deflectIn(p, segmentOf(p, computeTrims(p, all)), segments(all), loadKg)
 }
 
 function deflectIn(p: ProfileData, me: Seg, segs: Seg[], loadKg: number): Deflection | null {

@@ -360,6 +360,78 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "f-mueqq7c22n-runner-left",
+   "spec": "2020",
+   "position": [
+    1400,
+    120,
+    600
+   ],
+   "length": 600,
+   "quaternion": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "f-mueqq7c22n-runner-right",
+   "spec": "2020",
+   "position": [
+    900,
+    120,
+    600
+   ],
+   "length": 600,
+   "quaternion": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "f-mueqq7c22o-runner-left",
+   "spec": "2020",
+   "position": [
+    1400,
+    290,
+    600
+   ],
+   "length": 600,
+   "quaternion": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "f-mueqq7c22o-runner-right",
+   "spec": "2020",
+   "position": [
+    900,
+    290,
+    600
+   ],
+   "length": 600,
+   "quaternion": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -652,70 +724,6 @@
    ]
   },
   {
-   "id": "c-mueqr37xd2",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    10,
-    88.00000000000001,
-    0
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ]
-  },
-  {
-   "id": "c-mueqr37xd3",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    890,
-    88.00000000000001,
-    0
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ]
-  },
-  {
-   "id": "c-mueqr37yd4",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    10,
-    88.00000000000001,
-    600
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ]
-  },
-  {
-   "id": "c-mueqr37yd5",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    890,
-    88.00000000000001,
-    600
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ]
-  },
-  {
    "id": "c-mueqr37yd6",
    "type": "inside-corner",
    "series": 20,
@@ -732,22 +740,6 @@
    ]
   },
   {
-   "id": "c-mueqr37zd7",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1390,
-    88.00000000000001,
-    0
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ]
-  },
-  {
    "id": "c-mueqr37zd8",
    "type": "inside-corner",
    "series": 20,
@@ -761,22 +753,6 @@
     1.1102230246251564e-16,
     0,
     1
-   ]
-  },
-  {
-   "id": "c-mueqr37zd9",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1390,
-    88.00000000000001,
-    600
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
    ]
   },
   {
@@ -940,38 +916,6 @@
    ]
   },
   {
-   "id": "c-mueqr381dk",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    58,
-    690,
-    10
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ]
-  },
-  {
-   "id": "c-mueqr381dl",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    58,
-    690,
-    590
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ]
-  },
-  {
    "id": "c-mueqr381dm",
    "type": "inside-corner",
    "series": 20,
@@ -1004,36 +948,292 @@
    ]
   },
   {
-   "id": "c-mueqr382do",
+   "id": "c-mueqr37xd2",
    "type": "inside-corner",
-   "series": 20,
    "position": [
-    1438,
+    10,
+    40,
+    0
+   ],
+   "quaternion": [
+    0.7071067811865477,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    1.7431527984210492e-32
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mueqr37xd3",
+   "type": "inside-corner",
+   "position": [
+    900,
+    110,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mueqr37yd4",
+   "type": "inside-corner",
+   "position": [
+    10,
+    40,
+    600
+   ],
+   "quaternion": [
+    0.7071067811865477,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    1.7431527984210492e-32
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mueqr37yd5",
+   "type": "inside-corner",
+   "position": [
+    900,
+    110,
+    590
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mueqr37zd7",
+   "type": "inside-corner",
+   "position": [
+    1400,
+    110,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mueqr37zd9",
+   "type": "inside-corner",
+   "position": [
+    1400,
+    110,
+    590
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mueqr381dk",
+   "type": "inside-corner",
+   "position": [
+    10,
     690,
     10
    ],
    "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ]
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
   },
   {
-   "id": "c-mueqr382dp",
+   "id": "c-mueqr381dl",
    "type": "inside-corner",
-   "series": 20,
    "position": [
-    1438,
+    10,
     690,
     590
    ],
    "quaternion": [
-    -0.5,
-    0.5000000000000001,
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mueqr382do",
+   "type": "inside-corner",
+   "position": [
+    1400,
+    680,
+    10
+   ],
+   "quaternion": [
+    -0.4999999999999999,
     0.5,
-    0.5000000000000001
-   ]
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mueqr382dp",
+   "type": "inside-corner",
+   "position": [
+    1400,
+    680,
+    590
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20
+  },
+  {
+   "id": "f-mueqq7c22n-runner-left-start-joint",
+   "type": "inside-corner",
+   "position": [
+    1400,
+    130,
+    590
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "f-mueqq7c22n-runner-left-end-joint",
+   "type": "inside-corner",
+   "position": [
+    1400,
+    130,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "f-mueqq7c22n-runner-right-start-joint",
+   "type": "inside-corner",
+   "position": [
+    900,
+    130,
+    590
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "f-mueqq7c22n-runner-right-end-joint",
+   "type": "inside-corner",
+   "position": [
+    900,
+    130,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "f-mueqq7c22o-runner-left-start-joint",
+   "type": "inside-corner",
+   "position": [
+    1400,
+    300,
+    590
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "f-mueqq7c22o-runner-left-end-joint",
+   "type": "inside-corner",
+   "position": [
+    1400,
+    300,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "f-mueqq7c22o-runner-right-start-joint",
+   "type": "inside-corner",
+   "position": [
+    900,
+    300,
+    590
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "f-mueqq7c22o-runner-right-end-joint",
+   "type": "inside-corner",
+   "position": [
+    900,
+    300,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
   }
  ],
  "panels": [],

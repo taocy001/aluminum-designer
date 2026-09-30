@@ -3,7 +3,7 @@ import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Cro
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
-import { duplicateSelected, mirrorSelected, rotateSelected, selectAll, selectConnected, type RotAxis } from '../utils/editOps'
+import { duplicateSelected, mirrorSelected, rotateSelected, selectAll, selectConnected, selectionLocked, type RotAxis } from '../utils/editOps'
 
 const AXIS_COLORS: Record<RotAxis, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 const MIN_WIDTH = 190
@@ -23,6 +23,9 @@ const QuickMenu: React.FC = () => {
   const selectedIds = useStore((s) => s.selectedIds)
   const profiles = useStore((s) => s.profiles)
   const connectors = useStore((s) => s.connectors)
+  const panels = useStore((s) => s.panels)
+  const fittings = useStore((s) => s.fittings)
+  const viewMode = useToolStore((s) => s.viewMode)
   const toggleLockSelected = useStore((s) => s.toggleLockSelected)
   const removeSelected = useStore((s) => s.removeSelected)
   const ref = useRef<HTMLDivElement>(null)
@@ -51,16 +54,15 @@ const QuickMenu: React.FC = () => {
 
   if (!at) return null
 
-  const locked = profiles.filter((p) => selectedIds.includes(p.id)).every((p) => p.locked)
-    && connectors.filter((c) => selectedIds.includes(c.id)).every((c) => c.locked)
+  const locked = selectionLocked({ profiles, connectors, panels, fittings }, selectedIds)
   const hasSelection = selectedIds.length > 0
 
   const run = (fn: () => void) => () => { fn(); closeQuickMenu() }
   // Every row says what it does when the pointer rests on it. The label on the row is its
   // name; the hint is what happens when you press it, which is a different question.
-  const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; danger?: boolean; tip?: string }> =
-    ({ onClick, children, testId, danger, tip }) => (
-      <button onClick={onClick} data-testid={testId} title={tip}
+  const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; danger?: boolean; tip?: string; edit?: boolean }> =
+    ({ onClick, children, testId, danger, tip, edit }) => (
+      <button onClick={onClick} data-testid={testId} title={tip} disabled={viewMode && edit}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap ${
           danger ? 'text-red-400 hover:bg-red-400/10' : 'text-slate-200 hover:bg-white/10'}`}>
         {children}
@@ -89,10 +91,11 @@ const QuickMenu: React.FC = () => {
       )}
       {hasSelection && (['x', 'y', 'z'] as RotAxis[]).map((ax) => (
         <div key={ax} className="flex items-center">
-          <Item testId={`quick-rot-${ax}`} tip={t.hintRotateFwd(ax.toUpperCase())} onClick={run(() => rotateSelected(ax, 90))}>
+          <Item edit testId={`quick-rot-${ax}`} tip={t.hintRotateFwd(ax.toUpperCase())} onClick={run(() => rotateSelected(ax, 90))}>
             <RotateCw size={12} style={{ color: AXIS_COLORS[ax] }} />{t.gizmoRotate(ax.toUpperCase())}
           </Item>
           <button onClick={run(() => rotateSelected(ax, -90))} data-testid={`quick-rot-${ax}-back`}
+            disabled={viewMode} aria-label={t.hintRotateBack(ax.toUpperCase())}
             title={t.hintRotateBack(ax.toUpperCase())}
             className="ml-auto mr-1 p-1.5 rounded-lg text-slate-400 hover:bg-white/10"><RotateCcw size={12} /></button>
         </div>
@@ -104,11 +107,12 @@ const QuickMenu: React.FC = () => {
         onClick={run(() => { const id = selectedIds[0]; if (id) selectConnected(id) })}>
         <Waypoints size={12} />{t.selectConnected}
       </Item>}
-      {hasSelection && <Item testId="quick-duplicate" tip={t.hintDuplicate} onClick={run(duplicateSelected)}><Copy size={12} />{t.duplicate}</Item>}
+      {hasSelection && <Item edit testId="quick-duplicate" tip={t.hintDuplicate} onClick={run(duplicateSelected)}><Copy size={12} />{t.duplicate}</Item>}
       {hasSelection && <div className="flex items-center gap-0.5 px-1.5 pb-0.5">
         <FlipHorizontal2 size={12} className="text-slate-400 mx-1.5" />
         {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
           <button key={ax} onClick={run(() => mirrorSelected(ax))} data-testid={`quick-mirror-${ax}`}
+            disabled={viewMode} aria-label={t.hintMirror(ax.toUpperCase())}
             title={t.hintMirror(ax.toUpperCase())}
             className="flex-1 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold font-mono text-slate-200">
             {ax.toUpperCase()}
@@ -119,10 +123,10 @@ const QuickMenu: React.FC = () => {
       {hasSelection && <Item testId="quick-pivot" tip={t.hintPivot} onClick={run(useToolStore.getState().cyclePivotMode)}>
         <Crosshair size={12} />{t.pivotCenter}/{t.pivotStart}/{t.pivotEnd}
       </Item>}
-      {hasSelection && <Item testId="quick-lock" tip={t.lockHint} onClick={run(toggleLockSelected)}>
+      {hasSelection && <Item edit testId="quick-lock" tip={t.lockHint} onClick={run(toggleLockSelected)}>
         {locked ? <Lock size={12} className="text-amber-400" /> : <LockOpen size={12} />}{locked ? t.unlock : t.lock}
       </Item>}
-      {hasSelection && <Item testId="quick-delete" danger tip={t.hintDelete} onClick={run(removeSelected)}><Trash2 size={12} />{t.delete}</Item>}
+      {hasSelection && <Item edit testId="quick-delete" danger tip={t.hintDelete} onClick={run(removeSelected)}><Trash2 size={12} />{t.delete}</Item>}
     </div>
   )
 }

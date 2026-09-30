@@ -432,6 +432,78 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-front",
+   "spec": "2020",
+   "position": [
+    400,
+    280,
+    31
+   ],
+   "length": 400,
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-back",
+   "spec": "2020",
+   "position": [
+    400,
+    280,
+    419
+   ],
+   "length": 400,
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-left",
+   "spec": "2020",
+   "position": [
+    430,
+    280,
+    31
+   ],
+   "length": 388,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-right",
+   "spec": "2020",
+   "position": [
+    770,
+    280,
+    31
+   ],
+   "length": 388,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -1042,6 +1114,134 @@
     0.7071067811865476,
     0
    ]
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-front-start-joint",
+   "type": "inside-corner",
+   "position": [
+    410,
+    280,
+    41
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-front-end-joint",
+   "type": "inside-corner",
+   "position": [
+    790,
+    280,
+    41
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-back-start-joint",
+   "type": "inside-corner",
+   "position": [
+    410,
+    280,
+    409
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-back-end-joint",
+   "type": "inside-corner",
+   "position": [
+    790,
+    280,
+    409
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-left-start-joint",
+   "type": "inside-corner",
+   "position": [
+    440,
+    280,
+    41
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-left-end-joint",
+   "type": "inside-corner",
+   "position": [
+    440,
+    280,
+    409
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-right-start-joint",
+   "type": "inside-corner",
+   "position": [
+    760,
+    280,
+    41
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmsz94k-bearing-right-end-joint",
+   "type": "inside-corner",
+   "position": [
+    760,
+    280,
+    409
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20
   }
  ],
  "panels": [

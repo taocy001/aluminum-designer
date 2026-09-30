@@ -4,6 +4,29 @@ import { specDims } from './specUtils'
 
 export type Axis = 'x' | 'y' | 'z'
 
+/** Geometry reused within one calculation, never retained across document edits. */
+export interface ProfileGeometry {
+  start: THREE.Vector3
+  end: THREE.Vector3
+  dir: THREE.Vector3
+  axis: Axis | null
+  x: THREE.Vector3
+  y: THREE.Vector3
+  hw: number
+  hh: number
+}
+
+export function profileGeometry(profile: ProfileData): ProfileGeometry {
+  const q = new THREE.Quaternion(...profile.quaternion).normalize()
+  const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
+  const start = new THREE.Vector3(...profile.position)
+  const { hw, hh } = specDims(profile.spec)
+  return { start, end: start.clone().addScaledVector(dir, profile.length), dir,
+    axis: Math.abs(dir.x) > 0.99 ? 'x' : Math.abs(dir.y) > 0.99 ? 'y' : Math.abs(dir.z) > 0.99 ? 'z' : null,
+    x: new THREE.Vector3(1, 0, 0).applyQuaternion(q),
+    y: new THREE.Vector3(0, 1, 0).applyQuaternion(q), hw, hh }
+}
+
 export function getProfileDir(profile: ProfileData): THREE.Vector3 {
   const quat = new THREE.Quaternion(...profile.quaternion).normalize()
   return new THREE.Vector3(0, 0, 1).applyQuaternion(quat)
@@ -29,7 +52,8 @@ export function round3(v: number): number {
 }
 
 /** Half extent of a profile's cross-section measured along world direction `dir` (unit) */
-export function crossExtentAlong(profile: ProfileData, dir: THREE.Vector3): number {
+export function crossExtentAlong(profile: ProfileData, dir: THREE.Vector3, geometry?: ProfileGeometry): number {
+  if (geometry) return round3(Math.abs(geometry.x.dot(dir)) * geometry.hw + Math.abs(geometry.y.dot(dir)) * geometry.hh)
   const { hw, hh } = specDims(profile.spec)
   const quat = new THREE.Quaternion(...profile.quaternion).normalize()
   const lx = new THREE.Vector3(1, 0, 0).applyQuaternion(quat)
@@ -39,11 +63,11 @@ export function crossExtentAlong(profile: ProfileData, dir: THREE.Vector3): numb
 
 /** Closest point on segment [a,b] to pt, plus the clamped parameter t∈[0,1] */
 export function closestOnSegment(pt: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3): { point: THREE.Vector3; t: number } {
-  const ab = b.clone().sub(a)
-  const lenSq = ab.lengthSq()
+  const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z
+  const lenSq = dx * dx + dy * dy + dz * dz
   if (lenSq < 1e-9) return { point: a.clone(), t: 0 }
-  const t = THREE.MathUtils.clamp(pt.clone().sub(a).dot(ab) / lenSq, 0, 1)
-  return { point: a.clone().addScaledVector(ab, t), t }
+  const t = THREE.MathUtils.clamp(((pt.x - a.x) * dx + (pt.y - a.y) * dy + (pt.z - a.z) * dz) / lenSq, 0, 1)
+  return { point: new THREE.Vector3(a.x + dx * t, a.y + dy * t, a.z + dz * t), t }
 }
 
 export const JOINT_EPS = 1.5
@@ -64,26 +88,26 @@ export interface BodyContact {
  * (lateral offset within Q's half section, along-offset within Q's half extent along d).
  * Returns the contact geometry or null.
  */
-export function endContactsBody(E: THREE.Vector3, d: THREE.Vector3, Q: ProfileData, slack = 1): BodyContact | null {
-  const { start: qs, end: qe } = getProfileEndpoints(Q)
-  const qDir = getProfileDir(Q)
+export function endContactsBody(E: THREE.Vector3, d: THREE.Vector3, Q: ProfileData, slack = 1, geometry?: ProfileGeometry): BodyContact | null {
+  const { start: qs, end: qe } = geometry ?? getProfileEndpoints(Q)
+  const qDir = geometry?.dir ?? getProfileDir(Q)
   if (Math.abs(qDir.dot(d)) > 0.99) return null // parallel members never form a butt/T joint
   const { point: C, t } = closestOnSegment(E, qs, qe)
-  const v = E.clone().sub(C)
-  const along = v.dot(d)
-  const lateralVec = v.clone().addScaledVector(d, -along)
-  const lateral = lateralVec.length()
-  const extentAlong = crossExtentAlong(Q, d)
+  const vx = E.x - C.x, vy = E.y - C.y, vz = E.z - C.z
+  const along = vx * d.x + vy * d.y + vz * d.z
+  const lx = vx + d.x * -along, ly = vy + d.y * -along, lz = vz + d.z * -along
+  const lateral = Math.sqrt(lx * lx + ly * ly + lz * lz)
+  const extentAlong = crossExtentAlong(Q, d, geometry)
   if (Math.abs(along) > extentAlong + slack) return null
   if (lateral > slack) {
     // lateral offset must stay inside Q's section (measured along the lateral direction) — but a point beyond
     // Q's end along its own axis is not "inside the body" unless it is a genuine corner (handled by atQEnd)
-    const lateralExtent = crossExtentAlong(Q, lateralVec.clone().normalize())
+    const lateralExtent = crossExtentAlong(Q, new THREE.Vector3(lx, ly, lz).normalize(), geometry)
     if (lateral > lateralExtent + slack) return null
   }
   const atQEnd = t <= 1e-6 || t >= 1 - 1e-6 || C.distanceTo(qs) <= JOINT_EPS || C.distanceTo(qe) <= JOINT_EPS
   // if the closest param was clamped, E may be beyond Q's end along Q's axis: allow only a small overshoot
-  const overshootAlongQ = Math.abs(E.clone().sub(C).dot(qDir))
-  if (atQEnd && overshootAlongQ > crossExtentAlong(Q, qDir) + slack) return null
+  const overshootAlongQ = Math.abs(vx * qDir.x + vy * qDir.y + vz * qDir.z)
+  if (atQEnd && overshootAlongQ > crossExtentAlong(Q, qDir, geometry) + slack) return null
   return { axisPoint: C, along, extentAlong, atQEnd }
 }

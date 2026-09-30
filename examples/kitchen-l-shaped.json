@@ -792,6 +792,78 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "b-mufvmswm11-bearing-front",
+   "spec": "2020",
+   "position": [
+    0,
+    440,
+    31
+   ],
+   "length": 600,
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "b-mufvmswm11-bearing-back",
+   "spec": "2020",
+   "position": [
+    0,
+    440,
+    619
+   ],
+   "length": 600,
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "b-mufvmswm11-bearing-left",
+   "spec": "2020",
+   "position": [
+    30,
+    440,
+    31
+   ],
+   "length": 588,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "b-mufvmswm11-bearing-right",
+   "spec": "2020",
+   "position": [
+    570,
+    440,
+    31
+   ],
+   "length": 588,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -1340,22 +1412,6 @@
    ]
   },
   {
-   "id": "c-mufscjjs37",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    58,
-    10,
-    9.99999999999999
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5
-   ]
-  },
-  {
    "id": "c-mufscjjs38",
    "type": "inside-corner",
    "series": 20,
@@ -1369,22 +1425,6 @@
     0.7071067811865475,
     0,
     0.7071067811865476
-   ]
-  },
-  {
-   "id": "c-mufscjjs39",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    658,
-    10,
-    9.99999999999999
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5
    ]
   },
   {
@@ -1404,22 +1444,6 @@
    ]
   },
   {
-   "id": "c-mufscjjs3b",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1258,
-    10,
-    9.99999999999999
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5
-   ]
-  },
-  {
    "id": "c-mufscjjs3c",
    "type": "inside-corner",
    "series": 20,
@@ -1433,22 +1457,6 @@
     0.7071067811865475,
     0,
     0.7071067811865476
-   ]
-  },
-  {
-   "id": "c-mufscjjs3d",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1808,
-    10,
-    9.99999999999999
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
    ]
   },
   {
@@ -1818,6 +1826,198 @@
     0.7071067811865476,
     0
    ]
+  },
+  {
+   "id": "c-mufscjjs37",
+   "type": "inside-corner",
+   "position": [
+    10,
+    10,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mufscjjs39",
+   "type": "inside-corner",
+   "position": [
+    610,
+    10,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mufscjjs3b",
+   "type": "inside-corner",
+   "position": [
+    1210,
+    10,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "c-mufscjjs3d",
+   "type": "inside-corner",
+   "position": [
+    1760,
+    10,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmswm11-bearing-front-start-joint",
+   "type": "inside-corner",
+   "position": [
+    10,
+    440,
+    41
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmswm11-bearing-front-end-joint",
+   "type": "inside-corner",
+   "position": [
+    590,
+    440,
+    41
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmswm11-bearing-back-start-joint",
+   "type": "inside-corner",
+   "position": [
+    10,
+    440,
+    609
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmswm11-bearing-back-end-joint",
+   "type": "inside-corner",
+   "position": [
+    590,
+    440,
+    609
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmswm11-bearing-left-start-joint",
+   "type": "inside-corner",
+   "position": [
+    40,
+    440,
+    41
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmswm11-bearing-left-end-joint",
+   "type": "inside-corner",
+   "position": [
+    40,
+    440,
+    609
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmswm11-bearing-right-start-joint",
+   "type": "inside-corner",
+   "position": [
+    560,
+    440,
+    41
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20
+  },
+  {
+   "id": "b-mufvmswm11-bearing-right-end-joint",
+   "type": "inside-corner",
+   "position": [
+    560,
+    440,
+    609
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20
   }
  ],
  "panels": [

@@ -1,6 +1,8 @@
 import { create } from 'zustand'
-import { migrateFittings } from '../utils/migrate'
 import { persist } from 'zustand/middleware'
+import { parseProjectDocument, type ProjectDocument, type ProjectGeometry } from '../utils/document'
+import { documentStorage } from '../utils/documentPersistence'
+import { setThroughRule as applyThroughRule, type ThroughRule } from '../utils/jointUtils'
 
 export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
 
@@ -122,14 +124,14 @@ export interface FittingData {
   locked?: boolean
 }
 
-type Snapshot = { profiles: ProfileData[]; connectors: ConnectorData[]; panels: PanelData[]; fittings: FittingData[] }
+type Snapshot = ProjectDocument
 
 const MAX_HISTORY = 50
 
-function takeSnapshot(state: Pick<State, 'profiles' | 'connectors' | 'panels' | 'fittings'>): Snapshot {
+function takeSnapshot(state: ProjectDocument): Snapshot {
   return {
     profiles: [...state.profiles], connectors: [...state.connectors],
-    panels: [...state.panels], fittings: [...state.fittings],
+    panels: [...state.panels], fittings: [...state.fittings], throughRule: state.throughRule,
   }
 }
 
@@ -138,6 +140,10 @@ interface State {
   connectors: ConnectorData[]
   panels: PanelData[]
   fittings: FittingData[]
+  throughRule: ThroughRule
+  setThroughRule: (rule: ThroughRule) => void
+  /** One user command, one complete history entry, including replacements/removals. */
+  commitDocument: (doc: Partial<ProjectDocument>, selection?: string[]) => void
   selectedIds: string[]
   past: Snapshot[]
   future: Snapshot[]
@@ -151,7 +157,7 @@ interface State {
   updatePanel: (id: string, updates: Partial<PanelData>) => void
   commitPanelEdit: (id: string, updates: Partial<PanelData>) => void
   /** Replace the whole document (import) */
-  loadDocument: (doc: { profiles: ProfileData[]; connectors: ConnectorData[]; panels?: PanelData[]; fittings?: FittingData[] }) => void
+  loadDocument: (doc: Pick<ProjectGeometry, 'profiles' | 'connectors'> & Partial<ProjectDocument>) => void
   removeProfile: (id: string) => void
   removeSelected: () => void
   /** lock or unlock the selection; locked parts are protected from moves and deletion */
@@ -189,25 +195,39 @@ export const useStore = create<State>()(
       connectors: [],
       panels: [],
       fittings: [],
+      throughRule: 'rails',
       selectedIds: [],
       past: [],
       future: [],
 
+      setThroughRule: (throughRule) => set((state) => {
+        if (state.throughRule === throughRule) return state
+        return { throughRule, past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
+      }),
+      commitDocument: (doc, selection) => set((state) => {
+        const changed = Object.entries(doc).some(([key, value]) => state[key as keyof ProjectDocument] !== value)
+        if (!changed) return state
+        return {
+          ...doc, past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [],
+          ...(selection ? { selectedIds: selection } : {}),
+        }
+      }),
+
       addProfile: (profile) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         profiles: [...state.profiles, profile],
       })),
 
       addProfiles: (list, select = false) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         profiles: [...state.profiles, ...list],
         selectedIds: select ? list.map((p) => p.id) : state.selectedIds,
       })),
 
       addItems: (list, conns, select = false) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         profiles: [...state.profiles, ...list],
         connectors: [...state.connectors, ...conns],
@@ -215,7 +235,7 @@ export const useStore = create<State>()(
       })),
 
       addFittings: (list, select = false) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         fittings: [...state.fittings, ...list],
         ...(select ? { selectedIds: list.map((f) => f.id) } : {}),
@@ -224,12 +244,12 @@ export const useStore = create<State>()(
       // How far open is a way of looking, not a change to the design, so it leaves no
       // history entry: undo after opening a drawer should undo the last thing you built.
       updateFitting: (id, updates, pushHistory = true) => set((state) => ({
-        ...(pushHistory ? { past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)], future: [] } : {}),
+        ...(pushHistory ? { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] } : {}),
         fittings: state.fittings.map((f) => f.id === id ? { ...f, ...updates } : f),
       })),
 
       addPanels: (list, select = false) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         panels: [...state.panels, ...list],
         selectedIds: select ? list.map((p) => p.id) : state.selectedIds,
@@ -240,25 +260,23 @@ export const useStore = create<State>()(
       })),
 
       commitPanelEdit: (id, updates) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         panels: state.panels.map((p) => p.id === id ? { ...p, ...updates } : p),
       })),
 
-      loadDocument: (doc) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
-        future: [],
-        profiles: doc.profiles,
-        connectors: doc.connectors,
-        panels: doc.panels ?? [],
-        // a document written before a fitting knew how thick the frame it covers is puts
-        // every leaf half a section inside the post it hangs on
-        fittings: migrateFittings(doc.profiles, doc.fittings ?? []),
-        selectedIds: [],
-      })),
+      loadDocument: (doc) => {
+        const checked = parseProjectDocument(doc)
+        set((state) => ({
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
+          future: [],
+          ...checked,
+          selectedIds: [],
+        }))
+      },
 
       removeProfile: (id) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         profiles: state.profiles.filter((p) => p.id !== id),
         selectedIds: state.selectedIds.filter((s) => s !== id),
@@ -276,7 +294,7 @@ export const useStore = create<State>()(
           || state.panels.some((p) => p.id === id && p.locked)
           || state.fittings.some((f) => f.id === id && f.locked)
         return {
-          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.filter((p) => !removable(p)),
           connectors: state.connectors.filter((c) => !removable(c)),
@@ -293,8 +311,9 @@ export const useStore = create<State>()(
         const anyUnlocked = state.profiles.some((p) => ids.has(p.id) && !p.locked)
           || state.connectors.some((c) => ids.has(c.id) && !c.locked)
           || state.panels.some((p) => ids.has(p.id) && !p.locked)
+          || state.fittings.some((f) => ids.has(f.id) && !f.locked)
         return {
-          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
           connectors: state.connectors.map((c) => ids.has(c.id) ? { ...c, locked: anyUnlocked } : c),
@@ -304,7 +323,7 @@ export const useStore = create<State>()(
       }),
 
       clearAll: () => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         profiles: [],
         connectors: [],
@@ -314,7 +333,7 @@ export const useStore = create<State>()(
       })),
 
       addConnector: (connector) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         connectors: [...state.connectors, connector],
       })),
@@ -323,14 +342,14 @@ export const useStore = create<State>()(
         const drop = new Set(ids)
         if (drop.size === 0) return {}
         return {
-          ...(pushHistory ? { past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)], future: [] } : {}),
+          ...(pushHistory ? { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] } : {}),
           connectors: state.connectors.filter((c) => !drop.has(c.id)),
           selectedIds: state.selectedIds.filter((s) => !drop.has(s)),
         }
       }),
 
       removeConnector: (id) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         connectors: state.connectors.filter((c) => c.id !== id),
         selectedIds: state.selectedIds.filter((s) => s !== id),
@@ -362,7 +381,7 @@ export const useStore = create<State>()(
       }),
 
       commitProfileEdit: (id, updates) => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
         profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p),
       })),
@@ -370,7 +389,7 @@ export const useStore = create<State>()(
       commitProfilesEdit: (updates) => set((state) => {
         const map = new Map(updates.map((u) => [u.id, u.updates]))
         return {
-          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.map((p) => map.has(p.id) ? { ...p, ...map.get(p.id)! } : p),
         }
@@ -383,7 +402,7 @@ export const useStore = create<State>()(
         const bMap = new Map(panels.map((u) => [u.id, u.updates]))
         const fMap = new Map(fittings.map((u) => [u.id, u.updates]))
         return {
-          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
           future: [],
           profiles: state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p),
           connectors: state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c),
@@ -411,7 +430,7 @@ export const useStore = create<State>()(
       })),
 
       snapshotHistory: () => set((state) => ({
-        past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
       })),
 
@@ -425,6 +444,7 @@ export const useStore = create<State>()(
           connectors: prev.connectors,
           panels: prev.panels ?? [],
           fittings: prev.fittings ?? [],
+          throughRule: prev.throughRule ?? 'rails',
           selectedIds: [],
         }
       }),
@@ -433,19 +453,28 @@ export const useStore = create<State>()(
         if (state.future.length === 0) return {}
         const next = state.future[0]
         return {
-          past: [...state.past.slice(-MAX_HISTORY), takeSnapshot(state)],
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
           future: state.future.slice(1),
           profiles: next.profiles,
           connectors: next.connectors,
           panels: next.panels ?? [],
           fittings: next.fittings ?? [],
+          throughRule: next.throughRule ?? 'rails',
           selectedIds: [],
         }
       }),
     }),
     {
       name: 'aluminum-designer-store',
-      partialize: (state) => ({ profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings }),
+      storage: documentStorage,
+      partialize: (state) => ({ profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, throughRule: state.throughRule }),
     }
   )
 )
+
+// The compatibility geometry API reads this rule. Synchronize before scene/log subscribers
+// run; the document owns it, including hydration, import, undo and redo.
+applyThroughRule(useStore.getState().throughRule)
+useStore.subscribe((state, previous) => {
+  if (state.throughRule !== previous.throughRule) applyThroughRule(state.throughRule)
+})
