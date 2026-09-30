@@ -12,6 +12,7 @@ import type { SnapGuide } from '../utils/dragSnap'
 export type HeldKind = 'profile' | 'connector'
 export type Language = 'en' | 'zh'
 export type ToastKind = 'info' | 'error' | 'success'
+export type CameraView = 'top' | 'front' | 'right' | 'iso'
 
 export interface Toast { id: number; message: string; kind: ToastKind }
 export interface AlignGuide { from: [number, number, number]; to: [number, number, number] }
@@ -23,6 +24,7 @@ interface ToolState {
   activeConnectorType: string | null
   language: Language
   cameraResetTrigger: number
+  cameraViewRequest: { view: CameraView; sequence: number } | null
   /** View mode disables drawing edits and lets pointer presses operate doors and drawers. */
   viewMode: boolean
   /** Visibility of the keyboard shortcut list. */
@@ -154,6 +156,7 @@ interface ToolState {
   putDown: () => void
   setLanguage: (lang: Language) => void
   triggerCameraReset: (scope?: 'all' | 'selection') => void
+  setCameraView: (view: CameraView) => void
   setPendingRotate: (p: null | { degrees: number }) => void
   setViewMode: (on: boolean) => void
   toggleHelp: () => void
@@ -222,6 +225,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   activeConnectorType: null,
   language: 'zh',
   cameraResetTrigger: 0,
+  cameraViewRequest: null,
   cameraFitScope: 'all',
   viewMode: false,
   helpOpen: false,
@@ -301,6 +305,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   }),
   setLanguage: (language) => set({ language }),
   triggerCameraReset: (scope = 'all') => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1, cameraFitScope: scope })),
+  setCameraView: (view) => set((s) => ({ cameraViewRequest: { view, sequence: (s.cameraViewRequest?.sequence ?? 0) + 1 } })),
   setPendingRotate: (pendingRotate) => set({ pendingRotate }),
   // going to look puts down whatever is in hand: nothing can be drawn while looking
   setViewMode: (viewMode) => {
@@ -389,7 +394,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
   setPivotMode: (pivotMode) => set({ pivotMode }),
   setThroughRule: (rule) => useStore.getState().setThroughRule(rule),
-  setWorkPlaneY: (workPlaneY) => set({ workPlaneY: isFinite(workPlaneY) ? Math.max(0, Math.round(workPlaneY)) : 0 }),
+  setWorkPlaneY: (workPlaneY) => set({ workPlaneY: isFinite(workPlaneY) ? Math.max(0, Math.round(workPlaneY * 1000) / 1000) : 0 }),
   openQuickMenu: (x, y) => set({ quickMenuAt: { x, y } }),
   closeQuickMenu: () => set({ quickMenuAt: null }),
   cyclePivotMode: () => set((s) => ({

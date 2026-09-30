@@ -5,7 +5,7 @@ import { flushFace, sharedEdge } from './specCompat'
 import { nearestSlot, slotOffsets } from './specUtils'
 import { connectorEntry, connectorExtent, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector, membersAt } from './connectorFit'
-import { computeAllTrims } from './jointUtils'
+import { computeAllTrims, type ProfileTrims } from './jointUtils'
 import { trimmedOBB } from './analysis'
 import type { OBB } from './obb'
 
@@ -209,11 +209,38 @@ function round1(v: number): number {
   return r === 0 ? 0 : r
 }
 
+/** An end cap follows its host's actual cut plane and section roll, never a neighbouring side. */
+export function endCapSeat(profile: ProfileData, side: -1 | 1, trims: ProfileTrims) {
+  const quaternion = new THREE.Quaternion(...profile.quaternion).normalize()
+  const dir = getProfileDir(profile)
+  const at = new THREE.Vector3(...profile.position).addScaledVector(dir,
+    side === -1 ? trims.start.trim : profile.length - trims.end.trim)
+  if (side === -1) quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI))
+  return { position: at.toArray() as [number, number, number],
+    quaternion: quaternion.toArray() as [number, number, number, number], series: seriesOf(profile.spec), seated: true }
+}
+
 /** Compute the connector seat shared by placement previews and committed placement. */
 export function connectorSeatAt(
   type: string, point: THREE.Vector3, profiles: ProfileData[], surfaceNormal?: THREE.Vector3 | null,
 ): { position: [number, number, number]; quaternion: [number, number, number, number]; series: ConnectorSeries; seated: boolean } {
   const entry = connectorEntry(type)
+  if (type === 'end-cap') {
+    const trims = computeAllTrims(profiles)
+    const ends = profiles.flatMap((profile) => {
+      const design = getProfileEndpoints(profile)
+      return ([-1, 1] as const).map((side) => {
+        const seat = endCapSeat(profile, side, trims.get(profile.id)!)
+        const normal = getProfileDir(profile).multiplyScalar(side)
+        const actualDistance = point.distanceTo(new THREE.Vector3(...seat.position))
+        // The picker can still return a design endpoint for a cut/extended cap hit.
+        const distance = Math.min(actualDistance, point.distanceTo(side === -1 ? design.start : design.end))
+        return { seat, distance, actualDistance, matchesNormal: !!surfaceNormal && normal.dot(surfaceNormal) > 0.9 }
+      })
+    }).filter((end) => end.distance <= REACH)
+      .sort((a, b) => Number(b.matchesNormal) - Number(a.matchesNormal) || a.distance - b.distance || a.actualDistance - b.actualDistance)
+    if (ends[0]) return ends[0].seat
+  }
   // Infer seats for corner-mounted types; preserve the drop position for other types.
   if (entry?.seat === 'angle' || entry?.seat === 'plate') {
     // Search nearby members within REACH for a perpendicular corner.

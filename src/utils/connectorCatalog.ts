@@ -134,6 +134,9 @@ export function nutLabel(series: ConnectorSeries, language: 'zh' | 'en'): string
  * Angle brackets originate at the inner flange vertex; plates at the intersection of their bolt lines.
  */
 export function connectorExtent(type: string): { centre: [number, number, number]; half: [number, number, number] } {
+  // The cap's plate is 20×20×3, with a 10×10×6 plug centred at local Z=4.
+  // A generic inline envelope falsely buries ten millimetres of it inside its host.
+  if (type === 'end-cap') return { centre: [0, 0, 2.75], half: [10, 10, 4.25] }
   // An inside corner connector is the one that is *not* in the corner: its two legs slide
   // into the slots of the two members and nothing of it stands proud of either face. That is
   // why it is the part used where a drawer runs or a door closes. Modelled as the exposed

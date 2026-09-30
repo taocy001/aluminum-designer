@@ -332,6 +332,9 @@ const en = {
   toastArrayed: (n: number) => `Added ${n} part${n === 1 ? '' : 's'}`,
   gizmoMove: (axis: string) => `Move along ${axis}`,
   gizmoRotate: (axis: string) => `Turn 90° about ${axis}`,
+  gizmoRotateHint: (axis: string) => `Click to turn 90° about ${axis} · Shift reverses`,
+  standardViews: 'Standard views',
+  viewNames: { top: 'Top', front: 'Front', right: 'Right', iso: '3D' },
   guideDraw: [
     'Click a start point (floor, endpoint or centerline) · press and drag to orbit',
     'Move the mouse along X / Y / Z, click again to finish',
@@ -692,6 +695,9 @@ const zh: typeof en = {
   toastArrayed: (n: number) => `已新增 ${n} 个零件`,
   gizmoMove: (axis: string) => `沿 ${axis} 轴移动`,
   gizmoRotate: (axis: string) => `绕 ${axis} 轴转 90°`,
+  gizmoRotateHint: (axis: string) => `单击绕 ${axis} 轴转 90° · Shift 反向`,
+  standardViews: '标准视图',
+  viewNames: { top: '俯视', front: '正视', right: '右视', iso: '立体' },
   guideDraw: [
     '点击起点（地面 / 端点 / 型材中线）· 按住拖动旋转视角',
     '移动鼠标沿 X / Y / Z 预览，再次单击完成',

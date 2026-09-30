@@ -43,10 +43,27 @@ const CameraController: React.FC = () => {
   const { camera, controls } = useThree()
   const cameraResetTrigger = useToolStore((s) => s.cameraResetTrigger)
   const cameraFitScope = useToolStore((s) => s.cameraFitScope)
+  const cameraViewRequest = useToolStore((s) => s.cameraViewRequest)
   const zoomStep = useToolStore((s) => s.zoomStep)
   const zoomAt = useToolStore((s) => s.zoomAt)
   const clearZoom = useToolStore((s) => s.clearZoom)
   const prevTrigger = useRef(0)
+
+  useEffect(() => {
+    if (!cameraViewRequest) return
+    const orbit = controls as any
+    const target = orbit?.target ?? new THREE.Vector3()
+    const distance = Math.max(50, camera.position.distanceTo(target))
+    const directions = {
+      top: new THREE.Vector3(0, 1, 0.000001),
+      front: new THREE.Vector3(0, 0, 1),
+      right: new THREE.Vector3(1, 0, 0),
+      iso: new THREE.Vector3(1, 0.8, 1),
+    }
+    camera.position.copy(target).addScaledVector(directions[cameraViewRequest.view].normalize(), distance)
+    if (orbit) orbit.update()
+    else camera.lookAt(target)
+  }, [cameraViewRequest, camera, controls])
 
   // The buttons do what the wheel does: move the camera along its own sight line, keeping
   // what it is looking at in the middle. Within the same limits OrbitControls enforces.
@@ -118,8 +135,11 @@ const CameraController: React.FC = () => {
       target = bounds.getCenter(new THREE.Vector3())
       const radius = Math.max(bounds.getSize(new THREE.Vector3()).length() / 2, 100)
       const persp = camera as THREE.PerspectiveCamera
-      const dist = radius / Math.sin(THREE.MathUtils.degToRad(persp.fov) / 2) * 1.1
-      pos = target.clone().add(new THREE.Vector3(1, 0.8, 1).normalize().multiplyScalar(dist))
+      const verticalHalfFov = THREE.MathUtils.degToRad(persp.fov) / 2
+      const horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * persp.aspect)
+      const dist = radius / Math.sin(Math.min(verticalHalfFov, horizontalHalfFov)) * 1.1
+      const direction = camera.position.clone().sub(orbit?.target ?? new THREE.Vector3()).normalize()
+      pos = target.clone().addScaledVector(direction, dist)
     }
     camera.position.copy(pos)
     if (orbit) { orbit.target.copy(target); orbit.update() } else camera.lookAt(target)

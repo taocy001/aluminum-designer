@@ -114,10 +114,22 @@ test.describe('Measuring', () => {
     await settle(page)
     await clickWorldPoint(page, [0, 40, 0])
     await clickWorldPoint(page, [900, 40, 0])
-    await clickWorldPoint(page, [0, 40, 400])
+    // Pick the exposed post bodies, away from the cropped rail caps at Y=40.
+    const from = [0, 200, 400], to = [900, 200, 400]
+    await clickWorldPoint(page, from)
     expect(await measured(page)).toBe(null)
-    await clickWorldPoint(page, [900, 40, 400])
+    const restarted = await page.evaluate(() => (window as any).__aluframe.tool.getState().measuring.from.toArray())
+    for (let i = 0; i < 3; i++) expect(restarted[i]).toBeCloseTo(from[i], 2)
+    await clickWorldPoint(page, to)
     expect(await measured(page)).toBe(900)
+    const completed = await page.evaluate(() => {
+      const m = (window as any).__aluframe.tool.getState().measuring
+      return { from: m.from.toArray(), to: m.to.toArray() }
+    })
+    for (let i = 0; i < 3; i++) {
+      expect(completed.from[i]).toBeCloseTo(from[i], 2)
+      expect(completed.to[i]).toBeCloseTo(to[i], 2)
+    }
   })
 
   test('Escape puts the tape measure away', async ({ page }) => {

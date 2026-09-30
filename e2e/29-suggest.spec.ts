@@ -60,7 +60,10 @@ test.describe('Suggesting the next member', () => {
 
     // a click on empty space drops it and adds nothing
     const vp = (await page.getByTestId('viewport').boundingBox())!
-    await page.mouse.click(vp.x + vp.width - 60, vp.y + vp.height - 60)
+    const empty = { x: vp.x + vp.width * 0.75, y: vp.y + vp.height - 60 }
+    // The lower-right corner has view controls; this action must reach the canvas.
+    expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, empty)).toBe('CANVAS')
+    await page.mouse.click(empty.x, empty.y)
     await settle(page)
     expect(await suggestion(page)).toBeNull()
     expect(await ghostIsDrawn(page)).toBe(false)

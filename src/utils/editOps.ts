@@ -3,7 +3,8 @@ import { noteNext } from './opLog'
 import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
-import { getProfileAxis, getProfileDir, withFixedProfileCuts, validFixedProfileCut } from './jointUtils'
+import { createTrimResolver, getProfileAxis, getProfileDir, withFixedProfileCuts, validFixedProfileCut } from './jointUtils'
+import { profileBodyEndpoints } from './profileFaces'
 import { analyzeFrame } from './analysis'
 import { buildProfile, floorY, lowestPointY, nextId } from './profileFactory'
 import { translations } from './translations'
@@ -353,15 +354,20 @@ export type PivotMode = 'center' | 'start' | 'end'
 
 export function selectionPivot(
   profiles: ProfileData[], connectors: ConnectorData[], mode: PivotMode = 'center',
-  panels: PanelData[] = [], fittings: FittingData[] = [],
+  panels: PanelData[] = [], fittings: FittingData[] = [], allProfiles: ProfileData[] = profiles,
 ): THREE.Vector3 {
+  // A construction endpoint can sit inside a joint, or short of its extended cap. The
+  // widget and the turn use the visible solid, with unselected neighbours resolving any
+  // automatic cuts. Finished pieces carry their own cuts and need no scene lookup.
+  const resolve = profiles.some((p) => !p.fixedTrims) ? createTrimResolver(allProfiles) : null
+  const ends = (p: ProfileData) => profileBodyEndpoints(p, p.fixedTrims ? undefined : resolve?.(p))
   if (mode !== 'center' && profiles.length === 1 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) {
-    const { start, end } = getProfileEndpoints(profiles[0])
+    const { start, end } = ends(profiles[0])
     return mode === 'start' ? start : end
   }
   const pts: THREE.Vector3[] = []
   for (const p of profiles) {
-    const { start, end } = getProfileEndpoints(p)
+    const { start, end } = ends(p)
     pts.push(start, end)
   }
   for (const c of connectors) pts.push(new THREE.Vector3(...c.position))
@@ -383,14 +389,18 @@ export function pivotApplies(profiles: ProfileData[], connectors: ConnectorData[
  * Profiles and connectors alike — nothing is restricted to 90° steps or to the Y axis.
  */
 export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
-  const profiles = selectedProfiles()
+  const { profiles: allProfiles, selectedIds } = useStore.getState()
+  const ids = new Set(selectedIds)
+  // Use the same physical cuts for the pivot, rotation and floor check. The transaction
+  // fixes these cuts in the document; this preparation itself does not mutate the scene.
+  const profiles = withFixedProfileCuts(allProfiles).filter((p) => ids.has(p.id) && !p.locked)
   const connectors = selectedConnectors()
   const panels = selectedPanels()
   const fittings = selectedFittings()
   if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
   if (!isFinite(degrees) || degrees % 360 === 0) return false
   noteNext(`turn ${axis.toUpperCase()} ${degrees}°`)
-  const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode, panels, fittings)
+  const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode, panels, fittings, allProfiles)
   const rot = new THREE.Quaternion().setFromAxisAngle(AXES[axis], THREE.MathUtils.degToRad(degrees))
   const spin = (pos: [number, number, number], quat: [number, number, number, number]) => {
     const p = new THREE.Vector3(...pos).sub(pivot).applyQuaternion(rot).add(pivot)

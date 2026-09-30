@@ -60,10 +60,25 @@ test.describe('A press in a crowded corner', () => {
   })
 
   test('and the member that is selected can still be stretched by its end', async ({ page }) => {
-    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItem('rail', false))
+    const middle = await w2c(page, [450, 20, 0])
+    await page.mouse.click(middle.x, middle.y)
     await settle(page)
-    const end = await w2c(page, [900, 20, 0])
+    expect((await store(page)).selectedIds).toEqual(['rail'])
+    const originalCuts = await page.evaluate(() => Object.fromEntries(Object.entries((window as any).__aluframe.trims())
+      .map(([id, trim]: [string, any]) => [id, trim.cutLength])))
+    // The post covers the joined cap. Reach for the exposed body just inside the
+    // physical end, where the visible resize affordance belongs to this rail.
+    const exposed = await page.evaluate(() => {
+      const w = (window as any).__aluframe
+      const rail = w.store.getState().profiles.find((p: any) => p.id === 'rail')
+      const dir = new w.THREE.Vector3(0, 0, 1).applyQuaternion(new w.THREE.Quaternion(...rail.quaternion))
+      return new w.THREE.Vector3(...rail.position).addScaledVector(dir, rail.length - w.trims().rail.end.trim - 20).toArray()
+    })
+    const end = await w2c(page, exposed)
     await page.mouse.move(end.x, end.y)
+    await settle(page)
+    expect(await page.evaluate(({ x, y }) => (window as any).__aluframe.frontmostAt(x, y)?.id, end)).toBe('rail')
+    expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().hoverEnd)).toBe('end')
     await page.mouse.down()
     await page.mouse.move(end.x - 90, end.y, { steps: 8 })
     await page.mouse.up()
@@ -73,5 +88,9 @@ test.describe('A press in a crowded corner', () => {
     expect(after.post).toBe(800)
     expect(after.post2).toBe(800)
     expect(after.cross).toBe(400)
+    const finalCuts = await page.evaluate(() => Object.fromEntries(Object.entries((window as any).__aluframe.trims())
+      .map(([id, trim]: [string, any]) => [id, trim.cutLength])))
+    for (const id of ['post', 'post2', 'cross']) expect(finalCuts[id]).toBe(originalCuts[id])
+    expect(finalCuts.rail).not.toBe(originalCuts.rail)
   })
 })

@@ -137,6 +137,13 @@ function takeSnapshot(state: ProjectDocument): Snapshot {
   }
 }
 
+/** Keep the editing context when history changes geometry, dropping only removed parts. */
+function survivingSelection(ids: string[], document: Snapshot): string[] {
+  const present = new Set([...document.profiles, ...document.connectors,
+    ...(document.panels ?? []), ...(document.fittings ?? [])].map((part) => part.id))
+  return ids.filter((id) => present.has(id))
+}
+
 type ProfileUpdate = { id: string; updates: Partial<ProfileData> }
 const sameValue = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b)
 const shapeFields = ['position', 'quaternion', 'length', 'spec', 'fixedTrims'] as const
@@ -498,7 +505,7 @@ export const useStore = create<State>()(
           panels: prev.panels ?? [],
           fittings: prev.fittings ?? [],
           throughRule: prev.throughRule ?? 'rails',
-          selectedIds: [],
+          selectedIds: survivingSelection(state.selectedIds, prev),
         }
       }),
 
@@ -513,7 +520,7 @@ export const useStore = create<State>()(
           panels: next.panels ?? [],
           fittings: next.fittings ?? [],
           throughRule: next.throughRule ?? 'rails',
-          selectedIds: [],
+          selectedIds: survivingSelection(state.selectedIds, next),
         }
       }),
     }),

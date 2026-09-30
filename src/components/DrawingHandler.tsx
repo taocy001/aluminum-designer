@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useRef, useEffect } from 'react'
 import * as THREE from 'three'
-import { useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import { useToolStore } from '../store/useToolStore'
 import { useStore } from '../store/useStore'
@@ -18,6 +18,7 @@ import { profileFace } from '../utils/profileFaces'
 import { computeTrims } from '../utils/jointUtils'
 import { FacePatch } from './SnapFaces'
 import { DrawContactGuides } from './DrawContactGuides'
+import { gizmoState } from './TransformGizmo'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 /** a left press that travels this far orbits the camera instead of placing a point */
@@ -41,8 +42,10 @@ const DrawingHandler: React.FC = () => {
     const normal = h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize()
     return { profileId: h.object.userData.profileId as string, point: h.point.clone(), normal }
   }, [raycaster, scene])
-  const lastRay = useRef<THREE.Ray | null>(null)
-  const lastCursor = useRef<THREE.Vector2 | null>(null)
+  /** Only canvas events update this point; moving onto the HUD must not steer a draft. */
+  const lastCanvasPointer = useRef<THREE.Vector2 | null>(null)
+  const pointerOnCanvas = useRef(false)
+  const pointerButtons = useRef(0)
   const rightDownRef = useRef<{ x: number; y: number } | null>(null)
   /** surface the pointer is over, so a face-mounted part knows which side it was dropped on */
   const hoverNormal = useRef<THREE.Vector3 | null>(null)
@@ -50,11 +53,39 @@ const DrawingHandler: React.FC = () => {
   const draggedThisPress = useRef(false)
   /** left press in draw mode: a click places a point, a press-and-drag orbits the camera */
   const leftDownRef = useRef<{ x: number; y: number; ray: THREE.Ray; cursor: THREE.Vector2; orbiting: boolean } | null>(null)
+  const consumePointer = useCallback(() => {
+    leftDownRef.current = null
+    rightDownRef.current = null
+    pointerButtons.current = 0
+    draggedThisPress.current = false
+  }, [])
+
+  useEffect(() => {
+    const canvas = gl.domElement
+    const enter = () => { pointerOnCanvas.current = true }
+    const leave = () => { pointerOnCanvas.current = false }
+    const down = (event: PointerEvent) => { pointerButtons.current = event.buttons }
+    const move = (event: PointerEvent) => { pointerButtons.current = event.buttons }
+    const up = (event: PointerEvent) => { pointerButtons.current = event.buttons }
+    canvas.addEventListener('pointerenter', enter)
+    canvas.addEventListener('pointerleave', leave)
+    canvas.addEventListener('pointerdown', down)
+    canvas.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    return () => {
+      canvas.removeEventListener('pointerenter', enter)
+      canvas.removeEventListener('pointerleave', leave)
+      canvas.removeEventListener('pointerdown', down)
+      canvas.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+  }, [gl])
 
   // Right-click cancels only when the pointer did not travel (a right-drag is an orbit)
   useEffect(() => {
-    const consumePointer = () => { leftDownRef.current = null; rightDownRef.current = null }
     gl.domElement.addEventListener('aluframe:consume-pointer', consumePointer)
+    window.addEventListener('pointercancel', consumePointer)
+    window.addEventListener('blur', consumePointer)
     const onUp = (e: PointerEvent) => {
       if (e.button !== 2) return   // a left-click release must not consume the pending right-click
       const down = rightDownRef.current
@@ -69,9 +100,11 @@ const DrawingHandler: React.FC = () => {
     window.addEventListener('pointerup', onUp)
     return () => {
       window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', consumePointer)
+      window.removeEventListener('blur', consumePointer)
       gl.domElement.removeEventListener('aluframe:consume-pointer', consumePointer)
     }
-  }, [gl])
+  }, [gl, consumePointer])
 
   const previewGeo = useMemo(() => {
     const shape = getProfileShape(activeSpec)
@@ -177,11 +210,56 @@ const DrawingHandler: React.FC = () => {
     })
   }, [camera, size, hitMember])
 
+  const updateHover = useCallback((ray: THREE.Ray, cursor: THREE.Vector2) => {
+    const ts = useToolStore.getState()
+    const profiles = useStore.getState().profiles
+    const pick: ReturnType<typeof pickDrawingStart> = ts.held === 'profile'
+      ? pickDrawingStart(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
+      : pickPoint(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
+    hoverNormal.current = pick.normal ?? null
+    if (pick.kind === 'none') { ts.setHover(null, null); ts.updateDraw({ alignGuides: [] }); return }
+    const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
+    ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null, pick.face ?? null, pick.alignmentFace ?? null)
+    ts.updateDraw({ alignGuides: (pick.guides ?? []).map((g) => ({ from: g.from.toArray() as any, to: g.to.toArray() as any })) })
+  }, [camera, size, hitMember])
+
+  const refreshPointer = useCallback(() => {
+    const client = lastCanvasPointer.current
+    if (!client) return
+    const rect = gl.domElement.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const cursor = new THREE.Vector2(client.x - rect.left, client.y - rect.top)
+    raycaster.setFromCamera(new THREE.Vector2(cursor.x / rect.width * 2 - 1, 1 - cursor.y / rect.height * 2), camera)
+    const ray = raycaster.ray.clone()
+    if (useToolStore.getState().isDrawing) updateEnd(ray, cursor)
+    else updateHover(ray, cursor)
+  }, [camera, gl, raycaster, updateEnd, updateHover])
+
+  // Recompute synchronously with a keyboard/spec change. Waiting for another pointer
+  // event (or even the next render) lets an immediate Enter commit the previous axis.
+  useEffect(() => useToolStore.subscribe((state, previous) => {
+    if (!state.isDrawing || state.isDragging) return
+    if (state.lockedAxis !== previous.lockedAxis || state.activeSpec !== previous.activeSpec) refreshPointer()
+  }), [refreshPointer])
+
+  const lastView = useRef({ world: new THREE.Matrix4(), projection: new THREE.Matrix4(), width: 0, height: 0 })
+  useFrame(() => {
+    const previous = lastView.current
+    if (previous.world.equals(camera.matrixWorld) && previous.projection.equals(camera.projectionMatrix)
+      && previous.width === size.width && previous.height === size.height) return
+    previous.world.copy(camera.matrixWorld); previous.projection.copy(camera.projectionMatrix)
+    previous.width = size.width; previous.height = size.height
+    const ts = useToolStore.getState()
+    // During orbit/pan the draft stays put. A stationary canvas pointer after a wheel
+    // zoom needs a fresh ray, while a pointer on a toolbar/HUD keeps its chosen point.
+    if (pointerOnCanvas.current && pointerButtons.current === 0 && ts.held && !ts.viewMode && !ts.isDragging) refreshPointer()
+  })
+
   const onPointerMove = useCallback((e: any) => {
     const ray: THREE.Ray = e.ray
     const cursor = cursorFromEvent(e)
-    lastRay.current = ray.clone()
-    lastCursor.current = cursor
+    lastCanvasPointer.current = new THREE.Vector2(e.nativeEvent.clientX, e.nativeEvent.clientY)
+    pointerOnCanvas.current = true
     const ts = useToolStore.getState()
 
     // while the left button is held and the pointer travels, the gesture is an orbit:
@@ -198,19 +276,14 @@ const DrawingHandler: React.FC = () => {
       updateEnd(ray, cursor)
       return
     }
-    const profiles = useStore.getState().profiles
-    const pick: ReturnType<typeof pickDrawingStart> = ts.held === 'profile'
-      ? pickDrawingStart(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
-      : pickPoint(ray, cursor, camera, size, profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
-    hoverNormal.current = pick.normal ?? null
-    if (pick.kind === 'none') { ts.setHover(null, null); ts.updateDraw({ alignGuides: [] }); return }
-    const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
-    ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null, pick.face ?? null, pick.alignmentFace ?? null)
-    ts.updateDraw({ alignGuides: (pick.guides ?? []).map((g) => ({ from: g.from.toArray() as any, to: g.to.toArray() as any })) })
-  }, [camera, size, updateEnd, hitMember])
+    updateHover(ray, cursor)
+  }, [size, updateEnd, updateHover])
 
   const onPointerDown = useCallback((e: any) => {
     const ts = useToolStore.getState()
+    if (gizmoState.busy) { leftDownRef.current = null; return }
+    lastCanvasPointer.current = new THREE.Vector2(e.nativeEvent.clientX, e.nativeEvent.clientY)
+    pointerOnCanvas.current = true
     // Right button: a plain click cancels the draw, a drag orbits the camera (decided on release)
     if (e.button === 2) {
       rightDownRef.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }

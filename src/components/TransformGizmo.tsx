@@ -57,6 +57,7 @@ const TransformGizmo: React.FC = () => {
   const { camera } = useThree()
   const selectedIds = useStore((s) => s.selectedIds)
   const profiles = useStore((s) => s.profiles)
+  const throughRule = useStore((s) => s.throughRule)
   const connectors = useStore((s) => s.connectors)
   const panels = useStore((s) => s.panels)
   const fittings = useStore((s) => s.fittings)
@@ -70,26 +71,25 @@ const TransformGizmo: React.FC = () => {
   const handleRefs = useRef<Map<string, THREE.Object3D>>(new Map())
   const probeRefs = useRef<Map<string, THREE.Object3D>>(new Map())
 
-  // A connector goes on one way and stays there, so the widget has nothing to offer it:
-  // it counts towards where the pivot sits but never towards what can be moved. A board and
-  // a door are not like that — they move and they turn like anything else, and leaving them
-  // out meant selecting a drawer and being offered no handles at all.
+  // The anchor follows exactly the pieces rotateSelected can turn. Locked references
+  // remain selected for inspection, but must not pull the visible pivot away from the
+  // actual turn. A standalone connector stays fixed; one in an assembly travels with it.
   const selection = useMemo(() => {
     const ids = new Set(selectedIds)
     return {
-      profiles: profiles.filter((p) => ids.has(p.id)),
-      connectors: connectors.filter((c) => ids.has(c.id)),
-      panels: panels.filter((b) => ids.has(b.id)),
-      fittings: fittings.filter((f) => ids.has(f.id)),
+      profiles: profiles.filter((p) => ids.has(p.id) && !p.locked),
+      connectors: connectors.filter((c) => ids.has(c.id) && !c.locked && selectedIds.length > 1),
+      panels: panels.filter((b) => ids.has(b.id) && !b.locked),
+      fittings: fittings.filter((f) => ids.has(f.id) && !f.locked),
     }
   }, [selectedIds, profiles, connectors, panels, fittings])
 
   // the widget sits on the pivot, so where it turns about is something you can see
   const anchor = useMemo(
-    () => selectionPivot(selection.profiles, selection.connectors, pivotMode, selection.panels, selection.fittings),
-    [selection, pivotMode])
+    () => selectionPivot(selection.profiles, selection.connectors, pivotMode, selection.panels, selection.fittings, profiles),
+    [selection, pivotMode, profiles, throughRule])
   // a fully locked selection has nothing the gizmo could do
-  const anyMovable = [...selection.profiles, ...selection.panels, ...selection.fittings].some((p) => !p.locked)
+  const anyMovable = selection.profiles.length + selection.panels.length + selection.fittings.length > 0
   const viewMode = useToolStore((s) => s.viewMode)
   // nothing moves while looking, so handles that promise to move something are a lie
   const active = showGizmo && !viewMode && !selectMode && !isDragging && selectedIds.length > 0 && anyMovable

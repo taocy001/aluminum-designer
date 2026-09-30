@@ -124,7 +124,26 @@ test.describe('One click fits the connector to every joint', () => {
   test('end caps go on free ends, not on joints', async ({ page }) => {
     await page.getByTestId('connector-end-cap').click()
     await page.getByTestId('auto-connect').click()
-    // this frame is a closed rectangle: nothing is free, so nothing is placed
+    // Rails butt against the fixed posts' sides. All four post caps remain exposed.
+    const caps = await page.evaluate(() => {
+      const w = (window as any).__aluframe
+      return w.store.getState().connectors.map((cap: any) => ({ ...cap,
+        normal: new w.THREE.Vector3(0, 0, 1).applyQuaternion(new w.THREE.Quaternion(...cap.quaternion)).toArray(),
+      })).sort((a: any, b: any) => a.position[0] - b.position[0] || a.position[1] - b.position[1])
+    })
+    expect(caps).toHaveLength(4)
+    const expected = [[0, 0, 0], [0, 800, 0], [600, 0, 0], [600, 800, 0]]
+    for (const [index, cap] of caps.entries()) {
+      expect(cap.type).toBe('end-cap'); expect(cap.series).toBe(20)
+      for (const axis of [0, 1, 2]) expect(cap.position[axis]).toBeCloseTo(expected[index][axis], 5)
+      expect(cap.normal[0]).toBeCloseTo(0, 5); expect(cap.normal[2]).toBeCloseTo(0, 5)
+      expect(cap.normal[1]).toBeCloseTo(expected[index][1] === 0 ? -1 : 1, 5)
+    }
+    expect(await page.evaluate(() => (window as any).__aluframe.conflicts().conflicts)).toEqual([])
+    const before = await store(page)
+    await page.getByTestId('auto-connect').click()
+    expect((await store(page)).connectors).toEqual(before.connectors)
+    expect((await store(page)).past).toBe(before.past)
     await expect(page.getByTestId('toasts')).toContainText('都已经装好了')
   })
 

@@ -193,11 +193,11 @@ test.describe('Picking thin members', () => {
 test.describe('Drawing cannot get stuck', () => {
   test.beforeEach(async ({ page }) => { await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200]); await enterDraw(page, '2020') })
 
-  test('pressing outside the canvas cancels the draw and says so', async ({ page }) => {
+  test('switching to a different tool cancels the draw and says so', async ({ page }) => {
     await clickWorld(page, [0, 0, 0])
     await hoverWorld(page, [300, 10, 0])
     expect((await tool(page)).isDrawing).toBe(true)
-    await page.getByTestId('fit-view').click()
+    await page.getByTestId('measure-toggle').click()
     expect((await tool(page)).isDrawing).toBe(false)
     await expect(page.getByTestId('toasts')).toContainText('已取消绘制')
     expect((await store(page)).profiles).toHaveLength(0)

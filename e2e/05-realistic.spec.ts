@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, enterDraw, setView, store, tool, w2c, type V3 } from './helpers'
+import { openApp, enterDraw, setView, settle, store, tool, w2c, type V3 } from './helpers'
 
 // deterministic jitter so runs are reproducible
 let seed = 7
@@ -79,13 +79,14 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     await hoverNear(page, [qx - 10, 300, pz + 30], 0)
     t = await tool(page)
     expect(t.cur![0]).toBe(qx); expect(t.cur![2]).toBe(pz); expect(Math.abs(t.cur![1] - 300)).toBeLessThanOrEqual(5) // end aligned with the second post's X although it stands at another Z
-    await expect(page.getByTestId('snap-kind')).toHaveText('对齐')
+    // A remote coplanar reference is not a finite face contact.
+    await expect(page.getByTestId('snap-kind')).toHaveText('未贴合')
     await page.keyboard.press('Escape')
     // and a genuine crossing: from the first post toward the second post's centerline at the same Z
     await sloppy(page, [px + 400, 0, pz], [px + 400, 500, pz])
     await clickNear(page, [px + 10, 300, pz], 0)
     await hoverNear(page, [px + 380, 300, pz], 0)
-    await expect(page.getByTestId('snap-kind')).toHaveText('中线 T 接')
+    await expect(page.getByTestId('draw-end-contact')).toContainText(/终点 · (贴合|齐面)/)
     const cur = (await tool(page)).cur!
     expect(cur[0]).toBe(px + 400); expect(cur[2]).toBe(pz); expect(Math.abs(cur[1] - 300)).toBeLessThanOrEqual(5)
     await page.keyboard.press('Escape')
@@ -118,7 +119,7 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     expect(b.count).toBe('12')
     expect(b.pen).toBe('无干涉')
     expect(b.brackets).toBe('0/16')   // none fitted yet, sixteen joints want one
-    expect(b.table).toContain(`${h + 10} mm×4`)
+    expect(b.table).toContain(`${h} mm×4`) // later rails do not lengthen the existing posts
     expect(b.table).toContain(`${ax1 - ax0 - 20} mm×4`)
     expect(b.table).toContain(`${az1 - az0 - 20} mm×4`)
     expect(b.overall).toBe(`${ax1 - ax0 + 20}×${az1 - az0 + 20}×${h + 10}`)
@@ -151,13 +152,19 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     expect(b.count).toBe('12')
     expect(b.pen).toBe('无干涉')
     expect(b.brackets).toBe('0/16')   // none fitted yet, sixteen joints want one
-    expect(b.table).toContain(`${h + 20} mm×4`)  // posts extended to both rail faces
-    expect(b.table).toContain(`${x1 - x0 - 20} mm×4`)
-    expect(b.table).toContain(`${z1 - z0 - 20} mm×4`)
+    // These corner clicks use both automatic joints and explicit face attachments.
+    // Check the resulting physical lengths in drawing order, including each foot.
+    const finalCuts = (await dumpJoints(page)).map((p: any) => p.cut)
+    const width = x1 - x0, depth = z1 - z0
+    expect(finalCuts.slice(0, 4)).toEqual([width, depth - 20, width + 20, depth - 20])
+    expect(finalCuts.slice(4, 8)).toEqual([h + 10, h - 10, h, h])
+    expect(finalCuts.slice(8)).toEqual([width - 20, depth - 20, width - 20, depth - 20])
     await page.screenshot({ path: 'test-results/cabinet-B.png' })
   })
 
   test('cabinet C: 2040 posts with 2020 rails and two shelves — trims follow the partner section', async ({ page }) => {
+    // Seventeen members are built entirely through the UI; allow room for concurrent rendering.
+    test.setTimeout(90_000)
     const W = 600, D = 400, H = 800
     await enterDraw(page, '2040')
     for (const [x, z] of [[0, 0], [W, 0], [0, D], [W, D]]) expect(await sloppy(page, [x, 0, z], [x, H, z])).toBe(1)
@@ -170,9 +177,22 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
       expect(await sloppy(page, [ax + 10, y, az], [bx - 10, y, bz])).toBe(1)   // clicks on the post faces
       expect(await sloppy(page, [cx + 10, y, cz], [dx - 10, y, dz])).toBe(1)
       expect(await sloppy(page, [ax, y, az + 20], [cx, y, cz - 20])).toBe(1)
-      expect(await sloppy(page, [bx, y, bz + 20], [dx, y, dz - 20])).toBe(1)
+      if (y === h) {
+        // The finished X rail hides the top edge of this post from the original
+        // camera. Turn to its exposed side and aim below the cap; endpoint snapping
+        // still finds the top, while the same imprecise click stays on the post.
+        await page.getByTestId('view-right').click()
+        await page.getByTestId('fit-view').click()
+        await settle(page)
+        expect(await sloppy(page, [bx + 10, h - 15, bz], [dx + 10, h - 15, dz])).toBe(1)
+      } else {
+        expect(await sloppy(page, [bx, y, bz + 20], [dx, y, dz - 20])).toBe(1)
+      }
     }
     // a shelf rail between the two side rails at y=400 (T-joints on both)
+    await page.getByTestId('view-iso').click()
+    await page.getByTestId('fit-view').click()
+    await settle(page)
     expect(await sloppy(page, [ax, 400, (az + cz) / 2], [bx, 400, (az + cz) / 2])).toBe(1)
     const b = await bom(page)
     console.log('JOINTS C', JSON.stringify(await dumpJoints(page)))

@@ -25,7 +25,7 @@ function App() {
   const {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace,
     drawLengthInput: preciseInput, setDrawLengthInput: setPreciseInput,
-    held, putDown, triggerCameraReset, zoomBy, cancelDraw, activeSpec, activeConnectorType,
+    held, putDown, triggerCameraReset, setCameraView, zoomBy, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
     pivotMode, cyclePivotMode, quickMenuAt, openQuickMenu, closeQuickMenu,
     selectMode, setSelectMode,
@@ -138,6 +138,8 @@ function App() {
       }
 
       if (e.key === 'Escape') {
+        if (mobileToolsOpen) { setMobileToolsOpen(false); return }
+        if (helpOpen) { toggleHelp(); return }
         // the suggestion is the lightest thing on screen, so it goes first
         if (useToolStore.getState().suggestion) { dismissSuggestion(); return }
         // a turn waiting for its axis is the innermost thing Escape can back out of
@@ -152,10 +154,15 @@ function App() {
       }
 
       // A gesture under way takes digits the same way drawing does
-      if (exactGestureRef.current && /^[0-9.]$/.test(e.key)) {
+      if (exactGestureRef.current && (/^[0-9.]$/.test(e.key) || (exactGestureRef.current === 'move' && e.key === '-'))) {
         e.preventDefault()
         setExactInput(e.key)
-        requestAnimationFrame(() => exactInputRef.current?.focus())
+        exactInputRef.current?.focus()
+        return
+      }
+
+      if (e.key.toLowerCase() === 'f' && !mod) {
+        triggerCameraReset(useStore.getState().selectedIds.length > 0 ? 'selection' : 'all')
         return
       }
 
@@ -199,12 +206,6 @@ function App() {
         setPendingRotate({ degrees: e.shiftKey ? -90 : 90 })
         return
       }
-      // F frames what is selected, which is what F does everywhere else; with nothing
-      // selected there is only one thing it could mean, so it frames the drawing.
-      if (e.key.toLowerCase() === 'f' && !mod) {
-        triggerCameraReset(useStore.getState().selectedIds.length > 0 ? 'selection' : 'all')
-        return
-      }
       if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return }
       if (e.key.toLowerCase() === 'p' && !mod) { cyclePivotMode(); return }
       if (e.key.toLowerCase() === 'l' && !mod) { toggleLockSelected(); return }
@@ -219,7 +220,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, viewMode, setViewMode, measuring, stopMeasuring, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen])
+  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, viewMode, setViewMode, measuring, stopMeasuring, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen, mobileToolsOpen, helpOpen, toggleHelp])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -297,6 +298,8 @@ function App() {
   // What a press would do right now, so the pointer stops looking inert
   const viewportCursor = isDragging
     ? (dragConflict ? 'alias' : 'grabbing')
+    : gizmoHover?.kind === 'rotate' ? 'pointer'
+    : gizmoHover?.kind === 'move' ? 'grab'
     : held !== null ? 'crosshair'
     : selectMode ? 'crosshair'
     : hoverPartId ? 'grab'
@@ -306,6 +309,7 @@ function App() {
   const heldName = held === 'connector'
     ? (activeConnectorType ? connectorLabel(activeConnectorType, language) : '')
     : activeSpec
+  const pivotName = pivotMode === 'center' ? t.pivotCenter : pivotMode === 'start' ? t.pivotStart : t.pivotEnd
   /** the toolbar is icons: the name lives in the tooltip and the accessible name */
   const iconBtn = (active: boolean, activeCls: string) =>
     `flex items-center justify-center gap-1 min-w-11 h-11 px-1 md:px-0 md:min-w-0 md:w-8 md:h-8 rounded-lg shrink-0 transition-all ${active ? activeCls : 'text-slate-400 hover:bg-slate-700/60 hover:text-white'}`
@@ -327,7 +331,7 @@ function App() {
           {gizmoHover && !isDragging && (
             <div data-testid="gizmo-hint"
               style={{ top: hudTop }} className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-white/15 text-[11px] font-bold text-slate-200 shadow-lg pointer-events-none z-10">
-              {gizmoHover.kind === 'move' ? t.gizmoMove(gizmoHover.axis.toUpperCase()) : t.gizmoRotate(gizmoHover.axis.toUpperCase())}
+              {gizmoHover.kind === 'move' ? t.gizmoMove(gizmoHover.axis.toUpperCase()) : t.gizmoRotateHint(gizmoHover.axis.toUpperCase())}
             </div>
           )}
 
@@ -436,7 +440,7 @@ function App() {
                   onChange={(e) => setExactInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') { e.preventDefault(); confirmExact() }
-                    if (e.key === 'Escape') { e.preventDefault(); setExactInput('') }
+                    if (e.key === 'Escape') { e.preventDefault(); setExactInput(''); (e.target as HTMLInputElement).blur() }
                     e.stopPropagation()
                   }}
                   placeholder={t.exactMm}
@@ -446,7 +450,7 @@ function App() {
               </div>
             </div>
           )}
-          <button onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')} title={t.hintLanguage}
+          <button data-keep-draw onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')} title={t.hintLanguage}
             className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-full text-xs font-bold shadow-lg active:scale-95">
             <Languages size={14} />{language === 'en' ? '中文' : 'English'}
           </button>
@@ -479,12 +483,10 @@ function App() {
           )}
 
           {/* Toolbar */}
-          {/* One row where there is room for one. The toggles carry an icon and a tooltip,
-              and only the two things that change constantly — what is in hand and the work
-              plane — keep their words, because a toolbar that wraps into a column is worse
-              than a short label. On a phone there is no row wide enough, and a strip that
-              scrolls sideways hides its own end, so there it wraps to two. */}
-          <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap md:flex-nowrap whitespace-nowrap w-[calc(100%-1rem)] md:w-auto max-w-[calc(100%-1rem)] md:overflow-x-auto bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
+          {/* Keep related controls together and wrap whole groups when the viewport is
+              narrow. Every action stays visible, including when the held part or pivot
+              label makes the toolbar wider. The drawing HUD follows its measured height. */}
+          <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap whitespace-nowrap w-[calc(100%-1rem)] md:w-auto max-w-[calc(100%-1rem)] bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
             {/* What is in hand, and the way to put it down. Not a mode switch: it only ever
                 empties the hand, because filling it is the sidebar's job. */}
             {/* the label is the part's name, but the accessible name says what the button does,
@@ -510,30 +512,30 @@ function App() {
             <div className={advancedTools}>
             {/* One switch for every measurement on the drawing: the cut length on each member
                 and the overall size around it are the same question asked at two scales. */}
-            <button onClick={toggleFittings} data-testid="fittings-toggle" title={t.hintShowFittings}
+            <button data-keep-draw onClick={toggleFittings} data-testid="fittings-toggle" title={t.hintShowFittings}
               aria-pressed={showFittings}
               aria-label={t.showFittings} className={iconBtn(!showFittings, 'bg-slate-600/40 text-slate-100')}>
               {showFittings ? <DoorOpen size={14} /> : <DoorClosed size={14} />}{mobileLabel(t.showFittings)}
             </button>
-            <button onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labelsHint}
+            <button data-keep-draw onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labelsHint}
               aria-pressed={showDimensionLabels}
               aria-label={t.labels} className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
               <Ruler size={14} />{mobileLabel(t.labels)}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
+            <button data-keep-draw data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
               aria-pressed={showGizmo}
               aria-label={t.rotate3d} className={iconBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
               <Rotate3d size={14} />{mobileLabel(t.rotate3d)}
             </button>
             {/* Where the selection turns about. The gizmo moves onto it, so the choice is visible. */}
-            <button data-testid="pivot-toggle" onClick={cyclePivotMode} title={t.pivotHint}
-              aria-label={t.pivotHint}
-              className={iconBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
-              <Crosshair size={14} />{mobileLabel(pivotMode === 'center' ? t.pivotCenter : pivotMode === 'start' ? t.pivotStart : t.pivotEnd)}
+            <button data-keep-draw data-testid="pivot-toggle" onClick={cyclePivotMode} title={`${t.pivot}: ${pivotName} · ${t.pivotHint}`}
+              aria-label={`${t.pivot}: ${pivotName} (P)`}
+              className={toolBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
+              <Crosshair size={14} /><span>{pivotName}</span>
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (F11)`}
+            <button data-keep-draw data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (F11)`}
               aria-pressed={isFullscreen}
               aria-label={t.fullscreen} className={iconBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
               {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}{mobileLabel(t.fullscreen)}
@@ -565,11 +567,11 @@ function App() {
             <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* The wheel already does this; the buttons are for trackpads and for anyone who
                 would rather press something than learn a gesture. */}
-            <div className={advancedTools}><button data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
+            <div className={advancedTools}><button data-keep-draw data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
               className={iconBtn(false, '')}><Minus size={14} />{mobileLabel(t.zoomOut)}</button>
-            <button data-testid="zoom-in" onClick={() => zoomBy(1)} title={t.zoomIn} aria-label={t.zoomIn}
+            <button data-keep-draw data-testid="zoom-in" onClick={() => zoomBy(1)} title={t.zoomIn} aria-label={t.zoomIn}
               className={iconBtn(false, '')}><Plus size={14} />{mobileLabel(t.zoomIn)}</button></div>
-            <button data-testid="fit-view" onClick={() => triggerCameraReset('all')} title={`${t.fitView} (F)`}
+            <button data-keep-draw data-testid="fit-view" onClick={() => triggerCameraReset('all')} title={`${t.fitView} (F)`}
               aria-label={t.fitView} className={iconBtn(false, '')}>
               <Home size={14} />{mobileLabel(t.home)}
             </button>
@@ -580,6 +582,15 @@ function App() {
             </button>
           </div>
 
+          <div data-testid="standard-views" data-keep-draw role="group" aria-label={t.standardViews}
+            className="absolute bottom-6 right-3 z-10 flex flex-col gap-0.5 p-1 rounded-xl bg-slate-900/90 border border-white/10 shadow-lg">
+            {(['top', 'front', 'right', 'iso'] as const).map((view) => <button key={view}
+              data-testid={`view-${view}`} onClick={() => setCameraView(view)} title={t.viewNames[view]}
+              className="min-w-11 min-h-11 md:min-h-8 px-2 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white hover:bg-slate-700/70">
+              {t.viewNames[view]}
+            </button>)}
+          </div>
+
           {/* Current interaction mode and help access. */}
           <div className="absolute bottom-6 left-6 flex items-center gap-2 z-10">
             <div className={`pointer-events-none bg-slate-900/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-bold shadow-2xl ${
@@ -587,7 +598,7 @@ function App() {
               data-testid="mode-line">
               {measuring ? (t.measureHint) : viewMode ? t.look : selectMode ? t.selectMode : held !== null ? `${t.draw} · ${heldName}` : t.emptyHand}
             </div>
-            <button data-testid="help-toggle" onClick={toggleHelp} title={t.hintHelp} aria-label={t.help}
+            <button data-keep-draw data-testid="help-toggle" onClick={toggleHelp} title={t.hintHelp} aria-label={t.help}
               aria-expanded={helpOpen}
               className="flex items-center justify-center w-11 h-11 md:w-7 md:h-7 rounded-full bg-slate-900/80 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/25 shadow-2xl">
               <HelpCircle size={13} />
@@ -595,7 +606,7 @@ function App() {
           </div>
 
           {helpOpen && (
-            <div data-testid="help-panel"
+            <div data-keep-draw data-testid="help-panel"
               className="absolute bottom-16 left-6 z-20 bg-slate-900/95 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 shadow-2xl max-w-sm text-[10px] text-slate-400 space-y-1">
               <div className="flex items-center justify-between pb-1.5 mb-1 border-b border-white/10">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t.help}</span>

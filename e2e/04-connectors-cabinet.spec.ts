@@ -24,9 +24,8 @@ test.describe('Connectors', () => {
       // than in the metal, so they sit one half-length further along.
       const want = i % 2 === 0 ? [600, 10, 0] : [0, 10, 0]
       const under = CONNECTORS[i] === '调节脚' || CONNECTORS[i] === '脚轮座'
-      const got = cs[i].position.map(Math.round)
-      expect([got[1], got[2]]).toEqual([want[1], want[2]])
-      expect(Math.abs(got[0] - want[0])).toBeLessThanOrEqual(under ? 12 : 0)
+      for (const axis of [1, 2]) expect(cs[i].position[axis]).toBeCloseTo(want[axis], 5)
+      expect(Math.abs(cs[i].position[0] - want[0])).toBeLessThanOrEqual((under ? 12 : 0) + 1e-5)
     }
     await expect(page.getByTestId('bom-table')).toContainText('L型角码')
     // select one connector in navigate mode and delete it
@@ -84,10 +83,12 @@ test.describe('Cabinet build', () => {
     await expect(page.getByTestId('bom-penetrations')).toHaveText('无干涉')
     await expect(page.getByTestId('bom-overall')).toHaveText('620×420×810')
     const table = page.getByTestId('bom-table')
-    await expect(table).toContainText('810 mm')   // uprights extended to the top rail face
+    // Exact 800 mm uprights keep their physical length when later rails are added.
+    // The frame still reaches 810 mm because the top rails have a 20 mm section.
+    await expect(table).toContainText('800 mm')
     await expect(table).toContainText('580 mm')   // X rails between uprights
     await expect(table).toContainText('380 mm')   // Z rails and side rails
-    await expect(table.locator('div', { hasText: '810 mm' }).first()).toContainText('×4')
+    await expect(table.locator('div', { hasText: '800 mm' }).first()).toContainText('×4')
     await expect(table.locator('div', { hasText: '580 mm' }).first()).toContainText('×6')
     await expect(table.locator('div', { hasText: '380 mm' }).first()).toContainText('×6')
     // 12 rails × 2 butt ends = 24 brackets

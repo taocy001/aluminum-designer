@@ -9,6 +9,7 @@ import { getProfileEndpoints } from '../utils/geometryCore'
 import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel } from '../utils/connectorCatalog'
 import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
+import { selectedSolidTop } from '../utils/selectionBounds'
 import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize, setPanelsMaterial, setPanelsSize } from '../utils/panelOps'
@@ -90,11 +91,13 @@ const NumField: React.FC<{
   className?: string
   label?: string
   name?: string
-}> = ({ value, onCommit, onLive, step = 5, className = '', label, name }) => {
+  disabled?: boolean
+}> = ({ value, onCommit, onLive, step = 5, className = '', label, name, disabled }) => {
   const [text, setText] = useState(String(Math.round(value * 100) / 100))
   const [focused, setFocused] = useState(false)
   /** one history entry covers the whole edit, taken the first time it shows anything */
   const started = useRef(false)
+  const cancelOnBlur = useRef(false)
   const live = (v: number) => {
     if (!onLive) return
     if (onLive(v, !started.current)) started.current = true
@@ -115,16 +118,29 @@ const NumField: React.FC<{
         <span className="text-[9px] font-bold w-3" style={{ color: AXIS_COLOR[label] ?? '#64748b' }}>{label}</span>
       )}
       <input
-        type="number" step={step} value={text} aria-label={name ?? label}
-        onFocus={() => setFocused(true)}
+        type="number" step={step} value={text} aria-label={name ?? label} disabled={disabled}
+        onFocus={() => { cancelOnBlur.current = false; setFocused(true) }}
         onChange={(e) => {
           setText(e.target.value)
           const v = parseFloat(e.target.value)
           if (isFinite(v)) live(v)
         }}
-        onBlur={() => { setFocused(false); commit(); started.current = false }}
+        onBlur={() => {
+          setFocused(false)
+          if (!cancelOnBlur.current) commit()
+          cancelOnBlur.current = false
+          started.current = false
+        }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') { (e.target as HTMLInputElement).blur() }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            // Ordinary fields have an uncommitted draft; discard it before blur.
+            // Live fields already changed the document, so keep their last accepted
+            // value and history entry. Ctrl+Z still undoes that whole live edit.
+            cancelOnBlur.current = true
+            setText(String(Math.round(value * 100) / 100))
+            ;(e.target as HTMLInputElement).blur()
+          } else if (e.key === 'Enter') { (e.target as HTMLInputElement).blur() }
           else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
             // one press, one edit: straight to the drawing, no Enter needed
             e.preventDefault()
@@ -138,7 +154,7 @@ const NumField: React.FC<{
           }
           e.stopPropagation()
         }}
-        className="w-full bg-transparent py-1.5 text-xs font-mono outline-none"
+        className="w-full bg-transparent py-1.5 text-xs font-mono outline-none disabled:opacity-40 disabled:cursor-not-allowed"
       />
     </label>
   )
@@ -187,19 +203,8 @@ const Sidebar: React.FC = () => {
   const [log, setLog] = useState(opLog())
   useEffect(() => subscribeOpLog(() => setLog([...opLog()])), [])
   // the highest point of whatever is selected, so the work plane can be put on top of it
-  const selectionTopY = useMemo(() => {
-    const ids = new Set(selectedIds)
-    if (ids.size === 0) return null
-    let top = -Infinity
-    for (const p of profiles) {
-      if (!ids.has(p.id)) continue
-      const { start, end } = getProfileEndpoints(p)
-      top = Math.max(top, start.y, end.y)
-    }
-    for (const c of connectors) if (ids.has(c.id)) top = Math.max(top, c.position[1])
-    for (const b of panels) if (ids.has(b.id)) top = Math.max(top, b.position[1] + b.height / 2)
-    return isFinite(top) ? Math.round(top) : null
-  }, [selectedIds, profiles, connectors, panels])
+  const selectionTopY = useMemo(() => selectedSolidTop({ profiles, connectors, panels, fittings }, selectedIds, trims),
+    [selectedIds, profiles, connectors, panels, fittings, trims])
   /**
    * On a phone the panel is a sheet you pull up, not a column beside the drawing: there is
    * no room for both, and the drawing is what you came for. It starts out of the way, and
@@ -229,7 +234,7 @@ const Sidebar: React.FC = () => {
       return next
     })
     const frame = requestAnimationFrame(() => {
-      scrollRef.current?.querySelector('[data-testid="section-properties"]')?.scrollIntoView({ block: 'nearest' })
+      scrollRef.current?.querySelector('[data-testid="section-properties"]')?.scrollIntoView({ block: 'start' })
     })
     return () => cancelAnimationFrame(frame)
   }, [selectedIdsSignature])
@@ -487,7 +492,7 @@ const Sidebar: React.FC = () => {
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.profiles}</label>
             <div className="grid grid-cols-5 gap-1">
               {ALL_SPECS.map((spec) => (
-                <button key={spec} onClick={() => handleSpecClick(spec)} data-testid={`spec-${spec}`}
+                <button key={spec} onClick={() => handleSpecClick(spec)} data-testid={`spec-${spec}`} data-keep-draw
                   title={t.hintSpec(spec)}
                   className={`px-1 py-2 rounded-lg text-[11px] font-bold transition-all ${
                     held === 'profile' && activeSpec === spec
@@ -533,7 +538,7 @@ const Sidebar: React.FC = () => {
               </label>
               <button data-testid="work-plane-from-selection" title={t.workPlaneFromSelection}
                 disabled={selectionTopY === null}
-                onClick={() => { if (selectionTopY !== null) { setWorkPlaneY(selectionTopY); setWorkPlaneText(String(selectionTopY)) } }}
+                onClick={() => { if (selectionTopY !== null) { setWorkPlaneY(selectionTopY); setWorkPlaneText(String(useToolStore.getState().workPlaneY)) } }}
                 className="px-2 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 text-[10px] font-bold whitespace-nowrap">
                 {t.workPlaneFromSelection}
               </button>
@@ -740,9 +745,9 @@ const Sidebar: React.FC = () => {
               <fieldset disabled={viewMode} className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.spec}</span>
-                  <select value={selectedProfile.spec} onChange={(e) => setProfileSpec(selectedProfile.id, e.target.value as ProfileSpec)}
+                  <select value={selectedProfile.spec} disabled={selectedProfile.locked} onChange={(e) => setProfileSpec(selectedProfile.id, e.target.value as ProfileSpec)}
                     aria-label={t.spec}
-                    className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-blue-400 outline-none">
+                    className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-blue-400 outline-none disabled:opacity-40 disabled:cursor-not-allowed">
                     {ALL_SPECS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
@@ -752,13 +757,13 @@ const Sidebar: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.length}</span>
-                  <NumField name={t.length} value={selectedProfile.length} onCommit={(v) => setProfileLength(selectedProfile.id, v)} />
+                  <NumField name={t.length} value={selectedProfile.length} disabled={selectedProfile.locked} onCommit={(v) => setProfileLength(selectedProfile.id, v)} />
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.position}</span>
                   <div className="grid grid-cols-3 gap-1">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
-                      <NumField key={ax} label={ax} name={`${t.position} ${ax}`} value={selectedProfile.position[i]} onCommit={(v) => {
+                      <NumField key={ax} label={ax} name={`${t.position} ${ax}`} value={selectedProfile.position[i]} disabled={selectedProfile.locked} onCommit={(v) => {
                         const pos = [...selectedProfile.position] as [number, number, number]
                         pos[i] = v
                         setProfilePosition(selectedProfile.id, pos)
@@ -774,9 +779,9 @@ const Sidebar: React.FC = () => {
                     <span className="text-slate-500" title={t.sectionRollHint}>{t.sectionRoll}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-slate-300 text-[11px]">{facingLabel(selectedProfile)}</span>
-                      <button onClick={() => rollProfile(selectedProfile.id)} data-testid="roll-section"
+                      <button onClick={() => rollProfile(selectedProfile.id)} data-testid="roll-section" disabled={selectedProfile.locked}
                         title={t.hintRoll}
-                        className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold">
+                        className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 text-[10px] font-bold">
                         {t.rollQuarter}
                       </button>
                     </div>
@@ -788,7 +793,7 @@ const Sidebar: React.FC = () => {
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.endPosition}</span>
                   <div className="grid grid-cols-3 gap-1">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
-                      <NumField key={ax} label={ax} name={`${t.endPosition} ${ax}`} value={selectedEnd[i]} onCommit={(v) => {
+                      <NumField key={ax} label={ax} name={`${t.endPosition} ${ax}`} value={selectedEnd[i]} disabled={selectedProfile.locked} onCommit={(v) => {
                         const to = [...selectedEnd] as [number, number, number]
                         to[i] = v
                         setProfileEnd(selectedProfile.id, to)
@@ -820,13 +825,13 @@ const Sidebar: React.FC = () => {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-1">
-                  <button onClick={() => flipProfile(selectedProfile.id)} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
+                  <button onClick={() => flipProfile(selectedProfile.id)} disabled={selectedProfile.locked} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
                   <button onClick={() => duplicateSelected()} title={`${t.duplicate} (Ctrl+D)`} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><Copy size={12} />{t.duplicate}</button>
                 </div>
               </fieldset>
             )}
             {selectedConnector && !selectedProfile && (
-              <fieldset disabled={viewMode} className="space-y-3">
+              <fieldset disabled={viewMode || selectedConnector.locked} className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.connectorProps}</span>
                   <span className="text-emerald-400 font-mono">{connectorLabel(selectedConnector.type, language)}</span>

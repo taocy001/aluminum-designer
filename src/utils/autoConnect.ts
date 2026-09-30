@@ -8,7 +8,7 @@ import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from '
 import { fitConnector } from './connectorFit'
 import { closestOnSegment, getProfileDir, getProfileEndpoints } from './geometryCore'
 import { flushFace, sharedEdge } from './specCompat'
-import { auditBrackets, connectorSeatAt, seatsFor } from './bracketSeat'
+import { auditBrackets, connectorSeatAt, endCapSeat, seatsFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
 
@@ -16,6 +16,19 @@ import { translations } from './translations'
 const OCCUPIED_MM = 30
 /** how close an end has to be to another member's centreline to be its joint partner (mm) */
 const PARTNER_TOL = 30
+
+/** A cap occupies one end plane; its square section may use a different roll convention. */
+function sameCapSeat(a: Pick<ConnectorData, 'position' | 'quaternion' | 'series'>,
+  b: Pick<ConnectorData, 'position' | 'quaternion' | 'series'>): boolean {
+  if ((a.series ?? 20) !== (b.series ?? 20)) return false
+  if (new THREE.Vector3(...a.position).distanceTo(new THREE.Vector3(...b.position)) > 1) return false
+  const qa = new THREE.Quaternion(...a.quaternion).normalize(), qb = new THREE.Quaternion(...b.quaternion).normalize()
+  const axis = (x: number, y: number, z: number, q: THREE.Quaternion) => new THREE.Vector3(x, y, z).applyQuaternion(q)
+  if (axis(0, 0, 1, qa).dot(axis(0, 0, 1, qb)) <= 0.999) return false
+  // The square plate/plug permit quarter turns, but an arbitrary roll leaves its corners proud.
+  const x = axis(1, 0, 0, qa)
+  return Math.max(Math.abs(x.dot(axis(1, 0, 0, qb))), Math.abs(x.dot(axis(0, 1, 0, qb)))) > 0.999
+}
 
 /**
  * Does this part's body run into anything?
@@ -74,6 +87,7 @@ export function autoConnect(type: string): AutoConnectResult {
   // member leaves its bracket behind in mid-air, and since a bracket cannot be dragged back
   // this is where it gets cleared: one press puts the hardware back where the frame is now.
   const wanted: THREE.Vector3[] = []
+  const capSeats: ReturnType<typeof endCapSeat>[] = []
 
   const { trims } = analyzeFrame(profiles)
   const metal = profiles.map((q) => trimmedOBB(q, trims.get(q.id)!))
@@ -83,8 +97,9 @@ export function autoConnect(type: string): AutoConnectResult {
   const validExisting = active.filter((c) => connectorEntry(c.type)?.fit === entry.fit
     && (entry.fit !== 'corner' || !badBrackets.has(c.id)))
   const occupied = (candidate: ConnectorData) => [...validExisting, ...made].some((c) =>
-    new THREE.Vector3(...c.position).distanceTo(new THREE.Vector3(...candidate.position)) <= 1
-    && Math.abs(new THREE.Quaternion(...c.quaternion).dot(new THREE.Quaternion(...candidate.quaternion))) > 0.999)
+    type === 'end-cap' ? c.type === 'end-cap' && sameCapSeat(c, candidate)
+      : new THREE.Vector3(...c.position).distanceTo(new THREE.Vector3(...candidate.position)) <= 1
+        && Math.abs(new THREE.Quaternion(...c.quaternion).dot(new THREE.Quaternion(...candidate.quaternion))) > 0.999)
 
   const made: ConnectorData[] = []
   let skipped = 0
@@ -106,7 +121,9 @@ export function autoConnect(type: string): AutoConnectResult {
         if (at.distanceTo(start) < at.distanceTo(end)) outward.negate()
         if (outward.y > -0.9) continue
       }
-      wanted.push(at.clone())
+      const cap = type === 'end-cap' ? endCapSeat(p, where === tr.start ? -1 : 1, tr) : null
+      if (cap) capSeats.push(cap)
+      wanted.push(cap ? new THREE.Vector3(...cap.position) : at.clone())
 
       // Where the part goes is a question about bolts, not about points. `seatBracket` puts
       // the back on the face the two members share and each hole on a slot line; a part
@@ -117,7 +134,11 @@ export function autoConnect(type: string): AutoConnectResult {
       let position: [number, number, number]
       let quaternion: [number, number, number, number]
       let series: ConnectorSeries
-      if (entry.fit === 'inline' && entry.axes.towards === 'in') {
+      if (cap) {
+        position = cap.position
+        quaternion = cap.quaternion
+        series = cap.series
+      } else if (entry.fit === 'inline' && entry.axes.towards === 'in') {
         // The model origin is halfway up the foot, while the member endpoint is its top.
         // Use the same end seat as manual placement and the specific post being processed.
         const inline = connectorSeatAt(type, at, [p])
@@ -161,6 +182,7 @@ export function autoConnect(type: string): AutoConnectResult {
   const stale = connectors
     .filter((c) => c.type === type && !c.locked)
     .filter((c) => {
+      if (type === 'end-cap') return !capSeats.some((seat) => sameCapSeat(c, seat))
       const v = new THREE.Vector3(...c.position)
       return badBrackets.has(c.id) || !wanted.some((w) => w.distanceTo(v) <= OCCUPIED_MM * 2)
     })

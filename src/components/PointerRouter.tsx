@@ -163,6 +163,11 @@ const PointerRouter: React.FC = () => {
     }
 
     const onPointerMove = (e: PointerEvent) => {
+      // A real return to the canvas hands keyboard navigation back to the model.
+      // Keep inputs focused while typing; keyboard-only toolbar Tab remains native.
+      if (e.buttons === 0 && document.activeElement?.closest('button')) {
+        canvas.closest<HTMLElement>('[data-testid="viewport"]')?.focus({ preventScroll: true })
+      }
       const ts = useToolStore.getState()
 
       // draw mode: the press on a member turns into a move once the pointer travels
@@ -338,8 +343,12 @@ const PointerRouter: React.FC = () => {
         }
         if (part?.kind === 'rotate') {
           // a click on an arc turns the selection; a drag that wanders off is ignored
+          // The same press may already have armed DrawingHandler when a profile is
+          // in hand. Give this click exclusively to the arc, in either listener order.
+          canvas.dispatchEvent(new Event('aluframe:consume-pointer'))
           pendingRotate.current = { x: e.clientX, y: e.clientY, axis: part.axis, shift: e.shiftKey }
           gizmoState.busy = true
+          if (orbit) orbit.enabled = false
           return
         }
       }
@@ -445,6 +454,7 @@ const PointerRouter: React.FC = () => {
       pendingRotate.current = null
       if (rot) {
         gizmoState.busy = false
+        if (orbit) orbit.enabled = !useToolStore.getState().selectMode
         if (Math.hypot(e.clientX - rot.x, e.clientY - rot.y) <= CLICK_SLOP_PX) {
           rotateSelected(rot.axis, rot.shift ? -90 : 90)
         }
@@ -471,6 +481,12 @@ const PointerRouter: React.FC = () => {
     }
 
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && pendingRotate.current) {
+        pendingRotate.current = null
+        gizmoState.busy = false
+        if (orbit) orbit.enabled = !useToolStore.getState().selectMode
+        return
+      }
       if (e.key !== 'Tab') return
       const target = e.target as HTMLElement | null
       if (target?.closest('input,textarea,select,button,[contenteditable="true"]')) return
@@ -500,13 +516,18 @@ const PointerRouter: React.FC = () => {
     canvas.addEventListener('aluframe:consume-pointer', consumePointer)
     const unsubscribe = useToolStore.subscribe((state, previous) => {
       if (state.viewMode && !previous.viewMode) consumePointer()
+      else if (pendingRotate.current && (state.held !== previous.held
+        || state.selectMode !== previous.selectMode || state.showGizmo !== previous.showGizmo)) consumePointer()
     })
+    const onPointerCancel = () => consumePointer()
 
     canvas.addEventListener('dblclick', onDoubleClick)
     canvas.addEventListener('pointermove', onPointerMove)
     canvas.addEventListener('pointerdown', onPointerDown)
     canvas.addEventListener('pointerleave', onPointerLeave)
     window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerCancel)
+    window.addEventListener('blur', onPointerCancel)
     return () => {
       unsubscribe()
       window.removeEventListener('keydown', onKey)
@@ -516,6 +537,8 @@ const PointerRouter: React.FC = () => {
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointerleave', onPointerLeave)
       window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerCancel)
+      window.removeEventListener('blur', onPointerCancel)
     }
   }, [gl, camera, size, controls])
 
