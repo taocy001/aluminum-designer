@@ -107,6 +107,15 @@ function renderedBox(p: ProfileData, trims: ProfileTrims): THREE.Box3 {
   return memberBox({ ...p, position: start.toArray() as [number, number, number], length })
 }
 
+/** Fixed parts carry their solid with them; the public model box keeps its raw contract. */
+function storedBox(p: ProfileData): THREE.Box3 {
+  if (!p.fixedTrims) return memberBox(p)
+  const start = new THREE.Vector3(...p.position).addScaledVector(getProfileDir(p), p.fixedTrims.start)
+  const cut = p.length - p.fixedTrims.start - p.fixedTrims.end
+  const length = Number.isFinite(cut) && cut > 0.1 ? cut : 1
+  return memberBox({ ...p, position: start.toArray() as [number, number, number], length })
+}
+
 /** All boxes in this lookup share one immutable placement and joint calculation. */
 function renderedBoxes(scene: ProfileData[]): (p: ProfileData) => THREE.Box3 {
   let resolve: ReturnType<typeof createTrimResolver> | null = null
@@ -114,8 +123,11 @@ function renderedBoxes(scene: ProfileData[]): (p: ProfileData) => THREE.Box3 {
   return (p) => {
     let box = boxes.get(p)
     if (!box) {
-      resolve ??= createTrimResolver(scene)
-      box = renderedBox(p, resolve(p))
+      if (p.fixedTrims) box = storedBox(p)
+      else {
+        resolve ??= createTrimResolver(scene)
+        box = renderedBox(p, resolve(p))
+      }
       boxes.set(p, box)
     }
     return box
@@ -181,14 +193,15 @@ export function computeDragSnap(
 
   const proposedMoving = moving.map((p) => ({ ...p, position: proposed.get(p.id) ?? p.position }))
   const scene = [...others, ...proposedMoving]
-  const movingBoxes = proposedMoving.map((p) => memberBox(p))
+  const movingBoxes = proposedMoving.map(storedBox)
   const group = new THREE.Box3()
   for (const b of movingBoxes) group.union(b)
-  const staticBoxes = others.map((p) => ({ profile: p, box: memberBox(p), axis: axisOf(p) }))
+  const staticBoxes = others.map((p) => ({ profile: p, box: storedBox(p), axis: axisOf(p) }))
   const actualBox = renderedBoxes(scene)
   const release = Math.min(ALIGN_MAX_MM, threshold * 1.4)
   const rank = { end: 0, face: 1, edge: 2, center: 3 }
   interface Candidate { delta: number; guide: SnapGuide; intent: keyof typeof rank }
+  const candidatesByAxis = new Map<Axis3, Candidate[]>()
 
   for (let axis = 0; axis < 3; axis++) {
     if (!allowedAxes.includes(axis as Axis3)) continue
@@ -228,6 +241,7 @@ export function computeDragSnap(
     }
     const compare = (a: Candidate, b: Candidate) => Math.abs(a.delta) - Math.abs(b.delta)
       || rank[a.intent] - rank[b.intent]
+    candidatesByAxis.set(axis as Axis3, candidates)
     const captured = candidates.filter((c) => Math.abs(c.delta) <= threshold).sort(compare)
     let best = captured[0]
     const end = captured.find((c) => c.guide.kind === 'end')
@@ -247,12 +261,15 @@ export function computeDragSnap(
   // Any surface snap can form/dissolve a joint and change its cut, including an end
   // against a perpendicular member's side. Solve all chosen planes together against
   // the final rendered geometry, so one axis cannot silently invalidate another.
+  const geometryAt = (correction: THREE.Vector3) => {
+    const placed = proposedMoving.map((p) => ({ ...p,
+      position: new THREE.Vector3(...p.position).add(correction).toArray() as [number, number, number] }))
+    return { placed, boxFor: renderedBoxes([...others, ...placed]) }
+  }
   let finalGeometry: { offset: THREE.Vector3; placed: ProfileData[]; boxFor: ReturnType<typeof renderedBoxes> } | null = null
   const residuals = () => {
     if (!finalGeometry || !finalGeometry.offset.equals(offset)) {
-      const placed = proposedMoving.map((p) => ({ ...p,
-        position: new THREE.Vector3(...p.position).add(offset).toArray() as [number, number, number] }))
-      finalGeometry = { offset: offset.clone(), placed, boxFor: renderedBoxes([...others, ...placed]) }
+      finalGeometry = { offset: offset.clone(), ...geometryAt(offset) }
     }
     const { placed, boxFor } = finalGeometry
     return guides.filter((g) => g.movingSide && g.refSide).map((guide) => {
@@ -286,6 +303,75 @@ export function computeDragSnap(
     const invalid = residuals().filter(({ residual }) => Math.abs(residual) > FACE_EPS)
     if (invalid.length === 0) break
     for (const { guide } of invalid) discard(guide)
+  }
+
+  const contactMember = (guide: SnapGuide, geometry: ReturnType<typeof geometryAt>): string | undefined => {
+    const ref = others.find((p) => p.id === guide.refId)!
+    const refBox = geometry.boxFor(ref)
+    const key = AXIS_KEYS[guide.axis]
+    const plane = sideCoord(refBox, key, guide.refSide!)
+    return geometry.placed.find((p) => {
+      const box = geometry.boxFor(p)
+      if (Math.abs(sideCoord(box, key, guide.movingSide!) - plane) > FACE_EPS) return false
+      return AXIS_KEYS.every((otherKey, axis) => axis === guide.axis
+        || Math.min(box.max[otherKey], refBox.max[otherKey]) - Math.max(box.min[otherKey], refBox.min[otherKey]) > FACE_EPS)
+    })?.id
+  }
+  let geometry = geometryAt(offset)
+  const invalidContacts = guides.filter((g) => g.kind === 'face' && !contactMember(g, geometry))
+  if (invalidContacts.length) {
+    // Independent nearest planes can meet only along an edge. Complete a nearby
+    // contact with a flush edge on another permitted axis, including an already
+    // aligned contact plane whose zero correction did not produce a guide above.
+    const eligible = [...candidatesByAxis.values()].flat().filter((c) =>
+      Math.abs(c.delta) <= (previous.some((g) => sameGuide(g, c.guide)) ? release : threshold) + FACE_EPS)
+    let best: { offset: THREE.Vector3; guides: SnapGuide[]; geometry: ReturnType<typeof geometryAt>; distance: number; held: boolean } | null = null
+    for (const invalid of invalidContacts) {
+      const pair = eligible.filter((c) => c.guide.refId === invalid.refId && c.guide.movingId === invalid.movingId)
+      for (const face of pair.filter((c) => c.guide.kind === 'face')) {
+        for (const edge of pair.filter((c) => c.guide.kind === 'edge' && c.guide.axis !== face.guide.axis)) {
+          // Complete this contact without taking over another reference or a
+          // deliberate end/centre alignment already chosen on the other axis.
+          if (guides.some((g) => (g.axis === face.guide.axis || g.axis === edge.guide.axis)
+            && (g.refId !== invalid.refId || g.kind === 'end' || g.kind === 'center'))) continue
+          const trialOffset = offset.clone()
+          trialOffset.setComponent(face.guide.axis, round3(face.delta))
+          trialOffset.setComponent(edge.guide.axis, round3(edge.delta))
+          const trialGuides = [...guides.filter((g) => g.axis !== face.guide.axis && g.axis !== edge.guide.axis),
+            { ...face.guide }, { ...edge.guide }]
+          const trial = geometryAt(trialOffset)
+          const valid = trialGuides.every((g) => {
+            if (g.kind === 'face') return !!contactMember(g, trial)
+            if (!g.movingSide || !g.refSide) return true
+            const key = AXIS_KEYS[g.axis]
+            const refBox = trial.boxFor(others.find((p) => p.id === g.refId)!)
+            const groupBox = new THREE.Box3()
+            for (const p of trial.placed) groupBox.union(trial.boxFor(p))
+            return Math.abs(sideCoord(refBox, key, g.refSide) - sideCoord(groupBox, key, g.movingSide)) <= FACE_EPS
+          })
+          if (!valid) continue
+          const distance = trialOffset.length()
+          const held = previous.some((g) => sameGuide(g, face.guide)) && previous.some((g) => sameGuide(g, edge.guide))
+          if (!best || distance < best.distance - (best.held && !held ? HOLD_MARGIN_MM : 0)
+            || (held && !best.held && distance <= best.distance + HOLD_MARGIN_MM)) {
+            best = { offset: trialOffset, guides: trialGuides, geometry: trial, distance, held }
+          }
+        }
+      }
+    }
+    if (best) { offset.copy(best.offset); guides.splice(0, guides.length, ...best.guides); geometry = best.geometry }
+  }
+  for (const guide of guides) {
+    if (guide.movingSide && guide.refSide) {
+      const ref = others.find((p) => p.id === guide.refId)!
+      guide.coord = round3(sideCoord(geometry.boxFor(ref), AXIS_KEYS[guide.axis], guide.refSide))
+    }
+    if (guide.kind !== 'face') continue
+    const member = contactMember(guide, geometry)
+    if (member) guide.movingId = member
+    // A locked axis may prevent physical contact. Its plane still aligns, but must
+    // not be presented as a face attachment. Remote end/edge alignment is unchanged.
+    else guide.kind = 'align'
   }
   for (const guide of guides) {
     if (guide.kind === 'face' || guide.kind === 'edge') {

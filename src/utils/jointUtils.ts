@@ -99,7 +99,9 @@ function resolveEnd(self: ProfileData, endPt: THREE.Vector3, pDir: THREE.Vector3
     const { start: qS, end: qE } = qGeometry ?? getProfileEndpoints(q)
     const reach = crossExtentAlong(self, qGeometry?.dir ?? getProfileDir(q), geometry?.get(self)) + 1
     const atQEnd = c.atQEnd || c.axisPoint.distanceTo(qS) <= reach || c.axisPoint.distanceTo(qE) <= reach
-    const weButt = theyStand || (!weStand && (!atQEnd || qPri > pPri))
+    // A finished neighbour cannot give up material to the automatic through rule.
+    // Fit the incoming end to its near face even when that end normally outranks it.
+    const weButt = !!q.fixedTrims || theyStand || (!weStand && (!atQEnd || qPri > pPri))
     if (weButt) { anyButt = true; buttTrim = Math.max(buttTrim, toNearFace) }
     else if (pPri > qPri) {
       extend = Math.max(extend, toFarFace)
@@ -144,14 +146,52 @@ export function computeTrims(profile: ProfileData, all: ProfileData[]): ProfileT
   return computeTrimsWithGeometry(profile, all)
 }
 
-function computeTrimsWithGeometry(profile: ProfileData, all: ProfileData[], geometry?: Map<ProfileData, ProfileGeometry>): ProfileTrims {
+function computeTrimsWithGeometry(
+  profile: ProfileData, all: ProfileData[], geometry?: Map<ProfileData, ProfileGeometry>,
+  contactScene = all, contactCache?: Map<ProfileData, ProfileGeometry>,
+): ProfileTrims {
   const others = all.filter((o) => o.id !== profile.id)
   const own = geometry?.get(profile)
   const { start, end } = own ?? getProfileEndpoints(profile)
   const dir = own?.dir ?? getProfileDir(profile)
   const axis = own ? own.axis : getProfileAxis(profile)
-  const s = resolveEnd(profile, start, dir.clone().negate(), axis, others, geometry)
-  const e = resolveEnd(profile, end, dir, axis, others, geometry)
+  if (profile.fixedTrims) {
+    // Finished parts contact at their visible cut faces. Their design endpoints can
+    // remain inside a neighbour even after the real bodies have moved apart.
+    const contacts = contactCache ?? new Map<ProfileData, ProfileGeometry>()
+    for (const p of [profile, ...others]) {
+      if (contacts.has(p)) continue
+      const g = geometry?.get(p) ?? profileGeometry(p)
+      // Automatic neighbours still use the existing manufacturing calculation. This
+      // does not recurse into physical contacts because these neighbours are not fixed.
+      const automatic = p.fixedTrims ? null : computeTrimsWithGeometry(p, contactScene, geometry)
+      const startTrim = p.fixedTrims?.start ?? automatic!.start.trim
+      const cut = p.fixedTrims ? round3(p.length - p.fixedTrims.start - p.fixedTrims.end) : automatic!.cutLength
+      const bodyStart = g.start.clone().addScaledVector(g.dir, startTrim)
+      const bodyEnd = bodyStart.clone().addScaledVector(g.dir, Number.isFinite(cut) && cut > 0.1 ? cut : 1)
+      contacts.set(p, { ...g, start: bodyStart, end: bodyEnd })
+    }
+    const body = contacts.get(profile)!
+    const s = resolveEnd(profile, body.start, dir.clone().negate(), axis, others, contacts)
+    const e = resolveEnd(profile, body.end, dir, axis, others, contacts)
+    return { start: { ...s, trim: profile.fixedTrims.start }, end: { ...e, trim: profile.fixedTrims.end },
+      cutLength: round3(profile.length - profile.fixedTrims.start - profile.fixedTrims.end) }
+  }
+  // A new/recalculated member still starts from its design endpoints, but a finished
+  // neighbour offers only its actual body, including material cut off or extended.
+  let references = geometry
+  if (others.some((p) => p.fixedTrims)) {
+    references = new Map<ProfileData, ProfileGeometry>()
+    for (const p of all) {
+      const g = geometry?.get(p) ?? profileGeometry(p)
+      if (!p.fixedTrims) { references.set(p, g); continue }
+      const bodyStart = g.start.clone().addScaledVector(g.dir, p.fixedTrims.start)
+      const cut = round3(p.length - p.fixedTrims.start - p.fixedTrims.end)
+      references.set(p, { ...g, start: bodyStart, end: bodyStart.clone().addScaledVector(g.dir, cut) })
+    }
+  }
+  const s = resolveEnd(profile, start, dir.clone().negate(), axis, others, references)
+  const e = resolveEnd(profile, end, dir, axis, others, references)
   let cutLength = round3(profile.length - s.trim - e.trim)
   if (!isFinite(cutLength) || cutLength < 1) cutLength = Math.max(1, profile.length)
   return { start: s, end: e, cutLength }
@@ -167,8 +207,15 @@ export function createTrimResolver(all: ProfileData[]): (profile: ProfileData) =
   const geometry = new Map(all.map((p) => [p, profileGeometry(p)]))
   // Resolve member ends against spatially nearby members.
   const boxes = all.map((p) => {
-    const { start, end } = geometry.get(p)!
-    return new THREE.Box3().setFromPoints([start, end]).expandByScalar(REACH)
+    const { start, end, dir } = geometry.get(p)!
+    const box = new THREE.Box3().setFromPoints([start, end])
+    // A determined extension can reach beyond its original design segment. Keep both
+    // spans: automatic calculations use design points, fixed contacts use cut faces.
+    if (p.fixedTrims) {
+      box.expandByPoint(start.clone().addScaledVector(dir, p.fixedTrims.start))
+      box.expandByPoint(end.clone().addScaledVector(dir, -p.fixedTrims.end))
+    }
+    return box.expandByScalar(REACH)
   })
   const order = all.map((_, i) => i).sort((a, b) => boxes[a].min.x - boxes[b].min.x)
   const near: number[][] = all.map(() => [])
@@ -181,13 +228,14 @@ export function createTrimResolver(all: ProfileData[]): (profile: ProfileData) =
   }
   const indices = new Map(all.map((p, i) => [p, i]))
   const resolved = new Map<ProfileData, ProfileTrims>()
+  const contacts = new Map<ProfileData, ProfileGeometry>()
   return (p) => {
     const cached = resolved.get(p)
     if (cached) return cached
     const i = indices.get(p)
     // Preserve drawing order when resolving ties.
     const mine = i === undefined ? all : [...near[i], i].sort((a, b) => a - b).map((k) => all[k])
-    const trims = computeTrimsWithGeometry(p, mine, geometry)
+    const trims = computeTrimsWithGeometry(p, mine, geometry, all, contacts)
     resolved.set(p, trims)
     return trims
   }
@@ -196,6 +244,27 @@ export function createTrimResolver(all: ProfileData[]): (profile: ProfileData) =
 export function computeAllTrims(all: ProfileData[]): Map<string, ProfileTrims> {
   const resolve = createTrimResolver(all)
   return new Map(all.map((p) => [p.id, resolve(p)]))
+}
+
+/** Store the visible cut faces before an edit, without changing geometry or the input. */
+export function withFixedProfileCuts(all: ProfileData[], ids?: ReadonlySet<string>): ProfileData[] {
+  const needsCut = (p: ProfileData) => !p.fixedTrims && (!ids || ids.has(p.id))
+  if (!all.some(needsCut)) return all
+  const resolve = createTrimResolver(all)
+  return all.map((p) => {
+    if (!needsCut(p)) return p
+    const t = resolve(p)
+    // Preserve the renderer's actual span, including the legacy short-cut fallback.
+    return { ...p, fixedTrims: { start: t.start.trim, end: round3(p.length - t.start.trim - t.cutLength) } }
+  })
+}
+
+/** A fixed cut may extend either end, but it must leave a finite, visible part. */
+export function validFixedProfileCut(p: Pick<ProfileData, 'length' | 'fixedTrims'>): boolean {
+  if (!p.fixedTrims) return true
+  const { start, end } = p.fixedTrims
+  return Number.isFinite(start) && Number.isFinite(end)
+    && Number.isFinite(p.length - start - end) && p.length - start - end >= 1 - 1e-7
 }
 
 /** Trimmed (as-built) axis-aligned box of a member */

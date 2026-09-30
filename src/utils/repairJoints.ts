@@ -3,7 +3,7 @@ import { useStore, type ProfileData } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment } from './geometryCore'
 import { seatFor } from './bracketSeat'
 import { sharedEdge } from './specCompat'
-import { computeAllTrims } from './jointUtils'
+import { computeAllTrims, withFixedProfileCuts } from './jointUtils'
 import { findConflicts } from './analysis'
 import { rollProfile } from './faceAlign'
 
@@ -158,7 +158,7 @@ export function planRepair(input: ProfileData[]): { profiles: ProfileData[]; rep
     for (const joint of bad) {
       // whichever of the two is the smaller section is the one to move: a post carries the
       // frame and a rail is hung off it
-      const order = [joint.a, joint.b].sort((p, q) =>
+      const order = [joint.a, joint.b].filter((p) => !p.locked).sort((p, q) =>
         (Number(p.spec.slice(0, 2)) + Number(p.spec.slice(2))) - (Number(q.spec.slice(0, 2)) + Number(q.spec.slice(2))))
 
       let done = false
@@ -180,6 +180,7 @@ export function planRepair(input: ProfileData[]): { profiles: ProfileData[]; rep
         const run = runOf(profiles, who)
         const groups = run.size > 1 ? [new Set([who.id]), run] : [new Set([who.id])]
         for (const group of groups) {
+          if (profiles.some((p) => group.has(p.id) && p.locked)) continue
           const was = scoreRun(profiles, group)
           for (const by of [5, -5, 10, -10, 15, -15, 20, -20, 30, -30, MAX_SHIFT, -MAX_SHIFT]) {
             const shifted = profiles.map((p) => (group.has(p.id) ? slid(p, across, by) : p))
@@ -204,7 +205,7 @@ export function planRepair(input: ProfileData[]): { profiles: ProfileData[]; rep
 /** Apply the repair to the document, as one undo step */
 export function repairJoints(): Repair {
   const store = useStore.getState()
-  const { profiles, repair } = planRepair(store.profiles)
+  const { profiles, repair } = planRepair(withFixedProfileCuts(store.profiles))
   if (repair.steps.length === 0) return repair
   store.commitTransform({
     profiles: profiles.map((p) => ({ id: p.id, updates: { position: p.position, quaternion: p.quaternion } })),

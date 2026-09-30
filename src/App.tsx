@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Viewport from './components/Viewport'
 import Sidebar from './components/Sidebar'
 import QuickMenu from './components/QuickMenu'
@@ -8,6 +8,7 @@ import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
+import { drawingInput, prepareDrawingPreview } from './utils/drawPreview'
 import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
 import { nextSuggestion, dismissSuggestion } from './utils/suggestOps'
@@ -20,9 +21,10 @@ import type { Axis } from './utils/jointUtils'
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 
 function App() {
-  const { profiles, clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
+  const { profiles, throughRule, clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
   const {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace,
+    drawLengthInput: preciseInput, setDrawLengthInput: setPreciseInput,
     held, putDown, triggerCameraReset, zoomBy, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
     pivotMode, cyclePivotMode, quickMenuAt, openQuickMenu, closeQuickMenu,
@@ -57,11 +59,11 @@ function App() {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     else document.documentElement.requestFullscreen().catch(() => showToast(t.toastFullscreenBlocked, 'error'))
   }, [showToast, t])
-  const [preciseInput, setPreciseInput] = useState('')
   const preciseInputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (!isDrawing) setPreciseInput('') }, [isDrawing])
-
-  const drawDist = isDrawing && startPoint && currentPoint ? startPoint.distanceTo(currentPoint) : 0
+  const drawingPreview = useMemo(() => isDrawing && startPoint && currentPoint
+    ? prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles, { startFace: drawStartFace, endFace: drawSnapFace }, preciseInput)
+    : null, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule, drawStartFace, drawSnapFace, preciseInput])
+  const invalidLengthInput = preciseInput.trim() !== '' && (!Number.isFinite(Number(preciseInput)) || Number(preciseInput) < 10)
 
   // Exact value for a gesture already under way: a move that has travelled, or a stretch
   const [exactInput, setExactInput] = useState('')
@@ -87,14 +89,12 @@ function App() {
       return
     }
     if (preciseInput.trim() === '') { showToast(t.toastNeedLength, 'info'); return }
-    const len = parseFloat(preciseInput)
-    if (!isFinite(len) || len < 10) { showToast(t.toastTooShort, 'error'); return }
-    const dir = currentPoint.clone().sub(startPoint).normalize()
-    const end = startPoint.clone().addScaledVector(dir, len)
-    tryAddProfile(startPoint, end, activeSpec)
+    const input = drawingInput(startPoint, currentPoint, { startFace: drawStartFace, endFace: drawSnapFace }, preciseInput)
+    if (!input) { showToast(t.toastTooShort, 'error'); return }
+    if (!tryAddProfile(startPoint, input.end, activeSpec, input.faces)) return
     cancelDraw()
     setPreciseInput('')
-  }, [preciseInput, startPoint, currentPoint, activeSpec, cancelDraw, showToast, t])
+  }, [preciseInput, startPoint, currentPoint, activeSpec, drawStartFace, drawSnapFace, cancelDraw, showToast, t])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -395,11 +395,11 @@ function App() {
                   : { color: '#94a3b8', borderColor: '#94a3b855', background: '#94a3b815' }}>
                 <span>{drawAxis ? `${t.axisNames[drawAxis]}${lockedAxis ? ' 🔒 (X/Y/Z)' : ''}` : t.pickDirection}</span>
                 <span className="opacity-60">|</span>
-                <span data-testid="draw-length">{drawDist.toFixed(0)} mm</span>
+                <span data-testid="draw-length">{invalidLengthInput ? '—' : (drawingPreview?.cutLength ?? 0).toFixed(0)} mm</span>
                 {snapKind && snapKind !== 'grid' && (<><span className="opacity-60">|</span><span data-testid="snap-kind" className="text-cyan-300">{t.snapNames[snapKind] ?? snapKind}</span></>)}
               </div>
               <div className="flex items-center gap-1 bg-slate-700/80 border border-white/10 rounded-full overflow-hidden">
-                <input ref={preciseInputRef} type="number" value={preciseInput} data-testid="precise-input" aria-label={t.exactLength}
+                <input ref={preciseInputRef} type="text" inputMode="decimal" value={preciseInput} data-testid="precise-input" aria-label={t.exactLength} aria-invalid={invalidLengthInput}
                   onChange={(e) => setPreciseInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') { e.preventDefault(); confirmPreciseLength() }
@@ -408,7 +408,7 @@ function App() {
                   }}
                   placeholder={t.exactMm}
                   className="w-28 bg-transparent px-3 py-1.5 text-xs font-mono text-white outline-none placeholder:text-slate-500" />
-                <button onClick={confirmPreciseLength} disabled={!preciseInput} title={t.hintConfirmLength}
+                <button onClick={confirmPreciseLength} disabled={!preciseInput || invalidLengthInput || !drawingPreview || drawingPreview.blocked} title={t.hintConfirmLength}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-[11px] font-bold text-white">↵</button>
               </div>
               {(drawStartFace || drawSnapFace) && <div data-testid="draw-face-hud" className="basis-full text-center text-[10px] md:text-[11px] leading-tight">

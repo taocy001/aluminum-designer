@@ -145,7 +145,7 @@ const NumField: React.FC<{
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, panels, fittings, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument, throughRule, setThroughRule } = useStore()
+  const { profiles, connectors, panels, fittings, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument, throughRule, setThroughRule, recalculateJoints } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
     workPlaneY, setWorkPlaneY, viewMode, setViewMode,
     section, setSection, buildStep, setBuildStep } = useToolStore()
@@ -510,6 +510,13 @@ const Sidebar: React.FC = () => {
                 </button>
               ))}
             </div>
+            <p className="mt-2 text-[10px] leading-relaxed text-slate-400">{t.moveKeepsLength}</p>
+            <button data-testid="recalculate-joints" title={t.recalculateJointsHint}
+              disabled={viewMode || !profiles.some((p) => p.fixedTrims && !p.locked)}
+              onClick={() => recalculateJoints()}
+              className="mt-1 w-full rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700/50 disabled:opacity-35 disabled:cursor-not-allowed">
+              {t.recalculateJoints}
+            </button>
           </div>
 
           {/** Work-plane height for drawing. */}

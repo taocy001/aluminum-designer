@@ -74,6 +74,8 @@ interface ToolState {
   /** Faces selected while starting/ending a drawn member, in the target's local axes. */
   drawStartFace: ProfileFaceRef | null
   drawSnapFace: ProfileFaceRef | null
+  /** Shared numeric input so the visible ghost and either placement action agree. */
+  drawLengthInput: string
   /** incremented when a digit is typed while drawing → focus the exact-length input */
   preciseFocusRequest: number
   preciseSeed: string
@@ -167,6 +169,7 @@ interface ToolState {
   updateDraw: (patch: Partial<Pick<ToolState, 'startPoint' | 'currentPoint' | 'snapPoint' | 'drawAxis' | 'alignGuides' | 'snapKind' | 'hoverTargetId' | 'drawStartFace' | 'drawSnapFace'>>) => void
   setHover: (point: THREE.Vector3 | null, snap: THREE.Vector3 | null, kind?: string | null, targetId?: string | null, face?: ProfileFaceRef | null) => void
   cancelDraw: () => void
+  setDrawLengthInput: (input: string) => void
   setLockedAxis: (axis: Axis | null) => void
   requestPreciseFocus: (seed: string) => void
 
@@ -241,6 +244,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   hoverTargetId: null,
   drawStartFace: null,
   drawSnapFace: null,
+  drawLengthInput: '',
   preciseFocusRequest: 0,
   preciseSeed: '',
 
@@ -282,12 +286,12 @@ export const useToolStore = create<ToolState>((set, get) => ({
   putDown: () => set({
     held: null, isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
     snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null, selectMode: false,
-    drawStartFace: null, drawSnapFace: null,
+    drawStartFace: null, drawSnapFace: null, drawLengthInput: '',
   }),
   setActiveSpec: (spec) => set({ activeSpec: spec, held: 'profile', selectMode: false }),
   setActiveConnector: (type) => set({
     activeConnectorType: type, held: type ? 'connector' : null, selectMode: false,
-    drawStartFace: null, drawSnapFace: null,
+    drawStartFace: null, drawSnapFace: null, drawLengthInput: '',
     ...(type ? {} : { isDrawing: false, startPoint: null, currentPoint: null, snapPoint: null }),
   }),
   setLanguage: (language) => set({ language }),
@@ -299,7 +303,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
     set({
       viewMode,
       ...(viewMode ? { held: null, activeConnectorType: null, isDrawing: false, selectMode: false,
-        startPoint: null, currentPoint: null, drawStartFace: null, drawSnapFace: null, pendingRotate: null, isFrameSelecting: false,
+        startPoint: null, currentPoint: null, drawStartFace: null, drawSnapFace: null, drawLengthInput: '', pendingRotate: null, isFrameSelecting: false,
         drawOrigin: null, snapPoint: null, snapKind: null, hoverTargetId: null, drawAxis: null, lockedAxis: null, alignGuides: [],
         frameSelectStart: null, frameSelectCurrent: null, frameSelectRect: null, suggestion: null } : {}),
     })
@@ -310,7 +314,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setBuildStep: (buildStep) => set({ buildStep }),
   setSuggestion: (suggestion, skipped) => set(skipped ? { suggestion, suggestSkipped: skipped } : { suggestion }),
   // measuring puts down whatever is in hand: a click has to mean one thing at a time
-  startMeasuring: () => set({ measuring: { from: null, to: null }, held: null, activeConnectorType: null, isDrawing: false, selectMode: false, drawStartFace: null, drawSnapFace: null }),
+  startMeasuring: () => set({ measuring: { from: null, to: null }, held: null, activeConnectorType: null, isDrawing: false, selectMode: false, drawStartFace: null, drawSnapFace: null, drawLengthInput: '' }),
   setMeasurePoint: (at) => set((s) => {
     if (!s.measuring || !s.measuring.from) return { measuring: { from: at.clone(), to: null } }
     if (!s.measuring.to) return { measuring: { from: s.measuring.from, to: at.clone() } }
@@ -324,15 +328,16 @@ export const useToolStore = create<ToolState>((set, get) => ({
   beginDraw: (origin, face = null) => set({
     isDrawing: true, drawOrigin: origin.clone(), startPoint: origin.clone(), currentPoint: origin.clone(),
     snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null,
-    drawStartFace: face, drawSnapFace: null,
+    drawStartFace: face, drawSnapFace: null, drawLengthInput: '',
   }),
   updateDraw: (patch) => set(patch),
   setHover: (point, snap, kind = null, targetId = null, face = null) => set({ currentPoint: point, snapPoint: snap, snapKind: kind, hoverTargetId: targetId, drawSnapFace: face }),
   cancelDraw: () => set({
     isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
     snapPoint: null, drawAxis: null, lockedAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null,
-    drawStartFace: null, drawSnapFace: null,
+    drawStartFace: null, drawSnapFace: null, drawLengthInput: '',
   }),
+  setDrawLengthInput: (drawLengthInput) => set({ drawLengthInput }),
   setLockedAxis: (lockedAxis) => set({ lockedAxis }),
   requestPreciseFocus: (seed) => set((s) => ({ preciseFocusRequest: s.preciseFocusRequest + 1, preciseSeed: seed })),
 

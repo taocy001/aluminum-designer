@@ -1,4 +1,5 @@
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import { computeAllTrims } from './jointUtils'
 
 /**
  * Persist the latest 400 document-change entries across reloads.
@@ -111,6 +112,8 @@ export function describeChange(before: Doc, after: Doc): { label: string; detail
 
   const added = [...a.keys()].filter((id) => !b.has(id))
   const removed = [...b.keys()].filter((id) => !a.has(id))
+  const ruleChanged = (before.throughRule ?? 'rails') !== (after.throughRule ?? 'rails')
+  let previousCuts: ReturnType<typeof computeAllTrims> | undefined
   // changed in place
   const changes: Array<{ id: string; what: string }> = []
   for (const [id, prev] of b) {
@@ -131,11 +134,21 @@ export function describeChange(before: Doc, after: Doc): { label: string; detail
     const newFields = next as unknown as Record<string, unknown>
     for (const key of new Set([...Object.keys(oldFields), ...Object.keys(newFields)])) {
       if (special.has(key) || equalValue(oldFields[key], newFields[key])) continue
+      // Ignore a first freeze only when it stores the previous visible shape. A short
+      // resize can change just these offsets while leaving the model span untouched.
+      if (key === 'fixedTrims' && oldFields[key] === undefined) {
+        if (ruleChanged) continue // the rule change is recorded separately
+        previousCuts ??= computeAllTrims(before.profiles)
+        const cuts = previousCuts.get(id)
+        if (cuts && equalValue(newFields[key], {
+          start: cuts.start.trim, end: round3(pl - cuts.start.trim - cuts.cutLength),
+        })) continue
+      }
+      if (key === 'fixedTrims' && newFields[key] === undefined && ruleChanged) continue
       bits.push(`${key} ${valueText(oldFields[key])} → ${valueText(newFields[key])}`)
     }
     if (bits.length) changes.push({ id, what: bits.join(', ') })
   }
-  const ruleChanged = (before.throughRule ?? 'rails') !== (after.throughRule ?? 'rails')
   if (changes.length === 0 && added.length === 0 && removed.length === 0 && !ruleChanged) return null
 
   const details: string[] = []

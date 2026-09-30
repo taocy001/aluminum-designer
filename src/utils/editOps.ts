@@ -3,7 +3,7 @@ import { noteNext } from './opLog'
 import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
-import { getProfileAxis, getProfileDir } from './jointUtils'
+import { getProfileAxis, getProfileDir, withFixedProfileCuts, validFixedProfileCut } from './jointUtils'
 import { analyzeFrame } from './analysis'
 import { buildProfile, floorY, lowestPointY, nextId } from './profileFactory'
 import { translations } from './translations'
@@ -28,6 +28,13 @@ function selectedProfiles(includeLocked = false): ProfileData[] {
   const { profiles, selectedIds } = useStore.getState()
   const ids = new Set(selectedIds)
   return profiles.filter((p) => ids.has(p.id) && (includeLocked || !p.locked))
+}
+
+/** A copy has the source's physical length even when copied away from its neighbours. */
+function fixedSelectedProfiles(): ProfileData[] {
+  const { profiles, selectedIds } = useStore.getState()
+  const ids = new Set(selectedIds)
+  return withFixedProfileCuts(profiles).filter((p) => ids.has(p.id))
 }
 
 /** A connector stays fixed on its own, and travels with an explicitly selected assembly. */
@@ -66,7 +73,7 @@ function addCopies(copies: PartDocument): void {
   const store = useStore.getState()
   const ids = [...copies.profiles, ...copies.connectors, ...copies.panels, ...copies.fittings].map((part) => part.id)
   store.commitDocument({
-    profiles: [...store.profiles, ...copies.profiles],
+    profiles: [...(copies.profiles.length ? withFixedProfileCuts(store.profiles) : store.profiles), ...copies.profiles],
     connectors: [...store.connectors, ...copies.connectors],
     panels: [...store.panels, ...copies.panels],
     fittings: [...store.fittings, ...copies.fittings],
@@ -95,6 +102,10 @@ function conflictPairsNow(): Set<string> {
 function applyProfiles(cands: ProfileData[]): boolean {
   if (cands.length === 0) return false
   if (cands.some((c) => c.locked)) { toast(t().toastLocked); return false }
+  const fixed = new Map(withFixedProfileCuts(useStore.getState().profiles).map((p) => [p.id, p]))
+  if (cands.some((c) => !validFixedProfileCut({ ...fixed.get(c.id)!, ...c }))) {
+    toast(t().toastTooShort); return false
+  }
   const before = conflictPairsNow()
   useStore.getState().commitProfilesEdit(cands.map((c) => ({ id: c.id, updates: c })))
   warnIfNewConflicts(before)
@@ -150,7 +161,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
 
 /** Duplicate all selected parts, including locked references, and select the unlocked copies. */
 export function duplicateSelected(): boolean {
-  const profiles = selectedProfiles(true)
+  const profiles = fixedSelectedProfiles()
   const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
@@ -230,7 +241,7 @@ function connectorSymmetry(type: string): RotAxis | 'swapXY' {
  * edge so their leaf and opening motion are reflected too.
  */
 export function mirrorSelected(axis: RotAxis = 'x'): boolean {
-  const profiles = selectedProfiles(true)
+  const profiles = fixedSelectedProfiles()
   const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
@@ -281,7 +292,7 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
 
 /** Repeat the selection along a world axis with the specified count and spacing in millimetres. */
 export function arraySelected(axis: RotAxis, count: number, spacing: number): boolean {
-  const profiles = selectedProfiles(true)
+  const profiles = fixedSelectedProfiles()
   const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
@@ -465,7 +476,7 @@ export function commitExactMove(distance: number): boolean {
   return true
 }
 
-/** Finish the stretch in progress at an exact length, the fixed end staying put */
+/** Finish at the physical length displayed by the handle, keeping the opposite cut face fixed. */
 export function commitExactLength(length: number): boolean {
   const ts = useToolStore.getState()
   const rs = ts.resize
@@ -474,17 +485,32 @@ export function commitExactLength(length: number): boolean {
   const profile = store.profiles.find((p) => p.id === rs.id)
   if (!profile || profile.locked) return false
   if (!isFinite(length) || length < 10) { toast(t().toastTooShort); return false }
+  const fixedProfile = withFixedProfileCuts(store.profiles).find((p) => p.id === profile.id)!
+  const fixedTrims = { ...fixedProfile.fixedTrims! }
+  const rawModelLength = round3(length + fixedTrims.start + fixedTrims.end)
+  const modelLength = Math.max(10, rawModelLength)
+  // A long extension must not impose an extra minimum on the requested physical
+  // length. Keep the model span valid by adjusting only the end being stretched;
+  // the opposite cut offset and its world face remain fixed.
+  fixedTrims[rs.end] = round3(fixedTrims[rs.end] + modelLength - rawModelLength)
+  if (!validFixedProfileCut({ length: modelLength, fixedTrims })) {
+    toast(t().toastTooShort); return false
+  }
 
   const dir = getProfileDir(profile)
   const origin = new THREE.Vector3(...rs.origin)
   const fixed = rs.end === 'start' ? origin.clone().addScaledVector(dir, rs.length) : origin.clone()
   const position: [number, number, number] = rs.end === 'start'
-    ? [round3(fixed.x - dir.x * length), round3(fixed.y - dir.y * length), round3(fixed.z - dir.z * length)]
+    ? [round3(fixed.x - dir.x * modelLength), round3(fixed.y - dir.y * modelLength), round3(fixed.z - dir.z * modelLength)]
     : [round3(fixed.x), round3(fixed.y), round3(fixed.z)]
 
   // the pointer may never have travelled, so this gesture may have no history entry yet
-  if (!ts.dragMoved) store.snapshotHistory()
-  store.updateProfile(rs.id, { length: Math.round(length * 100) / 100, position })
+  const changed = modelLength !== profile.length || position.some((v, i) => v !== profile.position[i])
+    || fixedTrims.start !== fixedProfile.fixedTrims!.start || fixedTrims.end !== fixedProfile.fixedTrims!.end
+  if (changed) {
+    if (!ts.dragMoved) store.snapshotHistory()
+    store.updateProfile(rs.id, { length: modelLength, position, fixedTrims })
+  }
   ts.stopResize()
   ts.setDragConflict(false)
   return true
@@ -534,12 +560,13 @@ export function selectConnected(id: string): boolean {
 
 /** Reverse a member's direction (swap its start and end) */
 export function flipProfile(id: string): boolean {
-  const p = useStore.getState().profiles.find((q) => q.id === id)
+  const p = withFixedProfileCuts(useStore.getState().profiles).find((q) => q.id === id)
   if (!p) return false
   const { end } = getProfileEndpoints(p)
   const q = new THREE.Quaternion(...p.quaternion)
     .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)).normalize()
-  return applyProfiles([{ ...p, position: [round3(end.x), round3(end.y), round3(end.z)], quaternion: [q.x, q.y, q.z, q.w] }])
+  return applyProfiles([{ ...p, position: [round3(end.x), round3(end.y), round3(end.z)], quaternion: [q.x, q.y, q.z, q.w],
+    fixedTrims: { start: p.fixedTrims!.end, end: p.fixedTrims!.start } }])
 }
 
 export function setProfileLength(id: string, length: number): boolean {
@@ -692,6 +719,12 @@ export function liveParts(ids: string[], updates: Record<string, unknown>, pushH
     if (changes.length) edits[kind] = changes
   }
   if (Object.keys(edits).length === 0) return false
+  if (edits.profiles?.length) {
+    const fixed = new Map(withFixedProfileCuts(store.profiles).map((p) => [p.id, p]))
+    if (edits.profiles.some(({ id, updates }) => !validFixedProfileCut({ ...fixed.get(id)!, ...updates }))) {
+      toast(t().toastTooShort); return false
+    }
+  }
   if (pushHistory) store.snapshotHistory()
   store.updateParts(edits)
   return true

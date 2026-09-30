@@ -1,11 +1,13 @@
 import * as THREE from 'three'
 import type { ProfileData, ConnectorData, PanelData, FittingData } from '../store/useStore'
-import { getProfileEndpoints, getProfileDir, crossExtentAlong } from './geometryCore'
+import { getProfileDir, crossExtentAlong } from './geometryCore'
 import { toScreen, closestParamLineToRay, type ScreenSize } from './pickUtils'
 import { panelCorners } from './panelOps'
 import { fittingObb } from './fittingGeometry'
 import { cutAway } from './frontmost'
 import { obbCorners } from './obb'
+import { profileBodyEndpoints } from './profileFaces'
+import { computeAllTrims, type ProfileTrims } from './jointUtils'
 
 /** Extra pixels of slack around a member's rendered body, so thin beams stay easy to hit */
 export const PICK_SLACK_PX = 7
@@ -113,8 +115,9 @@ export function pickAtScreen(
   cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
   profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
   fittings: FittingData[] = [],
+  trims?: ReadonlyMap<string, ProfileTrims>,
 ): ScreenPick | null {
-  return pickCandidatesAtScreen(cursor, ray, camera, size, profiles, connectors, panels, fittings)[0] ?? null
+  return pickCandidatesAtScreen(cursor, ray, camera, size, profiles, connectors, panels, fittings, trims)[0] ?? null
 }
 
 /** Return pick candidates under the cursor in depth order for selection cycling. */
@@ -122,13 +125,15 @@ export function pickCandidatesAtScreen(
   cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
   profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
   fittings: FittingData[] = [],
+  trims?: ReadonlyMap<string, ProfileTrims>,
 ): ScreenPick[] {
   const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
   const fwd = camera.getWorldDirection(new THREE.Vector3())
   const found: Array<{ pick: ScreenPick; score: number }> = []
+  const actualTrims = trims ?? computeAllTrims(profiles)
 
   for (const p of profiles) {
-    const { start: s0, end: e0 } = getProfileEndpoints(p)
+    const { start: s0, end: e0 } = profileBodyEndpoints(p, actualTrims.get(p.id))
     const visible = clipToFront(s0, e0, camPos, fwd)
     if (!visible) continue
     const { a: start, b: end } = visible
@@ -145,9 +150,9 @@ export function pickCandidatesAtScreen(
     if (dist > halfPx + PICK_SLACK_PX) continue
     const depth = world.distanceTo(camPos)
     // point on the centerline nearest the sight line, for grabbing
-    const origin = new THREE.Vector3(...p.position)
+    const origin = s0.clone()
     const tRay = closestParamLineToRay(origin, dir, ray)
-    const grabT = tRay === null ? origin.distanceTo(world) : THREE.MathUtils.clamp(tRay, 0, p.length)
+    const grabT = tRay === null ? origin.distanceTo(world) : THREE.MathUtils.clamp(tRay, 0, s0.distanceTo(e0))
     const at = origin.clone().addScaledVector(dir, grabT)
     // a part the cut has taken away is not there to be clicked
     if (cutAway(at)) continue

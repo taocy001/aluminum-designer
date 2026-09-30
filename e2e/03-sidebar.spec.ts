@@ -65,7 +65,8 @@ test.describe('Sidebar properties', () => {
   test('trash button deletes; undo/redo buttons work and disable correctly', async ({ page }) => {
     await page.getByTestId('delete-selected').click()
     expect((await store(page)).profiles).toHaveLength(0)
-    const undo = page.getByTitle(/撤销/); const redo = page.getByTitle(/重做/)
+    const undo = page.getByRole('button', { name: '撤销', exact: true })
+    const redo = page.getByRole('button', { name: '重做', exact: true })
     await expect(redo).toBeDisabled()
     await undo.click()
     expect((await store(page)).profiles).toHaveLength(1)

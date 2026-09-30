@@ -306,7 +306,7 @@ test.describe('Snapping while dragging', () => {
     expect(Math.abs(moved.position[2] - 500)).toBeLessThanOrEqual(5)
   })
 
-  test('endpoint snapping joins members that meet at an angle, from further away', async ({ page }) => {
+  test('perpendicular finished members snap face to face without recutting', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [400, 10, 0])        // rail along X
     await drawMember(page, [0, 0, 300], [0, 10, 600])      // rail along Z, elsewhere
@@ -314,8 +314,25 @@ test.describe('Snapping while dragging', () => {
     const ids = (await store(page)).profiles.map((p) => p.id)
     // grab the Z rail by its start and drop it ~18 mm from the X rail's far end
     await dragWorld(page, [0, 10, 300], [415, 10, 12])
-    const moved = (await store(page)).profiles.find((p) => p.id === ids[1])!
-    expect(moved.position.map(r)).toEqual([400, 10, 0])
+    const result = await page.evaluate((ids) => {
+      const w = (window as any).__aluframe
+      const boxes: any[] = []
+      for (const id of ids) w.sceneRoot.traverse((o: any) => {
+        if (o.isMesh && o.userData.profileId === id) boxes.push(new w.THREE.Box3().setFromObject(o))
+      })
+      const cuts = w.trims()
+      return {
+        overlaps: ['x', 'y', 'z'].map((axis) => Math.min(boxes[0].max[axis], boxes[1].max[axis]) - Math.max(boxes[0].min[axis], boxes[1].min[axis])),
+        lengths: ids.map((id) => cuts[id].cutLength),
+        conflicts: w.conflicts().conflicts,
+      }
+    }, ids)
+    // One coincident face with positive overlap in both other axes: an edge alone
+    // is not a joint, and crossing centrelines would require changing the cut lengths.
+    expect(result.overlaps.filter((v) => v > 0.001)).toHaveLength(2)
+    expect(result.overlaps.filter((v) => Math.abs(v) <= 0.001)).toHaveLength(1)
+    expect(result.lengths).toEqual([400, 300])
+    expect(result.conflicts).toEqual([])
   })
 })
 

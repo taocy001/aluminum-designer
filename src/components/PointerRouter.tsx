@@ -13,6 +13,8 @@ import { setFittingOpen } from '../utils/fittingOps'
 import { translations } from '../utils/translations'
 import { memberBox } from '../utils/dragSnap'
 import { acceptSuggestion, dismissSuggestion } from '../utils/suggestOps'
+import { profileBodyEndpoints } from '../utils/profileFaces'
+import { computeAllTrims, type ProfileTrims } from '../utils/jointUtils'
 
 /** Where a ray meets a level plane at height `y`, or null when it runs parallel to it */
 function planeHit(ray: THREE.Ray, y: number): THREE.Vector3 | null {
@@ -54,11 +56,19 @@ const PointerRouter: React.FC = () => {
    * in front is not an interaction. The list is rebuilt whenever the pointer really moves.
    */
   const candidates = useRef<{ x: number; y: number; list: ScreenPick[]; index: number }>({ x: 0, y: 0, list: [], index: 0 })
+  const trimCache = useRef<{ profiles: StoreLike['profiles']; throughRule: StoreLike['throughRule']; trims: Map<string, ProfileTrims> } | null>(null)
 
   useEffect(() => {
     const canvas = gl.domElement
     const raycaster = new THREE.Raycaster()
     const orbit = controls as { enabled?: boolean } | null
+    const trimsFor = (store: StoreLike) => {
+      const cached = trimCache.current
+      if (cached?.profiles === store.profiles && cached.throughRule === store.throughRule) return cached.trims
+      const trims = computeAllTrims(store.profiles)
+      trimCache.current = { profiles: store.profiles, throughRule: store.throughRule, trims }
+      return trims
+    }
 
     const cursorOf = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect()
@@ -107,46 +117,49 @@ const PointerRouter: React.FC = () => {
       })
     }
 
-    /**
-     * True when the pointer is close enough to an end of the single selected member for that
-     * end to own the press. What the end then does depends on the hand — stretch when it is
-     * empty, start a new member when it holds a profile — but either way the gizmo, which is
-     * centred on the member and reaches out over both ends, must step aside.
-     */
-    /**
-     * The end handle of the one selected member, when the pointer is on it.
-     *
-     * It is asked of that member alone, and it wins over whatever else is drawn there. At a
-     * corner four members end at the same point and the pointer resolves to whichever the
-     * renderer put in front, so the handle you can see and are aiming at went to somebody
-     * else. A handle is drawn to be pressed; nothing in front of it should take the press.
-     */
-    const reachingForEnd = (cursor: THREE.Vector2, rect: DOMRect, ray: THREE.Ray): ScreenPick | null => {
+    /** An end belongs to the resolved pointer target, including an explicit Tab choice.
+     * Picking the selected member in isolation lets its hidden end steal another member's
+     * drag, even while the hover correctly highlights that other member. */
+    const selectedEndAt = (hit: ScreenPick | null): 'start' | 'end' | null => {
       const store = useStore.getState()
-      if (store.selectedIds.length !== 1) return null
+      if (!hit || hit.kind !== 'profile' || store.selectedIds.length !== 1) return null
       const only = store.profiles.find((p) => p.id === store.selectedIds[0])
-      if (!only || only.locked) return null
-      const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height }, [only], [])
-      if (!hit || hit.id !== only.id) return null
-      const { start, end } = getProfileEndpoints(only)
+      if (!only || only.locked || hit.id !== only.id) return null
+      const { start, end } = profileBodyEndpoints(only, trimsFor(store).get(only.id))
       const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
-      const zone = endGrabRadius(only.length, hit.point.distanceTo(camPos), camera, size.height)
-      return hit.point.distanceTo(start) < zone || hit.point.distanceTo(end) < zone ? hit : null
+      const zone = endGrabRadius(start.distanceTo(end), hit.point.distanceTo(camPos), camera, size.height)
+      return hit.point.distanceTo(start) < zone ? 'start' : hit.point.distanceTo(end) < zone ? 'end' : null
     }
 
     /** Everything under the pointer, with whatever is actually drawn there put first */
     const candidatesFor = (cursor: THREE.Vector2, rect: DOMRect) => {
       const ray = rayOf(cursor, rect)
-      const { profiles, connectors, panels, fittings } = useStore.getState()
+      const store = useStore.getState()
+      const { profiles, connectors, panels, fittings } = store
       // put away is put away: a hidden door is not something you can click either
       const visible = useToolStore.getState().showFittings ? fittings : []
       const list = pickCandidatesAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
-        profiles, connectors, panels, visible)
+        profiles, connectors, panels, visible, trimsFor(store))
       return promoteFrontmost(list, frontmostId(scene, ray, camera))
     }
-    const pickFor = (e: PointerEvent) => {
+    /** Reuse the same visible/Tab target for hover, handle precedence and pointerdown. */
+    const resolvePointer = (e: PointerEvent, enabled = true) => {
       const { cursor, rect } = cursorOf(e)
-      return candidatesFor(cursor, rect)[0] ?? null
+      const list = enabled ? candidatesFor(cursor, rect) : []
+      const previous = candidates.current
+      const stayed = Math.hypot(e.clientX - previous.x, e.clientY - previous.y) <= 3
+      const chosen = stayed && previous.index > 0 ? previous.list[previous.index] : null
+      // Retain the part itself, rather than its old index, if candidate ordering changes.
+      const index = chosen ? Math.max(0, list.findIndex((p) => p.id === chosen.id && p.kind === chosen.kind)) : 0
+      candidates.current = { x: e.clientX, y: e.clientY, list, index }
+      return { cursor, rect, pick: list[index] ?? null, index, list }
+    }
+    const showPointerTarget = (pick: ScreenPick | null) => {
+      const ts = useToolStore.getState()
+      ts.setHoverProfile(pick?.kind === 'profile' ? pick.id : null)
+      ts.setHoverPart(pick?.id ?? null)
+      ts.setHoverEnd(ts.held === null ? selectedEndAt(pick) : null)
+      ts.setHoverCandidates(candidates.current.list.length, candidates.current.index)
     }
 
     const onPointerMove = (e: PointerEvent) => {
@@ -172,50 +185,21 @@ const PointerRouter: React.FC = () => {
       // Skip hover projection during camera orbit or pan.
       if (e.buttons !== 0 && !ts.isDrawing) return
 
-      // reaching for an end of the selected member wins over the gizmo, which is centred on
-      // it and would otherwise cover the very ends the stretch handles live on
-      {
-        const { cursor, rect } = cursorOf(e)
-        const ray = rayOf(cursor, rect)
-        if (!reachingForEnd(cursor, rect, ray) && !(e.ctrlKey || e.metaKey || e.altKey)) {
-          const part = gizmoHandleAt(ray)
-          ts.setGizmoHover(part)
-          if (part) { ts.setHoverProfile(null); ts.setHoverEnd(null); return }
-        } else {
-          ts.setGizmoHover(null)
-        }
-      }
       // A half-drawn line owns the pointer, and a connector in hand is aimed at a surface
       // rather than at a part; otherwise the hover works the same whatever is in hand.
       const busy = ts.isDrawing || ts.held === 'connector'
-      const { cursor: hc, rect: hr } = cursorOf(e)
-      const list = busy ? [] : candidatesFor(hc, hr)
-      // a real move resets the cycle; jitter under a still hand must not
-      const moved = Math.hypot(e.clientX - candidates.current.x, e.clientY - candidates.current.y) > 3
-      candidates.current = {
-        x: e.clientX, y: e.clientY, list,
-        index: moved ? 0 : Math.min(candidates.current.index, Math.max(0, list.length - 1)),
+      const pointer = resolvePointer(e, !busy)
+      // A visible selected end, or a deliberate Tab choice, wins over the gizmo. Other
+      // explicit gizmo handles keep their normal precedence over member bodies.
+      const handle = selectedEndAt(pointer.pick) || pointer.index > 0 || e.ctrlKey || e.metaKey || e.altKey
+        ? null : gizmoHandleAt(rayOf(pointer.cursor, pointer.rect))
+      ts.setGizmoHover(handle)
+      if (handle) {
+        ts.setHoverProfile(null); ts.setHoverPart(null); ts.setHoverEnd(null)
+        ts.setHoverCandidates(0, 0)
+        return
       }
-      const pick = list[candidates.current.index] ?? null
-      ts.setHoverProfile(pick?.kind === 'profile' ? pick.id : null)
-      ts.setHoverPart(pick?.id ?? null)
-      ts.setHoverCandidates(list.length, candidates.current.index)
-
-      // End faces mean two different things: with a profile in hand they are where the next
-      // member starts, with an empty hand they are the stretch grip. The hand decides, so
-      // the grip only offers itself when nothing is held.
-      if (ts.held !== null) { ts.setHoverEnd(null); return }
-
-      // which end face is the pointer reaching for, if any
-      const store = useStore.getState()
-      const only = store.selectedIds.length === 1 ? store.profiles.find((p) => p.id === store.selectedIds[0]) : undefined
-      if (!only || !pick || pick.id !== only.id) { ts.setHoverEnd(null) } else {
-        const { start, end } = getProfileEndpoints(only)
-        const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
-        const zone = endGrabRadius(only.length, pick.point.distanceTo(camPos), camera, size.height)
-        const ds = pick.point.distanceTo(start), de = pick.point.distanceTo(end)
-        ts.setHoverEnd(ds < zone ? 'start' : de < zone ? 'end' : null)
-      }
+      showPointerTarget(pointer.pick)
     }
 
     const onPointerLeave = () => {
@@ -242,8 +226,9 @@ const PointerRouter: React.FC = () => {
       if (ts.held !== null || ts.selectMode) return
       const { cursor, rect } = cursorOf(e as unknown as PointerEvent)
       const ray = rayOf(cursor, rect)
+      const store = useStore.getState()
       const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
-        useStore.getState().profiles, useStore.getState().connectors, useStore.getState().panels, useStore.getState().fittings)
+        store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store))
       let target = hit?.point?.clone() ?? null
       if (!target) {
         // Nothing under the pointer. Falling through to the floor sends the camera off to
@@ -271,7 +256,7 @@ const PointerRouter: React.FC = () => {
       const store = useStore.getState()
       const hit = pickAtScreen(
         new THREE.Vector2(rect.width / 2, rect.height / 2), ray.ray, camera,
-        { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels, store.fittings,
+        { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store),
       )
       const dir = camera.getWorldDirection(new THREE.Vector3())
       let depth: number | null = null
@@ -329,10 +314,10 @@ const PointerRouter: React.FC = () => {
       // Ctrl/Cmd (add to selection) and Alt (plane drag) are gestures aimed at the model,
       // so they pass straight through the handles.
       const modifierHeld = e.ctrlKey || e.metaKey || e.altKey
+      const pointer = resolvePointer(e)
       {
-        const { cursor, rect } = cursorOf(e)
-        const ray = rayOf(cursor, rect)
-        const part = modifierHeld || reachingForEnd(cursor, rect, ray) ? null : gizmoHandleAt(ray)
+        const ray = rayOf(pointer.cursor, pointer.rect)
+        const part = modifierHeld || pointer.index > 0 || selectedEndAt(pointer.pick) ? null : gizmoHandleAt(ray)
         if (part?.kind === 'move') {
           const store = useStore.getState()
           const lead = store.profiles.find((p) => store.selectedIds.includes(p.id) && !p.locked)
@@ -363,27 +348,14 @@ const PointerRouter: React.FC = () => {
       // armed here and DrawingHandler skips placing a point once the drag has started.
       if (ts.held !== null) {
         if (ts.isDrawing || ts.held !== 'profile') return
-        const { cursor, rect } = cursorOf(e)
-        const ray = rayOf(cursor, rect)
-        const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height }, useStore.getState().profiles, [])
+        const hit = pointer.pick
         if (!hit || hit.kind !== 'profile') return
         pendingDrawDrag.current = { x: e.clientX, y: e.clientY, id: hit.id, point: hit.point.clone(), shift: e.shiftKey, alt: e.altKey }
         return
       }
-      const { cursor: downCursor, rect: downRect } = cursorOf(e)
-      const downRay = rayOf(downCursor, downRect)
-      // Tab may have stepped past the nearest part; a press that has not moved since takes
-      // the one the hover is showing, which is the one under the highlight.
-      const cyc = candidates.current
-      const stepped = cyc.index > 0 && Math.hypot(e.clientX - cyc.x, e.clientY - cyc.y) <= 3 ? cyc.list[cyc.index] : null
-      // the selected member's own end handle takes the press ahead of anything drawn over it —
-      // unless a modifier is held: Ctrl/Cmd/Alt is adding to or taking from the selection, and
-      // the handle catching it dropped the member instead of adding the bracket at its end
-      const onHandle = e.ctrlKey || e.metaKey || e.altKey ? null : reachingForEnd(downCursor, downRect, downRay)
-      const pickHere = onHandle ?? stepped ?? candidatesFor(downCursor, downRect)[0] ?? null
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
       const multi = e.ctrlKey || e.metaKey
-      const pick = pickHere   // already resolved above; picking twice per press is wasted work
+      const pick = pointer.pick
 
       // Box-select mode: a press that turns into a drag draws the box (handled in App),
       // a press that stays put still selects the member under it
@@ -417,12 +389,7 @@ const PointerRouter: React.FC = () => {
       if (pick.kind === 'profile' && alreadySelected) {
         const profile = store.profiles.find((p) => p.id === pick.id)!
         const { start, end } = getProfileEndpoints(profile)
-        const nearStart = pick.point.distanceTo(start)
-        const nearEnd = pick.point.distanceTo(end)
-        // the zone matches the on-screen affordance, and never swallows a short member whole
-        const camDist = pick.point.distanceTo(new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld))
-        const zone = endGrabRadius(profile.length, camDist, camera, size.height)
-        const grabEnd = nearStart < zone ? 'start' : nearEnd < zone ? 'end' : null
+        const grabEnd = selectedEndAt(pick)
         if (grabEnd && !profile.locked && store.selectedIds.length === 1) {
           // the length the press itself implies, so the member does not jump by the
           // distance between the press point and the end face
@@ -433,7 +400,7 @@ const PointerRouter: React.FC = () => {
             id: profile.id, end: grabEnd,
             origin: [profile.position[0], profile.position[1], profile.position[2]],
             length: profile.length,
-            grabLength: Math.abs(grabbed),
+            grabLength: grabEnd === 'start' ? -grabbed : grabbed,
             downX: e.clientX, downY: e.clientY,
           })
           if (orbit) orbit.enabled = false
@@ -513,9 +480,8 @@ const PointerRouter: React.FC = () => {
       c.index = (c.index + (e.shiftKey ? c.list.length - 1 : 1)) % c.list.length
       const pick = c.list[c.index]
       const ts = useToolStore.getState()
-      ts.setHoverProfile(pick.kind === 'profile' ? pick.id : null)
-      ts.setHoverPart(pick.id)
-      ts.setHoverCandidates(c.list.length, c.index)
+      ts.setGizmoHover(null)
+      showPointerTarget(pick)
     }
     window.addEventListener('keydown', onKey)
 

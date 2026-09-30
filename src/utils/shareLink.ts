@@ -15,12 +15,12 @@ export interface ShareDoc {
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-/** Compact columns, with complete manufacturing and lock state. Old v1 links remain readable. */
+/** Compact columns, including determined cut faces. Old v1/v2 links remain readable. */
 function pack(doc: ShareDoc): unknown[] {
   const checked = parseProjectDocument(doc)
   return [
-    2, checked.throughRule,
-    checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes]),
+    3, checked.throughRule,
+    checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null]),
     checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked]),
     checked.panels.map((b) => [b.width, b.height, b.thickness, b.position, b.quaternion, b.material, !!b.locked]),
     checked.fittings.map((f) => [
@@ -34,22 +34,23 @@ function pack(doc: ShareDoc): unknown[] {
 function unpack(raw: unknown): ProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
-  if (version !== 1 && version !== 2) throw new Error('unknown link version')
-  const [profiles, connectors, panels, fittings] = raw.slice(version === 2 ? 2 : 1) as unknown[][]
-  if (raw.length !== (version === 2 ? 6 : 5)
+  if (version !== 1 && version !== 2 && version !== 3) throw new Error('unknown link version')
+  const [profiles, connectors, panels, fittings] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
+  if (raw.length !== (version >= 2 ? 6 : 5)
     || ![profiles, connectors, panels, fittings].every(Array.isArray)) throw new Error('incomplete link')
-  const throughRule = version === 2 ? raw[1] : 'rails'
+  const throughRule = version >= 2 ? raw[1] : 'rails'
   let n = 0
   const id = (p: string) => `${p}-s${(n++).toString(36)}`
   return parseProjectDocument({
     throughRule,
     profiles: (profiles ?? []).map((row) => {
-      const [spec, length, position, quaternion, locked, miterCuts, holes] = row as [string, number, number[], number[], number, ProfileData['miterCuts'], ProfileData['holes']]
+      const [spec, length, position, quaternion, locked, miterCuts, holes, fixedTrims] = row as [string, number, number[], number[], number, ProfileData['miterCuts'], ProfileData['holes'], ProfileData['fixedTrims'] | null]
       return {
         id: id('p'), spec: spec as ProfileData['spec'], length,
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
         miterCuts: miterCuts ?? [], holes: holes ?? [], ...(locked ? { locked: true } : {}),
+        ...(version >= 3 && fixedTrims !== null && fixedTrims !== undefined ? { fixedTrims } : {}),
       }
     }),
     connectors: (connectors ?? []).map((row) => {

@@ -6,6 +6,8 @@ import { bracketNormal, flushFace, sharedEdge } from './specCompat'
 import { seatFor } from './bracketSeat'
 import { specDims } from './specUtils'
 import { translations } from './translations'
+import { computeTrims, withFixedProfileCuts } from './jointUtils'
+import { profileBodyEndpoints, profileFace, type ProfileFaceRef } from './profileFaces'
 
 const JOINT_TOL = 30
 const FLUSH_TOL = 0.5
@@ -13,6 +15,22 @@ const FLUSH_TOL = 0.5
 const MAX_SHIFT = 60
 
 interface Shift { axis: THREE.Vector3; amount: number }
+
+export interface DrawingFaceOptions {
+  startFace?: ProfileFaceRef | null
+  endFace?: ProfileFaceRef | null
+  /** For a face-constrained drawing, this is the actual cut length requested by the user. */
+  exactLength?: number
+}
+
+export type DrawingFaceIssue = 'face-direction' | 'face-oblique' | 'face-end-conflict' | 'face-too-short'
+export interface DrawingFacePlacement {
+  profile: ProfileData
+  issue: DrawingFaceIssue | null
+  blocked: boolean
+  /** Existing solids whose accepted attachment faces must survive adding this member. */
+  referenceProfiles?: ProfileData[]
+}
 
 /**
  * How far a member would have to move, perpendicular to itself, for a bracket to lie flat
@@ -123,6 +141,135 @@ export function faceAlignOnCreate(candidate: ProfileData, others: ProfileData[])
   const pick = [...buckets.values()].sort((x, y) => y.n - x.n || x.v.length() - y.v.length())[0]
   const p = new THREE.Vector3(...candidate.position).add(pick.v)
   return { ...candidate, position: [round3(p.x), round3(p.y), round3(p.z)] }
+}
+
+/** Make an explicitly picked face a geometric constraint, after the usual section roll.
+ * Sideways drawing aligns the outward section face. Drawing out of a face pins the
+ * actual cut end to it. An end-cap pick followed by a sideways draw keeps the existing
+ * corner/through-member convention instead of inventing another constraint. */
+export function constrainDrawingFaces(
+  candidate: ProfileData, others: ProfileData[], options: DrawingFaceOptions,
+): DrawingFacePlacement {
+  let profile = candidate
+  let issue: DrawingFaceIssue | null = null
+  const dir = getProfileDir(candidate)
+  type Constraint = { normal: THREE.Vector3; plane: number; kind: 'side' | 'end'; direction: number }
+  const constraint = (ref: ProfileFaceRef | null | undefined, end: boolean): Constraint | 'oblique' | null => {
+    const target = ref && others.find((p) => p.id === ref.profileId)
+    if (!ref || !target) return null
+    const face = profileFace(target, ref, computeTrims(target, others))
+    const normal = new THREE.Vector3(...face.normal)
+    const direction = normal.dot(dir)
+    // Endpoints used only as remote alignment references are not physical attachments.
+    if (end) {
+      const point = getProfileEndpoints(profile).end
+      const center = new THREE.Vector3(...face.center)
+      for (const [a, b] of [[0, 1], [1, 2]]) {
+        const edge = new THREE.Vector3(...face.corners[b]).sub(new THREE.Vector3(...face.corners[a]))
+        const half = edge.length() / 2
+        edge.normalize()
+        if (Math.abs(point.clone().sub(center).dot(edge)) > half + crossExtentAlong(profile, edge) + 0.001) return null
+      }
+    }
+    if (ref.axis === 2 && Math.abs(direction) < 1 - 1e-6) return null
+    if (Math.abs(direction) > 1 - 1e-6) return { normal, plane: centerPlane(face.center, normal), kind: 'end', direction }
+    if (Math.abs(direction) < 1e-6) {
+      const rotation = new THREE.Quaternion(...profile.quaternion).normalize()
+      const parallelSide = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)]
+        .some((axis) => Math.abs(axis.applyQuaternion(rotation).dot(normal)) > 1 - 1e-6)
+      if (!parallelSide) return 'oblique'
+      return { normal, plane: centerPlane(face.center, normal), kind: 'side', direction }
+    }
+    return 'oblique'
+  }
+  const start = constraint(options.startFace, false)
+  if (start === 'oblique') return { profile, issue: 'face-oblique', blocked: true }
+  if (start?.kind === 'end' && start.direction < 0) return { profile, issue: 'face-direction', blocked: true }
+
+  const moveSideTo = (face: Constraint, preserve?: Constraint | null): boolean => {
+    const target = face.plane - crossExtentAlong(profile, face.normal)
+    const delta = target - new THREE.Vector3(...profile.position).dot(face.normal)
+    if (Math.abs(delta) <= 0.001) return true
+    // Once the first face and point have been chosen, another face may not slide the
+    // whole member along that first face. Its normal alone is not the user's full intent.
+    if (preserve) return false
+    const position = new THREE.Vector3(...profile.position).addScaledVector(face.normal, delta)
+    profile = { ...profile, position: position.toArray().map(round3) as [number, number, number] }
+    return true
+  }
+  if (start?.kind === 'side') moveSideTo(start)
+  const end = constraint(options.endFace, true)
+  let acceptedEnd: Constraint | null = null
+  if (end === 'oblique' || (end?.kind === 'end' && end.direction > 0)) issue = 'face-end-conflict'
+  else if (end) {
+    if (end.kind === 'side' && !moveSideTo(end, start)) issue = 'face-end-conflict'
+    else acceptedEnd = end
+  }
+
+  const hasConstraint = !!start || !!acceptedEnd
+  const exact = hasConstraint && Number.isFinite(options.exactLength) ? options.exactLength : undefined
+  const preserveReferences = () => {
+    if (!start && !acceptedEnd) return undefined
+    // Resolve before introducing the new member: its joint must not move the face
+    // the user has already selected. Snapshot the whole existing scene together:
+    // fixing only that reference could recut its still-automatic neighbours.
+    return withFixedProfileCuts(others)
+  }
+  let referenceProfiles = preserveReferences()
+  const sideAttachmentTrim = (face: Constraint | null, ref: ProfileFaceRef | null | undefined, atEnd: boolean): number | null => {
+    const target = ref && referenceProfiles?.find((p) => p.id === ref.profileId)
+    if (face?.kind !== 'side' || !target) return null
+    const targetDir = getProfileDir(target)
+    if (Math.abs(targetDir.dot(dir)) > 1e-6) return null
+    const ends = profileBodyEndpoints(target)
+    const center = ends.start.clone().add(ends.end).multiplyScalar(0.5)
+    const point = atEnd ? getProfileEndpoints(profile).end : new THREE.Vector3(...profile.position)
+    // Only the actual finite side can receive the new end. A shared outer plane
+    // alone does not make a remote alignment reference a physical attachment.
+    for (const [axis, half] of [[targetDir, ends.start.distanceTo(ends.end) / 2],
+      [face.normal, crossExtentAlong(target, face.normal)]] as const) {
+      if (Math.abs(point.clone().sub(center).dot(axis)) >= half + crossExtentAlong(profile, axis) - 1e-6) return null
+    }
+    const half = crossExtentAlong(target, dir)
+    const along = point.clone().sub(center).dot(dir)
+    if (Math.abs(along) > half + 0.001) return null
+    // A chosen side fixes the existing solid. The incoming member must butt against
+    // its perpendicular face, even where the automatic through rule would extend it.
+    return atEnd ? along + half : half - along
+  }
+  const startSideTrim = sideAttachmentTrim(start, options.startFace, false)
+  let endSideTrim = sideAttachmentTrim(acceptedEnd, options.endFace, true)
+  // Side constraints change the location used by the joint analysis; only analyse after
+  // resolving them so the preview and the committed part get the same cuts.
+  if (start?.kind === 'end' || acceptedEnd?.kind === 'end' || startSideTrim !== null || endSideTrim !== null || exact !== undefined) {
+    const trims = computeTrims(profile, [...(referenceProfiles ?? others), profile])
+    const position = new THREE.Vector3(...profile.position)
+    let startTrim = start?.kind === 'end' ? (start.plane - position.dot(start.normal)) / start.direction : startSideTrim ?? trims.start.trim
+    let endTrim = acceptedEnd?.kind === 'end'
+      ? (position.clone().addScaledVector(dir, profile.length).dot(acceptedEnd.normal) - acceptedEnd.plane) / acceptedEnd.direction
+      : endSideTrim ?? trims.end.trim
+    if (exact !== undefined) {
+      if ((acceptedEnd?.kind === 'end' || endSideTrim !== null) && Math.abs(profile.length - startTrim - endTrim - exact) > 0.001) {
+        issue = 'face-end-conflict'
+        acceptedEnd = null
+        endSideTrim = null
+        referenceProfiles = preserveReferences()
+        if (start?.kind !== 'end') startTrim = startSideTrim ?? computeTrims(profile, [...(referenceProfiles ?? others), profile]).start.trim
+      }
+      // A typed physical length owns the far end; an unrelated automatic cut there must
+      // not shorten it again. The attachment at the chosen start face remains fixed.
+      endTrim = acceptedEnd?.kind === 'end' || endSideTrim !== null ? endTrim : 0
+      profile = { ...profile, length: round3(exact + startTrim + endTrim) }
+    }
+    startTrim = round3(startTrim); endTrim = round3(endTrim)
+    if (profile.length - startTrim - endTrim < 10) return { profile, issue: 'face-too-short', blocked: true }
+    profile = { ...profile, fixedTrims: { start: startTrim, end: endTrim } }
+  }
+  return { profile, issue, blocked: false, referenceProfiles }
+}
+
+function centerPlane(center: [number, number, number], normal: THREE.Vector3): number {
+  return new THREE.Vector3(...center).dot(normal)
 }
 
 /**

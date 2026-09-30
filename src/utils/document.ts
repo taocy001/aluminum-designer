@@ -3,7 +3,7 @@ import type { ThroughRule } from './jointUtils'
 import { CONNECTOR_CATALOG } from './connectorCatalog'
 import { migrateFittings } from './migrate'
 
-export const PROJECT_VERSION = 4
+export const PROJECT_VERSION = 5
 export interface ProjectGeometry {
   profiles: ProfileData[]
   connectors: ConnectorData[]
@@ -46,6 +46,9 @@ export function parseProjectDocument(input: unknown): ProjectDocument {
   const profiles = doc.profiles.map((value) => {
     const p = base(value)
     if (!oneOf(p.spec, specs) || !positive(p.length)) fail('profile size')
+    if (!optional(p.fixedTrims, (v) => record(v) && finite(v.start) && finite(v.end)
+      && finite((p.length as number) - v.start - v.end)
+      && (p.length as number) - v.start - v.end >= 1 - 1e-7)) fail('fixed profile cuts')
     if (!optional(p.miterCuts, (v) => Array.isArray(v) && v.every((m) => record(m)
       && finite(m.angle) && oneOf(m.side, ['start', 'end'])))) fail('miter cuts')
     if (!optional(p.holes, (v) => Array.isArray(v) && v.every((h) => record(h)

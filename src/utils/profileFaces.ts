@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { ProfileData } from '../store/useStore'
 import type { ProfileTrims } from './jointUtils'
 import { specDims } from './specUtils'
+import { getProfileDir } from './geometryCore'
 
 export type FacePoint = [number, number, number]
 
@@ -18,11 +19,22 @@ export interface ProfileFace extends ProfileFaceRef {
   normal: FacePoint
 }
 
+/** End centres of the stored solid. Automatic members can supply their current cuts;
+ * fixed members carry those cuts themselves, independently of their neighbours. */
+export function profileBodyEndpoints(p: ProfileData, trims?: ProfileTrims) {
+  const startTrim = trims?.start.trim ?? p.fixedTrims?.start ?? 0
+  const cut = trims?.cutLength ?? p.length - startTrim - (p.fixedTrims?.end ?? 0)
+  const dir = getProfileDir(p)
+  const start = new THREE.Vector3(...p.position).addScaledVector(dir, startTrim)
+  const end = start.clone().addScaledVector(dir, Number.isFinite(cut) && cut > 0.1 ? cut : 1)
+  return { start, end }
+}
+
 /** The envelope of a real, trimmed member face, including rectangular section roll. */
 export function profileFace(p: ProfileData, ref: ProfileFaceRef, trims?: ProfileTrims): ProfileFace {
   const { hw, hh } = specDims(p.spec)
-  const start = trims?.start.trim ?? 0
-  const cut = trims?.cutLength ?? p.length
+  const start = trims?.start.trim ?? p.fixedTrims?.start ?? 0
+  const cut = trims?.cutLength ?? p.length - start - (p.fixedTrims?.end ?? 0)
   // Match Profile's rendered length, including its guard against invalid cuts.
   const end = start + (Number.isFinite(cut) && cut > 0.1 ? cut : 1)
   const low: FacePoint = [-hw, -hh, start]

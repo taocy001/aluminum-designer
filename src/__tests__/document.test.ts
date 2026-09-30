@@ -47,6 +47,25 @@ describe('one validated manufacturing document', () => {
     await expect(decodeShare(await packedPayload([2, 'rails', [], [], []]))).rejects.toThrow('incomplete')
   })
 
+  it('continues reading v2 shares without determined cuts', async () => {
+    const oldLink = await packedPayload([2, 'posts', [
+      ['4040', 800, [0, 0, 0], [-Math.SQRT1_2, 0, 0, Math.SQRT1_2], false, [], []],
+    ], [], [], []])
+    const back = await decodeShare(oldLink)
+    expect(back.throughRule).toBe('posts')
+    expect(back.profiles[0].length).toBe(800)
+    expect(back.profiles[0].fixedTrims).toBeUndefined()
+  })
+
+  it.each([
+    null, { start: '20', end: 0 }, { start: 0, end: Infinity }, { start: 790, end: 10 },
+  ])('rejects invalid determined cuts before replacing the document (%j)', (fixedTrims) => {
+    const before = useStore.getState()
+    expect(() => useStore.getState().loadDocument({ profiles: [{ id: 'p', spec: '4040', length: 800,
+      position: [0, 0, 0], quaternion: [0, 0, 0, 1], miterCuts: [], holes: [], fixedTrims }], connectors: [] } as never)).toThrow('fixed profile cuts')
+    expect(useStore.getState()).toBe(before)
+  })
+
   it('preserves current geometry, rules and locks through file and actual share loading', async () => {
     const source = desk()
     source.throughRule = 'posts'

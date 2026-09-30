@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { useStore, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
-import { faceAlignOnCreate } from './faceAlign'
+import { faceAlignOnCreate, constrainDrawingFaces, type DrawingFaceOptions, type DrawingFacePlacement } from './faceAlign'
 import { connectorSeatAt } from './bracketSeat'
 import { specDims } from './specUtils'
 import { translations } from './translations'
@@ -52,8 +52,9 @@ export function lowestPointY(p: ProfileData): number {
   const lx = new THREE.Vector3(1, 0, 0).applyQuaternion(quat)
   const ly = new THREE.Vector3(0, 1, 0).applyQuaternion(quat)
   const { hw, hh } = specDims(p.spec)
-  const start = new THREE.Vector3(...p.position)
-  const end = start.clone().addScaledVector(dir, p.length)
+  const origin = new THREE.Vector3(...p.position)
+  const start = origin.clone().addScaledVector(dir, p.fixedTrims?.start ?? 0)
+  const end = origin.clone().addScaledVector(dir, p.length - (p.fixedTrims?.end ?? 0))
   const half = Math.abs(lx.y) * hw + Math.abs(ly.y) * hh
   return Math.min(start.y, end.y) - half
 }
@@ -69,8 +70,17 @@ export function lowestPointY(p: ProfileData): number {
  */
 export function prepareProfile(
   start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec, others: ProfileData[],
-  opts: { twin?: ProfileData | null; floorFeet?: boolean; id?: string } = {},
+  opts: DrawingFaceOptions & { twin?: ProfileData | null; floorFeet?: boolean; id?: string } = {},
 ): ProfileData | null {
+  const placement = prepareProfilePlacement(start, end, spec, others, opts)
+  return placement && !placement.blocked ? placement.profile : null
+}
+
+/** Geometry plus any unresolved explicit face choice, shared by the ghost and both commits. */
+export function prepareProfilePlacement(
+  start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec, others: ProfileData[],
+  opts: DrawingFaceOptions & { twin?: ProfileData | null; floorFeet?: boolean; id?: string } = {},
+): DrawingFacePlacement | null {
   let s = start.clone(), e = end.clone()
   const { twin, floorFeet = false } = opts
   if (floorFeet) {
@@ -92,21 +102,36 @@ export function prepareProfile(
     built = buildProfile(s, e, spec, opts.id)
   }
   if (!built) return null
-  return faceAlignOnCreate(built, others)
+  const profile = faceAlignOnCreate(built, others)
+  return opts.startFace || opts.endFace
+    ? constrainDrawingFaces(profile, others, opts)
+    : { profile, issue: null, blocked: false }
 }
 
 /**
  * Add a profile. Interference no longer blocks placement — the member is created and the
  * conflicting parts are flagged in red, which keeps modelling fluid.
  */
-export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec): boolean {
+export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec, faces: DrawingFaceOptions = {}): boolean {
   const { showToast, language } = useToolStore.getState()
   const t = translations[language]
   // a frame is assembled face to face, not centreline to centreline: nudge the new member
   // sideways so the faces its brackets will sit on line up with what it landed on
-  const candidate = prepareProfile(start, end, spec, useStore.getState().profiles)
-  if (!candidate) { showToast(t.toastTooShort, 'error'); return false }
-  useStore.getState().addProfile(candidate)
+  const placement = prepareProfilePlacement(start, end, spec, useStore.getState().profiles, faces)
+  if (!placement) { showToast(t.toastTooShort, 'error'); return false }
+  if (placement.issue) {
+    const message = placement.issue === 'face-direction' ? t.faceDirectionBlocked
+      : placement.issue === 'face-oblique' ? t.faceObliqueBlocked
+      : placement.issue === 'face-end-conflict' ? t.faceEndConflict : t.toastTooShort
+    showToast(message, placement.blocked ? 'error' : 'info')
+  }
+  if (placement.blocked) return false
+  const candidate = placement.profile
+  if (placement.referenceProfiles) {
+    useStore.getState().commitDocument({ profiles: [...placement.referenceProfiles, candidate] })
+  } else {
+    useStore.getState().addProfile(candidate)
+  }
   const st = useStore.getState()
   const { conflictIds } = analyzeFrame(st.profiles, st.connectors, st.panels, st.fittings)
   if (conflictIds.has(candidate.id)) showToast(t.toastOverlap, 'error')

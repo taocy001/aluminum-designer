@@ -3,9 +3,11 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
+import { getProfileDir } from '../utils/geometryCore'
 import { specDims } from '../utils/specUtils'
 import TextSprite from './TextSprite'
+import { profileBodyEndpoints } from '../utils/profileFaces'
+import { computeTrims } from '../utils/jointUtils'
 
 /** Pixels from an end face that count as "reaching for the end" */
 export const END_GRAB_PX = 26
@@ -52,6 +54,7 @@ function arrowTexture(): THREE.CanvasTexture {
 const ResizeHandles: React.FC = () => {
   const selectedIds = useStore((s) => s.selectedIds)
   const profiles = useStore((s) => s.profiles)
+  const throughRule = useStore((s) => s.throughRule)
   const held = useToolStore((s) => s.held)
   const resize = useToolStore((s) => s.resize)
   const hoverEnd = useToolStore((s) => s.hoverEnd)
@@ -66,10 +69,10 @@ const ResizeHandles: React.FC = () => {
 
   const geometry = useMemo(() => {
     if (!target) return null
-    const { start, end } = getProfileEndpoints(target)
+    const { start, end } = profileBodyEndpoints(target, computeTrims(target, profiles))
     const { w, h } = specDims(target.spec)
     return { start, end, dir: getProfileDir(target), section: Math.max(w, h) }
-  }, [target])
+  }, [target, profiles, throughRule])
 
   const sprite = useRef<THREE.Sprite | null>(null)
   useFrame(() => {
@@ -92,7 +95,7 @@ const ResizeHandles: React.FC = () => {
       </sprite>
       {live && (
         <TextSprite
-          text={`${Math.round(target.length)} mm`}
+          text={`${Math.round(start.distanceTo(end))} mm`}
           priority={4}
           position={at.clone().addScaledVector(out, section * 2.6).toArray() as [number, number, number]}
           height={section * 1.6}

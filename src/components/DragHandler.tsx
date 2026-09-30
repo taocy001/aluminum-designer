@@ -88,8 +88,8 @@ const DragHandler: React.FC = () => {
       const ts = useToolStore.getState()
       const rs = ts.resize
       if (!rs) return false
-      const store = useStore.getState()
-      const profile = store.profiles.find((p) => p.id === rs.id)
+      let store = useStore.getState()
+      let profile = store.profiles.find((p) => p.id === rs.id)
       if (!profile) return false
       if (ts.viewMode || profile.locked) {
         ts.stopResize()
@@ -109,12 +109,16 @@ const DragHandler: React.FC = () => {
         if (Math.hypot(e.clientX - rs.downX, e.clientY - rs.downY) <= RESIZE_SLOP_PX) return true
         resizingGesture.current = rs
         store.snapshotHistory()
+        store.freezeProfileCuts()
+        store = useStore.getState()
+        profile = store.profiles.find((p) => p.id === rs.id)!
         ts.markDragMoved()   // the gesture now owns a history entry; an exact commit must not add a second
       }
 
       const signed = rs.end === 'start' ? -t : t
       const raw = signed + (rs.length - rs.grabLength)   // press offset carried along
-      let length = Math.max(MIN_LENGTH, roundToGrid(raw))
+      const minimum = Math.max(MIN_LENGTH, MIN_LENGTH + (profile.fixedTrims?.start ?? 0) + (profile.fixedTrims?.end ?? 0))
+      let length = Math.max(minimum, roundToGrid(raw))
 
       const posFor = (len: number): [number, number, number] => rs.end === 'start'
         ? [fixed.x - dir.x * len, fixed.y - dir.y * len, fixed.z - dir.z * len]
@@ -126,7 +130,7 @@ const DragHandler: React.FC = () => {
       if (sink < 0) {
         const dirY = rs.end === 'start' ? -dir.y : dir.y
         if (Math.abs(dirY) > 1e-6) {
-          length = Math.max(MIN_LENGTH, length - Math.abs(sink / dirY))
+          length = Math.max(minimum, length - Math.abs(sink / dirY))
           position = posFor(length)
         }
       }
@@ -155,22 +159,29 @@ const DragHandler: React.FC = () => {
       // a gizmo arrow constrains the move to its own axis
       if (ts.dragAxis === 'x') { delta.y = 0; delta.z = 0 }
       if (ts.dragAxis === 'z') { delta.x = 0; delta.y = 0 }
-      const store = useStore.getState()
+      let store = useStore.getState()
       const leadPart = store.profiles.find((p) => p.id === dragProfileId)
         ?? store.connectors.find((c) => c.id === dragProfileId)
         ?? store.panels.find((b) => b.id === dragProfileId)
         ?? store.fittings.find((f) => f.id === dragProfileId)
       if (!leadPart || leadPart.locked) { ts.stopDrag(); return }
 
+      const ids = Object.keys(dragGroupOrigins)
+      const dragIds = new Set(ids.length ? ids : [dragProfileId])
+
       if (!ts.dragMoved) {
         if (delta.lengthSq() <= 0.25) return
         // First real movement: record one undo entry for the whole drag
         ts.markDragMoved()
         store.snapshotHistory()
+        // A move is a rigid transformation. Freeze the existing cut faces before
+        // choosing a snap, so the reference cannot stretch underneath the pointer.
+        if (store.profiles.some((p) => dragIds.has(p.id) && !p.locked)) {
+          store.freezeProfileCuts()
+          store = useStore.getState()
+        }
       }
       const all = store.profiles
-      const ids = Object.keys(dragGroupOrigins)
-      const dragIds = new Set(ids.length ? ids : [dragProfileId])
       const others = all.filter((p) => !dragIds.has(p.id))
       const single = dragIds.size === 1
 
@@ -184,7 +195,9 @@ const DragHandler: React.FC = () => {
         const key = (['x', 'y', 'z'] as const)[axis]
         leadNew[key] = roundToGrid(leadNew[key])
       }
-      const endpointSnap = single && lead && dragKind === 'profile' && !ts.dragFree
+      // Centreline joins require a fresh cut. Finished parts align their real faces
+      // below instead; coincident perpendicular end centres would make them overlap.
+      const endpointSnap = single && lead && !lead.fixedTrims && dragKind === 'profile' && !ts.dragFree
         ? snapProfilePosition(lead, leadNew, others, camera, size, lockedAxis, allowedAxes)
         : { position: leadNew, refId: null }
       const snapped = endpointSnap.position

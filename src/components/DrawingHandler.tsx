@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
-import { Line } from '@react-three/drei'
+import { Html, Line } from '@react-three/drei'
 import { useToolStore } from '../store/useToolStore'
 import { useStore } from '../store/useStore'
 import { getProfileShape } from '../utils/profileShapes'
@@ -12,7 +12,7 @@ import { specDims } from '../utils/specUtils'
 import { connectorSeatAt } from '../utils/bracketSeat'
 import Connector from './Connector'
 import { translations } from '../utils/translations'
-import { prepareDrawingPreview } from '../utils/drawPreview'
+import { drawingInput, prepareDrawingPreview } from '../utils/drawPreview'
 import { profileFace } from '../utils/profileFaces'
 import { computeTrims } from '../utils/jointUtils'
 import { FacePatch } from './SnapFaces'
@@ -22,7 +22,7 @@ const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3
 const ORBIT_SLOP_PX = 5
 
 const DrawingHandler: React.FC = () => {
-  const { isDrawing, isDragging, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides, drawStartFace, drawSnapFace } = useToolStore()
+  const { isDrawing, isDragging, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides, drawStartFace, drawSnapFace, drawLengthInput, language } = useToolStore()
   const profiles = useStore((s) => s.profiles)
   const throughRule = useStore((s) => s.throughRule)
   const { camera, size, scene, gl } = useThree()
@@ -81,8 +81,15 @@ const DrawingHandler: React.FC = () => {
 
   const xform = useMemo(() => {
     if (!isDrawing || !startPoint || !currentPoint) return null
-    return prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles)
-  }, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule])
+    return prepareDrawingPreview(startPoint, currentPoint, activeSpec, profiles, { startFace: drawStartFace, endFace: drawSnapFace }, drawLengthInput)
+  }, [isDrawing, startPoint, currentPoint, activeSpec, profiles, throughRule, drawStartFace, drawSnapFace, drawLengthInput])
+  const invalidLengthInput = drawLengthInput.trim() !== '' && (!Number.isFinite(Number(drawLengthInput)) || Number(drawLengthInput) < 10)
+  const previewEnd = xform && xform.position.clone().addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(xform.quaternion), xform.cutLength)
+  const faceMessage = invalidLengthInput ? translations[language].toastTooShort
+    : xform?.issue === 'face-direction' ? translations[language].faceDirectionBlocked
+    : xform?.issue === 'face-oblique' ? translations[language].faceObliqueBlocked
+    : xform?.issue === 'face-end-conflict' ? translations[language].faceEndConflict
+    : xform?.issue === 'face-too-short' ? translations[language].toastTooShort : null
 
   const faces = useMemo(() => [drawStartFace, drawSnapFace].map((face) => {
     const target = face && profiles.find((p) => p.id === face.profileId)
@@ -201,11 +208,12 @@ const DrawingHandler: React.FC = () => {
     }
 
     updateEnd(ray, cursor)
-    const { startPoint: s, currentPoint: c, activeSpec } = useToolStore.getState()
+    const { startPoint: s, currentPoint: c, activeSpec, drawStartFace, drawSnapFace, drawLengthInput } = useToolStore.getState()
     if (!s || !c) return
     if (s.distanceTo(c) < 1) return // no direction yet — ignore the click
-    tryAddProfile(s, c, activeSpec)
-    ts.cancelDraw()
+    const input = drawingInput(s, c, { startFace: drawStartFace, endFace: drawSnapFace }, drawLengthInput)
+    if (!input) return
+    if (tryAddProfile(s, input.end, activeSpec, input.faces)) ts.cancelDraw()
   }, [camera, size, updateEnd, hitMember])
 
   // Release decides between drawing and orbiting
@@ -248,33 +256,40 @@ const DrawingHandler: React.FC = () => {
       )}
 
       {/* Centerline of the member being drawn */}
-      {isDrawing && startPoint && currentPoint && drawDist > 1 && (
-        <Line points={[startPoint.toArray(), currentPoint.toArray()]} color={axisColor} lineWidth={2} />
+      {isDrawing && !invalidLengthInput && startPoint && currentPoint && drawDist > 1 && (
+        <Line points={[(xform?.position ?? startPoint).toArray(), (previewEnd ?? currentPoint).toArray()]} color={axisColor} lineWidth={2} />
       )}
 
       {/* Start marker */}
-      {isDrawing && startPoint && <SnapMarker position={startPoint} kind="start" size={0.022} />}
+      {isDrawing && startPoint && <SnapMarker position={xform?.position ?? startPoint} kind="start" size={0.022} />}
 
       {/* Member preview: a neutral ghost. The axis colour lives on the centreline and the
           HUD instead, so a member being drawn along X is never mistaken for one flagged red. */}
       {held === 'profile' && xform && (
         <mesh position={xform.position} quaternion={xform.quaternion} scale={[1, 1, xform.cutLength]} geometry={previewGeo} raycast={() => null}
           userData={{ drawingPreview: true, previewProfile: xform.profile }}>
-          <meshStandardMaterial color="#cbd5e1" metalness={0.2} roughness={0.7} transparent opacity={0.6} depthWrite={false} />
+          <meshStandardMaterial color={xform.blocked ? '#f87171' : '#cbd5e1'} metalness={0.2} roughness={0.7} transparent opacity={0.6} depthWrite={false} />
         </mesh>
       )}
+
+      {held === 'profile' && isDrawing && faceMessage && <Html fullscreen style={{ pointerEvents: 'none' }}>
+        <div data-testid="face-placement-status" role="status"
+          className="absolute bottom-14 left-1/2 -translate-x-1/2 w-max max-w-[calc(100vw-2rem)] rounded-lg border border-amber-400/50 bg-slate-900/95 px-3 py-2 text-center text-xs text-amber-200">
+          {faceMessage}
+        </div>
+      </Html>}
 
       {/* The selected local face stays visible even when an end cap is only a few pixels. */}
       {held === 'profile' && !isDragging && faces.map((face, i) => face && (
         <FacePatch key={`${i}-${face.profileId}-${face.axis}-${face.side}`} face={face}
-          color={i === 0 ? '#fbbf24' : '#22d3ee'} role={i === 0 ? 'start' : 'target'} />
+          color={i === 0 ? '#fbbf24' : xform?.issue === 'face-end-conflict' ? '#fb7185' : '#22d3ee'} role={i === 0 ? 'start' : 'target'} />
       ))}
 
       {/* Snap indicator (endpoint / centerline / alignment) — constant screen size.
           While placing a connector the ghost itself shows the spot, and the marker would
           sit right on top of a part that is only a few tens of millimetres across. */}
       {held === 'profile' && snapPoint && (
-        <SnapMarker position={snapPoint} kind={snapKind ?? 'endpoint'} />
+        <SnapMarker position={isDrawing && previewEnd ? previewEnd : snapPoint} kind={snapKind ?? 'endpoint'} />
       )}
 
       {/* Hover cursor on the floor when not snapped */}

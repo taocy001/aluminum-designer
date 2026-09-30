@@ -90,17 +90,28 @@ test.describe('Drawing reference faces and the final member preview', () => {
     expect(await faces(page)).toEqual([])
   })
 
-  test('an endpoint join also exposes its two reference end faces', async ({ page }) => {
+  test('a finished rail end contacts the post side without changing either cut length', async ({ page }) => {
     await page.evaluate(() => (window as any).__aluframe.store.getState().addProfile({
       id: 'rail', spec: '2020', length: 600, position: [250, 800, 300],
       quaternion: [0, Math.SQRT1_2, 0, Math.SQRT1_2], miterCuts: [], holes: [],
     }))
     await settle(page)
     await dragHold(page, await w2c(page, [550, 800, 300]), await w2c(page, [307, 800, 5]))
-    await expect(page.getByTestId('snap-hud')).toContainText('端点')
+    await expect(page.getByTestId('snap-hud')).toContainText('侧面贴合')
     const shown = await faces(page)
-    expect(shown).toContainEqual(expect.objectContaining({ faceProfileId: 'post', faceAxis: 2, faceSide: 1 }))
+    expect(shown).toContainEqual(expect.objectContaining({ faceProfileId: 'post', faceAxis: 0, faceSide: 1 }))
     expect(shown).toContainEqual(expect.objectContaining({ faceProfileId: 'rail', faceAxis: 2, faceSide: -1 }))
+    const result = await page.evaluate(() => {
+      const w = (window as any).__aluframe
+      const cuts = w.trims()
+      const rail = w.store.getState().profiles.find((p: any) => p.id === 'rail')
+      return { position: rail.position, cuts: [cuts.post.cutLength, cuts.rail.cutLength], conflicts: w.conflicts().conflicts }
+    })
+    // A fixed post occupies X=-20..20; the horizontal rail starts on X=20.
+    expect(result.position[0]).toBeCloseTo(20)
+    expect(result.position[2]).toBeCloseTo(10)
+    expect(result.cuts).toEqual([800, 600])
+    expect(result.conflicts).toEqual([])
     await page.mouse.up()
     await settle(page)
     expect(await faces(page)).toEqual([])

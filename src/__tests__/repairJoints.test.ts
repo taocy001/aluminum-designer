@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
-import { setThroughRule, computeAllTrims } from '../utils/jointUtils'
+import { setThroughRule, computeAllTrims, withFixedProfileCuts } from '../utils/jointUtils'
 import { findConflicts } from '../utils/analysis'
-import { planRepair, unbuildable } from '../utils/repairJoints'
-import type { ProfileData, ProfileSpec } from '../store/useStore'
+import { planRepair, repairJoints, unbuildable } from '../utils/repairJoints'
+import { useStore, type ProfileData, type ProfileSpec } from '../store/useStore'
 
 beforeEach(() => setThroughRule('rails'))
 afterAll(() => setThroughRule('rails'))
@@ -17,6 +17,35 @@ const clashes = (ps: ProfileData[]) => findConflicts(ps, computeAllTrims(ps)).le
 
 /** Repairs must reduce the joint score and preserve the checked geometric constraints. */
 describe('putting unbuildable joints right', () => {
+  it('does not report a repair that would require moving a locked member', () => {
+    const profiles = [P(0, 0, 0, 0, 800, 0, '4040'), P(0, 400, 0, 600, 400, 0, '2040')]
+      .map((p) => ({ ...p, locked: true }))
+    useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [], throughRule: 'rails' })
+    const before = useStore.getState()
+    const repair = repairJoints()
+    expect(repair.before).toBeGreaterThan(0)
+    expect(repair.after).toBe(repair.before)
+    expect(repair.steps).toEqual([])
+    expect(useStore.getState().profiles).toBe(before.profiles)
+    expect(useStore.getState().past).toBe(before.past)
+  })
+
+  it('commits the geometry it evaluated and preserves actual cut lengths in one undo', () => {
+    const profiles = [P(0, 0, 0, 0, 800, 0, '4040'), P(0, 400, 0, 600, 400, 0, '2040')]
+    useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [], throughRule: 'rails' })
+    const before = useStore.getState()
+    const cuts = computeAllTrims(profiles)
+    const planned = planRepair(withFixedProfileCuts(profiles))
+    expect(planned.repair.steps.length).toBeGreaterThan(0)
+    expect(repairJoints()).toEqual(planned.repair)
+    const after = useStore.getState()
+    expect(after.profiles).toEqual(planned.profiles)
+    for (const [id, t] of computeAllTrims(after.profiles)) expect(t.cutLength).toBe(cuts.get(id)!.cutLength)
+    expect(after.past.length).toBe(before.past.length + 1)
+    after.undo()
+    expect(useStore.getState().profiles).toEqual(before.profiles)
+  })
+
   it('a 2040 rail centred on a 4040 post is turned rather than moved', () => {
     const post = P(0, 20, 0, 0, 820, 0, '4040')
     const rail = P(0, 400, 0, 600, 400, 0, '2040')

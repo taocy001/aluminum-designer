@@ -14,6 +14,67 @@ function P(sx: number, sy: number, sz: number, ex: number, ey: number, ez: numbe
 const at = (p: ProfileData, pos: [number, number, number]) => new Map([[p.id, pos]])
 
 describe('alignment snapping while dragging', () => {
+  it.each([[10, 20], [12, 40]])('makes positive-area corner contact from Z=%s within a %s mm window', (z, threshold) => {
+    const fixed = P(0, 10, 0, 400, 10, 0)
+    const moving = P(0, 10, 300, 0, 10, 600)
+    fixed.fixedTrims = moving.fixedTrims = { start: 0, end: 0 }
+    const proposed: [number, number, number] = [415, 10, z]
+    const snap = computeDragSnap([moving], at(moving, proposed), [fixed], threshold, [], [0, 2])
+    const position = new THREE.Vector3(...proposed).add(snap.offset)
+    expect(position.toArray()).toEqual([410, 10, -10])
+    const a = memberBox(fixed), b = memberBox(moving, position.toArray())
+    const intersection = ['x', 'y', 'z'].map((key) => {
+      const axis = key as 'x' | 'y' | 'z'
+      return Math.min(a.max[axis], b.max[axis]) - Math.max(a.min[axis], b.min[axis])
+    })
+    expect(intersection[0]).toBeCloseTo(0)
+    expect(intersection[1] * intersection[2]).toBeGreaterThan(0)
+    expect(snap.guides.find((g) => g.kind === 'face')).toMatchObject({ axis: 0, coord: 400, movingId: moving.id })
+    expect(snap.guides.find((g) => g.axis === 2)).toMatchObject({ kind: 'edge', coord: -10 })
+    expect([fixed.length, moving.length]).toEqual([400, 300])
+  })
+
+  it('does not repair corner contact by moving along a forbidden axis', () => {
+    const fixed = P(0, 10, 0, 400, 10, 0)
+    const moving = P(415, 10, 10, 415, 10, 310)
+    fixed.fixedTrims = moving.fixedTrims = { start: 0, end: 0 }
+    const snap = computeDragSnap([moving], at(moving, moving.position), [fixed], 20, [], [0])
+    expect(snap.offset.toArray()).toEqual([-5, 0, 0])
+    expect(snap.guides[0]).toMatchObject({ kind: 'align', axis: 0 })
+  })
+
+  it('uses the touching group support member when an equal extreme is remote', () => {
+    const fixed = P(0, 10, 0, 400, 10, 0)
+    const remote = P(415, 10, 400, 415, 10, 700)
+    const touching = P(415, 10, -10, 415, 10, 290)
+    for (const p of [fixed, remote, touching]) p.fixedTrims = { start: 0, end: 0 }
+    const snap = computeDragSnap([remote, touching], new Map([[remote.id, remote.position], [touching.id, touching.position]]), [fixed], 20, [], [0])
+    expect(snap.offset.toArray()).toEqual([-5, 0, 0])
+    expect(snap.guides[0]).toMatchObject({ kind: 'face', movingId: touching.id })
+  })
+
+  it('captures the physical cut of a fixed reference beyond the raw model capture window', () => {
+    const fixed = P(0, 0, 0, 0, 600, 0)
+    fixed.fixedTrims = { start: 100, end: 0 }
+    const moving = P(0, 95, 0, 400, 95, 0)
+    moving.fixedTrims = { start: 0, end: 0 }
+    const snap = computeDragSnap([moving], at(moving, moving.position), [fixed], 20, [], [1])
+    expect(snap.offset.y).toBe(-5)
+    expect(snap.guides[0]).toMatchObject({ kind: 'face', coord: 100, movingSide: 1, refSide: -1 })
+    expect(memberBox(fixed).min.y).toBeCloseTo(0)
+  })
+
+  it('captures a fixed moving cut and preserves its physical span', () => {
+    const moving = P(0, 0, 0, 0, 600, 0)
+    moving.fixedTrims = { start: 100, end: 0 }
+    const fixed = P(0, 95, 0, 400, 95, 0)
+    fixed.fixedTrims = { start: 0, end: 0 }
+    const snap = computeDragSnap([moving], at(moving, moving.position), [fixed], 20, [], [1])
+    expect(snap.offset.y).toBe(5)
+    expect(snap.guides[0]).toMatchObject({ kind: 'face', coord: 105, movingSide: -1, refSide: 1 })
+    expect(moving.fixedTrims).toEqual({ start: 100, end: 0 })
+  })
+
   it('pulls a near-miss into face contact', () => {
     const fixed = P(0, 10, 0, 600, 10, 0)          // occupies z −10..10
     const moving = P(0, 10, 100, 600, 10, 100)

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { parseProjectDocument, type ProjectDocument, type ProjectGeometry } from '../utils/document'
 import { documentStorage } from '../utils/documentPersistence'
-import { setThroughRule as applyThroughRule, type ThroughRule } from '../utils/jointUtils'
+import { setThroughRule as applyThroughRule, withFixedProfileCuts, validFixedProfileCut, type ThroughRule } from '../utils/jointUtils'
 
 export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
 
@@ -25,6 +25,8 @@ export interface ProfileData {
   quaternion: [number, number, number, number]
   miterCuts: MiterCut[]
   holes: Hole[]
+  /** Determined cut faces, in local-axis millimetres; absent in legacy automatic parts. */
+  fixedTrims?: { start: number; end: number }
   /** a finished part: still visible and still a snapping reference, but nothing moves it */
   locked?: boolean
 }
@@ -135,6 +137,55 @@ function takeSnapshot(state: ProjectDocument): Snapshot {
   }
 }
 
+type ProfileUpdate = { id: string; updates: Partial<ProfileData> }
+const sameValue = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b)
+const shapeFields = ['position', 'quaternion', 'length', 'spec', 'fixedTrims'] as const
+
+/** Every edit path uses the same rigid-part contract, including numeric/live inputs. */
+function applyProfileUpdates(all: ProfileData[], updates: ProfileUpdate[]): ProfileData[] {
+  const byId = new Map(updates.map((u) => [u.id, u.updates]))
+  const changed = all.filter((p) => !p.locked && byId.has(p.id)
+    && Object.entries(byId.get(p.id)!).some(([key, value]) => !sameValue(p[key as keyof ProfileData], value)))
+  if (!changed.length) return all
+  const changedIds = new Set(changed.map((p) => p.id))
+  const geometryChanged = changed.some((p) => shapeFields.some((key) => key in byId.get(p.id)!
+    && !sameValue(p[key], byId.get(p.id)![key])))
+  const baseline = geometryChanged ? withFixedProfileCuts(all) : all
+  const result = baseline.map((p) => changedIds.has(p.id) ? { ...p, ...byId.get(p.id)! } : p)
+  // Reject the whole profile edit, without a snapshot or a partially fixed document.
+  return result.every(validFixedProfileCut) ? result : all
+}
+
+function applyPartUpdates<T extends { id: string; locked?: boolean }>(all: T[], updates: Array<{ id: string; updates: Partial<T> }>): T[] {
+  const byId = new Map(updates.map((u) => [u.id, u.updates]))
+  let changed = false
+  const next = all.map((part) => {
+    const edit = byId.get(part.id)
+    if (part.locked || !edit || Object.entries(edit).every(([key, value]) => sameValue(part[key as keyof T], value))) return part
+    changed = true
+    return { ...part, ...edit }
+  })
+  return changed ? next : all
+}
+
+// Fixing a legacy locked reference changes how automatic neighbours fit against it.
+// Preserve the whole existing assembly before adding anything or changing its rule.
+const fixedLockedCuts = (all: ProfileData[]) =>
+  all.some((p) => p.locked && !p.fixedTrims) ? withFixedProfileCuts(all) : all
+
+/** Changing a joint rule is explicit; a locked finished part still keeps its cut faces. */
+function automaticUnlockedCuts(all: ProfileData[]): ProfileData[] {
+  const protectedParts = fixedLockedCuts(all)
+  let changed = protectedParts !== all
+  const next = protectedParts.map((p) => {
+    if (p.locked || !p.fixedTrims) return p
+    changed = true
+    const { fixedTrims: _fixedTrims, ...automatic } = p
+    return automatic
+  })
+  return changed ? next : all
+}
+
 interface State {
   profiles: ProfileData[]
   connectors: ConnectorData[]
@@ -142,6 +193,10 @@ interface State {
   fittings: FittingData[]
   throughRule: ThroughRule
   setThroughRule: (rule: ThroughRule) => void
+  /** Preserve all current physical lengths; the caller owns any gesture history entry. */
+  freezeProfileCuts: () => void
+  /** Explicitly fit unlocked cut faces to the current joints in one undoable action. */
+  recalculateJoints: () => void
   /** One user command, one complete history entry, including replacements/removals. */
   commitDocument: (doc: Partial<ProjectDocument>, selection?: string[]) => void
   selectedIds: string[]
@@ -202,7 +257,17 @@ export const useStore = create<State>()(
 
       setThroughRule: (throughRule) => set((state) => {
         if (state.throughRule === throughRule) return state
-        return { throughRule, past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
+        return { throughRule, profiles: automaticUnlockedCuts(state.profiles),
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
+      }),
+      freezeProfileCuts: () => set((state) => {
+        const profiles = withFixedProfileCuts(state.profiles)
+        return profiles === state.profiles ? state : { profiles }
+      }),
+      recalculateJoints: () => set((state) => {
+        if (!state.profiles.some((p) => p.fixedTrims && !p.locked)) return state
+        return { profiles: automaticUnlockedCuts(state.profiles),
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
       }),
       commitDocument: (doc, selection) => set((state) => {
         const changed = Object.entries(doc).some(([key, value]) => state[key as keyof ProjectDocument] !== value)
@@ -216,20 +281,20 @@ export const useStore = create<State>()(
       addProfile: (profile) => set((state) => ({
         past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
-        profiles: [...state.profiles, profile],
+        profiles: [...fixedLockedCuts(state.profiles), profile],
       })),
 
       addProfiles: (list, select = false) => set((state) => ({
         past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
-        profiles: [...state.profiles, ...list],
+        profiles: [...fixedLockedCuts(state.profiles), ...list],
         selectedIds: select ? list.map((p) => p.id) : state.selectedIds,
       })),
 
       addItems: (list, conns, select = false) => set((state) => ({
         past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
         future: [],
-        profiles: [...state.profiles, ...list],
+        profiles: [...fixedLockedCuts(state.profiles), ...list],
         connectors: [...state.connectors, ...conns],
         selectedIds: select ? [...list.map((p) => p.id), ...conns.map((c) => c.id)] : state.selectedIds,
       })),
@@ -275,12 +340,12 @@ export const useStore = create<State>()(
         }))
       },
 
-      removeProfile: (id) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        profiles: state.profiles.filter((p) => p.id !== id),
-        selectedIds: state.selectedIds.filter((s) => s !== id),
-      })),
+      removeProfile: (id) => set((state) => {
+        if (!state.profiles.some((p) => p.id === id && !p.locked)) return state
+        return { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [],
+          profiles: withFixedProfileCuts(state.profiles).filter((p) => p.id !== id),
+          selectedIds: state.selectedIds.filter((s) => s !== id) }
+      }),
 
       removeSelected: () => set((state) => {
         const ids = new Set(state.selectedIds)
@@ -296,7 +361,7 @@ export const useStore = create<State>()(
         return {
           past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
           future: [],
-          profiles: state.profiles.filter((p) => !removable(p)),
+          profiles: (state.profiles.some(removable) ? withFixedProfileCuts(state.profiles) : state.profiles).filter((p) => !removable(p)),
           connectors: state.connectors.filter((c) => !removable(c)),
           panels: state.panels.filter((p) => !removable(p)),
           fittings: state.fittings.filter((f) => !removable(f)),
@@ -315,7 +380,8 @@ export const useStore = create<State>()(
         return {
           past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
           future: [],
-          profiles: state.profiles.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
+          profiles: (anyUnlocked && state.profiles.some((p) => ids.has(p.id)) ? withFixedProfileCuts(state.profiles) : state.profiles)
+            .map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
           connectors: state.connectors.map((c) => ids.has(c.id) ? { ...c, locked: anyUnlocked } : c),
           panels: state.panels.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
           fittings: state.fittings.map((f) => ids.has(f.id) ? { ...f, locked: anyUnlocked } : f),
@@ -369,60 +435,47 @@ export const useStore = create<State>()(
       // backward compat
       selectProfile: (id) => set({ selectedIds: id ? [id] : [] }),
 
-      updateProfile: (id, updates) => set((state) => ({
-        profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p),
-      })),
-
-      updateProfiles: (updates) => set((state) => {
-        const map = new Map(updates.map((u) => [u.id, u.updates]))
-        return {
-          profiles: state.profiles.map((p) => map.has(p.id) ? { ...p, ...map.get(p.id)! } : p),
-        }
+      updateProfile: (id, updates) => set((state) => {
+        const profiles = applyProfileUpdates(state.profiles, [{ id, updates }])
+        return profiles === state.profiles ? state : { profiles }
       }),
 
-      commitProfileEdit: (id, updates) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p),
-      })),
+      updateProfiles: (updates) => set((state) => {
+        const profiles = applyProfileUpdates(state.profiles, updates)
+        return profiles === state.profiles ? state : { profiles }
+      }),
+
+      commitProfileEdit: (id, updates) => set((state) => {
+        const profiles = applyProfileUpdates(state.profiles, [{ id, updates }])
+        return profiles === state.profiles ? state : { profiles,
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
+      }),
 
       commitProfilesEdit: (updates) => set((state) => {
-        const map = new Map(updates.map((u) => [u.id, u.updates]))
-        return {
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-          future: [],
-          profiles: state.profiles.map((p) => map.has(p.id) ? { ...p, ...map.get(p.id)! } : p),
-        }
+        const profiles = applyProfileUpdates(state.profiles, updates)
+        return profiles === state.profiles ? state : { profiles,
+          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
       }),
 
       commitTransform: ({ profiles = [], connectors = [], panels = [], fittings = [] }) => set((state) => {
         if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return {}
-        const pMap = new Map(profiles.map((u) => [u.id, u.updates]))
-        const cMap = new Map(connectors.map((u) => [u.id, u.updates]))
-        const bMap = new Map(panels.map((u) => [u.id, u.updates]))
-        const fMap = new Map(fittings.map((u) => [u.id, u.updates]))
+        const next = { profiles: applyProfileUpdates(state.profiles, profiles),
+          connectors: applyPartUpdates(state.connectors, connectors), panels: applyPartUpdates(state.panels, panels),
+          fittings: applyPartUpdates(state.fittings, fittings) }
+        if (Object.entries(next).every(([key, value]) => state[key as keyof typeof next] === value)) return state
         return {
           past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
           future: [],
-          profiles: state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p),
-          connectors: state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c),
-          panels: state.panels.map((b) => bMap.has(b.id) ? { ...b, ...bMap.get(b.id)! } : b),
-          fittings: state.fittings.map((f) => fMap.has(f.id) ? { ...f, ...fMap.get(f.id)! } : f),
+          ...next,
         }
       }),
 
       updateParts: ({ profiles = [], connectors = [], panels = [], fittings = [] }) => set((state) => {
         if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return {}
-        const pMap = new Map(profiles.map((u) => [u.id, u.updates]))
-        const cMap = new Map(connectors.map((u) => [u.id, u.updates]))
-        const bMap = new Map(panels.map((u) => [u.id, u.updates]))
-        const fMap = new Map(fittings.map((u) => [u.id, u.updates]))
-        return {
-          profiles: pMap.size ? state.profiles.map((p) => pMap.has(p.id) ? { ...p, ...pMap.get(p.id)! } : p) : state.profiles,
-          connectors: cMap.size ? state.connectors.map((c) => cMap.has(c.id) ? { ...c, ...cMap.get(c.id)! } : c) : state.connectors,
-          panels: bMap.size ? state.panels.map((b) => bMap.has(b.id) ? { ...b, ...bMap.get(b.id)! } : b) : state.panels,
-          fittings: fMap.size ? state.fittings.map((f) => fMap.has(f.id) ? { ...f, ...fMap.get(f.id)! } : f) : state.fittings,
-        }
+        const next = { profiles: applyProfileUpdates(state.profiles, profiles),
+          connectors: applyPartUpdates(state.connectors, connectors), panels: applyPartUpdates(state.panels, panels),
+          fittings: applyPartUpdates(state.fittings, fittings) }
+        return Object.entries(next).every(([key, value]) => state[key as keyof typeof next] === value) ? state : next
       }),
 
       updateConnector: (id, updates) => set((state) => ({
