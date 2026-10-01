@@ -1,151 +1,208 @@
 # 设计文档
 
-铝型材框架设计器：浏览器里画铝型材框架，画完直接出下料清单。
-React 19 + @react-three/fiber（Three.js）+ Zustand + Vite，TypeScript strict。
+本页描述当前数据模型、几何算法、状态与模块结构。操作说明见 [功能与操作](FEATURES.md)，未覆盖能力和验证边界见 [范围与限制](ROADMAP.md)。
 
-这份文档描述**当前状态**：数据模型、几何语义、交互模型、模块划分。
-功能清单与用法在 [`FEATURES.md`](FEATURES.md)，未做的计划在
-[`ROADMAP.md`](ROADMAP.md)。
+技术栈为 React 19、TypeScript strict、Three.js、@react-three/fiber、Zustand 和 Vite。应用入口和分享载入位于 `src/main.tsx`，布局和全局快捷键位于 `src/App.tsx`。
 
----
+## 数据模型与坐标
 
-## 1. 数据模型
+采用右手坐标系，Y 轴向上，长度单位为毫米。四类零件定义在 `src/store/useStore.ts`。
 
-**中心线模型。** 一根型材存的是中心线：`position`（起点，不是中心）+ `quaternion`
-（局部 +Z 指向终点方向）+ `length`。截面由规格推出（2020 / 2040 / 3030 / 3040 / 4040）。
-中心线是"人想的长度"；渲染和清单用的是修剪后的真实几何，两者经常不一样——
-下料长度才是要切的那一刀（见 §3）。
-
-四类零件，都在 `src/store/useStore.ts`：
-
-| 类型 | 关键字段 | 说明 |
+| 类型 | 位置和朝向语义 | 主要字段 |
 |---|---|---|
-| `ProfileData` | spec, length, position, quaternion | 型材 |
-| `ConnectorData` | type, series, position, quaternion | 连接件（14 种，见 `connectorCatalog.ts`）；位置朝向由落位代码算 |
-| `PanelData` | width, height, thickness, material, 中心 + 朝向 | 板件。按自身尺寸建模，不绑定开口——板裁定了就不该被框架改动悄悄改尺寸 |
-| `FittingData` | kind(drawer/door), width/height/depth(净开口), hinge, overlay, open, stacked | 门与抽屉是**构件**：知道自己的开口，能重新裁切，记着开合度。局部 +Z 是开启方向 |
+| `ProfileData` | `position` 为中心线起点，局部 +Z 指向终点 | `spec`、`length`、`quaternion`、`fixedTrims`、`miterCuts`、`holes` |
+| `ConnectorData` | 原点和局部轴由各连接件的模型定义 | `type`、`series`、`position`、`quaternion` |
+| `PanelData` | `position` 为板中心，局部 X 为宽、Y 为高、Z 为厚 | `width`、`height`、`thickness`、`material` |
+| `FittingData` | `position` 为开口中心，局部 X 横跨开口、Y 向上、+Z 朝外 | `kind`、`width/height/depth`、`frame`、`hinge`、`hingeType`、`overlay`、`swing`、`open`、`stacked` |
 
-所有零件都有 `locked`：锁定件仍可见、仍参与吸附与清单，但不被移动或删除。
+各类零件都有唯一 ID 和可选的 `locked`。型材规格为 2020、2040、3030、3040、4040；板材及构件材质为 `mdf`、`ply`、`acrylic`、`alu`。
 
-**工程文件**：JSON，`version: 4`（`document.ts` 校验/序列化，`projectFile.ts` 读写），
-包括工程贯通规则，兼容旧版本。四类零件、坐标、尺寸和ID在替换当前工程前统一校验。
-分享链接是工程数据按列打包 + deflate +
-base64url 压进 URL 片段，不经过服务器（`shareLink.ts`）。
+板件和构件保存自身尺寸，不保存对框架开口的关联引用；编辑框架不会自动改变已有板件或构件尺寸。`miterCuts` 和 `holes` 可随工程数据保存，当前渲染及实体导出不据此生成加工孔或斜切面。
 
-## 2. 坐标与单位
+程序中的截面轮廓、槽线、连接件尺寸与缩放、紧固件配方、板厚、间隙及挠度参数都是模型约定，不是实际供应商的产品标准。
 
-- 右手系，**Y 轴朝上**，单位毫米。
-- 型材局部 +Z 是拉伸方向；`position` 是起点。
-- 板件局部：宽 X、高 Y、厚 Z。
-- 构件（门/抽屉）局部：X 横跨开口、Y 向上、+Z 朝外（拉开/打开的方向）。
+## 型材实体与接头
 
-## 3. 核心几何语义
+### 中心线及实体端面
 
-这几条规则是"画完能下料"的全部依据，每条都有单元测试。
+中心线终点由 `position + quaternion × (0, 0, length)` 得到。接头算法为每端计算 `trim`，实体起点沿局部 +Z 移动 `start.trim`，下料长度为：
 
-**接头修剪**（`jointUtils.computeTrims`）
-贯通默认横梁 X > Z > Y，可在侧栏切换为立柱 Y > X > Z；规则属于工程、可撤销、随保存和分享恢复。低优先级构件在接头处对接
-（切短半个对方截面），高优先级构件在角接处延伸到对方外表面。T 接头端点落在对方
-中线内部即对接。容差接头：端点落在对方截面 ±1mm 内即成接头，多/少几毫米被吸收。
-输出每端 trim 与 cutLength——**下料长度 ≠ 中心线长度**。
-
-**落地规则**（`profileFactory.floorY`）
-水平构件中心线不低于半截面高（2020 → y≥10），从地面起画自动抬升；立柱从 y=0 起。
-落地是**钳制**不是拒绝；属性面板手输坐标是明确意图，不钳制。
-
-**贴面装配**（`specCompat.ts` + `faceAlign.ts`）
-两根型材端面对接能用角码连接，当且仅当：① 截面有一条**共同边**（2020 挂 4040 没有）；
-② 实际对接面**共面**。新画的型材落下去会自动横向平移让面共面（先试翻转 90°，
-翻转不行才平移），已有构件不动，所以不级联。2040 立着放和躺着放是两种构件，
-截面朝向是一等属性（`rollProfile`）。
-
-**角码按槽线落位**（`bracketSeat.ts`）
-20 面一条槽在正中；40 面两条在 ±10，正中是实心铝——摆在 40 面正中拧不上。
-落位平面是两根方向的叉积且必须两者共有；平面内偏移由对方的槽线决定。
-`auditBrackets` 核对每个已装角码是否真的拧得上。
-
-**干涉检查**（`analysis.findConflicts`）
-型材、连接件、板件、门与抽屉四类一起，OBB 分离轴判定（`obb.ts`）。
-构件按它实际由哪些板组成、在当前开合位置上判定（`fittingGeometry.fittingSolids`）。
-干涉标红并指出位置，**不阻止继续画**——先摆对，再调整。
-
-**可动构件**（`fittingGeometry.ts` / `fittingOps.ts`）
-抽屉箱体每侧让 12.5mm 滑轨间隙；抽面/门板按盖法（全盖/半盖/嵌入）逐边定尺寸，
-叠放抽屉相邻边留 3mm 缝（`stacked`）。门的铰链类型与开启角（95°–180°）可选，
-开合模拟参与相撞检测。门只能朝外开，朝向由所在柜体就地判断。
-
-## 4. 交互模型
-
-**绘制按「手里拿着什么」决定。** `useToolStore.held`：点侧栏规格/连接件即拿在手里，
-点画布落点；再点一次或 Esc 放下。空手点击即选中。三键固定：左键拖空白转视角、
-右键平移、滚轮缩放，与手里拿什么无关。
-框选、测量和查看有独立状态。查看时不允许设计修改或撤销，门抽屉开合仍可模拟。
-全局快捷键不接管输入框编辑和按钮的原生空格激活。触屏长按和双指手势消费原始点击，避免同时绘制。
-
-**拾取两条规则，有先后**（`frontmost.ts` + `screenPick.ts` + `PointerRouter.tsx`）：
-① 画面上画的是谁，点中的就是谁（对真实网格做射线检测，命中的直接提到最前）；
-② 都没正对命中时才按屏幕距离与深度决胜。Tab 在重叠处循环候选。
-代价要说清楚：门关上就挡住框架，这时点中的是门——所以侧栏有"收起柜门与抽屉"开关。
-
-**编辑**：拖动（含 Gizmo 单轴）、旋转（Gizmo 圆弧 90°，支点 `P` 切换）、
-端面拉伸、方向键微调；手势中途敲数字精确定值。镜像按整图中心面、阵列沿轴；
-一次手势一条撤销（上限 50 步）。
-
-## 5. 状态层次
-
-```
-useStore（zustand + persist → localStorage）
-  profiles / connectors / panels / fittings / throughRule + 选择集 + 撤销栈
-useToolStore（运行时，不持久化）
-  held / 绘制态 / 拖拽态 / 视图开关
+```text
+cutLength = length - start.trim - end.trim
 ```
 
-几何计算主要是 `src/utils/` 下可独立测试的函数。编辑操作会读写 store；接头计算读取当前贯通规则。
-操作日志独立持久化，覆盖四类零件与规则修改；预览编辑只产生一条撤销。
+`trim` 可为负，表示端部延伸。渲染、干涉检查、BOM 和型材导出使用实体起点与下料长度。
 
-## 6. 模块地图
+`fixedTrims: { start, end }` 保存端面相对中心线端点的裁切偏移。明确参考面的绘制用它记录已确定的端面；移动、旋转和复制保留既有实体尺寸。长度编辑保留裁切偏移，并按新中心线长度计算新下料长度；删除邻件不会重算其他已固定件。
 
-**`src/components/`** — App（布局与快捷键）、Viewport（Canvas 与相机）、
-DrawingHandler（绘制事件）、PointerRouter（统一指针路由与拾取）、DragHandler（拖动/拉伸）、
-TransformGizmo（移动/旋转手柄）、ResizeHandles（端面拉伸箭头）、QuickMenu（空格快捷盘）、
-Profile / Connector / Panel / Fitting（四类零件渲染）、SnapMarker（屏幕等大吸附标记）、
-TextSprite / LabelLayout / FrameDimensions（标注）、SuggestionGhost（建议预览）、
-Sidebar（组件库/属性/清单）、Gestures（触屏手势）、Tooltip。
+工程 `throughRule` 支持：
 
-**`src/utils/`**（几何计算与编辑/文件操作）
+- `rails`：默认优先级 X > Z > Y。
+- `posts`：优先级 Y > X > Z。
 
-| 文件 | 职责 |
+自动接头按方向优先级、对接或贯通关系及对方截面计算裁切；接头识别有几何容差。修改规则或「重新裁切接头」清除未锁定件的固定端面后重算，锁定件保留现有实体尺寸。规则随工程保存并进入撤销快照。
+
+实现位于 `geometryCore.ts`、`jointUtils.ts`、`profileFaces.ts`。
+
+### 新建与落地
+
+`profileFactory.ts` 按两个中心线点创建型材，最小创建长度为 10mm；普通坐标保留到 0.001mm、中心线长度保留到 0.01mm。
+
+`faceAlign.ts` 分别处理自动贴面对齐和明确选面约束。自动对齐尝试截面转向及侧移；明确选面时以参考构件的实际面计算新端面，保留已有参考几何，并返回未满足约束的原因。预览和提交使用同一落位计算。
+
+新建水平型材按截面半高处理落地位置。手势移动和微调使用型材最低点限制组位移；属性面板手输坐标不进行落地钳制。相关计算使用中心线位置和截面朝向。
+
+## 拾取与编辑
+
+`pickUtils.ts` 处理端点、构件中心线、表面与工作面落点，以及世界轴的屏幕投影解析。非零工作面限制候选高度，默认地面允许吸附高处构件。
+
+`pickDrawingStart.ts` 为世界 X/Z 轴方向的水平型材计算起点齐边：支承面决定新端面位置，端面或 T 接缝决定侧面位置。`drawPreview.ts` 与 `drawContacts.ts` 提供预览几何和实际接触区域。
+
+选择使用真实网格射线命中及屏幕空间候选，`frontmost.ts` 处理遮挡和剖切排除，`PointerRouter.tsx` 统一悬停、选择及拖动目标。`Tab` 可指定重叠处的另一候选。
+
+`editOps.ts` 提供四类零件的组平移、旋转、复制、镜像、阵列和属性更新：
+
+- 平移和旋转只修改明确选中的未锁定件；单选连接件不直接变换。
+- 复制、镜像和阵列可使用锁定来源，副本使用新 ID 并解除锁定。
+- 旋转中心由所选型材实体端点、连接件原点、板心和构件当前包围盒中心计算；单根型材可使用实际起端或终端。
+- 镜像平面经过整个工程的计算中心：中心由型材中心线端点和其他零件原点的坐标包围范围求得。反射朝向保持模型的截面或板材对称关系，门的左右铰链边随之交换。
+- 阵列沿世界轴生成最多 50 组副本，间距绝对值至少 1mm；若型材副本进入地面以下，全部副本按同一位移抬升。
+- `liveParts` 过滤锁定项并校验批量字段；是否创建快照由 `pushHistory` 参数决定，默认为 `false`。调用者在首次真实合法变更时请求快照，后续预览不重复请求。
+
+移动吸附由 `dragSnap.ts` 计算，面关系由 `editAlignment.ts` 提供。按住 Shift 可解除移动吸附；端面拉伸使用独立计算，不采用移动吸附参考线。
+
+`connectedTo` 按型材端点到其他中心线的 30mm 邻近关系遍历；它是框架归属和连通选择的几何启发式，不验证实际螺栓连接。连通选择当前只选型材。
+
+## 连接件模型
+
+`connectorCatalog.ts` 定义 14 种连接件的标签、模型轴、20/30/40 系列、落位类别及紧固件配方；模型以 20 系列为基准，按系列比例缩放。
+
+`fit` 定义推断方式（角接、端面、贴面、自由放置），`seat` 定义具体落位模型（内角、外侧板、端面、表面）。两者共同决定位置和朝向。
+
+`specCompat.ts` 检查模型的共同边及共面关系，`bracketSeat.ts` 按共同槽线计算候选，`auditBrackets` 核对模型中的螺栓点、接触面、槽线及系列。共同边和槽线规则仅适用于本目录模型。
+
+手动放置由 `profileFactory.placeConnector` 执行：计算座位后，按类型、系列、1mm 位置容差及归一化四元数绝对点积大于 0.999 排除同位同姿态重复件。命中已有件时不新增连接件或历史；正常放置创建一次撤销快照。
+
+`autoConnect.ts` 遍历符合该类型的端部接头并跳过已占用位置。角接候选还须通过螺栓落面审计和拥挤检查，没有通过检查的候选会跳过。端盖按自由端落位，调节脚和脚轮座限朝下端，需要指定表面的连接件不批量推断。该类型脱离接头的未锁定件可被清除，整个操作使用一次工程事务。
+
+20 系列调节脚显示模型总高 31mm，局部 Y 范围为 −3 至 28mm，其中部分伸入型材；总高不能直接作为柜体增高量。具体连接件、脚杯、滑轨和铰链需要另按实际规格选型。
+
+## 板件与可动构件
+
+### 板件生成
+
+`panelOps.ts` 根据选择的薄轴确定板面方向。覆盖板取选中型材的实际实体外包范围；嵌入板按选中边界，必要时补查连通框架的开口边界。水平板下表面位于梁顶，竖板放在推断的外侧。
+
+生成结果是独立 `PanelData`，后续通过自身尺寸、位置和朝向编辑。
+
+### 固定开口与朝向
+
+`fittingOps.ts` 根据所选型材确定开口，柜门通常选同侧两柱，抽屉选四柱以定义深度。
+
+归属范围来自连通型材，不回退到整个场景。朝向结合选择的共面轴、背板及前后金属分布推断；已有构件证据使用其固定开口 OBB，并检查该开口与本框架及所选前平面的关系。证据不使用活动门叶或抽屉的当前开度。
+
+覆盖门的尺寸依据所选开口计算；嵌入门和抽屉还以相关水平梁内表面限制高度。构件的 `frame` 保存前方框架厚度，局部 +Z 为开启方向。
+
+### 前板与抽屉箱体
+
+`fittingGeometry.ts` 的 `fittingParts` 同时提供渲染、BOM、板材下料及实体导出的板件尺寸。
+
+前板厚度为 18mm。全盖模型盖量为 18mm、半盖为 9mm，外边再扣 3mm 缝；嵌入边直接内缩 3mm。叠放抽屉的相邻边各内缩 1.5mm。
+
+覆盖前板背面位于局部 `depth/2 + frame`；嵌入前板前面位于同一平面，厚度向内。门轴位于实际前板前面的安装边，开门变换为绕该轴向外旋转。
+
+抽屉箱体宽为 `width - 25`，箱板厚 15mm，箱高为 `max(40, height - 26)`。后缘为 `-depth/2 + 20`，前缘取前板真实背面，箱体深度和中心由这两面计算。箱宽及箱深都大于 40mm 时生成两侧板、背板、内前板和底板，另生成前板。抽屉沿局部 +Z 平移，行程为 `max(0, depth - 30)`。
+
+这些间隙、板厚与行程是程序参数；没有根据特定滑轨产品建立机构模型。
+
+### 铰链、开度及拉手
+
+`open` 为 0–1，表示关闭到最大开启。界面角度预设为 95/110/135/165/180°，JSON 校验允许 `0 < swing <= 180`。几何函数中的型材合页上限为 270°，当前界面及可保存工程不提供该角度。
+
+杯铰和型材合页按安装边长度取 2/3/4 个，长排合页为一条；该数量规则未包含门重和实际五金承载。
+
+`fittingSolids` 只生成构件板材的活动 OBB。拉手与铰链显示模型随前板运动，但不加入板材碰撞实体；拉手也不进入 BOM、DXF 或 STEP。BOM 中的滑轨和铰链行由构件参数生成。
+
+## 检查与估算
+
+| 模块 | 当前方法与范围 |
 |---|---|
-| geometryCore / jointUtils | 中心线几何、接头修剪 |
-| profileShapes / profileFactory / specUtils | 截面形状、创建与落地、规格表 |
-| pickUtils / screenPick / frontmost | 起点拾取与轴向解析、屏幕空间候选、前景命中 |
-| dragSnap / faceAlign / editOps | 拖动吸附、贴面对齐与翻转、编辑操作（镜像/阵列/旋转/锁定） |
-| specCompat / repairJoints | 可装配性判定、一键修接头（先转再挪，每步打分） |
-| bracketSeat / connectorCatalog / connectorFit / autoConnect | 角码落位与审计、连接件目录、朝向推断、一键连接 |
-| panelOps / shelfSupport | 板件生成与编辑、层板承托检查 |
-| fittingGeometry / fittingOps / runnerMount | 构件几何与开合、构件生成、滑轨安装面检查 |
-| analysis / obb | 干涉检查（OBB 分离轴） |
-| deflection / assembly | 挠度校核、装配顺序拓扑 |
-| bom / nesting / dxf / step | 物料清单、原料排料、DXF 图纸、STEP 实体 |
-| projectFile / shareLink / migrate | 工程文件、分享链接、旧版本迁移 |
-| templates / measure / suggest(·Gate/·Ops) | 起步模板、测量、建议下一根 |
-| opLog / translations | 操作日志、中英文案 |
+| `analysis.ts` / `obb.ts` | 实体 OBB 分离轴测试，先按轴向范围筛候选；型材间容差 1mm，涉及连接件或板材时容差 3mm |
+| `fittingGeometry.swingClashes` | 仅检查门扇间的角度采样，步长不超过 1°；包含同步运动及另一门关闭、半开、全开 |
+| `shelfSupport.ts` | 对水平板底面和型材实际顶面求接触，在边内 25mm 带中核对单面至少 70% 边长覆盖 |
+| `runnerMount.ts` | 在抽屉局部坐标核对两侧朝向开口的安装面：距侧边不超过 3mm、有效高度至少 10mm，并满足连续深度覆盖或前后立柱条件 |
+| `deflection.ts` | 以接触支点估算简支跨中和悬挑端集中载荷及自重，使用内置截面参数；`span/sag < 200` 时提示 |
+| `repairJoints.ts` | 先尝试截面转向，再试侧移；按接头、碰撞及连接关系评分筛选步骤 |
+| `assembly.ts` | 按几何接触、高度及零件类别生成分步浏览次序 |
+| `suggest.ts` / `suggestGate.ts` | 从现有构件生成重复、连接和承托候选，并按当前工程检查候选 |
 
-## 7. 测试
+常规干涉检查使用门抽屉的当前开度，不连续扫描它们与其他零件的全部运动。位于关闭门后面的可动构件按先开外门的假设略过部分碰撞对；同一构件自身板件之间也不报干涉。
 
-- `npm test`：vitest 单元测试（`src/__tests__`），覆盖每条几何规则与示例自检
-  （`examples.test.ts` 读 `examples/` 全部工程：零干涉、接头全部可装、角码落位正确）。
-- `npm run test:e2e`：Playwright 无头 Chromium（`e2e/`），
-  用真实渲染结果模拟点击。跑 e2e 时不要改源码——热更新会换页面。
-- 开发模式下 `window.__aluframe` 暴露测试钩子（store / camera / worldToClient /
-  pickAt / conflicts / trims 等）。
+层板检查不覆盖倾斜板或未建模的托件。滑轨检查不验证孔位、螺栓、载重和型号。挠度不计算接头刚度、整柜稳定或实际产品截面差异。采样、装配步骤及零干涉结果均不能证明完整实物装配或承载能力。
 
-## 8. 构建与部署
+侧栏汇总检查结果；CSV、DXF、STEP 下载完成后通过提示显示待核对项，不阻断下载或要求导出确认。
+
+## 状态、历史与持久化
+
+`useStore` 管理四类几何集合、工程贯通规则、选择集及 `past/future`。工程快照包含几何与规则，不保存选择；撤销重做后保留仍存在的选中 ID。历史最多 50 步，不持久化。
+
+`commitDocument` 一次替换传入集合并创建一次历史快照，可同时指定选择集。`commitTransform` 批量提交四类零件的更新；`updateParts` 用于连续预览，一次手势在开始时拍快照。
+
+`useToolStore` 保存手持零件、绘制与拖动态、工作面、查看、测量、剖切、装配步骤、相机请求及语言等运行时状态，不持久化。查看模式禁用设计编辑和撤销重做；开合仍可模拟。
+
+工程几何与规则通过 `documentPersistence.ts` 写入 localStorage。选择和历史变更不序列化工程，连续变更合并为 180ms 延迟写入；页面隐藏或离开时尝试刷新待写数据。不可解析的原始存档另存恢复副本，由 `RecoveryNotice.tsx` 提供下载和清除入口。
+
+`opLog.ts` 独立持久化最近 400 条设计差异，覆盖四类零件及规则，排除 `open`。拖动和端面拉伸按手势归并日志；开合不创建设计历史，JSON 和本地工程仍可保存当前开度。
+
+## 工程文件与导出
+
+`document.ts` 校验及序列化 JSON v5：四类集合、唯一零件 ID、有限坐标、有效四元数、尺寸、机制枚举及贯通规则。兼容支持的旧版本，缺省贯通规则为横梁贯通。`migrate.ts` 可为旧构件补框架厚度和相邻抽屉标记。
+
+`projectFile.ts` 根据浏览器文件选择 API 提供打开、保存和另存，不能使用该 API 时下载文本文件。工程验证通过后才替换几何及文件目标。
+
+| 模块 | 输出 |
+|---|---|
+| `bom.ts` | 型材按规格与下料长度归并；连接件按类型与系列归并；目录紧固件配方、构件滑轨及铰链数量；独立及构件板材按尺寸、厚度和材质归并 |
+| `nesting.ts` | 按下料长度进行原料排料，计入锯口；超长件单列为未满足，不计入原料及利用率 |
+| `dxf.ts` | R12 ASCII，LINE/TEXT 分层；型材、独立板件及当前开度构件板材三视图、整体尺寸和板材平面下料图 |
+| `step.ts` | AP214，以 `MANIFOLD_SOLID_BREP` 和封闭平面壳写简化实体，建立产品装配关系；构件按闭合板材导出，连接件按角形或包围体导出 |
+| `shareLink.ts` | 列数组打包、deflate-raw、base64url，将设计写入 URL 片段；当前打包版本 3，兼容旧链接 |
+
+BOM 的补件行是按对接端、自由端和已放置数量推算的建议。紧固件配方没有包含所有实际五金。DXF 不含连接件，STEP 不含真实螺纹、孔位和铰链机构；两者都不含拉手。
+
+分享在浏览器内编码，不上传工程数据；链接保留设计和规则，以关闭姿态载入并重新生成零件 ID，不携带选择、撤销和日志。JSON 保留零件 ID 与开度。
+
+## 模块分工
+
+- `src/main.tsx`：应用初始化、分享载入、设计日志订阅及开发测试钩子。
+- `src/App.tsx`：布局、工具栏、快捷键及精确输入。
+- `src/components/Viewport.tsx`：Canvas、相机、剖切及开发测试钩子。
+- `DrawingHandler`、`DrawContactGuides`：绘制事件与接触提示。
+- `PointerRouter`、`DragHandler`、`EditAlignmentGuides`：指针目标、移动及端面拉伸。
+- `TransformGizmo`、`ResizeHandles`、`QuickMenu`：变换手柄及快捷操作。
+- `Profile`、`Connector`、`Panel`、`Fitting`：四类零件渲染。
+- `SnapMarker`、`SnapFaces`、`FrameDimensions`、`TextSprite`、`LabelLayout`：吸附面及标注。
+- `Sidebar`：目录、模板、属性、检查与文件操作；`Gestures` 处理触屏手势；`RecoveryNotice` 处理存档恢复。
+- `src/utils/`：以上几何、检查、编辑及导出模块，另含 `profileShapes/specUtils` 截面表、`selectionBounds` 范围、`templates` 模板、`measure` 测量、`translations` 中英文文案。
+
+## 开发、验证与部署
 
 ```bash
-npm install && npm run dev    # 开发，:5173
-npm run build                 # tsc + vite build → dist/
-docker compose up -d --build  # 多阶段构建，nginx 托管，:4174
+npm install
+npm run dev                       # Vite，默认 http://localhost:5173
+npm test                          # Vitest，src/__tests__，Node 环境
+npx playwright install chromium  # 首次运行浏览器测试时安装 Chromium
+npm run test:e2e                  # Playwright
+npm run build                    # TypeScript 检查和 Vite 打包，输出 dist/
+docker compose up -d --build      # 生产静态站点，http://localhost:4174
 ```
 
-Dockerfile 两阶段：`node:20-alpine` 编译，`nginx:alpine` 托管静态文件。
+Playwright 使用 `e2e/`，自动启动严格端口 5174 的 Vite 服务，以无头 Chromium 和软件渲染运行，默认并行三个 worker。运行时保持被测源码稳定。
+
+单元测试覆盖几何、编辑事务、存档、导出及仓库示例。`examples.test.ts` 检查家具工程的干涉、接头、角码落位、开合位置、层板承托和滑轨安装面；连接件展示图 `connector-demo` 不参加家具装配检查。`exampleLayouts.test.ts` 另核对示例开口和设备入口等布局。
+
+STEP 测试核对文件结构、引用和型材实体的起点、朝向及下料长度；不构成所有外部 CAD 的兼容性保证。
+
+开发模式或显式配置 `VITE_TEST_HOOK` 时，`window.__aluframe` 提供 store、工具状态、相机、屏幕坐标换算、拾取、接头及干涉等测试接口。
+
+示例图片和 BOM 的生成方式见 [示例说明](../examples/README.md)。Docker 使用 `node:20-alpine` 构建，`nginx:alpine` 托管 `dist/`；Compose 映射 `4174:80`，Nginx 使用静态路由回退及 gzip。
