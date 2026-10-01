@@ -13,6 +13,8 @@ export const RUNNER_CLEARANCE = 12.5
 export const FRONT_GAP = 3
 /** the boards a drawer box is made from (mm) */
 export const BOX_BOARD = 15
+/** space behind a closed drawer box, measured from the clear opening's rear plane (mm) */
+export const DRAWER_REAR_CLEARANCE = 20
 /** a door or a drawer front (mm) */
 export const FRONT_BOARD = 18
 /** how much of the frame a full-overlay front covers on each side (mm) */
@@ -88,7 +90,8 @@ export function overlayMm(overlay: Overlay | undefined): number {
  * into each other.
  */
 function frontBoard(f: FittingData): Board {
-  const lap = overlayMm(f.overlay) - FRONT_GAP
+  const inset = f.overlay === 'inset'
+  const lap = inset ? -FRONT_GAP : overlayMm(f.overlay) - FRONT_GAP
   const meet = -FRONT_GAP / 2
   const top = f.kind === 'drawer' && f.stacked?.above ? meet : lap
   const bottom = f.kind === 'drawer' && f.stacked?.below ? meet : lap
@@ -97,7 +100,8 @@ function frontBoard(f: FittingData): Board {
     width: Math.max(20, f.width + lap * 2),
     height: Math.max(20, f.height + top + bottom),
     thickness: FRONT_BOARD,
-    position: [0, (top - bottom) / 2, f.depth / 2 + (f.frame ?? 0) + FRONT_BOARD / 2],
+    // Overlay fronts rest on the frame; an inset front finishes flush with its outside.
+    position: [0, (top - bottom) / 2, f.depth / 2 + (f.frame ?? 0) + (inset ? -1 : 1) * FRONT_BOARD / 2],
     quaternion: Q_FLAT,
   }
 }
@@ -141,24 +145,28 @@ export function fittingHandle(f: FittingData): { grip: HandleBlock; mounts: Hand
  * Structural runner supports belong to the frame and are checked by runnerFaults.
  */
 function drawerParts(f: FittingData): FittingParts {
+  const front = frontBoard(f)
   const boxW = f.width - RUNNER_CLEARANCE * 2
-  const boxD = f.depth - 20
+  const backZ = -f.depth / 2 + DRAWER_REAR_CLEARANCE
+  const frontZ = front.position[2] - front.thickness / 2
+  const boxD = frontZ - backZ
+  const boxZ = (frontZ + backZ) / 2
   const boxH = Math.max(40, f.height - FRONT_GAP * 2 - 20)
   const boxY = -f.height / 2 + boxH / 2
   const boards: Board[] = []
   if (boxW > 40 && boxD > 40) {
     for (const s of [-1, 1]) {
       boards.push({ role: 'side', width: boxD, height: boxH, thickness: BOX_BOARD,
-        position: [s * (boxW / 2 - BOX_BOARD / 2), boxY, 0], quaternion: Q_SIDE })
+        position: [s * (boxW / 2 - BOX_BOARD / 2), boxY, boxZ], quaternion: Q_SIDE })
     }
     for (const [s, role] of [[-1, 'back'], [1, 'inner-front']] as const) {
       boards.push({ role, width: boxW - BOX_BOARD * 2, height: boxH, thickness: BOX_BOARD,
-        position: [0, boxY, s * (boxD / 2 - BOX_BOARD / 2)], quaternion: Q_FLAT })
+        position: [0, boxY, boxZ + s * (boxD / 2 - BOX_BOARD / 2)], quaternion: Q_FLAT })
     }
     boards.push({ role: 'base', width: boxW - BOX_BOARD * 2, height: boxD - BOX_BOARD * 2, thickness: BOX_BOARD,
-      position: [0, boxY - boxH / 2 + BOX_BOARD / 2, 0], quaternion: Q_LEVEL })
+      position: [0, boxY - boxH / 2 + BOX_BOARD / 2, boxZ], quaternion: Q_LEVEL })
   }
-  boards.push(frontBoard(f))
+  boards.push(front)
   return {
     boards,
     hinges: [],
@@ -173,14 +181,16 @@ function drawerParts(f: FittingData): FittingParts {
  */
 export function hingeAxis(f: FittingData): { origin: THREE.Vector3; axis: THREE.Vector3; sign: number } {
   const side: HingeSide = f.hinge ?? 'left'
-  const w = f.width / 2 + overlayMm(f.overlay)
-  const h = f.height / 2 + overlayMm(f.overlay)
-  const z = f.depth / 2 + (f.frame ?? 0) + FRONT_BOARD
+  const front = frontBoard(f)
+  const [x, y] = front.position
+  const w = front.width / 2
+  const h = front.height / 2
+  const z = front.position[2] + front.thickness / 2
   switch (side) {
-    case 'right':  return { origin: new THREE.Vector3(w, 0, z), axis: new THREE.Vector3(0, 1, 0), sign: 1 }
-    case 'top':    return { origin: new THREE.Vector3(0, h, z), axis: new THREE.Vector3(1, 0, 0), sign: -1 }
-    case 'bottom': return { origin: new THREE.Vector3(0, -h, z), axis: new THREE.Vector3(1, 0, 0), sign: 1 }
-    default:       return { origin: new THREE.Vector3(-w, 0, z), axis: new THREE.Vector3(0, 1, 0), sign: -1 }
+    case 'right':  return { origin: new THREE.Vector3(x + w, y, z), axis: new THREE.Vector3(0, 1, 0), sign: 1 }
+    case 'top':    return { origin: new THREE.Vector3(x, y + h, z), axis: new THREE.Vector3(1, 0, 0), sign: -1 }
+    case 'bottom': return { origin: new THREE.Vector3(x, y - h, z), axis: new THREE.Vector3(1, 0, 0), sign: 1 }
+    default:       return { origin: new THREE.Vector3(x - w, y, z), axis: new THREE.Vector3(0, 1, 0), sign: -1 }
   }
 }
 

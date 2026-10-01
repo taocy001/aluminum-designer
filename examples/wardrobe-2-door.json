@@ -1354,38 +1354,6 @@
    ]
   },
   {
-   "id": "c-mufvmswz1h",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1760,
-    20,
-    10
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ]
-  },
-  {
-   "id": "c-mufvmswz1i",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1760,
-    20,
-    570
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ]
-  },
-  {
    "id": "b-mufvmswv1a-bearing-front-start-joint",
    "type": "inside-corner",
    "position": [

@@ -1404,38 +1404,6 @@
    ]
   },
   {
-   "id": "c-mueqr38ngu",
-   "type": "inside-corner",
-   "position": [
-    10,
-    20,
-    10
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20
-  },
-  {
-   "id": "c-mueqr38ogv",
-   "type": "inside-corner",
-   "position": [
-    10,
-    20,
-    390
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20
-  },
-  {
    "id": "c-mueqr38ogy",
    "type": "inside-corner",
    "position": [

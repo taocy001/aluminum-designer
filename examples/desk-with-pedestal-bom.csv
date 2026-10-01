@@ -9,12 +9,12 @@ Connector,"抽屉滑轨 520mm",侧装一对,,3
 Fastener,"螺栓 M5×10",20,,44
 Fastener,"T型螺母 M5",20,,44
 Board,"385 × 154 mm","多层板 15mm",,6
-Board,"470 × 385 mm","多层板 15mm",,3
-Board,"500 × 154 mm","多层板 15mm",,6
+Board,"510 × 385 mm","多层板 15mm",,3
+Board,"540 × 154 mm","多层板 15mm",,6
 Board,"470 × 177 mm","多层板 18mm",,1
 Board,"470 × 193.5 mm","多层板 18mm",,2
 Suggested,"端盖 20 系列（按自由端推算）",20,,4
 Suggested,"端盖 40 系列（按自由端推算）",40,,1
 Summary,Overall WxDxH,1500x600x720,,
 Summary,Total cut length (mm),,11620,
-Summary,Board area (m2),,1.63,
+Summary,Board area (m2),,1.71,

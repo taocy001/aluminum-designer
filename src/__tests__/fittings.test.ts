@@ -246,7 +246,8 @@ describe('doors moving through sampled intermediate openings', () => {
     position, quaternion: [0, 0, 0, 1], hingeType: 'cup', hinge, overlay: 'full', swing: 110, open: 0,
   })
   it('finds a collision while one neighbour stays closed, beyond the old three synchronized samples', () => {
-    const a = door('a', [0, 1000, 0], 'left'), b = door('b', [-800, 1000, -600], 'right')
+    // Actual leaf-edge pivots: this offset still gives a deep clash that synchronized poses miss.
+    const a = door('a', [0, 1000, 0], 'left'), b = door('b', [-800, 1000, -597], 'right')
     expect([0.35, 0.7, 1].every((t) => obbPenetration(leafObb(a, t)!, leafObb(b, t)!, 2) === 0)).toBe(true)
     expect(obbPenetration(leafObb(a, 0)!, leafObb(b, 1)!, 2)).toBeGreaterThan(18)
     expect(swingClashes([a, b])).toEqual([['a', 'b']])

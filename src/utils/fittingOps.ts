@@ -7,6 +7,7 @@ import { nextId } from './profileFactory'
 import { specDims } from './specUtils'
 import { translations } from './translations'
 import { connectedTo } from './editOps'
+import { makeOBB, obbCorners } from './obb'
 
 /** Derive an opening from the selected frame members, insetting axes with enough clearance. */
 
@@ -52,7 +53,7 @@ function metalAhead(all: ProfileData[], mine: THREE.Box3, reach: number, axis: T
  * Across means its thin side lies along the axis and its face covers the middle of the
  * opening; a shelf lying flat inside the bay is not across anything.
  */
-function boardAcross(mine: THREE.Box3, reach: number, axis: THREE.Vector3): boolean {
+function boardAcross(mine: THREE.Box3, reach: number, axis: THREE.Vector3, cabinet: THREE.Box3[]): boolean {
   const k: 'x' | 'z' = Math.abs(axis.x) > 0.5 ? 'x' : 'z'
   const across: 'x' | 'z' = k === 'x' ? 'z' : 'x'
   const sign = axis[k] > 0 ? 1 : -1
@@ -64,6 +65,7 @@ function boardAcross(mine: THREE.Box3, reach: number, axis: THREE.Vector3): bool
       box.expandByPoint(new THREE.Vector3(sx * b.width / 2, sy * b.height / 2, sz * b.thickness / 2).applyQuaternion(q).add(new THREE.Vector3(...b.position)))
     }
     const size = box.getSize(new THREE.Vector3())
+    if (!cabinet.some((member) => box.intersectsBox(member))) continue
     if (size[k] > 40) continue                                   // not standing across the axis
     if (box.max[across] < at[across] || box.min[across] > at[across]) continue
     if (box.max.y < at.y || box.min.y > at.y) continue
@@ -88,7 +90,8 @@ function outwardAxis(chosen: ProfileData[], section: number): { out: THREE.Vecto
   // swapped and its front buried in the upright beside it.
   const all = cabinetOf(chosen)
   const whole = new THREE.Box3()
-  for (const p of all) whole.union(memberBox(p))
+  const members = all.map((profile) => memberBox(profile))
+  for (const box of members) whole.union(box)
   const mine = new THREE.Box3()
   for (const p of chosen) mine.union(memberBox(p))
   if (whole.isEmpty() || mine.isEmpty()) return { out: new THREE.Vector3(0, 0, 1), settled: false }
@@ -103,10 +106,11 @@ function outwardAxis(chosen: ProfileData[], section: number): { out: THREE.Vecto
   // For a coplanar selection, use its thinner horizontal axis as the front normal.
   /** Compare local obstructions on both sides of the opening to choose an outward direction. */
   const reach = Math.max(run.x, run.z)
+  const boardSupports = members.map((box) => box.clone().expandByScalar(section))
   const facing = (axis: THREE.Vector3): THREE.Vector3 => {
     // A board covering one side of the opening identifies the back.
-    const backAhead = boardAcross(mine, reach, axis)
-    const backBehind = boardAcross(mine, reach, axis.clone().negate())
+    const backAhead = boardAcross(mine, reach, axis, boardSupports)
+    const backBehind = boardAcross(mine, reach, axis.clone().negate(), boardSupports)
     if (backAhead !== backBehind) return backAhead ? axis.clone().negate() : axis.clone()
     const ahead = metalAhead(all, mine, reach, axis)
     const behind = metalAhead(all, mine, reach, axis.clone().negate())
@@ -124,10 +128,19 @@ function outwardAxis(chosen: ProfileData[], section: number): { out: THREE.Vecto
    * Reuse a fitting on the same frame and front plane. For coplanar selections, require
    * its orientation to match the selected plane's horizontal normal.
    */
-  const room = new THREE.Box3().copy(mine).expandByScalar(Math.max(run.x, run.z))
   for (const f of useStore.getState().fittings) {
-    if (!room.containsPoint(new THREE.Vector3(...f.position))) continue
-    const hung = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...f.quaternion).normalize())
+    // Test frame membership using the fixed opening bounds.
+    const rotation = new THREE.Quaternion(...f.quaternion).normalize()
+    const openingObb = makeOBB(new THREE.Vector3(...f.position),
+      new THREE.Vector3(f.width, f.height, f.depth).multiplyScalar(0.5), rotation)
+    const opening = new THREE.Box3().setFromPoints(obbCorners(openingObb)).expandByScalar(1)
+    if (!members.some((box) => box.intersectsBox(opening))) continue
+    const hung = new THREE.Vector3(0, 0, 1).applyQuaternion(rotation)
+    const axis: 'x' | 'z' = Math.abs(hung.x) > Math.abs(hung.z) ? 'x' : 'z'
+    const front = f.position[axis === 'x' ? 0 : 2] + hung[axis] * (f.depth / 2 + (f.frame ?? section))
+    // Selecting the rear opening is an explicit choice. A front-facing door on the
+    // same cabinet may confirm the front plane, but cannot reverse a different plane.
+    if (front < mine.min[axis] - section || front > mine.max[axis] + section) continue
     if (coplanar) {
       const along = hung.dot(thin)
       if (Math.abs(along) < 0.9) continue
@@ -154,17 +167,10 @@ function outwardAxis(chosen: ProfileData[], section: number): { out: THREE.Vecto
  * cabinets with different depths, and asking the whole frame how deep "the cabinet" is gets
  * a door hinged a foot in front of the one it belongs to.
  */
-/**
- * The members of the cabinet this selection belongs to.
- *
- * Bolted together is what makes two cabinets one, so that is what is asked — but a selection
- * with nothing yet bolted to it is not a cabinet of its own, it is a frame half drawn. Then
- * the only thing there is to ask is the drawing.
- */
+/** Return profiles connected to the selected members. */
 function cabinetOf(chosen: ProfileData[]): ProfileData[] {
   const profiles = useStore.getState().profiles
   const own = connectedTo(chosen.map((p) => p.id), profiles)
-  if (own.size <= chosen.length) return profiles
   return profiles.filter((p) => own.has(p.id))
 }
 
@@ -266,15 +272,12 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
     span.z > section * 2.5 ? -section : 0,
   ))
 
-  // A drawer box slides out through the front, so its opening is the clear height between
-  // the rails that cross it, not the uprights less a section: a 2040 on edge under a 2020
-  // bay stands forty high, and the bottom drawer of every such bay was cut to start at
-  // twenty and ran its box through the rail as it came out. A door hangs in front of the
-  // rails and covers them, so it keeps the opening it had.
-  if (req.kind === 'drawer') {
+  // Constrain drawer and inset-door height to intersecting rails; overlay doors retain the initial opening height.
+  const insetDoor = req.kind === 'door' && req.overlay === 'inset'
+  if (req.kind === 'drawer' || insetDoor) {
     const mid = box.getCenter(new THREE.Vector3())
     for (const p of cabinetOf(chosen)) {
-      if (ids.has(p.id)) continue
+      if (ids.has(p.id) && !insetDoor) continue
       const m = memberBox(p)
       if (m.max.y - m.min.y > 100) continue                    // an upright, not a rail
       if (m.max.x <= box.min.x + 1 || m.min.x >= box.max.x - 1) continue
