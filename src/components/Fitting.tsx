@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import type { FittingData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { fittingParts, openTransform } from '../utils/fittingGeometry'
+import { fittingHandle, fittingParts, openTransform } from '../utils/fittingGeometry'
 
 const LOOK: Record<string, { color: string; opacity: number; metalness: number; roughness: number }> = {
   mdf: { color: '#d6bb96', opacity: 1, metalness: 0.02, roughness: 0.85 },
@@ -20,6 +20,7 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
   const { id, material, isSelected, locked } = f
   const hovered = useToolStore((s) => !s.isDragging && s.hoverPartId === id)
   const parts = useMemo(() => fittingParts(f), [f])
+  const handle = useMemo(() => fittingHandle(f), [f])
   const moving = useRef<THREE.Group>(null)
   /** how far open it looks right now, which chases how far open it is */
   const shown = useRef(f.open ?? 0)
@@ -53,7 +54,7 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
       <group ref={moving}>
         {parts.boards.map((b, i) => (
           <group key={i} position={b.position} quaternion={new THREE.Quaternion(...b.quaternion)}>
-            <mesh>
+            <mesh userData={{ fittingBoard: b.role }}>
               <boxGeometry args={[b.width, b.height, b.thickness]} />
               <meshStandardMaterial
                 color={color} transparent={look.opacity < 1} opacity={look.opacity}
@@ -65,11 +66,19 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
             </lineSegments>
           </group>
         ))}
-        {/* a handle, so which way it opens is readable without opening it */}
-        <mesh position={[0, f.kind === 'drawer' ? 0 : 0, f.depth / 2 + 26]} raycast={() => null}>
-          <boxGeometry args={f.kind === 'drawer' ? [Math.min(160, f.width * 0.5), 14, 14] : [14, Math.min(160, f.height * 0.4), 14]} />
-          <meshStandardMaterial color="#64748b" metalness={0.5} roughness={0.35} />
-        </mesh>
+        {/* The pull is mounted on the actual outer face and moves with that front. */}
+        <group name="fitting-handle">
+          {handle.mounts.map((mount, i) => (
+            <mesh key={i} position={mount.position} name="handle-mount" raycast={() => null}>
+              <boxGeometry args={mount.size} />
+              <meshStandardMaterial color="#64748b" metalness={0.5} roughness={0.35} />
+            </mesh>
+          ))}
+          <mesh position={handle.grip.position} name="handle-grip" raycast={() => null}>
+            <boxGeometry args={handle.grip.size} />
+            <meshStandardMaterial color="#64748b" metalness={0.5} roughness={0.35} />
+          </mesh>
+        </group>
       </group>
     </group>
   )

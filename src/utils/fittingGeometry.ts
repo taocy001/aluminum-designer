@@ -102,6 +102,40 @@ function frontBoard(f: FittingData): Board {
   }
 }
 
+export interface HandleBlock {
+  position: [number, number, number]
+  size: [number, number, number]
+}
+
+/** Hardware in the moving front's frame: +Z is outside, including the frame offset. */
+export function fittingHandle(f: FittingData): { grip: HandleBlock; mounts: HandleBlock[] } {
+  const front = frontBoard(f)
+  const side = f.hinge ?? 'left'
+  const horizontal = f.kind === 'drawer' || side === 'top' || side === 'bottom'
+  const thickness = 14
+  const clearance = 18
+  const span = horizontal ? front.width : front.height
+  const length = Math.min(160, Math.max(thickness, span * (f.kind === 'drawer' ? 0.5 : 0.4)))
+  let [x, y] = front.position
+  if (f.kind === 'door') {
+    // Put the pull opposite the hinge, with an inset that also fits a small front.
+    if (horizontal) y += (side === 'top' ? -1 : 1) * Math.max(0, front.height / 2 - 40)
+    else x += (side === 'left' ? 1 : -1) * Math.max(0, front.width / 2 - 40)
+  }
+  const surface = front.position[2] + front.thickness / 2
+  const grip: HandleBlock = {
+    position: [x, y, surface + clearance + thickness / 2],
+    size: horizontal ? [length, thickness, thickness] : [thickness, length, thickness],
+  }
+  const mountDepth = clearance + thickness / 2
+  const offsets = length >= thickness * 2 ? [-(length - thickness) / 2, (length - thickness) / 2] : [0]
+  const mounts: HandleBlock[] = offsets.map((offset) => ({
+    position: [x + (horizontal ? offset : 0), y + (horizontal ? 0 : offset), surface + mountDepth / 2],
+    size: [thickness, thickness, mountDepth],
+  }))
+  return { grip, mounts }
+}
+
 /**
  * Build drawer boards with a 12.5 mm runner allowance on each side.
  * Structural runner supports belong to the frame and are checked by runnerFaults.
@@ -144,8 +178,8 @@ export function hingeAxis(f: FittingData): { origin: THREE.Vector3; axis: THREE.
   const z = f.depth / 2 + (f.frame ?? 0) + FRONT_BOARD
   switch (side) {
     case 'right':  return { origin: new THREE.Vector3(w, 0, z), axis: new THREE.Vector3(0, 1, 0), sign: 1 }
-    case 'top':    return { origin: new THREE.Vector3(0, h, z), axis: new THREE.Vector3(1, 0, 0), sign: 1 }
-    case 'bottom': return { origin: new THREE.Vector3(0, -h, z), axis: new THREE.Vector3(1, 0, 0), sign: -1 }
+    case 'top':    return { origin: new THREE.Vector3(0, h, z), axis: new THREE.Vector3(1, 0, 0), sign: -1 }
+    case 'bottom': return { origin: new THREE.Vector3(0, -h, z), axis: new THREE.Vector3(1, 0, 0), sign: 1 }
     default:       return { origin: new THREE.Vector3(-w, 0, z), axis: new THREE.Vector3(0, 1, 0), sign: -1 }
   }
 }
