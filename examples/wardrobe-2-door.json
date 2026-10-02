@@ -776,61 +776,7 @@
    "holes": []
   },
   {
-   "id": "wardrobe-split-drawer-post-0",
-   "spec": "4040",
-   "position": [
-    1340,
-    10,
-    20
-   ],
-   "length": 440,
-   "quaternion": [
-    -0.7071067811865476,
-    0,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "wardrobe-split-drawer-post-1",
-   "spec": "4040",
-   "position": [
-    1340,
-    10,
-    580
-   ],
-   "length": 440,
-   "quaternion": [
-    -0.7071067811865476,
-    0,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "wardrobe-split-drawer-header",
-   "spec": "2040",
-   "position": [
-    1340,
-    450,
-    20
-   ],
-   "length": 560,
-   "quaternion": [
-    0,
-    0,
-    0.7071067811865476,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "wardrobe-split-drawer-runner-900-140",
+   "id": "wardrobe-drawer-runner-900-140",
    "spec": "2040",
    "position": [
     900,
@@ -848,7 +794,7 @@
    "holes": []
   },
   {
-   "id": "wardrobe-split-drawer-runner-900-340",
+   "id": "wardrobe-drawer-runner-900-340",
    "spec": "2040",
    "position": [
     900,
@@ -866,43 +812,7 @@
    "holes": []
   },
   {
-   "id": "wardrobe-split-drawer-runner-1340-140",
-   "spec": "2040",
-   "position": [
-    1340,
-    140,
-    20
-   ],
-   "length": 560,
-   "quaternion": [
-    0,
-    0,
-    0.7071067811865476,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "wardrobe-split-drawer-runner-1340-340",
-   "spec": "2040",
-   "position": [
-    1340,
-    340,
-    20
-   ],
-   "length": 560,
-   "quaternion": [
-    0,
-    0,
-    0.7071067811865476,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "wardrobe-split-drawer-runner-1780-140",
+   "id": "wardrobe-drawer-runner-1780-140",
    "spec": "2040",
    "position": [
     1780,
@@ -920,7 +830,7 @@
    "holes": []
   },
   {
-   "id": "wardrobe-split-drawer-runner-1780-340",
+   "id": "wardrobe-drawer-runner-1780-340",
    "spec": "2040",
    "position": [
     1780,
@@ -1900,71 +1810,7 @@
    "series": 20
   },
   {
-   "id": "wardrobe-split-drawer-corner-0",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1360,
-    20,
-    10
-   ],
-   "quaternion": [
-    0.7071067811865476,
-    0.7071067811865475,
-    -1.570092458683775e-16,
-    -1.7431527984210492e-32
-   ]
-  },
-  {
-   "id": "wardrobe-split-drawer-corner-1",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1330,
-    440,
-    40
-   ],
-   "quaternion": [
-    -0.4999999999999999,
-    0.5,
-    0.5,
-    -0.5000000000000001
-   ]
-  },
-  {
-   "id": "wardrobe-split-drawer-corner-2",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1360,
-    20,
-    570
-   ],
-   "quaternion": [
-    0.7071067811865476,
-    0.7071067811865475,
-    -1.570092458683775e-16,
-    -1.7431527984210492e-32
-   ]
-  },
-  {
-   "id": "wardrobe-split-drawer-corner-3",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1330,
-    440,
-    560
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    -0.5,
-    0.5,
-    -0.5000000000000001
-   ]
-  },
-  {
-   "id": "wardrobe-split-drawer-corner-4",
+   "id": "wardrobe-drawer-corner-4",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -1980,7 +1826,7 @@
    ]
   },
   {
-   "id": "wardrobe-split-drawer-corner-5",
+   "id": "wardrobe-drawer-corner-5",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -1996,7 +1842,7 @@
    ]
   },
   {
-   "id": "wardrobe-split-drawer-corner-6",
+   "id": "wardrobe-drawer-corner-6",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -2012,7 +1858,7 @@
    ]
   },
   {
-   "id": "wardrobe-split-drawer-corner-7",
+   "id": "wardrobe-drawer-corner-7",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -2028,71 +1874,7 @@
    ]
   },
   {
-   "id": "wardrobe-split-drawer-corner-8",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1330,
-    150,
-    40
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "wardrobe-split-drawer-corner-9",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1330,
-    150,
-    560
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "wardrobe-split-drawer-corner-10",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1330,
-    330,
-    40
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ]
-  },
-  {
-   "id": "wardrobe-split-drawer-corner-11",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1330,
-    330,
-    560
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ]
-  },
-  {
-   "id": "wardrobe-split-drawer-corner-12",
+   "id": "wardrobe-drawer-corner-12",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -2108,7 +1890,7 @@
    ]
   },
   {
-   "id": "wardrobe-split-drawer-corner-13",
+   "id": "wardrobe-drawer-corner-13",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -2124,7 +1906,7 @@
    ]
   },
   {
-   "id": "wardrobe-split-drawer-corner-14",
+   "id": "wardrobe-drawer-corner-14",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -2140,7 +1922,7 @@
    ]
   },
   {
-   "id": "wardrobe-split-drawer-corner-15",
+   "id": "wardrobe-drawer-corner-15",
    "type": "inside-corner",
    "series": 20,
    "position": [
@@ -2217,7 +1999,7 @@
    "id": "f-mufs70vt51",
    "kind": "drawer",
    "position": [
-    1120,
+    1340,
     140,
     299.9999999999998
    ],
@@ -2227,33 +2009,7 @@
     0,
     1
    ],
-   "width": 400,
-   "height": 200,
-   "depth": 520.0000000000005,
-   "frame": 20,
-   "material": "ply",
-   "open": 0,
-   "stacked": {
-    "above": true,
-    "below": false
-   },
-   "overlay": "inset"
-  },
-  {
-   "id": "f-mufs70vt51-right",
-   "kind": "drawer",
-   "position": [
-    1560,
-    140,
-    299.9999999999998
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "width": 400,
+   "width": 840,
    "height": 200,
    "depth": 520.0000000000005,
    "frame": 20,
@@ -2269,7 +2025,7 @@
    "id": "f-mufs70vt52",
    "kind": "drawer",
    "position": [
-    1120,
+    1340,
     340,
     299.9999999999998
    ],
@@ -2279,33 +2035,7 @@
     0,
     1
    ],
-   "width": 400,
-   "height": 200,
-   "depth": 520.0000000000005,
-   "frame": 20,
-   "material": "ply",
-   "open": 0,
-   "stacked": {
-    "above": false,
-    "below": true
-   },
-   "overlay": "inset"
-  },
-  {
-   "id": "f-mufs70vt52-right",
-   "kind": "drawer",
-   "position": [
-    1560,
-    340,
-    299.9999999999998
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "width": 400,
+   "width": 840,
    "height": 200,
    "depth": 520.0000000000005,
    "frame": 20,

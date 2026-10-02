@@ -42,7 +42,7 @@ test('kitchen file opens all fronts toward the user with attached drawer boxes',
   await useDownloadFallback(page)
   await openApp(page)
   await page.locator('input[type=file][accept="application/json,.json"]').setInputFiles(resolve('examples/flat/01-kitchen-base.json'))
-  await expect.poll(async () => (await store(page)).fittings.length).toBe(9)
+  await expect.poll(async () => (await store(page)).fittings.length).toBe(7)
   await page.getByTestId('fit-view').click()
   await settle(page)
   const saved = await store(page)
@@ -97,6 +97,9 @@ test('kitchen file opens all fronts toward the user with attached drawer boxes',
   // The exported cut list must include the attached box's full-length side boards.
   expect(csv).toContain('630 × 284 mm')
   expect(csv).toContain('630 × 304 mm')
+  expect(csv).toContain('942 × 314.5 mm')
+  expect(csv).toContain('942 × 334.5 mm')
+  expect(csv).toContain('875 × 600 mm')
   const [project] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click()])
   await project.saveAs(test.info().outputPath('kitchen-roundtrip.json'))
   const path = (await project.path())!

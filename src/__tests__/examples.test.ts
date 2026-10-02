@@ -8,6 +8,8 @@ import { auditBrackets } from '../utils/bracketSeat'
 import { migrateFittings } from '../utils/migrate'
 import { parseProjectDocument } from '../utils/document'
 import { runnerFaults } from '../utils/runnerMount'
+import { leafObb } from '../utils/fittingGeometry'
+import { obbCorners } from '../utils/obb'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 
 interface Doc {
@@ -38,6 +40,22 @@ function load(name: string): Required<Doc> {
     // read the way the app reads them, so an older file is judged as it would be seen
     fittings: migrateFittings(profiles, doc.fittings ?? []),
   }
+}
+
+function doorsInFront(drawer: FittingData, fittings: FittingData[]): Set<string> {
+  if (drawer.kind !== 'drawer' || drawer.overlay !== 'inset') return new Set()
+  const front = leafObb(drawer, 0)!
+  return new Set(fittings.filter((f) => {
+    if (f.kind !== 'door') return false
+    const leaf = leafObb(f, 0)!
+    if (front.axes[2].dot(leaf.axes[2]) < 0.999 || front.center.clone().sub(leaf.center).dot(leaf.axes[2]) >= 0) return false
+    const corners = obbCorners(front).map((p) => p.sub(leaf.center))
+    return [0, 1].every((axis) => {
+      const projected = corners.map((p) => p.dot(leaf.axes[axis]))
+      const half = axis === 0 ? leaf.half.x : leaf.half.y
+      return Math.min(...projected) < half - 1e-5 && Math.max(...projected) > -half + 1e-5
+    })
+  }).map((f) => f.id))
 }
 
 /** Check bundled examples for the geometric conditions asserted below. */
@@ -102,23 +120,33 @@ describe('bundled example geometry', () => {
       expect(empty).toEqual([])
     })
 
-    /** Check fittings fully open, individually and together. */
-    it('has no reported fitting collisions at the sampled opening positions', () => {
+    it('opens each door independently without collisions', () => {
       const { profiles, connectors, panels, fittings } = load(name)
       const trims = computeAllTrims(profiles)
-      const shut = new Set(findConflicts(profiles, trims, connectors, panels, fittings).map((c) => `${c.a}|${c.b}`))
-      const struck: string[] = []
-      for (const f of fittings) {
-        const opened = fittings.map((g) => (g.id === f.id ? { ...g, open: 1 } : g))
-        for (const c of findConflicts(profiles, trims, connectors, panels, opened)) {
-          if (c.a === f.id || c.b === f.id) struck.push(`${f.kind}@${f.position.map(Math.round)} ${c.depth}mm`)
+      for (const door of fittings.filter((f) => f.kind === 'door')) {
+        for (const open of [0.25, 0.5, 0.75, 1]) {
+          const opened = fittings.map((f) => ({ ...f, open: f.id === door.id ? open : 0 }))
+          expect(findConflicts(profiles, trims, connectors, panels, opened), `${door.id} at ${open}`).toEqual([])
         }
       }
-      const everything = fittings.map((g) => ({ ...g, open: 1 }))
-      for (const c of findConflicts(profiles, trims, connectors, panels, everything)) {
-        if (!shut.has(`${c.a}|${c.b}`)) struck.push(`all open: ${c.a} × ${c.b} ${c.depth}mm`)
+    })
+
+    it('opens each drawer without collisions after opening any doors in front of it', () => {
+      const { profiles, connectors, panels, fittings } = load(name)
+      const trims = computeAllTrims(profiles)
+      for (const drawer of fittings.filter((f) => f.kind === 'drawer')) {
+        const doors = doorsInFront(drawer, fittings)
+        for (const open of [0.1, 0.25, 0.5, 0.75, 1]) {
+          const opened = fittings.map((f) => ({ ...f, open: doors.has(f.id) ? 1 : f.id === drawer.id ? open : 0 }))
+          expect(findConflicts(profiles, trims, connectors, panels, opened), `${drawer.id} at ${open}`).toEqual([])
+        }
       }
-      expect(struck).toEqual([])
+    })
+
+    it('has no fitting collisions with all doors and drawers fully open', () => {
+      const { profiles, connectors, panels, fittings } = load(name)
+      const everything = fittings.map((g) => ({ ...g, open: 1 }))
+      expect(findConflicts(profiles, computeAllTrims(profiles), connectors, panels, everything)).toEqual([])
     })
 
     /**

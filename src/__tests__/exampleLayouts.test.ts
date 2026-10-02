@@ -39,7 +39,7 @@ describe('example cabinet layouts', () => {
   })
 
   it.each([
-    ['01-kitchen-base', [780, 610, 455, 455, 280, 680]],
+    ['01-kitchen-base', [780, 610, 930, 280, 680]],
     ['02-kitchen-wall', [780, 610, 930, 280, 680]],
     ['03-tall-unit', [910, 580]],
     ['04-shoe-cupboard', [580, 580]],
@@ -87,7 +87,7 @@ describe('example cabinet layouts', () => {
 
   it('the kitchen drawers close on the same front as its doors and pull towards the user', () => {
     const doc = load('01-kitchen-base')
-    expect(doc.fittings).toHaveLength(9)
+    expect(doc.fittings).toHaveLength(7)
     for (const f of doc.fittings) {
       const q = new THREE.Quaternion(...f.quaternion)
       const out = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
@@ -164,10 +164,12 @@ describe('example cabinet layouts', () => {
     expect(fronts.filter(([left, right]) => right > 810 && left < 1420)).toEqual([])
   })
 
-  it.each(drawings)('%s uses door boards at most 610 mm wide and drawer openings at most 580 mm wide', (_file, source) => {
+  it.each(drawings)('%s uses its specified drawer widths and door boards at most 610 mm wide', (file, source) => {
     const doc = parseProjectDocument(source.default)
+    const wideDrawer = file.endsWith('/01-kitchen-base.json') ? 930 : file.endsWith('/wardrobe-2-door.json') ? 840 : undefined
     for (const f of doc.fittings) {
       if (f.kind === 'door') expect(frontBoard(f).width).toBeLessThanOrEqual(610.001)
+      else if (wideDrawer !== undefined) expect(f.width).toBe(wideDrawer)
       else expect(f.width).toBeLessThanOrEqual(580.001)
     }
   })

@@ -34,7 +34,8 @@ beforeEach(() => {
   useStore.getState().loadDocument({ profiles: [], connectors: [], panels: [], fittings: [], throughRule: 'rails' })
 })
 
-it.each([[1430, 1905], [1905, 2380]])('draws new drawers toward the existing doors in kitchen bay %s–%s', (left, right) => {
+it('draws new drawers toward the existing doors in the cooktop bay', () => {
+  const [left, right] = [1430, 2380]
   const document = parseProjectDocument(kitchen)
   useStore.getState().loadDocument({ ...document, fittings: document.fittings.filter((f) => f.kind === 'door') })
   const chosen = document.profiles.filter((p) => Math.abs(getProfileDir(p).y) > 0.999
@@ -45,10 +46,11 @@ it.each([[1430, 1905], [1905, 2380]])('draws new drawers toward the existing doo
   expect(lastFacing().z).toBeGreaterThan(0.9)
   const drawers = useStore.getState().fittings.filter((f) => f.kind === 'drawer')
   expect(drawers).toHaveLength(2)
-  for (const drawer of drawers) expect(drawer.width).toBeCloseTo(455)
+  for (const drawer of drawers) expect(drawer.width).toBeCloseTo(930)
 })
 
-it.each([[1430, 1905], [1905, 2380]])('keeps kitchen bay %s–%s facing out before any fitting establishes a front', (left, right) => {
+it('keeps the cooktop bay facing out before any fitting establishes a front', () => {
+  const [left, right] = [1430, 2380]
   const document = parseProjectDocument(kitchen)
   useStore.getState().loadDocument({ ...document, fittings: [] })
   const chosen = document.profiles.filter((p) => Math.abs(getProfileDir(p).y) > 0.999
@@ -57,7 +59,7 @@ it.each([[1430, 1905], [1905, 2380]])('keeps kitchen bay %s–%s facing out befo
   select(chosen)
   expect(addFittingFromSelection({ kind: 'drawer', frontHeight: 310, count: 2 })).toBe(true)
   expect(lastFacing().z).toBeGreaterThan(0.9)
-  expect(useStore.getState().fittings.every((f) => Math.abs(f.width - 455) < 1e-7)).toBe(true)
+  expect(useStore.getState().fittings.every((f) => Math.abs(f.width - 930) < 1e-7)).toBe(true)
 })
 
 it('does not inherit the opposite front of a nearby separate cabinet', () => {
