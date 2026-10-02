@@ -18,8 +18,7 @@ import { countUnflush, unflushPairs, rollProfile } from './utils/faceAlign'
 import { nextSuggestion } from './utils/suggestOps'
 import { getProfileEndpoints } from './utils/geometryCore'
 
-// Dev-only hook for end-to-end tests: window.__aluframe.{store,tool}
-// VITE_TEST_HOOK=1 keeps it in a production build, so what users run can be measured
+// Test hooks are enabled in development or when VITE_TEST_HOOK is set.
 if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
   ;(window as any).__aluframe = {
     store: useStore, tool: useToolStore,

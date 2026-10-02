@@ -196,16 +196,20 @@ BOM 的补件行是按对接端、自由端和已放置数量推算的建议。�
 ## 开发、验证与部署
 
 ```bash
-npm install
+npm ci
 npm run dev                       # Vite，默认 http://localhost:5173
 npm test                          # Vitest，src/__tests__，Node 环境
 npx playwright install chromium  # 首次运行浏览器测试时安装 Chromium
-npm run test:e2e                  # Playwright
 npm run build                    # TypeScript 检查和 Vite 打包，输出 dist/
+npm run test:prod                 # Playwright，测试已构建的 dist/
+npm run test:e2e                  # Playwright，开发服务完整 E2E
+npm run test:all                  # 单元测试、构建、生产烟测及开发 E2E
 docker compose up -d --build      # 生产静态站点，http://localhost:4174
 ```
 
-Playwright 使用 `e2e/`，自动启动严格端口 5174 的 Vite 服务，以无头 Chromium 和软件渲染运行，默认并行三个 worker。运行时保持被测源码稳定。
+开发 E2E 使用 `e2e/` 和 `playwright.config.ts`，自动启动严格端口 5174 的 Vite 服务，以无头 Chromium 和软件渲染运行，默认并行三个 worker。生产烟测使用独立的 `e2e-production/` 和 `playwright.production.config.ts`，在严格端口 4175 通过 Vite preview 运行预先构建的 `dist/`，使用一个 worker。它通过真实 UI 创建工作台、编辑零件、导入仓库示例、检查清单、自动保存、刷新恢复及 CSV 下载，并断言开发测试接口不存在。运行时保持被测源码和构建产物稳定。
+
+两类测试分别将结果写入 `test-results/e2e/` 和 `test-results/production/`，失败时保存截图及 trace。本地可复用相应端口的服务，CI 必须自行启动服务。[CI 工作流](../.github/workflows/ci.yml) 使用 Node 24，依次执行 `npm ci`、单元测试、构建、生产烟测和完整开发 E2E；失败产物保留 7 天。
 
 单元测试覆盖几何、编辑事务、存档、导出及仓库示例。`examples.test.ts` 检查家具工程的干涉、接头、角码落位、开合位置、层板承托和滑轨安装面；连接件展示图 `connector-demo` 不参加家具装配检查。`exampleLayouts.test.ts` 另核对示例开口和设备入口等布局。
 
@@ -213,4 +217,4 @@ STEP 测试核对文件结构、引用和型材实体的起点、朝向及下料
 
 开发模式或显式配置 `VITE_TEST_HOOK` 时，`window.__aluframe` 提供 store、工具状态、相机、屏幕坐标换算、拾取、接头及干涉等测试接口。
 
-示例图片和 BOM 的生成方式见 [示例说明](../examples/README.md)。Docker 使用 `node:20-alpine` 构建，`nginx:alpine` 托管 `dist/`；Compose 映射 `4174:80`，Nginx 使用静态路由回退及 gzip。
+示例图片和 BOM 的生成方式见 [示例说明](../examples/README.md)。Docker 使用 `node:20-alpine` 和 `npm ci` 按锁文件安装后构建，`nginx:alpine` 托管 `dist/`；Compose 映射 `4174:80`，Nginx 使用静态路由回退及 gzip。

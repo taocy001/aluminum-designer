@@ -1,16 +1,15 @@
 import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './e2e',
-  outputDir: './test-results/e2e',
+  testDir: './e2e-production',
+  outputDir: './test-results/production',
   timeout: 60_000,
   forbidOnly: !!process.env.CI,
-  fullyParallel: true,
-  workers: 3,
+  workers: 1,
   retries: 0,
   reporter: [['list']],
   use: {
-    baseURL: 'http://127.0.0.1:5174',
+    baseURL: 'http://127.0.0.1:4175',
     viewport: { width: 1400, height: 900 },
     headless: true,
     launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] },
@@ -18,8 +17,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'npx vite --port 5174 --strictPort',
-    url: 'http://127.0.0.1:5174',
+    command: 'npm run preview -- --host 127.0.0.1 --port 4175 --strictPort',
+    url: 'http://127.0.0.1:4175',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },

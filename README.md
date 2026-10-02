@@ -24,7 +24,7 @@
 ## 启动
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -107,11 +107,14 @@ docker compose up -d --build
 ```bash
 npm test
 npx playwright install chromium
-npm run test:e2e
 npm run build
+npm run test:prod
+npm run test:e2e
 ```
 
-浏览器测试使用 Playwright。Linux 环境还需安装 Chromium 所需的系统依赖。测试配置、代码结构和部署说明见 [架构与实现](docs/DESIGN.md)。
+浏览器测试使用 Playwright。`test:prod` 在 4175 端口测试已构建的 `dist/`，通过真实 UI 检查创建、编辑、导入、自动保存、恢复和清单下载；`test:e2e` 在 5174 端口运行开发服务的完整 E2E。`npm run test:all` 按上述顺序执行全部检查。Linux 可用 `npx playwright install --with-deps chromium` 安装浏览器和系统依赖。
+
+[CI](.github/workflows/ci.yml) 在推送和 PR 时执行依赖安装、单元测试、生产构建及两类浏览器测试；失败时保留截图和 trace 7 天。测试配置、代码结构和部署说明见 [架构与实现](docs/DESIGN.md)。
 
 ## 文档与许可
 
