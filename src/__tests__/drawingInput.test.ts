@@ -45,3 +45,15 @@ it('canceling and starting a new line clears the shared numeric preview input', 
   tool.beginDraw(V(20, 10, 0))
   expect(useToolStore.getState().drawLengthInput).toBe('')
 })
+
+it('picking up a connector abandons the unfinished profile and its axis constraints', () => {
+  const tool = useToolStore.getState()
+  tool.beginDraw(V(0, 10, 0))
+  useToolStore.setState({ drawAxis: 'x', lockedAxis: 'x', currentPoint: V(600, 10, 0), drawLengthInput: '600' })
+  tool.setActiveConnector('inside-corner')
+  expect(useToolStore.getState()).toMatchObject({
+    held: 'connector', activeConnectorType: 'inside-corner', isDrawing: false,
+    drawOrigin: null, startPoint: null, currentPoint: null, snapPoint: null,
+    drawAxis: null, lockedAxis: null, drawStartFace: null, drawSnapFace: null, drawLengthInput: '',
+  })
+})

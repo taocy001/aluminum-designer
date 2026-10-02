@@ -118,7 +118,7 @@ test.describe('One click fits the connector to every joint', () => {
     const n = (await store(page)).connectors.length
     await page.getByTestId('auto-connect').click()
     expect((await store(page)).connectors.length).toBe(n)
-    await expect(page.getByTestId('toasts')).toContainText('都已经装好了')
+    await expect(page.getByTestId('toasts')).toContainText('没有待补齐的安装位置')
   })
 
   test('end caps go on free ends, not on joints', async ({ page }) => {
@@ -144,7 +144,7 @@ test.describe('One click fits the connector to every joint', () => {
     await page.getByTestId('auto-connect').click()
     expect((await store(page)).connectors).toEqual(before.connectors)
     expect((await store(page)).past).toBe(before.past)
-    await expect(page.getByTestId('toasts')).toContainText('都已经装好了')
+    await expect(page.getByTestId('toasts')).toContainText('没有待补齐的安装位置')
   })
 
   test('a part that goes on a face says which face is the user\'s call', async ({ page }) => {

@@ -338,7 +338,7 @@ function App() {
           )}
 
           {/* how many parts share these pixels, and which one is highlighted */}
-          {!isDragging && !isDrawing && hoverCandidates.count > 1 && (
+          {held !== 'connector' && !isDragging && !isDrawing && hoverCandidates.count > 1 && (
             <div data-testid="stacked-hud"
               style={{ top: hudTop + 36 }} className="absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-900/90 border border-white/15 text-[10px] font-bold text-slate-300 shadow-lg pointer-events-none z-10">
               {t.stacked(hoverCandidates.index + 1, hoverCandidates.count)}
@@ -371,7 +371,7 @@ function App() {
             )
           })()}
 
-          {held !== null && !isDrawing && !isDragging && !suggestion && (
+          {held === 'profile' && !isDrawing && !isDragging && !suggestion && (
             <div data-testid="start-hud"
               className={`absolute bottom-6 left-1/2 -translate-x-1/2 w-max max-w-[calc(100vw-1rem)] text-center px-3 py-1.5 rounded-full border text-[11px] font-bold shadow-lg pointer-events-none z-10 ${
                 snapKind ? 'bg-slate-900/90 border-cyan-400/50 text-cyan-200' : 'bg-slate-900/90 border-white/15 text-slate-400'}`}>

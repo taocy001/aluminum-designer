@@ -5,6 +5,7 @@ import { connectorEntry, seriesOf, type ConnectorSeries } from './connectorCatal
 
 /** How close a placement point has to be to a member to count as "on" it (mm) */
 const ON_MEMBER_MM = 12
+const POSITION_EPS = 1e-6
 
 export interface MemberContact {
   profile: ProfileData
@@ -14,13 +15,52 @@ export interface MemberContact {
   atEnd: boolean
 }
 
+export interface JointPair {
+  a: ProfileData
+  b: ProfileData
+  /** A design endpoint beside the other member's centreline. */
+  at: THREE.Vector3
+}
+
+function jointPairAt(point: THREE.Vector3, first: ProfileData, second: ProfileData, reach: number): JointPair | null {
+  const [a, b] = first.id < second.id ? [first, second] : [second, first]
+  if (Math.abs(getProfileDir(a).dot(getProfileDir(b))) > 0.001) return null
+  const ae = getProfileEndpoints(a), be = getProfileEndpoints(b)
+  const contacts = [
+    ...[ae.start, ae.end].filter((at) => closestOnSegment(at, be.start, be.end).point.distanceTo(at) <= 30),
+    ...[be.start, be.end].filter((at) => closestOnSegment(at, ae.start, ae.end).point.distanceTo(at) <= 30),
+  ].filter((at) => at.distanceTo(point) <= reach + POSITION_EPS)
+    .sort((x, y) => x.distanceToSquared(point) - y.distanceToSquared(point)
+      || x.x - y.x || x.y - y.y || x.z - y.z)
+  return contacts[0] ? { a, b, at: contacts[0] } : null
+}
+
+/** Every perpendicular member pair meeting near the pointer, independent of array order. */
+export function jointPairsAt(point: THREE.Vector3, profiles: ProfileData[], reach = 70): JointPair[] {
+  const nearby = membersAt(point, profiles, reach).map(({ profile }) => profile)
+    .sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  const pairs: JointPair[] = []
+  for (let i = 0; i < nearby.length; i++) for (let j = i + 1; j < nearby.length; j++) {
+    const pair = jointPairAt(point, nearby[i], nearby[j], reach)
+    if (pair) pairs.push(pair)
+  }
+  return pairs
+}
+
+/** Partners of one endpoint; automatic mounting scans these in O(N²) across the frame. */
+export function jointPartnersAt(point: THREE.Vector3, member: ProfileData, profiles: ProfileData[]): JointPair[] {
+  return profiles.filter((p) => p.id !== member.id)
+    .map((p) => jointPairAt(point, member, p, 30)).filter((pair): pair is JointPair => pair !== null)
+    .sort((a, b) => a.a.id.localeCompare(b.a.id) || a.b.id.localeCompare(b.b.id))
+}
+
 /** Members whose body or endpoints touch `point` */
 export function membersAt(point: THREE.Vector3, profiles: ProfileData[], tol = ON_MEMBER_MM): MemberContact[] {
   const out: MemberContact[] = []
   for (const p of profiles) {
     const { start, end } = getProfileEndpoints(p)
     const { point: closest } = closestOnSegment(point, start, end)
-    if (closest.distanceTo(point) > tol) continue
+    if (closest.distanceTo(point) > tol + POSITION_EPS) continue
     const dir = getProfileDir(p)
     const atStart = point.distanceTo(start) <= tol
     const atEnd = point.distanceTo(end) <= tol
@@ -102,8 +142,10 @@ export function fitConnector(
   const secondary = entry.axes.secondary ? LOCAL[entry.axes.secondary] : anyPerpendicular(primary)
 
   if (entry.fit === 'corner') {
-    const [a, b] = contacts
-    if (b && Math.abs(a.away.dot(b.away)) < 0.9) {
+    const pair = contacts.flatMap((a, i) => contacts.slice(i + 1)
+      .filter((b) => Math.abs(a.away.dot(b.away)) < 0.001).map((b) => [a, b] as const))[0]
+    if (pair) {
+      const [a, b] = pair
       // the arm the part calls `primary` goes on the first member it touches, unless the part
       // is a T: then the stem belongs on the branch and the crossbar on the through member
       const throughFirst = entry.type === 't-bracket' && b.atEnd && !a.atEnd
@@ -111,6 +153,7 @@ export function fitConnector(
       return q(alignAxes(primary, armA.away, secondary, armB.away))
     }
     // only one member: the first arm runs along it and the second points up, or across
+    const a = contacts[0]
     const up = Math.abs(a.away.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)
     return q(alignAxes(primary, a.away, secondary, up))
   }

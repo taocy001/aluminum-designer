@@ -3,7 +3,7 @@ import { useStore, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
 import { faceAlignOnCreate, constrainDrawingFaces, type DrawingFaceOptions, type DrawingFacePlacement } from './faceAlign'
-import { connectorSeatAt } from './bracketSeat'
+import { resolveConnectorPlacement } from './connectorPlacement'
 import { specDims } from './specUtils'
 import { translations } from './translations'
 import { reportEditResult } from './editFeedback'
@@ -144,17 +144,15 @@ export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: Pr
 }
 
 /** Place a connector, oriented to the members it was dropped on */
-export function placeConnector(point: THREE.Vector3, type: string, surfaceNormal?: THREE.Vector3 | null): void {
+export function placeConnector(
+  point: THREE.Vector3, type: string, surfaceNormal?: THREE.Vector3 | null,
+  choice: number | string = 0, searchPoint = point,
+): void {
   const { profiles, connectors, addConnector } = useStore.getState()
-  // the part goes where it can be bolted, which near a corner is not where the pointer is
-  const seat = connectorSeatAt(type, point, profiles, surfaceNormal)
-  const position = new THREE.Vector3(...seat.position)
-  const quaternion = new THREE.Quaternion(...seat.quaternion).normalize()
-  // Match automatic placement's 1 mm / quaternion tolerance after seating: nearby clicks
-  // can resolve to one joint, while another face at that joint still needs its own hardware.
-  if (connectors.some((c) => c.type === type && (c.series ?? 20) === seat.series
-    && new THREE.Vector3(...c.position).distanceTo(position) <= 1
-    && Math.abs(new THREE.Quaternion(...c.quaternion).normalize().dot(quaternion)) > 0.999)) return
+  const { seat, occupied, allowed } = resolveConnectorPlacement(type, point, profiles, connectors, surfaceNormal, choice, searchPoint)
+  const { showToast, language } = useToolStore.getState()
+  if (!allowed) { showToast(translations[language].connectorNoSeat, 'info'); return }
+  if (occupied) { showToast(translations[language].connectorOccupied, 'info'); return }
   reportEditResult(addConnector({
     id: nextId('c'),
     type,

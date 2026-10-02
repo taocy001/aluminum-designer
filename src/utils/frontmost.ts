@@ -10,27 +10,11 @@ export function cutAway(v: THREE.Vector3): boolean {
   return s.flip ? at < s.at : at > s.at
 }
 
-/**
- * What is actually drawn at a pixel.
- *
- * The screen-space picker is a set of generous radii, and it has to be: a member twenty
- * millimetres across is a couple of pixels at any useful zoom, and asking for that kind of
- * precision is asking for a bad afternoon. But a heuristic that is generous about near misses
- * must not then contradict a direct hit — if a door is drawn at that pixel, clicking there is
- * clicking the door, whatever the ordering would otherwise have preferred.
- *
- * So the real geometry is asked as well, and when it answers with something the picker also
- * found, that answer goes first. The radii still carry every case where nothing was hit
- * squarely, which is most of them.
- */
-
 const raycaster = new THREE.Raycaster()
 
 /**
- * The id of the part whose mesh the ray hits first, or null for empty space.
- *
- * The camera goes in because a fat line — the kind drei draws for guides and dimensions —
- * measures its own thickness in screen space and cannot be intersected without one.
+ * The nearest visible part mesh, or null for empty space. Wide lines require a camera
+ * for raycasting; sectioned-away intersections are excluded.
  */
 export function frontmostId(scene: THREE.Object3D, ray: THREE.Ray, camera: THREE.Camera): string | null {
   raycaster.set(ray.origin, ray.direction)
@@ -48,7 +32,7 @@ export function frontmostId(scene: THREE.Object3D, ray: THREE.Ray, camera: THREE
   return null
 }
 
-/** Move the part that is actually drawn at the pixel to the front of the list */
+/** Prefer a direct mesh hit over tolerance matches; preserve the remaining cycling order. */
 export function promoteFrontmost(list: ScreenPick[], id: string | null): ScreenPick[] {
   if (!id || list.length < 2 || list[0].id === id) return list
   const i = list.findIndex((p) => p.id === id)

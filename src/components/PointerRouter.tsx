@@ -479,6 +479,7 @@ const PointerRouter: React.FC = () => {
         return
       }
       if (e.key !== 'Tab') return
+      if (useToolStore.getState().held === 'connector' || useToolStore.getState().isDrawing) return
       const target = e.target as HTMLElement | null
       if (target?.closest('input,textarea,select,button,[contenteditable="true"]')) return
       const c = candidates.current

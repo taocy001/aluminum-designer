@@ -1,14 +1,14 @@
 import { noteNext } from './opLog'
 import { reportEditResult } from './editFeedback'
 import * as THREE from 'three'
-import { useStore, type ConnectorData, type ProfileData } from '../store/useStore'
+import { useStore, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame, connectorOBB, trimmedOBB } from './analysis'
 import { obbPenetration, type OBB } from './obb'
 import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from './connectorCatalog'
-import { fitConnector } from './connectorFit'
-import { closestOnSegment, getProfileDir, getProfileEndpoints } from './geometryCore'
-import { flushFace, sharedEdge } from './specCompat'
+import { fitConnector, jointPartnersAt } from './connectorFit'
+import { getProfileDir, getProfileEndpoints } from './geometryCore'
+import { sharedEdge } from './specCompat'
 import { auditBrackets, connectorSeatAt, endCapSeat, seatsFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
@@ -16,8 +16,6 @@ import { equipmentClearance } from './equipmentGeometry'
 
 /** a joint already has a part if one sits within this of it (mm) */
 const OCCUPIED_MM = 30
-/** how close an end has to be to another member's centreline to be its joint partner (mm) */
-const PARTNER_TOL = 30
 
 /** A cap occupies one end plane; its square section may use a different roll convention. */
 function sameCapSeat(a: Pick<ConnectorData, 'position' | 'quaternion' | 'series'>,
@@ -39,26 +37,13 @@ function crowded(part: ConnectorData, placed: ConnectorData[], metal: OBB[]): bo
   return metal.some((m) => obbPenetration(box, m, 3) > 3)
 }
 
-/** The member this end butts into: the nearest one whose centreline it lands on */
-function partnerAt(at: THREE.Vector3, self: ProfileData, profiles: ProfileData[]): ProfileData | null {
-  let best: { p: ProfileData; d: number } | null = null
-  for (const q of profiles) {
-    if (q.id === self.id) continue
-    const { start, end } = getProfileEndpoints(q)
-    const d = closestOnSegment(at, start, end).point.distanceTo(at)
-    if (d > PARTNER_TOL) continue
-    if (!best || d < best.d) best = { p: q, d }
-  }
-  return best?.p ?? null
-}
-
 export interface AutoConnectResult {
   placed: number
-  /** joints that already had something on them */
+  /** Installation positions already occupied by a valid connector. */
   skipped: number
   /** parts of this type left stranded by a member that moved, cleared away */
   removed?: number
-  /** joints that want one and cannot take one: no line is a slot on both members */
+  /** No valid seat, or every candidate is obstructed by metal or another connector. */
   unbolted?: number
   /** Candidates obstructed by an equipment body or its reserved space. */
   blocked?: number
@@ -68,7 +53,7 @@ export interface AutoConnectResult {
 
 /**
  * Add missing connectors to compatible inferred joints and free ends.
- * Use fitConnector for placement and the host member for the series. Face-mounted types require explicit placement.
+ * Corner seats follow each member pair and shared slot line. Face-mounted types require explicit placement.
  */
 export function autoConnect(type: string): AutoConnectResult {
   const entry = connectorEntry(type)
@@ -92,7 +77,7 @@ export function autoConnect(type: string): AutoConnectResult {
     const box = connectorOBB(c)
     return reserved.some((e) => obbPenetration(box, e, 1) > 0)
   }
-  // Deduplicate against existing connectors of the requested type, preserving separate seats for distinct joints.
+  // Valid connectors with the same fit occupy their existing seats.
   const badBrackets = new Set(auditBrackets(profiles, connectors, trims).map((c) => c.id))
   const active = connectors.filter((c) => c.type !== type || c.locked || !badBrackets.has(c.id))
   const validExisting = active.filter((c) => connectorEntry(c.type)?.fit === entry.fit
@@ -100,22 +85,49 @@ export function autoConnect(type: string): AutoConnectResult {
   const occupied = (candidate: ConnectorData) => [...validExisting, ...made].some((c) =>
     type === 'end-cap' ? c.type === 'end-cap' && sameCapSeat(c, candidate)
       : new THREE.Vector3(...c.position).distanceTo(new THREE.Vector3(...candidate.position)) <= 1
-        && Math.abs(new THREE.Quaternion(...c.quaternion).dot(new THREE.Quaternion(...candidate.quaternion))) > 0.999)
+        && Math.abs(new THREE.Quaternion(...c.quaternion).normalize().dot(new THREE.Quaternion(...candidate.quaternion).normalize())) > 0.999)
 
   const made: ConnectorData[] = []
   let skipped = 0
-  /** joints that want this part but offer it nowhere to bolt */
+  // Installation positions with no valid, unobstructed seat.
   let unbolted = 0
   let blocked = 0
+  const visitedPairs = new Set<string>()
   for (const p of profiles) {
     const tr = trims.get(p.id)
     if (!tr) continue
     const { start, end } = getProfileEndpoints(p)
     for (const [where, at] of [[tr.start, start], [tr.end, end]] as const) {
-      // a corner bracket goes where an end butts into something; a cap or a foot where
-      // nothing is attached at all
-      const wantsOne = entry.fit === 'corner' ? where.butt : where.partners === 0
-      if (!wantsOne) continue
+      if (entry.fit === 'corner') {
+        for (const { a, b, at: joint } of jointPartnersAt(at, p, profiles)) {
+          const key = JSON.stringify([a.id, b.id])
+          if (visitedPairs.has(key)) continue
+          visitedPairs.add(key)
+          wanted.push(joint)
+          const candidates = seatsFor(type, a, b, joint)
+            .filter((s) => auditBrackets(profiles, [{ id: 'candidate', type, ...s }], trims).length === 0)
+          if (!candidates.length) { if (sharedEdge(a.spec, b.spec)) unbolted++; continue }
+          // Each shared slot line can receive one bracket. Opposite T-joint sides are
+          // alternatives for that line; they must not consume a second slot's seat.
+          const across = new THREE.Vector3().crossVectors(getProfileDir(a), getProfileDir(b)).normalize()
+          const lanes = new Map<number, typeof candidates>()
+          for (const seat of candidates) {
+            const lane = Math.round(new THREE.Vector3(...seat.position).dot(across) * 1000)
+            lanes.set(lane, [...(lanes.get(lane) ?? []), seat])
+          }
+          for (const seats of lanes.values()) {
+            const options = seats.map((s) => ({ id: 'candidate', type, ...s }))
+            if (options.some(occupied)) { skipped++; continue }
+            const available = options.filter((c) => !crowded(c, [...active, ...made], metal))
+            const legal = available.find((c) => !equipmentBlocked(c))
+            if (!legal) { if (available.length) blocked++; else unbolted++; continue }
+            made.push({ ...legal, id: nextId('c') })
+          }
+        }
+        continue
+      }
+      // Inline parts use a free end.
+      if (where.partners !== 0) continue
       // Feet require a free end whose outward direction points down.
       if (entry.axes.towards === 'in') {
         const outward = getProfileDir(p)
@@ -126,10 +138,6 @@ export function autoConnect(type: string): AutoConnectResult {
       if (cap) capSeats.push(cap)
       wanted.push(cap ? new THREE.Vector3(...cap.position) : at.clone())
 
-      // Seat candidates align shared faces and bolt holes with slot lines.
-      const partner = partnerAt(at, p, profiles)
-      const candidates = partner ? seatsFor(type, p, partner, at) : []
-      const seat = candidates.find((s) => auditBrackets(profiles, [{ id: 'candidate', type, ...s }], trims).length === 0)
       let position: [number, number, number]
       let quaternion: [number, number, number, number]
       let series: ConnectorSeries
@@ -144,33 +152,15 @@ export function autoConnect(type: string): AutoConnectResult {
         position = inline.position
         quaternion = inline.quaternion
         series = inline.series
-      } else if (seat) {
-        position = seat.position
-        quaternion = seat.quaternion
-        series = seat.series
-      } else if (partner && (entry.seat === 'angle' || entry.seat === 'plate')) {
-        // Count unsupported bolt alignment only when the sections have a shared edge.
-        if (sharedEdge(p.spec, partner.spec)) unbolted++
-        continue
       } else {
-        // caps, feet and the like sit on an end, where there is no second member to line up to
-        const face = partner ? flushFace(p, partner, at) : null
-        const spot = at.clone()
-        if (face) spot.addScaledVector(face.normal, face.offset)
         const placement = fitConnector(type, at, profiles, null)
-        position = [spot.x, spot.y, spot.z]
+        position = [at.x, at.y, at.z]
         quaternion = placement.quaternion
         series = placement.series ?? seriesOf(p.spec)
       }
-      let part = { id: nextId('c'), type, series, position, quaternion }
+      const part = { id: nextId('c'), type, series, position, quaternion }
       if (occupied(part)) { skipped++; continue }
-      if (entry.fit === 'corner') {
-        const available = candidates.map((s) => ({ ...part, ...s })).filter((c) =>
-          !occupied(c) && auditBrackets(profiles, [c], trims).length === 0 && !crowded(c, [...active, ...made], metal))
-        const legal = available.find((c) => !equipmentBlocked(c))
-        if (!legal) { if (available.length) blocked++; else unbolted++; continue }
-        part = legal
-      } else if (equipmentBlocked(part)) { blocked++; continue }
+      if (equipmentBlocked(part)) { blocked++; continue }
       made.push(part)
     }
   }

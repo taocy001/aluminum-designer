@@ -63,7 +63,9 @@ test.describe('A bracket goes where it can be bolted', () => {
     await page.mouse.click(c.x, c.y)
     await settle(page)
     await page.waitForTimeout(250)
-    const placed = (await store(page)).connectors[0]
+    const connectors = (await store(page)).connectors
+    expect(connectors).toHaveLength(1)
+    const placed = connectors[0]
     // on the corner rather than at x = 70 where it was dropped. Not at x = 0 either: an
     // angle bracket's vertex is where the two mounting faces meet, which is half a section
     // out from each centreline.
@@ -79,14 +81,26 @@ test.describe('A bracket goes where it can be bolted', () => {
     await settle(page)
     await page.waitForTimeout(200)
     const ghost = await page.evaluate(() => {
-      const w = (window as any).__aluframe
-      const t = w.tool.getState()
-      return w.seatOf ? null : t.currentPoint ? true : false
+      let pose: { position: number[]; quaternion: number[] } | null = null
+      ;(window as any).__aluframe.sceneRoot.traverse((object: any) => {
+        if (!object.userData.connectorPreview) return
+        const part = object.children.find((child: any) => Object.prototype.hasOwnProperty.call(child.userData, 'connectorId'))
+        if (part) pose = { position: part.position.toArray(), quaternion: part.quaternion.toArray() }
+      })
+      return pose
     })
-    expect(ghost).toBe(true)
+    expect(ghost).not.toBeNull()
+    const before = await store(page)
     await page.mouse.click(c.x, c.y)
     await settle(page)
     await page.waitForTimeout(250)
+    const after = await store(page)
+    expect(after.connectors).toHaveLength(before.connectors.length + 1)
+    expect(after.past).toBe(before.past + 1)
+    const placed = after.connectors.at(-1)!
+    for (let axis = 0; axis < 3; axis++) expect(placed.position[axis]).toBeCloseTo(ghost!.position[axis], 5)
+    const alignment = placed.quaternion.reduce((sum: number, component: number, i: number) => sum + component * ghost!.quaternion[i], 0)
+    expect(Math.abs(alignment)).toBeCloseTo(1, 5)
     expect(await faults(page)).toEqual([])
   })
 

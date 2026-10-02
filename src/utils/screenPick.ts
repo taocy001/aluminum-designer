@@ -9,29 +9,24 @@ import { cutAway } from './frontmost'
 import { obbCorners } from './obb'
 import { profileBodyEndpoints } from './profileFaces'
 import { computeAllTrims, type ProfileTrims } from './jointUtils'
+import { connectorMeshes } from './connectorGeometry'
+import { connectorScale } from './connectorCatalog'
 
 /** Extra pixels of slack around a member's rendered body, so thin beams stay easy to hit */
 export const PICK_SLACK_PX = 7
-const CONNECTOR_RADIUS_PX = 20
+const CONNECTOR_SLACK_PX = 20
 /** Prefer connectors over member endpoints at comparable depth. */
 const CONNECTOR_DEPTH_BIAS = 60
 /** a board seen edge-on is a sliver: this much slack makes it as clickable as it is visible */
 const PANEL_SLACK_PX = 4
 /** how much being under the pointer beats being nearer the camera, for parts a few pixels across */
 const CONNECTOR_AIM_WEIGHT = 40
-/**
- * A door is a square metre of board across the front of a cabinet, and everything behind it
- * was unselectable while it won on depth. It is also the easiest thing on the drawing to hit
- * somewhere else, so while building it is the last resort: if anything else is under the
- * pointer, that is what was meant. While looking, the caller asks for the nearest fitting and
- * this ordering does not apply.
- */
+/** Fittings remain available for cycling; direct mesh hits determine the visible target. */
 const FITTING_DEPTH_PENALTY = 1e6
 /** anything nearer than this to the camera plane cannot be projected meaningfully */
 const NEAR_EPS = 1
 
-/** Winding test on the projected quad, which stays correct however the board is turned */
-/** Convex hull of the projected box corners, used as the screen-space outline. */
+/** Convex hull of projected solid vertices. */
 function hull2d(pts: THREE.Vector2[]): THREE.Vector2[] {
   const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y)
   if (p.length < 3) return p
@@ -73,6 +68,65 @@ function insideQuad(q: THREE.Vector2[], p: THREE.Vector2): boolean {
     else if (s !== sign) return false
   }
   return sign !== 0
+}
+
+const connectorVertices = new WeakMap<THREE.BufferGeometry, readonly THREE.Vector3[]>()
+const connectorBounds = new Map<string, readonly THREE.Vector3[]>()
+
+/** Unique vertices of a shared solid, including the outline of triangular plates. */
+function solidVertices(geometry: THREE.BufferGeometry): readonly THREE.Vector3[] {
+  let vertices = connectorVertices.get(geometry)
+  if (!vertices) {
+    const unique = new Map<string, THREE.Vector3>()
+    const positions = geometry.getAttribute('position')
+    for (let i = 0; i < positions.count; i++) {
+      const point = new THREE.Vector3().fromBufferAttribute(positions, i)
+      unique.set(`${point.x},${point.y},${point.z}`, point)
+    }
+    vertices = [...unique.values()]
+    connectorVertices.set(geometry, vertices)
+  }
+  return vertices
+}
+
+function connectorBoundCorners(type: string): readonly THREE.Vector3[] {
+  let corners = connectorBounds.get(type)
+  if (!corners) {
+    const box = new THREE.Box3().setFromPoints(connectorMeshes(type).flatMap(({ geometry }) => [...solidVertices(geometry)]))
+    const points: THREE.Vector3[] = []
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      points.push(new THREE.Vector3(x, y, z))
+    }
+    corners = points
+    connectorBounds.set(type, corners)
+  }
+  return corners
+}
+
+/** Distance to the projected solids, retaining gaps between a connector's separate arms. */
+function connectorDistancePx(
+  connector: ConnectorData, cursor: THREE.Vector2, camera: THREE.Camera, size: ScreenSize,
+  camPos: THREE.Vector3, fwd: THREE.Vector3,
+): number {
+  const position = new THREE.Vector3(...connector.position)
+  const quaternion = new THREE.Quaternion(...connector.quaternion).normalize()
+  const scale = connectorScale(connector.series ?? 20)
+  const transform = (v: THREE.Vector3) => v.clone().multiplyScalar(scale).applyQuaternion(quaternion).add(position)
+  // Reject distant parts before projecting every vertex of their plates and fasteners.
+  const bounds = connectorBoundCorners(connector.type).map(transform)
+  if (bounds.every(v => v.clone().sub(camPos).dot(fwd) > NEAR_EPS)) {
+    const rect = new THREE.Box2().setFromPoints(bounds.map(v => toScreen(v, camera, size))).expandByScalar(CONNECTOR_SLACK_PX)
+    if (!rect.containsPoint(cursor)) return Infinity
+  }
+  let distance = Infinity
+  for (const { geometry } of connectorMeshes(connector.type)) {
+    const vertices = solidVertices(geometry).map(transform)
+    if (vertices.some(v => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
+    const outline = hull2d(vertices.map(v => toScreen(v, camera, size)))
+    if (insideQuad(outline, cursor)) return 0
+    distance = Math.min(distance, distanceToOutline(outline, cursor))
+  }
+  return distance
 }
 
 function segmentDistancePx(a: THREE.Vector2, b: THREE.Vector2, p: THREE.Vector2): { dist: number; t: number } {
@@ -175,12 +229,10 @@ export function pickCandidatesAtScreen(
     found.push({ score: depth, pick: { kind: 'panel', id: b.id, point: centre, depth } })
   }
 
-  // A drawer or a door is picked by the box it fills. It sits proud of the frame, so it is
-  // in front of the members around it — which is what makes it easy to press when looking.
+  // Door and drawer candidates use their current rendered bounds.
   for (const f of fittings) {
     const centre = new THREE.Vector3(...f.position)
     if (centre.clone().sub(camPos).dot(fwd) <= NEAR_EPS) continue
-    // where it is now, not where its opening is: an open door is out in the room
     const corners = obbCorners(fittingObb(f))
     if (corners.some((v) => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
     const outline = hull2d(corners.map((v) => toScreen(v, camera, size)))
@@ -209,12 +261,10 @@ export function pickCandidatesAtScreen(
     const world = new THREE.Vector3(...c.position)
     if (world.clone().sub(camPos).dot(fwd) <= NEAR_EPS) continue
     if (cutAway(world)) continue
-    const dist = toScreen(world, camera, size).distanceTo(cursor)
-    if (dist > CONNECTOR_RADIUS_PX) continue
+    const dist = connectorDistancePx(c, cursor, camera, size, camPos, fwd)
+    if (dist > CONNECTOR_SLACK_PX) continue
     const depth = world.distanceTo(camPos)
-    // Among parts this small, several are inside the same grab radius at once, and the one
-    // that was meant is the one nearest the pointer — not whichever happens to be a few
-    // millimetres closer to the camera. Aiming at a part has to select that part.
+    // Screen distance separates nearby connectors within the same tolerance region.
     found.push({
       score: depth - CONNECTOR_DEPTH_BIAS + dist * CONNECTOR_AIM_WEIGHT,
       pick: { kind: 'connector', id: c.id, point: world, depth },

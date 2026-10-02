@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test'
 import { openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, store, tool, setView } from './helpers'
 
-const CONNECTORS = ['L型角码', '内角码', '加强筋', '直连板', 'T型角码', '十字连接板', '三维角码', '对接板', '端盖', '滑块螺母', '合页', '轴承座', '脚轮座', '调节脚']
+const CONNECTORS = ['直连板', '十字连接板', '对接板', '端盖', '滑块螺母', '合页', '轴承座', '脚轮座', '调节脚']
+const CORNER_CONNECTORS = ['L型角码', '内角码', '加强筋', 'T型角码', '三维角码']
 
 test.describe('Connectors', () => {
   test.beforeEach(async ({ page }) => { await openApp(page) })
 
-  test('every connector type can be placed at a snapped endpoint, selected and deleted', async ({ page }) => {
+  test('end and surface connectors can be placed, selected and deleted', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     for (let i = 0; i < CONNECTORS.length; i++) {
@@ -27,7 +28,7 @@ test.describe('Connectors', () => {
       for (const axis of [1, 2]) expect(cs[i].position[axis]).toBeCloseTo(want[axis], 5)
       expect(Math.abs(cs[i].position[0] - want[0])).toBeLessThanOrEqual((under ? 12 : 0) + 1e-5)
     }
-    await expect(page.getByTestId('bom-table')).toContainText('L型角码')
+    await expect(page.getByTestId('bom-table')).toContainText('直连板')
     // select one connector in navigate mode and delete it
     await page.keyboard.press('Escape')
     expect((await tool(page)).held).toBe(null)
@@ -41,6 +42,17 @@ test.describe('Connectors', () => {
     await page.keyboard.press('Control+z')
     expect((await store(page)).connectors).toHaveLength(CONNECTORS.length)
     expect((await store(page)).connectors[0].id).toBe(c0.id)
+  })
+
+  test('corner connectors require a joint and leave no edit at a free end', async ({ page }) => {
+    await enterDraw(page, '2020')
+    expect(await drawMember(page, [0, 0, 0], [600, 10, 0])).toBe(1)
+    const before = await store(page)
+    for (const name of CORNER_CONNECTORS) {
+      await page.getByRole('button', { name, exact: true }).click()
+      await clickWorld(page, [600, 10, 0])
+      expect(await store(page)).toEqual(before)
+    }
   })
 
   test('clicking the active connector again empties the hand', async ({ page }) => {
@@ -139,15 +151,18 @@ test.describe('Connectors land the right way round', () => {
 
   test('the part takes the series of the member it lands on', async ({ page }) => {
     await enterDraw(page, '4040')
+    expect(await drawExact(page, [0, 0, 0], [0, 300, 0], 600)).toBe(1)
     await drawMember(page, [0, 0, 0], [600, 20, 0])
     await page.getByRole('button', { name: 'L型角码', exact: true }).click()
-    await clickWorld(page, [600, 20, 0])
+    await clickWorld(page, [0, 20, 0])
+    expect((await store(page)).connectors).toHaveLength(1)
     expect((await store(page)).connectors[0].series).toBe(40)
   })
 
   test('the BOM lists connectors by series and derives the fasteners', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawExact(page, [0, 0, 0], [0, 300, 0], 600)
+    await drawExact(page, [600, 0, 0], [600, 300, 0], 600)
     await drawMember(page, [0, 10, 0], [600, 10, 0])
     await page.getByRole('button', { name: 'L型角码', exact: true }).click()
     await clickWorld(page, [0, 10, 0])

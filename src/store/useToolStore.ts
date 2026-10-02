@@ -303,8 +303,9 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setActiveSpec: (spec) => set({ activeSpec: spec, held: 'profile', selectMode: false }),
   setActiveConnector: (type) => set({
     activeConnectorType: type, held: type ? 'connector' : null, selectMode: false,
+    isDrawing: false, drawOrigin: null, startPoint: null, currentPoint: null,
+    snapPoint: null, snapKind: null, drawAxis: null, lockedAxis: null, alignGuides: [], hoverTargetId: null,
     drawStartFace: null, drawSnapFace: null, drawStartAlignmentFace: null, drawSnapAlignmentFace: null, drawLengthInput: '',
-    ...(type ? {} : { isDrawing: false, startPoint: null, currentPoint: null, snapPoint: null }),
   }),
   setLanguage: (language) => set({ language }),
   triggerCameraReset: (scope = 'all') => set((s) => ({ cameraResetTrigger: s.cameraResetTrigger + 1, cameraFitScope: scope })),
