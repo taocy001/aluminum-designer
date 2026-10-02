@@ -3,7 +3,7 @@ import type { ThroughRule } from './jointUtils'
 import { CONNECTOR_CATALOG } from './connectorCatalog'
 import { migrateFittings } from './migrate'
 
-export const PROJECT_VERSION = 5
+export const PROJECT_VERSION = 6
 export interface ProjectGeometry {
   profiles: ProfileData[]
   connectors: ConnectorData[]
@@ -74,6 +74,7 @@ export function parseProjectDocument(input: unknown): ProjectDocument {
       || !optional(f.hinge, (v) => oneOf(v, ['left', 'right', 'top', 'bottom']))
       || !optional(f.hingeType, (v) => oneOf(v, ['cup', 'slot', 'continuous']))
       || !optional(f.overlay, (v) => oneOf(v, ['full', 'half', 'inset']))
+      || !optional(f.meeting, (v) => f.kind === 'door' && oneOf(v, ['left', 'right']))
       || !optional(f.swing, (v) => finite(v) && v > 0 && v <= 180)
       || !optional(f.stacked, (v) => record(v) && optional(v.above, (x) => typeof x === 'boolean')
         && optional(v.below, (x) => typeof x === 'boolean'))) fail('fitting dimensions or mechanism')

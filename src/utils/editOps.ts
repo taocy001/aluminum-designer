@@ -283,6 +283,7 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
     return { ...f, id: nextId('f'), locked: false, position: positionAt(f.position),
       quaternion: reflectedQuaternion(f.quaternion, axis),
       ...(f.kind === 'door' ? { hinge: hinge === 'left' ? 'right' : hinge === 'right' ? 'left' : hinge } : {}),
+      ...(f.meeting ? { meeting: f.meeting === 'left' ? 'right' : 'left' } : {}),
     }
   })
   addCopies({ profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies })
@@ -655,7 +656,7 @@ const PART_FIELDS = {
   profiles: ['spec', 'length', 'position', 'quaternion', 'miterCuts', 'holes'],
   connectors: ['type', 'series', 'position', 'quaternion'],
   panels: ['width', 'height', 'thickness', 'material', 'position', 'quaternion'],
-  fittings: ['kind', 'width', 'height', 'depth', 'frame', 'material', 'open', 'hinge', 'hingeType', 'overlay', 'swing', 'stacked', 'position', 'quaternion'],
+  fittings: ['kind', 'width', 'height', 'depth', 'frame', 'material', 'open', 'hinge', 'hingeType', 'overlay', 'swing', 'meeting', 'stacked', 'position', 'quaternion'],
 }
 
 const finiteTuple = (value: unknown, length: number): value is number[] => Array.isArray(value)
@@ -705,6 +706,7 @@ function validLiveUpdates(kind: keyof PartDocument, part: { locked?: boolean }, 
     if ('hinge' in updates && !['left', 'right', 'top', 'bottom'].includes(updates.hinge as string)) return null
     if ('hingeType' in updates && !['cup', 'slot', 'continuous'].includes(updates.hingeType as string)) return null
     if ('overlay' in updates && !['full', 'half', 'inset'].includes(updates.overlay as string)) return null
+    if (next.meeting !== undefined && (next.kind !== 'door' || !['left', 'right'].includes(next.meeting as string))) return null
     if ('stacked' in updates) {
       const stacked = updates.stacked as FittingData['stacked']
       if (!stacked || typeof stacked !== 'object' || Object.keys(stacked).some((key) =>

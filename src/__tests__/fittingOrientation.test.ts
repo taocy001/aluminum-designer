@@ -10,6 +10,7 @@ import { fittingParts, leafObb } from '../utils/fittingGeometry'
 import { obbCorners } from '../utils/obb'
 import { computeAllTrims } from '../utils/jointUtils'
 import { findConflicts } from '../utils/analysis'
+import { getProfileDir } from '../utils/geometryCore'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 const cabinet = (x0: number, z0 = 0, width = 600, spec: ProfileSpec = '2020') => {
@@ -33,20 +34,30 @@ beforeEach(() => {
   useStore.getState().loadDocument({ profiles: [], connectors: [], panels: [], fittings: [], throughRule: 'rails' })
 })
 
-it('draws a new drawer toward the existing doors in the user kitchen bay', () => {
+it.each([[1430, 1905], [1905, 2380]])('draws new drawers toward the existing doors in kitchen bay %s–%s', (left, right) => {
   const document = parseProjectDocument(kitchen)
   useStore.getState().loadDocument({ ...document, fittings: document.fittings.filter((f) => f.kind === 'door') })
-  select(posts(document.profiles).filter((p) => p.position[0] === 1430 || p.position[0] === 2380))
+  const chosen = document.profiles.filter((p) => Math.abs(getProfileDir(p).y) > 0.999
+    && (p.position[0] === left || p.position[0] === right))
+  expect(chosen).toHaveLength(4)
+  select(chosen)
   expect(addFittingFromSelection({ kind: 'drawer', frontHeight: 310, count: 2 })).toBe(true)
   expect(lastFacing().z).toBeGreaterThan(0.9)
+  const drawers = useStore.getState().fittings.filter((f) => f.kind === 'drawer')
+  expect(drawers).toHaveLength(2)
+  for (const drawer of drawers) expect(drawer.width).toBeCloseTo(455)
 })
 
-it('keeps the symmetric kitchen bay stable before any fitting has established a front', () => {
+it.each([[1430, 1905], [1905, 2380]])('keeps kitchen bay %s–%s facing out before any fitting establishes a front', (left, right) => {
   const document = parseProjectDocument(kitchen)
   useStore.getState().loadDocument({ ...document, fittings: [] })
-  select(posts(document.profiles).filter((p) => p.position[0] === 1430 || p.position[0] === 2380))
+  const chosen = document.profiles.filter((p) => Math.abs(getProfileDir(p).y) > 0.999
+    && (p.position[0] === left || p.position[0] === right))
+  expect(chosen).toHaveLength(4)
+  select(chosen)
   expect(addFittingFromSelection({ kind: 'drawer', frontHeight: 310, count: 2 })).toBe(true)
   expect(lastFacing().z).toBeGreaterThan(0.9)
+  expect(useStore.getState().fittings.every((f) => Math.abs(f.width - 455) < 1e-7)).toBe(true)
 })
 
 it('does not inherit the opposite front of a nearby separate cabinet', () => {

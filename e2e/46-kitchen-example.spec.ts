@@ -42,7 +42,7 @@ test('kitchen file opens all fronts toward the user with attached drawer boxes',
   await useDownloadFallback(page)
   await openApp(page)
   await page.locator('input[type=file][accept="application/json,.json"]').setInputFiles(resolve('examples/flat/01-kitchen-base.json'))
-  await expect.poll(async () => (await store(page)).fittings.length).toBe(6)
+  await expect.poll(async () => (await store(page)).fittings.length).toBe(9)
   await page.getByTestId('fit-view').click()
   await settle(page)
   const saved = await store(page)

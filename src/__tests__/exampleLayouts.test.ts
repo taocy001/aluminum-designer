@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { parseProjectDocument } from '../utils/document'
 import { computeAllTrims, computeFrameBounds, getProfileDir, setThroughRule, trimmedBox } from '../utils/jointUtils'
-import { fittingParts, openTransform } from '../utils/fittingGeometry'
+import { fittingParts, openTransform, swingClashes } from '../utils/fittingGeometry'
+import type { FittingData } from '../store/useStore'
 import { auditBrackets } from '../utils/bracketSeat'
 import { findConflicts } from '../utils/analysis'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
+const frontBoard = (f: FittingData) => fittingParts(f).boards.find((b) => b.role === 'front' || b.role === 'panel')!
 const loaded = import.meta.glob(['../../examples/*.json', '../../examples/flat/*.json'], { eager: true }) as Record<string, { default: unknown }>
 const drawings = Object.entries(loaded).filter(([file]) => !file.endsWith('/connector-demo.json'))
 const load = (name: string) => {
@@ -37,11 +39,11 @@ describe('example cabinet layouts', () => {
   })
 
   it.each([
-    ['01-kitchen-base', [780, 610, 930, 280, 680]],
+    ['01-kitchen-base', [780, 610, 455, 455, 280, 680]],
     ['02-kitchen-wall', [780, 610, 930, 280, 680]],
     ['03-tall-unit', [910, 580]],
     ['04-shoe-cupboard', [580, 580]],
-    ['05-media-unit', [580, 1180, 580]],
+    ['05-media-unit', [580, 580, 580, 580]],
     ['06-wardrobe', [960, 960]],
     ['07-desk', [880, 480]],
     ['08-bookshelf', [680, 680]],
@@ -85,7 +87,7 @@ describe('example cabinet layouts', () => {
 
   it('the kitchen drawers close on the same front as its doors and pull towards the user', () => {
     const doc = load('01-kitchen-base')
-    expect(doc.fittings).toHaveLength(6)
+    expect(doc.fittings).toHaveLength(9)
     for (const f of doc.fittings) {
       const q = new THREE.Quaternion(...f.quaternion)
       const out = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
@@ -116,6 +118,65 @@ describe('example cabinet layouts', () => {
       expect(doc.fittings.every((f) => new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...f.quaternion)).z < -0.99)).toBe(true)
     }
   })
+
+  it.each([
+    ['01-kitchen-base', 400, 780, 6],
+    ['01-kitchen-base', 3030, 680, 6],
+    ['02-kitchen-wall', 400, 780, 6],
+    ['02-kitchen-wall', 1115, 610, 6],
+    ['02-kitchen-wall', 3030, 680, 6],
+    ['06-wardrobe', 500, 960, 15],
+    ['06-wardrobe', 1500, 960, 15],
+    ['09-laundry', 1075, 810, 6],
+    ['wardrobe-2-door', 460, 840, 15],
+    ['wardrobe-2-door', 1340, 840, 15],
+  ] as const)('%s has two outward-hinged leaves covering the bay at x=%s', (name, x, width, lap) => {
+    const doc = load(name)
+    const pair = doc.fittings.filter((f) => f.kind === 'door' && f.meeting
+      && Math.abs(f.position[0] - x) < width / 2).sort((a, b) => a.position[0] - b.position[0])
+    expect(pair).toHaveLength(2)
+    expect(pair.map((f) => f.hinge)).toEqual(['left', 'right'])
+    expect(pair.map((f) => f.meeting)).toEqual(['right', 'left'])
+    const extents = pair.map((f) => {
+      const board = frontBoard(f)
+      const center = f.position[0] + board.position[0]
+      return [center - board.width / 2, center + board.width / 2]
+    })
+    expect(extents[0][0]).toBeCloseTo(x - width / 2 - lap, 6)
+    expect(extents[1][1]).toBeCloseTo(x + width / 2 + lap, 6)
+    expect(extents[1][0] - extents[0][1]).toBeCloseTo(3, 6)
+    const trims = computeAllTrims(doc.profiles)
+    for (const open of [0.25, 0.5, 0.75, 1]) {
+      for (const ids of [[pair[0].id], [pair[1].id], pair.map((f) => f.id)]) {
+        const fittings = doc.fittings.map((f) => ids.includes(f.id) ? { ...f, open } : f)
+        expect(findConflicts(doc.profiles, trims, doc.connectors, doc.panels, fittings)).toEqual([])
+      }
+    }
+  })
+
+  it('keeps the dishwasher entry free of ordinary cabinet doors and drawer fronts', () => {
+    const doc = load('01-kitchen-base')
+    const fronts = doc.fittings.map((f) => {
+      const b = frontBoard(f)
+      const x = f.position[0] + b.position[0]
+      return [x - b.width / 2, x + b.width / 2]
+    })
+    expect(fronts.filter(([left, right]) => right > 810 && left < 1420)).toEqual([])
+  })
+
+  it.each(drawings)('%s uses door boards at most 610 mm wide and drawer openings at most 580 mm wide', (_file, source) => {
+    const doc = parseProjectDocument(source.default)
+    for (const f of doc.fittings) {
+      if (f.kind === 'door') expect(frontBoard(f).width).toBeLessThanOrEqual(610.001)
+      else expect(f.width).toBeLessThanOrEqual(580.001)
+    }
+  })
+
+  it.each(['01-kitchen-base', '02-kitchen-wall', '06-wardrobe', '09-laundry', 'wardrobe-2-door'])(
+    '%s keeps adjacent doors apart throughout their configured swings', (name) => {
+      expect(swingClashes(load(name).fittings)).toEqual([])
+    },
+  )
 
   it('bolts both ends of the kitchen cupboard shelf rails to their posts', () => {
     const doc = load('01-kitchen-base')

@@ -14,7 +14,7 @@ import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize, setPanelsMaterial, setPanelsSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
-import { addFittingFromSelection, setFittingOpen, setFittingsOpen, updateFittings } from '../utils/fittingOps'
+import { addFittingFromSelection, canSplitDoor, setFittingOpen, setFittingsOpen, splitSelectedDoors, updateFittings } from '../utils/fittingOps'
 import { downloadText, forgetSavedFile, openProject, saveProject, savedFileName } from '../utils/projectFile'
 import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
@@ -683,7 +683,7 @@ const Sidebar: React.FC = () => {
                     </button>
                   ))}
                 </div>
-                <div className="grid grid-cols-5 gap-1">
+                <div className="grid grid-cols-6 gap-1">
                   {HINGE_ANGLES.map((deg) => (
                     <button key={deg} data-testid={`hinge-angle-${deg}`} onClick={() => setSwing(deg)} title={t.hintHingeAngle}
                       className={`py-1 rounded-lg text-[9px] font-bold font-mono ${swing === deg ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
@@ -904,7 +904,7 @@ const Sidebar: React.FC = () => {
                     onCommit={(v) => updateFittings(pickedFittingIds(), { depth: Math.max(60, v) })} />
                 </fieldset>
                 {selectedFitting.kind === 'door' && (
-                  <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-5 gap-1">
+                  <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-6 gap-1">
                     {HINGE_ANGLES.map((deg) => (
                       <button key={deg} data-testid={`fitting-angle-${deg}`} title={t.hintHingeAngle}
                         onClick={() => updateFittings(pickedFittingIds(), { swing: deg })}
@@ -913,6 +913,14 @@ const Sidebar: React.FC = () => {
                       </button>
                     ))}
                   </fieldset>
+                )}
+                {pickedFittings.some((f) => f.kind === 'door') && (
+                  <button type="button" data-testid="split-double-door" title={t.hintSplitDoubleDoor}
+                    disabled={viewMode || !pickedFittings.some((f) => !f.locked && canSplitDoor(f))}
+                    onClick={splitSelectedDoors}
+                    className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-slate-700/50 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">
+                    {t.splitDoubleDoor}
+                  </button>
                 )}
                 <label className="flex items-center gap-2 text-[11px]">
                   <span className="text-slate-500 shrink-0">{t.openAmount}</span>

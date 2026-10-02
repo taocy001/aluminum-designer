@@ -4,21 +4,23 @@ Profile,2020,2020,840,6
 Profile,2020,2020,458,6
 Profile,2040,2040,1800,2
 Profile,2040,2040,840,10
-Profile,2040,2040,520,11
+Profile,2040,2040,600,1
+Profile,2040,2040,520,17
 Profile,4040,4040,2180,6
-Connector,"35 杯铰",,,8
-Connector,"内角码",20 系列,,60
-Connector,"抽屉滑轨 520mm",侧装一对,,2
-Fastener,"螺栓 M5×10",20,,120
-Fastener,"T型螺母 M5",20,,120
-Board,"502 × 174 mm","多层板 15mm",,4
-Board,"785 × 174 mm","多层板 15mm",,4
-Board,"785 × 472 mm","多层板 15mm",,2
-Board,"834 × 195.5 mm","多层板 18mm",,2
-Board,"2130 × 870 mm","密度板 18mm",,2
+Profile,4040,4040,420,2
+Connector,"35 杯铰",,,16
+Connector,"内角码",20 系列,,76
+Connector,"抽屉滑轨 520mm",侧装一对,,4
+Fastener,"螺栓 M5×10",20,,152
+Fastener,"T型螺母 M5",20,,152
+Board,"345 × 174 mm","多层板 15mm",,8
+Board,"472 × 345 mm","多层板 15mm",,4
+Board,"502 × 174 mm","多层板 15mm",,8
+Board,"394 × 195.5 mm","多层板 18mm",,4
+Board,"2130 × 433.5 mm","密度板 18mm",,4
 Board,"840 × 520 mm","密度板 18mm",,3
 Suggested,"L型角码（按对接端推算）",,,12
 Suggested,"端盖 20 系列（按自由端推算）",20,,8
 Summary,Overall WxDxH,1800x600x2200,,
-Summary,Total cut length (mm),,40388,
-Summary,Board area (m2),,6.98,
+Summary,Total cut length (mm),,44948,
+Summary,Board area (m2),,7.14,

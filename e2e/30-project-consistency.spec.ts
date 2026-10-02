@@ -29,7 +29,7 @@ test('贯通规则、显示、导出、保存恢复与撤销使用同一个工�
   const chunks: Buffer[] = []
   for await (const chunk of stream!) chunks.push(chunk)
   const saved = JSON.parse(Buffer.concat(chunks).toString())
-  expect(saved.version).toBe(5)
+  expect(saved.version).toBe(6)
   expect(saved.throughRule).toBe('posts')
   await page.reload()
   await page.waitForFunction(() => (window as any).__aluframe?.setView)

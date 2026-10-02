@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 6,
  "profiles": [
   {
    "id": "p-mueqf4dk19",
@@ -2548,10 +2548,10 @@
  ],
  "fittings": [
   {
-   "id": "f-mueqqa8c2v",
+   "id": "f-mueqqa8c2v-left",
    "kind": "door",
    "position": [
-    400,
+    205,
     1940,
     139.99999999999974
    ],
@@ -2561,7 +2561,7 @@
     0,
     1
    ],
-   "width": 780,
+   "width": 390,
    "height": 740,
    "depth": 340.00000000000017,
    "frame": 20.00000000000017,
@@ -2570,13 +2570,14 @@
    "hinge": "left",
    "hingeType": "cup",
    "overlay": "half",
-   "swing": 110
+   "swing": 110,
+   "meeting": "right"
   },
   {
-   "id": "f-mueqqas22w",
+   "id": "f-mueqqa8c2v-right",
    "kind": "door",
    "position": [
-    1115,
+    595,
     1940,
     139.99999999999974
    ],
@@ -2586,7 +2587,33 @@
     0,
     1
    ],
-   "width": 610,
+   "width": 390,
+   "height": 740,
+   "depth": 340.00000000000017,
+   "frame": 20.00000000000017,
+   "material": "mdf",
+   "open": 0,
+   "hinge": "right",
+   "hingeType": "cup",
+   "overlay": "half",
+   "swing": 90,
+   "meeting": "left"
+  },
+  {
+   "id": "f-mueqqas22w-left",
+   "kind": "door",
+   "position": [
+    962.5,
+    1940,
+    139.99999999999974
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "width": 305,
    "height": 740,
    "depth": 340.00000000000017,
    "frame": 20.00000000000017,
@@ -2595,7 +2622,34 @@
    "hinge": "left",
    "hingeType": "cup",
    "overlay": "half",
-   "swing": 110
+   "swing": 90,
+   "meeting": "right"
+  },
+  {
+   "id": "f-mueqqas22w-right",
+   "kind": "door",
+   "position": [
+    1267.5,
+    1940,
+    139.99999999999974
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "width": 305,
+   "height": 740,
+   "depth": 340.00000000000017,
+   "frame": 20.00000000000017,
+   "material": "mdf",
+   "open": 0,
+   "hinge": "right",
+   "hingeType": "cup",
+   "overlay": "half",
+   "swing": 110,
+   "meeting": "left"
   },
   {
    "id": "f-mueqqb6u2x",
@@ -2620,13 +2674,13 @@
    "hinge": "right",
    "hingeType": "cup",
    "overlay": "half",
-   "swing": 110
+   "swing": 90
   },
   {
-   "id": "f-mueqqbo02y",
+   "id": "f-mueqqbo02y-left",
    "kind": "door",
    "position": [
-    3030,
+    2860,
     1940,
     139.99999999999974
    ],
@@ -2636,7 +2690,33 @@
     0,
     1
    ],
-   "width": 680,
+   "width": 340,
+   "height": 740,
+   "depth": 340.00000000000017,
+   "frame": 20.00000000000017,
+   "material": "mdf",
+   "open": 0,
+   "hinge": "left",
+   "hingeType": "cup",
+   "overlay": "half",
+   "swing": 90,
+   "meeting": "right"
+  },
+  {
+   "id": "f-mueqqbo02y-right",
+   "kind": "door",
+   "position": [
+    3200,
+    1940,
+    139.99999999999974
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "width": 340,
    "height": 740,
    "depth": 340.00000000000017,
    "frame": 20.00000000000017,
@@ -2645,7 +2725,8 @@
    "hinge": "right",
    "hingeType": "cup",
    "overlay": "half",
-   "swing": 110
+   "swing": 110,
+   "meeting": "left"
   }
  ]
 }

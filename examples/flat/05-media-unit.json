@@ -612,6 +612,96 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "media-split-drawer-post-0",
+   "spec": "2020",
+   "position": [
+    1200,
+    20,
+    0
+   ],
+   "length": 460,
+   "quaternion": [
+    -0.7071067811865476,
+    0,
+    0,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "media-split-drawer-post-1",
+   "spec": "2020",
+   "position": [
+    1200,
+    20,
+    400
+   ],
+   "length": 460,
+   "quaternion": [
+    -0.7071067811865476,
+    0,
+    0,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "media-split-drawer-runner-1200-105",
+   "spec": "2020",
+   "position": [
+    1200,
+    105,
+    0
+   ],
+   "length": 400,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "media-split-drawer-runner-1200-245",
+   "spec": "2020",
+   "position": [
+    1200,
+    245,
+    0
+   ],
+   "length": 400,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "media-split-drawer-runner-1200-390",
+   "spec": "2020",
+   "position": [
+    1200,
+    390,
+    0
+   ],
+   "length": 400,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -1574,6 +1664,166 @@
     0
    ],
    "series": 20
+  },
+  {
+   "id": "media-split-drawer-corner-0",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1210,
+    40,
+    0
+   ],
+   "quaternion": [
+    0.7071067811865477,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    1.7431527984210492e-32
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-1",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1210,
+    460,
+    0
+   ],
+   "quaternion": [
+    -1.5700924586837747e-16,
+    -1.7431527984210492e-32,
+    -0.7071067811865476,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-2",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1210,
+    40,
+    400
+   ],
+   "quaternion": [
+    0.7071067811865477,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    1.7431527984210492e-32
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-3",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1210,
+    460,
+    400
+   ],
+   "quaternion": [
+    -1.5700924586837747e-16,
+    -1.7431527984210492e-32,
+    -0.7071067811865476,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-4",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1200,
+    115,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-5",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1200,
+    115,
+    390
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-6",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1200,
+    255,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-7",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1200,
+    255,
+    390
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-8",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1200,
+    380,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "media-split-drawer-corner-9",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1200,
+    380,
+    390
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
   }
  ],
  "panels": [],
@@ -1582,7 +1832,7 @@
    "id": "f-mueqq6qs2k",
    "kind": "drawer",
    "position": [
-    1200,
+    900,
     105,
     200
    ],
@@ -1592,7 +1842,7 @@
     0,
     0
    ],
-   "width": 1180,
+   "width": 580,
    "height": 130,
    "depth": 380,
    "frame": 20,
@@ -1601,13 +1851,40 @@
    "stacked": {
     "above": true,
     "below": false
-   }
+   },
+   "overlay": "half"
+  },
+  {
+   "id": "f-mueqq6qs2k-right",
+   "kind": "drawer",
+   "position": [
+    1500,
+    105,
+    200
+   ],
+   "quaternion": [
+    0,
+    1,
+    0,
+    0
+   ],
+   "width": 580,
+   "height": 130,
+   "depth": 380,
+   "frame": 20,
+   "material": "ply",
+   "open": 0,
+   "stacked": {
+    "above": true,
+    "below": false
+   },
+   "overlay": "half"
   },
   {
    "id": "f-mueqq6qs2l",
    "kind": "drawer",
    "position": [
-    1200,
+    900,
     245,
     200
    ],
@@ -1617,7 +1894,7 @@
     0,
     0
    ],
-   "width": 1180,
+   "width": 580,
    "height": 150,
    "depth": 380,
    "frame": 20,
@@ -1626,13 +1903,40 @@
    "stacked": {
     "above": true,
     "below": true
-   }
+   },
+   "overlay": "half"
+  },
+  {
+   "id": "f-mueqq6qs2l-right",
+   "kind": "drawer",
+   "position": [
+    1500,
+    245,
+    200
+   ],
+   "quaternion": [
+    0,
+    1,
+    0,
+    0
+   ],
+   "width": 580,
+   "height": 150,
+   "depth": 380,
+   "frame": 20,
+   "material": "ply",
+   "open": 0,
+   "stacked": {
+    "above": true,
+    "below": true
+   },
+   "overlay": "half"
   },
   {
    "id": "f-mueqq6qs2m",
    "kind": "drawer",
    "position": [
-    1200,
+    900,
     390,
     200
    ],
@@ -1642,7 +1946,7 @@
     0,
     0
    ],
-   "width": 1180,
+   "width": 580,
    "height": 140,
    "depth": 380,
    "frame": 20,
@@ -1651,7 +1955,34 @@
    "stacked": {
     "above": false,
     "below": true
-   }
+   },
+   "overlay": "half"
+  },
+  {
+   "id": "f-mueqq6qs2m-right",
+   "kind": "drawer",
+   "position": [
+    1500,
+    390,
+    200
+   ],
+   "quaternion": [
+    0,
+    1,
+    0,
+    0
+   ],
+   "width": 580,
+   "height": 140,
+   "depth": 380,
+   "frame": 20,
+   "material": "ply",
+   "open": 0,
+   "stacked": {
+    "above": false,
+    "below": true
+   },
+   "overlay": "half"
   }
  ]
 }

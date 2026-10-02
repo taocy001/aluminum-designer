@@ -83,25 +83,25 @@ export function overlayMm(overlay: Overlay | undefined): number {
 /**
  * The front of a drawer or the leaf of a door: the same board, sized by how it sits.
  *
- * Each edge is decided on its own. An edge against the frame laps over it by the overlay,
- * less the gap; an edge that meets the next drawer's front stops half a gap short of the
- * line between the two openings, so two stacked fronts have 3 mm between them. Growing all
- * four edges alike overlaid both fronts onto the same line, and every stacked pair ran 30 mm
- * into each other.
+ * Each edge is decided on its own. An outer edge uses the overlay less the gap. A door's
+ * meeting edge or a stacked drawer's shared edge stops half a gap short of its opening,
+ * leaving 3 mm between the adjacent fronts. Unequal edge allowances shift the board centre.
  */
 function frontBoard(f: FittingData): Board {
   const inset = f.overlay === 'inset'
   const lap = inset ? -FRONT_GAP : overlayMm(f.overlay) - FRONT_GAP
   const meet = -FRONT_GAP / 2
+  const left = f.kind === 'door' && f.meeting === 'left' ? meet : lap
+  const right = f.kind === 'door' && f.meeting === 'right' ? meet : lap
   const top = f.kind === 'drawer' && f.stacked?.above ? meet : lap
   const bottom = f.kind === 'drawer' && f.stacked?.below ? meet : lap
   return {
     role: f.kind === 'door' ? 'panel' : 'front',
-    width: Math.max(20, f.width + lap * 2),
+    width: Math.max(20, f.width + left + right),
     height: Math.max(20, f.height + top + bottom),
     thickness: FRONT_BOARD,
     // Overlay fronts rest on the frame; an inset front finishes flush with its outside.
-    position: [0, (top - bottom) / 2, f.depth / 2 + (f.frame ?? 0) + (inset ? -1 : 1) * FRONT_BOARD / 2],
+    position: [(right - left) / 2, (top - bottom) / 2, f.depth / 2 + (f.frame ?? 0) + (inset ? -1 : 1) * FRONT_BOARD / 2],
     quaternion: Q_FLAT,
   }
 }

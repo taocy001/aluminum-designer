@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 6,
  "profiles": [
   {
    "id": "p-mueqez441",
@@ -910,6 +910,168 @@
     31
    ],
    "length": 588,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-post-0",
+   "spec": "2020",
+   "position": [
+    1905,
+    20,
+    0
+   ],
+   "length": 670,
+   "quaternion": [
+    -0.7071067811865476,
+    0,
+    0,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-post-1",
+   "spec": "2020",
+   "position": [
+    1905,
+    20,
+    650
+   ],
+   "length": 670,
+   "quaternion": [
+    -0.7071067811865476,
+    0,
+    0,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-header",
+   "spec": "2020",
+   "position": [
+    1905,
+    690,
+    0
+   ],
+   "length": 650,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-runner-1430-195",
+   "spec": "2020",
+   "position": [
+    1430,
+    195,
+    0
+   ],
+   "length": 650,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-runner-1430-515",
+   "spec": "2020",
+   "position": [
+    1430,
+    515,
+    0
+   ],
+   "length": 650,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-runner-1905-195",
+   "spec": "2020",
+   "position": [
+    1905,
+    195,
+    0
+   ],
+   "length": 650,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-runner-1905-515",
+   "spec": "2020",
+   "position": [
+    1905,
+    515,
+    0
+   ],
+   "length": 650,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-runner-2380-195",
+   "spec": "2020",
+   "position": [
+    2380,
+    195,
+    0
+   ],
+   "length": 650,
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "kitchen-split-drawer-runner-2380-515",
+   "spec": "2020",
+   "position": [
+    2380,
+    515,
+    0
+   ],
+   "length": 650,
    "quaternion": [
     0,
     0,
@@ -2264,6 +2426,262 @@
     -1.1102230246251564e-16
    ],
    "series": 20
+  },
+  {
+   "id": "kitchen-split-drawer-corner-0",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1915,
+    40,
+    0
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    0
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-1",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1905,
+    680,
+    10
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5,
+    0.5,
+    -0.5000000000000001
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-2",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1915,
+    40,
+    650
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    0
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-3",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1905,
+    680,
+    640
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5,
+    0.5,
+    -0.5000000000000001
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-4",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1430,
+    205,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-5",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1430,
+    205,
+    640
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-6",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1430,
+    505,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-7",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1430,
+    505,
+    640
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-8",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1905,
+    205,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-9",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1905,
+    205,
+    640
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-10",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1905,
+    505,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-11",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    1905,
+    505,
+    640
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-12",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    2380,
+    205,
+    10
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-13",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    2380,
+    205,
+    640
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-14",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    2380,
+    505,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
+  },
+  {
+   "id": "kitchen-split-drawer-corner-15",
+   "type": "inside-corner",
+   "series": 20,
+   "position": [
+    2380,
+    505,
+    640
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ]
   }
  ],
  "panels": [
@@ -2291,7 +2709,7 @@
    "id": "f-mueqq6bk2i",
    "kind": "drawer",
    "position": [
-    1905,
+    1667.5,
     195,
     324.99999999999994
    ],
@@ -2301,7 +2719,7 @@
     0,
     1
    ],
-   "width": 930,
+   "width": 455,
    "height": 310,
    "depth": 630.0000000000002,
    "frame": 20,
@@ -2310,13 +2728,40 @@
    "stacked": {
     "above": true,
     "below": false
-   }
+   },
+   "overlay": "half"
+  },
+  {
+   "id": "f-mueqq6bk2i-right",
+   "kind": "drawer",
+   "position": [
+    2142.5,
+    195,
+    324.99999999999994
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "width": 455,
+   "height": 310,
+   "depth": 630.0000000000002,
+   "frame": 20,
+   "material": "ply",
+   "open": 0,
+   "stacked": {
+    "above": true,
+    "below": false
+   },
+   "overlay": "half"
   },
   {
    "id": "f-mueqq6bk2j",
    "kind": "drawer",
    "position": [
-    1905,
+    1667.5,
     515,
     324.99999999999994
    ],
@@ -2326,7 +2771,7 @@
     0,
     1
    ],
-   "width": 930,
+   "width": 455,
    "height": 330,
    "depth": 630.0000000000002,
    "frame": 20,
@@ -2335,13 +2780,40 @@
    "stacked": {
     "above": false,
     "below": true
-   }
+   },
+   "overlay": "half"
   },
   {
-   "id": "f-mueqq8dp2r",
+   "id": "f-mueqq6bk2j-right",
+   "kind": "drawer",
+   "position": [
+    2142.5,
+    515,
+    324.99999999999994
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "width": 455,
+   "height": 330,
+   "depth": 630.0000000000002,
+   "frame": 20,
+   "material": "ply",
+   "open": 0,
+   "stacked": {
+    "above": false,
+    "below": true
+   },
+   "overlay": "half"
+  },
+  {
+   "id": "f-mueqq8dp2r-left",
    "kind": "door",
    "position": [
-    400,
+    205,
     440,
     304.99999999999966
    ],
@@ -2351,7 +2823,7 @@
     0,
     1
    ],
-   "width": 780,
+   "width": 390,
    "height": 840,
    "depth": 670.0000000000002,
    "frame": 20.000000000000227,
@@ -2360,13 +2832,14 @@
    "hinge": "left",
    "hingeType": "cup",
    "overlay": "half",
-   "swing": 110
+   "swing": 110,
+   "meeting": "right"
   },
   {
-   "id": "f-mueqq8vj2s",
+   "id": "f-mueqq8dp2r-right",
    "kind": "door",
    "position": [
-    1115,
+    595,
     440,
     304.99999999999966
    ],
@@ -2376,16 +2849,17 @@
     0,
     1
    ],
-   "width": 610,
+   "width": 390,
    "height": 840,
    "depth": 670.0000000000002,
    "frame": 20.000000000000227,
    "material": "mdf",
    "open": 0,
-   "hinge": "left",
+   "hinge": "right",
    "hingeType": "cup",
    "overlay": "half",
-   "swing": 110
+   "swing": 110,
+   "meeting": "left"
   },
   {
    "id": "f-mueqq9bq2t",
@@ -2410,13 +2884,13 @@
    "hinge": "right",
    "hingeType": "cup",
    "overlay": "half",
-   "swing": 110
+   "swing": 90
   },
   {
-   "id": "f-mueqq9qa2u",
+   "id": "f-mueqq9qa2u-left",
    "kind": "door",
    "position": [
-    3030,
+    2860,
     440,
     304.99999999999966
    ],
@@ -2426,7 +2900,33 @@
     0,
     1
    ],
-   "width": 680,
+   "width": 340,
+   "height": 840,
+   "depth": 670.0000000000002,
+   "frame": 20.000000000000227,
+   "material": "mdf",
+   "open": 0,
+   "hinge": "left",
+   "hingeType": "cup",
+   "overlay": "half",
+   "swing": 90,
+   "meeting": "right"
+  },
+  {
+   "id": "f-mueqq9qa2u-right",
+   "kind": "door",
+   "position": [
+    3200,
+    440,
+    304.99999999999966
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "width": 340,
    "height": 840,
    "depth": 670.0000000000002,
    "frame": 20.000000000000227,
@@ -2435,7 +2935,8 @@
    "hinge": "right",
    "hingeType": "cup",
    "overlay": "half",
-   "swing": 110
+   "swing": 110,
+   "meeting": "left"
   }
  ]
 }

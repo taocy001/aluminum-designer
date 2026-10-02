@@ -376,6 +376,49 @@ export function updateFittings(ids: string[], updates: Partial<FittingData>): bo
   return true
 }
 
+/** A side-hung single door needs room for two openings of at least 60 mm. */
+export function canSplitDoor(f: FittingData): boolean {
+  return f.kind === 'door' && f.meeting === undefined && Number.isFinite(f.width)
+    && f.width >= MIN_OPENING * 2 && (f.hinge === undefined || f.hinge === 'left' || f.hinge === 'right')
+}
+
+/** Replace one opening with two half openings; keep its outside edges and front plane. */
+export function splitDoor(f: FittingData, ids?: readonly [string, string]): [FittingData, FittingData] | null {
+  if (!canSplitDoor(f)) return null
+  const children = ids ?? [nextId('f'), nextId('f')]
+  const q = new THREE.Quaternion(...f.quaternion).normalize()
+  const origin = new THREE.Vector3(...f.position)
+  const make = (side: 'left' | 'right', index: 0 | 1): FittingData => {
+    const position = new THREE.Vector3(side === 'left' ? -f.width / 4 : f.width / 4, 0, 0)
+      .applyQuaternion(q).add(origin)
+    return {
+      ...f, id: children[index], width: f.width / 2,
+      position: [position.x, position.y, position.z], quaternion: [...f.quaternion],
+      hinge: side, meeting: side === 'left' ? 'right' : 'left',
+    }
+  }
+  return [make('left', 0), make('right', 1)]
+}
+
+/** Split the selected unlocked single doors as one undo step. Other selections stay put. */
+export function splitSelectedDoors(): boolean {
+  if (useToolStore.getState().viewMode) return false
+  const store = useStore.getState()
+  const selected = new Set(store.selectedIds)
+  const replacements = new Map<string, [FittingData, FittingData]>()
+  for (const f of store.fittings) {
+    if (!selected.has(f.id) || f.locked) continue
+    const pair = splitDoor(f)
+    if (pair) replacements.set(f.id, pair)
+  }
+  if (!replacements.size) return false
+  noteNext(`split ${replacements.size} door${replacements.size > 1 ? 's' : ''}`)
+  store.commitDocument({ fittings: store.fittings.flatMap((f) => replacements.get(f.id) ?? [f]) },
+    store.selectedIds.flatMap((id) => replacements.get(id)?.map((f) => f.id) ?? [id]))
+  useToolStore.getState().showToast(translations[useToolStore.getState().language].toastDoorsSplit(replacements.size), 'success')
+  return true
+}
+
 /** Open or shut every selected one together. Looking, not building: no history entry. */
 export function setFittingsOpen(ids: string[], open: number): void {
   const v = Math.max(0, Math.min(1, open))

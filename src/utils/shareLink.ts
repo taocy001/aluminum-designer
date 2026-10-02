@@ -15,18 +15,18 @@ export interface ShareDoc {
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-/** Compact columns, including determined cut faces. Old v1/v2 links remain readable. */
+/** Compact columns, including determined cut faces and door meeting edges. Reads v1–v3. */
 function pack(doc: ShareDoc): unknown[] {
   const checked = parseProjectDocument(doc)
   return [
-    3, checked.throughRule,
+    4, checked.throughRule,
     checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null]),
     checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked]),
     checked.panels.map((b) => [b.width, b.height, b.thickness, b.position, b.quaternion, b.material, !!b.locked]),
     checked.fittings.map((f) => [
       f.kind, f.width, f.height, f.depth, f.position, f.quaternion,
       f.material, f.hinge ?? '', f.hingeType ?? '', f.overlay ?? '', f.swing ?? 0,
-      f.frame, f.stacked ?? null, !!f.locked,
+      f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '',
     ]),
   ]
 }
@@ -34,7 +34,7 @@ function pack(doc: ShareDoc): unknown[] {
 function unpack(raw: unknown): ProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
-  if (version !== 1 && version !== 2 && version !== 3) throw new Error('unknown link version')
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) throw new Error('unknown link version')
   const [profiles, connectors, panels, fittings] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
   if (raw.length !== (version >= 2 ? 6 : 5)
     || ![profiles, connectors, panels, fittings].every(Array.isArray)) throw new Error('incomplete link')
@@ -71,8 +71,8 @@ function unpack(raw: unknown): ProjectDocument {
       }
     }),
     fittings: (fittings ?? []).map((row) => {
-      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked] =
-        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean]
+      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked, meeting] =
+        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean, FittingData['meeting'] | '']
       return {
         id: id('f'), kind: kind as FittingData['kind'], width, height, depth,
         position: position as [number, number, number],
@@ -85,6 +85,7 @@ function unpack(raw: unknown): ProjectDocument {
         ...(hingeType ? { hingeType: hingeType as FittingData['hingeType'] } : {}),
         ...(overlay ? { overlay: overlay as FittingData['overlay'] } : {}),
         ...(swing ? { swing } : {}),
+        ...(version >= 4 && meeting !== undefined && meeting !== '' ? { meeting } : {}),
       }
     }),
   })
