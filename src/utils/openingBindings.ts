@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { computeAllTrims, type ProfileTrims, type ThroughRule } from './jointUtils'
 import { profileBodyEndpoints, profileFace, type ProfileFace, type ProfileFaceRef } from './profileFaces'
 import { drawerLayout } from './drawerLayout'
@@ -39,7 +39,7 @@ export interface SupportBinding {
   localPosition: [number, number, number]
   localQuaternion: [number, number, number, number]
 }
-export type EditRejection = 'locked-dependent' | 'driven-part' | 'invalid-opening' | 'invalid-fitting' | 'invalid-profile'
+export type EditRejection = 'locked-dependent' | 'driven-part' | 'invalid-opening' | 'invalid-fitting' | 'invalid-profile' | 'invalid-equipment'
 export type EditResult =
   | { status: 'applied'; changedIds: string[]; orphanedIds: string[] }
   | { status: 'noop' }
@@ -211,7 +211,7 @@ export function deriveSupport(c: ConnectorData, p: ProfileData): ConnectorData |
     quaternion: q.multiply(new THREE.Quaternion(...b.localQuaternion).normalize()).normalize().toArray() as ConnectorData['quaternion'] }
 }
 
-export interface BindingDocument { profiles: ProfileData[]; connectors: ConnectorData[]; panels: PanelData[]; fittings: FittingData[]; throughRule: ThroughRule }
+export interface BindingDocument { profiles: ProfileData[]; connectors: ConnectorData[]; panels: PanelData[]; fittings: FittingData[]; equipment?: EquipmentData[]; throughRule: ThroughRule }
 export type BindingResolution = { status: 'resolved'; document: BindingDocument; orphanedIds: string[] } | Extract<EditResult, { status: 'rejected' }>
 const nearValue = (a: unknown, b: unknown): boolean => typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) < 1e-6
   : Array.isArray(a) && Array.isArray(b) ? a.length === b.length && a.every((v, i) => nearValue(v, b[i]))

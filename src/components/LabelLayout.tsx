@@ -24,7 +24,7 @@ export function registerLabel(e: LabelEntry): () => void {
 function partOf(o: THREE.Object3D | null): string | null {
   while (o) {
     const d = o.userData as Record<string, string>
-    const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId
+    const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId ?? d.equipmentId
     if (id) return id
     o = o.parent
   }
@@ -65,7 +65,7 @@ const LabelLayout: React.FC = () => {
     const solids: Array<{ id: string; sphere: THREE.Sphere; box: THREE.Box3; toLocal: THREE.Matrix4 }> = []
     scene.traverseVisible((o) => {
       const m = o as THREE.Mesh
-      if (!m.isMesh) return
+      if (!m.isMesh || m.userData.labelOccluder === false) return
       const id = partOf(o)
       if (!id) return
       const g = m.geometry

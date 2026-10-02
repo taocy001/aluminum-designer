@@ -14,6 +14,7 @@ import { ALL_SPECS, specDims } from './specUtils'
 import { noteNext } from './opLog'
 import { reportEditResult } from './editFeedback'
 import { profileBodyEndpoints } from './profileFaces'
+import { equipmentClearance } from './equipmentGeometry'
 
 export type DrawerSide = 'left' | 'right'
 export type DrawerSupportFailure = 'locked' | 'invalid-drawer' | 'no-mount' | 'collision' | 'no-connection' | 'edit-rejected'
@@ -49,6 +50,7 @@ function localBounds(body: OBB, f: FittingData): THREE.Box3 {
 export function addDrawerSupports(ids: string[], spec?: ProfileSpec, options?: { linked?: boolean }): DrawerSupportsResult {
   const state = useStore.getState()
   const result: DrawerSupportsResult = { generated: [], failed: [] }
+  const reserved = state.equipment.map(equipmentClearance)
   let profiles = withFixedProfileCuts(state.profiles)
   let connectors = state.connectors
   for (const f of state.fittings.filter((v) => ids.includes(v.id) && v.kind === 'drawer')) {
@@ -90,7 +92,8 @@ export function addDrawerSupports(ids: string[], spec?: ProfileSpec, options?: {
           const otherBodies = [...profiles, ...stagedProfiles].map((p) => trimmedOBB(p, trims.get(p.id)!))
           const boards = [...state.panels.map(panelOBB), ...state.fittings.flatMap((v) => fittingSolids(v, 0))]
           if ([...otherBodies, ...boards, ...connectors.map(connectorOBB), ...stagedConnectors.map(connectorOBB)]
-            .some((b) => obbPenetration(body, b, 1) > 1)) { reason = 'collision'; continue }
+            .some((b) => obbPenetration(body, b, 1) > 1)
+            || reserved.some((b) => obbPenetration(body, b, 1) > 0)) { reason = 'collision'; continue }
           const brackets: ConnectorData[] = []
           for (const [host, end] of [[back.p, 0], [front.p, rail.length]] as const) {
             const at = new THREE.Vector3(...rail.position).addScaledVector(getProfileDir(rail), end)
@@ -102,6 +105,7 @@ export function addDrawerSupports(ids: string[], spec?: ProfileSpec, options?: {
               return ![...connectors, ...stagedConnectors, ...brackets].some((v) => obbPenetration(b, connectorOBB(v), 1) > 1)
                 && ![...otherBodies, body].some((v) => obbPenetration(b, v, 3) > 3)
                 && !boards.some((v) => obbPenetration(b, v, 1) > 1)
+                && !reserved.some((v) => obbPenetration(b, v, 1) > 0)
             })
             if (bracket) brackets.push(bracket)
           }

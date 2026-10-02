@@ -12,6 +12,7 @@ import { flushFace, sharedEdge } from './specCompat'
 import { auditBrackets, connectorSeatAt, endCapSeat, seatsFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
+import { equipmentClearance } from './equipmentGeometry'
 
 /** a joint already has a part if one sits within this of it (mm) */
 const OCCUPIED_MM = 30
@@ -59,6 +60,8 @@ export interface AutoConnectResult {
   removed?: number
   /** joints that want one and cannot take one: no line is a slot on both members */
   unbolted?: number
+  /** Candidates obstructed by an equipment body or its reserved space. */
+  blocked?: number
   /** why nothing was placed, when nothing was */
   reason?: 'no-frame' | 'needs-a-surface' | 'nothing-open' | 'edit-rejected'
 }
@@ -78,14 +81,17 @@ export function autoConnect(type: string): AutoConnectResult {
     return { placed: 0, skipped: 0, reason: 'needs-a-surface' }
   }
 
-  // Every joint of this kind the frame has, whether or not something sits on it. Moving a
-  // member leaves its bracket behind in mid-air, and since a bracket cannot be dragged back
-  // this is where it gets cleared: one press puts the hardware back where the frame is now.
+  // Track current joints and end seats to remove obsolete unlocked connectors.
   const wanted: THREE.Vector3[] = []
   const capSeats: ReturnType<typeof endCapSeat>[] = []
 
   const { trims } = analyzeFrame(profiles)
   const metal = profiles.map((q) => trimmedOBB(q, trims.get(q.id)!))
+  const reserved = store.equipment.map(equipmentClearance)
+  const equipmentBlocked = (c: ConnectorData) => {
+    const box = connectorOBB(c)
+    return reserved.some((e) => obbPenetration(box, e, 1) > 0)
+  }
   // Deduplicate against existing connectors of the requested type, preserving separate seats for distinct joints.
   const badBrackets = new Set(auditBrackets(profiles, connectors, trims).map((c) => c.id))
   const active = connectors.filter((c) => c.type !== type || c.locked || !badBrackets.has(c.id))
@@ -100,6 +106,7 @@ export function autoConnect(type: string): AutoConnectResult {
   let skipped = 0
   /** joints that want this part but offer it nowhere to bolt */
   let unbolted = 0
+  let blocked = 0
   for (const p of profiles) {
     const tr = trims.get(p.id)
     if (!tr) continue
@@ -142,10 +149,7 @@ export function autoConnect(type: string): AutoConnectResult {
         quaternion = seat.quaternion
         series = seat.series
       } else if (partner && (entry.seat === 'angle' || entry.seat === 'plate')) {
-        // There is a joint here and this part cannot be bolted to it. Putting one there
-        // anyway makes a drawing that cannot be built and a cut list that has been paid for,
-        // so it is skipped. Sections with no edge in common are not a fault to be reported —
-        // they are simply not a joint these parts make, and the frame check already says so.
+        // Count unsupported bolt alignment only when the sections have a shared edge.
         if (sharedEdge(p.spec, partner.spec)) unbolted++
         continue
       } else {
@@ -161,11 +165,12 @@ export function autoConnect(type: string): AutoConnectResult {
       let part = { id: nextId('c'), type, series, position, quaternion }
       if (occupied(part)) { skipped++; continue }
       if (entry.fit === 'corner') {
-        const legal = candidates.map((s) => ({ ...part, ...s })).find((c) =>
+        const available = candidates.map((s) => ({ ...part, ...s })).filter((c) =>
           !occupied(c) && auditBrackets(profiles, [c], trims).length === 0 && !crowded(c, [...active, ...made], metal))
-        if (!legal) { unbolted++; continue }
+        const legal = available.find((c) => !equipmentBlocked(c))
+        if (!legal) { if (available.length) blocked++; else unbolted++; continue }
         part = legal
-      }
+      } else if (equipmentBlocked(part)) { blocked++; continue }
       made.push(part)
     }
   }
@@ -181,13 +186,14 @@ export function autoConnect(type: string): AutoConnectResult {
     .map((c) => c.id)
 
   if (made.length === 0 && stale.length === 0) {
-    useToolStore.getState().showToast(unbolted ? t.toastAutoUnbolted(unbolted) : t.toastAutoNothingOpen, 'info')
-    return { placed: 0, skipped, unbolted, reason: 'nothing-open' }
+    useToolStore.getState().showToast(blocked ? t.toastAutoEquipmentBlocked(blocked)
+      : unbolted ? t.toastAutoUnbolted(unbolted) : t.toastAutoNothingOpen, 'info')
+    return { placed: 0, skipped, unbolted, blocked, reason: 'nothing-open' }
   }
   noteNext(`fit ${connectorLabel(type, useToolStore.getState().language)}`)
   if (!reportEditResult(store.commitDocument({ connectors: [...connectors.filter((c) => !stale.includes(c.id)), ...made] }))) {
-    return { placed: 0, skipped, removed: 0, unbolted, reason: 'edit-rejected' }
+    return { placed: 0, skipped, removed: 0, unbolted, blocked, reason: 'edit-rejected' }
   }
-  useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, stale.length, unbolted), unbolted ? 'info' : 'success')
-  return { placed: made.length, skipped, removed: stale.length, unbolted }
+  useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, stale.length, unbolted, blocked), unbolted || blocked ? 'info' : 'success')
+  return { placed: made.length, skipped, removed: stale.length, unbolted, blocked }
 }

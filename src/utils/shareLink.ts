@@ -1,4 +1,4 @@
-import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { parseProjectDocument, validateProjectDocument, PROJECT_VERSION, type ParsedProjectDocument } from './document'
 import type { ThroughRule } from './jointUtils'
 
@@ -10,16 +10,17 @@ export interface ShareDoc {
   connectors: ConnectorData[]
   panels: PanelData[]
   fittings: FittingData[]
+  equipment?: EquipmentData[]
 }
 
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–6. */
+/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–7. */
 function pack(doc: ShareDoc): unknown[] {
   const checked = validateProjectDocument(doc)
   return [
-    6, checked.throughRule,
+    7, checked.throughRule,
     checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null,
       p.id, p.runnerBinding ?? null]),
     checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked, c.id, c.supportBinding ?? null]),
@@ -29,22 +30,28 @@ function pack(doc: ShareDoc): unknown[] {
       f.material, f.hinge ?? '', f.hingeType ?? '', f.overlay ?? '', f.swing ?? 0,
       f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '', f.drawer ?? null, f.id, f.openingBinding ?? null,
     ]),
+    checked.equipment.map((e) => [e.id, e.name, e.width, e.height, e.depth, e.position, e.quaternion, e.clearance, !!e.locked]),
   ]
 }
 
 function unpack(raw: unknown): ParsedProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6) throw new Error('unknown link version')
-  const [profiles, connectors, panels, fittings] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
-  if (raw.length !== (version >= 2 ? 6 : 5)
-    || ![profiles, connectors, panels, fittings].every(Array.isArray)) throw new Error('incomplete link')
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7) throw new Error('unknown link version')
+  const [profiles, connectors, panels, fittings, equipment = []] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
+  if (raw.length !== (version >= 7 ? 7 : version >= 2 ? 6 : 5)
+    || ![profiles, connectors, panels, fittings, equipment].every(Array.isArray)) throw new Error('incomplete link')
   const throughRule = version >= 2 ? raw[1] : 'rails'
   let n = 0
   const id = (p: string) => `${p}-s${(n++).toString(36)}`
   return parseProjectDocument({
-    version: version === 6 ? PROJECT_VERSION : version === 5 ? 7 : version === 4 ? 6 : undefined,
+    version: version === 7 ? PROJECT_VERSION : version === 6 ? 8 : version === 5 ? 7 : version === 4 ? 6 : undefined,
     throughRule,
+    equipment: equipment.map((row) => {
+      if (!Array.isArray(row) || row.length !== 9) throw new Error('invalid equipment link')
+      const [id, name, width, height, depth, position, quaternion, clearance, locked] = row
+      return { id, name, width, height, depth, position, quaternion, clearance, locked }
+    }),
     profiles: (profiles ?? []).map((row) => {
       const [spec, length, position, quaternion, locked, miterCuts, holes, fixedTrims, originalId, runnerBinding] = row as [string, number, number[], number[], number, ProfileData['miterCuts'], ProfileData['holes'], ProfileData['fixedTrims'] | null, string, ProfileData['runnerBinding'] | null]
       return {

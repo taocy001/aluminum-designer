@@ -56,6 +56,7 @@ const TransformGizmo: React.FC = () => {
   const connectors = useStore((s) => s.connectors)
   const panels = useStore((s) => s.panels)
   const fittings = useStore((s) => s.fittings)
+  const equipment = useStore((s) => s.equipment)
   const selectMode = useToolStore((s) => s.selectMode)
   const isDragging = useToolStore((s) => s.isDragging)
   const showGizmo = useToolStore((s) => s.showGizmo)
@@ -76,17 +77,18 @@ const TransformGizmo: React.FC = () => {
       connectors: connectors.filter((c) => ids.has(c.id) && !c.locked && selectedIds.length > 1),
       panels: panels.filter((b) => ids.has(b.id) && !b.locked),
       fittings: fittings.filter((f) => ids.has(f.id) && !f.locked),
+      equipment: equipment.filter((e) => ids.has(e.id) && !e.locked),
     }
-  }, [selectedIds, profiles, connectors, panels, fittings])
+  }, [selectedIds, profiles, connectors, panels, fittings, equipment])
 
   // the widget sits on the pivot, so where it turns about is something you can see
   const anchor = useMemo(
-    () => selectionPivot(selection.profiles, selection.connectors, pivotMode, selection.panels, selection.fittings, profiles),
+    () => selectionPivot(selection.profiles, selection.connectors, pivotMode, selection.panels, selection.fittings, profiles, selection.equipment),
     [selection, pivotMode, profiles, throughRule])
   // a fully locked selection has nothing the gizmo could do
-  const anyMovable = selection.profiles.length + selection.panels.length + selection.fittings.length > 0
+  const anyMovable = selection.profiles.length + selection.panels.length + selection.fittings.length + selection.equipment.length > 0
   const viewMode = useToolStore((s) => s.viewMode)
-  // nothing moves while looking, so handles that promise to move something are a lie
+  // Hide editing handles in view mode.
   const active = showGizmo && !viewMode && !selectMode && !isDragging && selectedIds.length > 0 && anyMovable
 
   // one world size for the whole widget, refreshed every frame so zoom and orbit keep it steady

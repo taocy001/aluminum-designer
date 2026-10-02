@@ -1,4 +1,5 @@
 import { reportEditResult } from '../utils/editFeedback'
+import EquipmentEditor, { EquipmentCreator } from './EquipmentEditor'
 import OpeningBindingEditor, { SupportBindingEditor } from './OpeningBindingEditor'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -12,6 +13,8 @@ import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel 
 import { buildBom, bomToCsv } from '../utils/bom'
 import { analyzeFrame } from '../utils/analysis'
 import { selectedSolidTop } from '../utils/selectionBounds'
+import { equipmentBody } from '../utils/equipmentGeometry'
+import { obbCorners } from '../utils/obb'
 import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize, setPanelsMaterial, setPanelsSize } from '../utils/panelOps'
@@ -165,7 +168,7 @@ const NumField: React.FC<{
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, panels, fittings, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument, throughRule, setThroughRule, recalculateJoints } = useStore()
+  const { profiles, connectors, panels, fittings, equipment, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument, throughRule, setThroughRule, recalculateJoints } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
     workPlaneY, setWorkPlaneY, viewMode, setViewMode,
     section, setSection, buildStep, setBuildStep } = useToolStore()
@@ -180,9 +183,9 @@ const Sidebar: React.FC = () => {
     return () => clearTimeout(id)
   }, [confirmClear])
 
-  // the same question the canvas asks: a door through a post is as much a clash as a rail through one
-  const { trims, conflicts, conflictIds, mismatches, mismatchIds } = useMemo(
-    () => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings, throughRule])
+  // The sidebar and viewport share cached geometry checks.
+  const { trims, conflicts, conflictIds, mismatches, mismatchIds, equipmentConflicts } = useMemo(
+    () => analyzeFrame(profiles, connectors, panels, fittings, equipment), [profiles, connectors, panels, fittings, equipment, throughRule])
   const selectedIdsSignature = selectedIds.join(',')
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -208,8 +211,8 @@ const Sidebar: React.FC = () => {
   const [log, setLog] = useState(opLog())
   useEffect(() => subscribeOpLog(() => setLog([...opLog()])), [])
   // the highest point of whatever is selected, so the work plane can be put on top of it
-  const selectionTopY = useMemo(() => selectedSolidTop({ profiles, connectors, panels, fittings }, selectedIds, trims),
-    [selectedIds, profiles, connectors, panels, fittings, trims])
+  const selectionTopY = useMemo(() => selectedSolidTop({ profiles, connectors, panels, fittings, equipment }, selectedIds, trims),
+    [selectedIds, profiles, connectors, panels, fittings, equipment, trims])
   // Below 768 px, use a collapsed bottom sheet.
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   useEffect(() => {
@@ -253,6 +256,7 @@ const Sidebar: React.FC = () => {
   const drawerInputsValid = Number.isFinite(drawerHeight) && drawerHeight >= 60
     && Number.isInteger(drawerCount) && drawerCount >= 1 && drawerCount <= 8
   const selectedProfile = profiles.find((p) => selectedIds.includes(p.id))
+  const selectedEquipment = equipment.find((part) => selectedIds.includes(part.id))
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
   /** Boards affected by a selection-wide edit. */
   const pickedPanels = panels.filter((b) => selectedIds.includes(b.id))
@@ -264,7 +268,7 @@ const Sidebar: React.FC = () => {
   const selectedProfileCount = profiles.filter((p) => selectedIds.includes(p.id)).length
   const selTrim = selectedProfile ? trims.get(selectedProfile.id) : undefined
   // the lock button reads locked only when everything selected is locked, matching the toggle
-  const selectionLocked = areSelectedLocked({ profiles, connectors, panels, fittings }, selectedIds)
+  const selectionLocked = areSelectedLocked({ profiles, connectors, panels, fittings, equipment }, selectedIds)
 
   const clashes = useMemo(() => swingClashes(fittings), [fittings])
   const pickedFittings = fittings.filter((f) => selectedIds.includes(f.id))
@@ -279,15 +283,14 @@ const Sidebar: React.FC = () => {
   const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
-  // A frame can be perfectly buildable and still sag. The load is the one number the tool
-  // cannot know, so it is asked for, and everything else follows from the drawing.
-  // the drawing's extent along each axis, so the cut's slider covers exactly what is there
+  // Limit the section slider to the frame extent.
   const sectionRange = (axis: 'x' | 'y' | 'z'): [number, number] => {
     const box = new THREE.Box3()
     for (const p of profiles) {
       const { start, end } = getProfileEndpoints(p)
       box.expandByPoint(start); box.expandByPoint(end)
     }
+    for (const e of equipment) for (const point of obbCorners(equipmentBody(e))) box.expandByPoint(point)
     if (box.isEmpty()) return [0, 1000]
     return [box.min[axis] - 50, box.max[axis] + 50]
   }
@@ -308,7 +311,7 @@ const Sidebar: React.FC = () => {
   const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels, fittings), [profiles, connectors, trims, language, panels, fittings])
   const stockMm = Math.max(500, parseFloat(stockText) || 6000)
   const nesting = useMemo(() => nestProfiles(bom.profiles, stockMm), [bom.profiles, stockMm])
-  const reviewCount = conflicts.length + edgeMismatches.length + bracketFaults.length + runnerProblems.length
+  const reviewCount = equipmentConflicts.length + conflicts.length + edgeMismatches.length + bracketFaults.length + runnerProblems.length
     + clashes.length + sagging.length + nesting.unsatisfied.reduce((sum, item) => sum + item.qty, 0)
   const notifyExport = () => { if (reviewCount) showToast(t.toastExportReview(reviewCount), 'info') }
   const totalCut = bom.totalCutLength
@@ -357,7 +360,7 @@ const Sidebar: React.FC = () => {
   // Copy an encoded project link to the clipboard, subject to the link-length limit.
   const handleShare = async () => {
     try {
-      const link = await encodeShareLink({ profiles, connectors, panels, fittings, throughRule })
+      const link = await encodeShareLink({ profiles, connectors, panels, fittings, equipment, throughRule })
       if (link.length > COMFORTABLE_URL * 8) { showToast(t.toastShareTooBig, 'error'); return }
       if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
       await navigator.clipboard.writeText(link)
@@ -375,7 +378,7 @@ const Sidebar: React.FC = () => {
     notifyExport()
   }
   const handleSaveProject = async (asNew = false) => {
-    const doc = { profiles, connectors, panels, fittings, throughRule }
+    const doc = { profiles, connectors, panels, fittings, equipment, throughRule }
     const suggested = savedFileName() ?? `aluframe-${new Date().toISOString().slice(0, 10)}.json`
     const r = await saveProject(serializeProjectDocument(doc), suggested, asNew)
     if (r.outcome === 'cancelled') return
@@ -712,7 +715,9 @@ const Sidebar: React.FC = () => {
               </div>
             )}
 
-            {/* The frame already knows where its joints are; this puts the part on all of them. */}
+            <EquipmentCreator />
+
+            {/* Add compatible connectors at detected joints. */}
             {held === 'connector' && activeConnectorType && (
               <button onClick={() => autoConnect(activeConnectorType)} data-testid="auto-connect"
                 title={t.autoConnectHint} disabled={profiles.length === 0}
@@ -731,7 +736,7 @@ const Sidebar: React.FC = () => {
         onToggle={() => toggle('properties')}
         badge={selectedIds.length > 0 ? <span className="text-[9px] font-mono text-blue-400">{selectedIds.length}</span> : undefined}
       >
-        {selectedProfile || selectedConnector || selectedPanel || selectedFitting ? (
+        {selectedProfile || selectedConnector || selectedPanel || selectedFitting || selectedEquipment ? (
           <div className="bg-slate-900/50 rounded-xl p-3 border border-white/5 space-y-3 shadow-xl" data-testid="properties">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <span className="text-[10px] font-black uppercase text-slate-400">{t.properties}</span>
@@ -745,6 +750,7 @@ const Sidebar: React.FC = () => {
                   className="text-red-400 hover:bg-red-400/10 disabled:opacity-30 p-1.5 rounded-lg"><Trash2 size={14} /></button>
               </div>
             </div>
+            {selectedEquipment && <EquipmentEditor part={selectedEquipment} />}
             {selectedProfile && (
               <fieldset disabled={viewMode} className="space-y-3">
                 <SupportBindingEditor part={selectedProfile} />
@@ -1145,6 +1151,14 @@ const Sidebar: React.FC = () => {
           <div className={reviewCount ? 'text-amber-300' : 'text-slate-300'} data-testid="manufacturing-result">
             {reviewCount ? t.manufacturingCount(reviewCount) : t.manufacturingClear}
           </div>
+          {(['equipment-body', 'equipment-clearance'] as const).map((kind) => {
+            const items = equipmentConflicts.filter((item) => item.kind === kind)
+            return items.length > 0 && <button key={kind} data-testid={`${kind}-warning`}
+              onClick={() => useStore.getState().selectItems([...new Set(items.flatMap((item) => [item.a, item.b]))])}
+              className={`w-full text-left hover:text-white ${kind === 'equipment-body' ? 'text-red-300' : 'text-amber-300'}`}>
+              {kind === 'equipment-body' ? t.equipmentBodyConflict : t.equipmentSpaceConflict} · {items.length}
+            </button>
+          })}
           {runnerProblems.length > 0 && (
             <button data-testid="runner-mount-warning" onClick={() => useStore.getState().selectItems([...new Set(runnerProblems.map((f) => f.id))])}
               className="w-full text-left text-amber-300 hover:text-white">

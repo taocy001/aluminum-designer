@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorExtent, connectorScale } from './connectorCatalog'
 import { computeAllTrims, computeTrims, getThroughRule, type ProfileTrims } from './jointUtils'
 import { getProfileDir } from './geometryCore'
@@ -7,6 +7,7 @@ import { specDims } from './specUtils'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
 import { findSpecMismatches, type SpecMismatch } from './specCompat'
 import { fittingObb, fittingSolids } from './fittingGeometry'
+import { findEquipmentConflicts, type EquipmentConflict } from './equipmentChecks'
 
 /** members closer than this are considered touching, not interfering (mm) */
 const TOUCH_TOL = 1
@@ -31,6 +32,8 @@ export interface FrameAnalysis {
   trims: Map<string, ProfileTrims>
   conflicts: Conflict[]
   conflictIds: Set<string>
+  equipmentConflicts: EquipmentConflict[]
+  equipmentConflictIds: Set<string>
   /** joints whose two profiles cannot be bolted together as drawn */
   mismatches: SpecMismatch[]
   mismatchIds: Set<string>
@@ -162,6 +165,8 @@ let cacheKey: ProfileData[] | null = null
 let cacheParts: ConnectorData[] | null = null
 let cacheBoards: PanelData[] | null = null
 let cacheFittings: FittingData[] | null = null
+let cacheEquipment: EquipmentData[] | null = null
+const EMPTY_EQUIPMENT: EquipmentData[] = []
 let cacheRule: string | null = null
 let cacheValue: FrameAnalysis | null = null
 
@@ -190,16 +195,24 @@ export function movingPartsConflict(all: ProfileData[], movingIds: Set<string>):
 /** Trims + interference for the current document, memoised on the arrays' identity */
 export function analyzeFrame(
   profiles: ProfileData[], connectors: ConnectorData[] = [],
-  panels: PanelData[] = [], fittings: FittingData[] = [],
+  panels: PanelData[] = [], fittings: FittingData[] = [], equipment: EquipmentData[] = EMPTY_EQUIPMENT,
 ): FrameAnalysis {
   // the through rule changes every trim in the document, so it belongs in the cache key
   const rule = getThroughRule()
   if (cacheKey === profiles && cacheParts === connectors && cacheBoards === panels
-    && cacheFittings === fittings && cacheRule === rule && cacheValue) return cacheValue
+    && cacheFittings === fittings && cacheEquipment === equipment && cacheRule === rule && cacheValue) return cacheValue
   const trims = computeAllTrims(profiles)
   const conflicts = findConflicts(profiles, trims, connectors, panels, fittings)
   const conflictIds = new Set<string>()
   for (const c of conflicts) { conflictIds.add(c.a); conflictIds.add(c.b) }
+  const equipmentConflicts = equipment.length ? findEquipmentConflicts(equipment, [
+    ...profiles.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) })),
+    ...connectors.map((c) => ({ id: c.id, obb: connectorOBB(c) })),
+    ...panels.map((b) => ({ id: b.id, obb: panelOBB(b) })),
+    ...fittings.flatMap((f) => fittingSolids(f).map((obb) => ({ id: f.id, obb }))),
+  ]) : []
+  const equipmentConflictIds = new Set<string>()
+  for (const c of equipmentConflicts) { equipmentConflictIds.add(c.a); equipmentConflictIds.add(c.b) }
   const mismatches = findSpecMismatches(profiles)
   const mismatchIds = new Set<string>()
   for (const m of mismatches) { mismatchIds.add(m.a); mismatchIds.add(m.b) }
@@ -207,7 +220,8 @@ export function analyzeFrame(
   cacheParts = connectors
   cacheBoards = panels
   cacheFittings = fittings
+  cacheEquipment = equipment
   cacheRule = rule
-  cacheValue = { trims, conflicts, conflictIds, mismatches, mismatchIds }
+  cacheValue = { trims, conflicts, conflictIds, equipmentConflicts, equipmentConflictIds, mismatches, mismatchIds }
   return cacheValue
 }

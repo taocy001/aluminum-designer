@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { noteNext } from './opLog'
 import { reportEditResult } from './editFeedback'
 import { remapCopiedBindings } from './bindingCopies'
-import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
+import { useStore, type ConnectorData, type EquipmentData, type FittingData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
 import { createTrimResolver, getProfileAxis, getProfileDir, withFixedProfileCuts, validFixedProfileCut } from './jointUtils'
@@ -14,6 +14,8 @@ import { fittingObb } from './fittingGeometry'
 import { ALL_SPECS } from './specUtils'
 import { connectorEntry } from './connectorCatalog'
 import { MIN_FITTING_OPENING, validFitting } from './fittingValidation'
+import { validEquipment } from './equipmentValidation'
+import { equipmentBody } from './equipmentGeometry'
 
 export type RotAxis = 'x' | 'y' | 'z'
 const AXES: Record<RotAxis, THREE.Vector3> = {
@@ -62,12 +64,18 @@ function selectedPanels(includeLocked = false): PanelData[] {
   return panels.filter((p) => ids.has(p.id) && (includeLocked || !p.locked))
 }
 
-type PartDocument = Pick<ReturnType<typeof useStore.getState>, 'profiles' | 'connectors' | 'panels' | 'fittings'>
+function selectedEquipment(includeLocked = false): EquipmentData[] {
+  const { equipment, selectedIds } = useStore.getState()
+  const ids = new Set(selectedIds)
+  return equipment.filter((e) => ids.has(e.id) && (includeLocked || !e.locked))
+}
+
+type PartDocument = Pick<ReturnType<typeof useStore.getState>, 'profiles' | 'connectors' | 'panels' | 'fittings'> & { equipment?: EquipmentData[] }
 
 /** Shared by the properties panel and the quick menu; empty or stale selections are unlocked. */
 export function selectionLocked(doc: PartDocument, ids: string[]): boolean {
   const selected = new Set(ids)
-  const parts = [...doc.profiles, ...doc.connectors, ...doc.panels, ...doc.fittings]
+  const parts = [...doc.profiles, ...doc.connectors, ...doc.panels, ...doc.fittings, ...(doc.equipment ?? [])]
     .filter((part) => selected.has(part.id))
   return parts.length > 0 && parts.every((part) => part.locked)
 }
@@ -75,12 +83,13 @@ export function selectionLocked(doc: PartDocument, ids: string[]): boolean {
 /** Add every kind of part and select the whole copy in one document transaction. */
 function addCopies(copies: PartDocument): boolean {
   const store = useStore.getState()
-  const ids = [...copies.profiles, ...copies.connectors, ...copies.panels, ...copies.fittings].map((part) => part.id)
+  const ids = [...copies.profiles, ...copies.connectors, ...copies.panels, ...copies.fittings, ...(copies.equipment ?? [])].map((part) => part.id)
   return reportEditResult(store.commitDocument({
     profiles: [...(copies.profiles.length ? withFixedProfileCuts(store.profiles) : store.profiles), ...copies.profiles],
     connectors: [...store.connectors, ...copies.connectors],
     panels: [...store.panels, ...copies.panels],
     fittings: [...store.fittings, ...copies.fittings],
+    equipment: [...store.equipment, ...(copies.equipment ?? [])],
   }, ids))
 }
 
@@ -98,8 +107,9 @@ function warnIfNewConflicts(before: Set<string>): void {
 
 function conflictPairsNow(): Set<string> {
   const st = useStore.getState()
-  const { conflicts } = analyzeFrame(st.profiles, st.connectors, st.panels, st.fittings)
-  return new Set(conflicts.map((c) => [c.a, c.b].sort().join('|')))
+  const { conflicts, equipmentConflicts } = analyzeFrame(st.profiles, st.connectors, st.panels, st.fittings, st.equipment)
+  return new Set([...conflicts.map((c) => [c.a, c.b].sort().join('|')),
+    ...equipmentConflicts.map((c) => `equipment:${c.kind}:${[c.a, c.b].sort().join('|')}`)])
 }
 
 /** Apply edited profiles (same ids) as one undoable step */
@@ -117,11 +127,16 @@ function applyProfiles(cands: ProfileData[]): boolean {
 }
 
 /** How far a moved set of members would sink below the floor (0 when clear) */
-function sinkBelowFloor(profiles: ProfileData[], delta: [number, number, number]): number {
+function sinkBelowFloor(profiles: ProfileData[], delta: [number, number, number], equipment: EquipmentData[] = []): number {
   let sink = 0
   for (const p of profiles) {
     const moved: [number, number, number] = [p.position[0] + delta[0], p.position[1] + delta[1], p.position[2] + delta[2]]
     sink = Math.min(sink, lowestPointY({ ...p, position: moved }))
+  }
+  for (const e of equipment) {
+    const box = equipmentBody(e)
+    const extent = box.axes.reduce((sum, axis, i) => sum + Math.abs(axis.y) * box.half.getComponent(i), 0)
+    sink = Math.min(sink, box.center.y + delta[1] - extent)
   }
   return sink
 }
@@ -132,10 +147,11 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
   const connectors = selectedConnectors()
   const panels = selectedPanels()
   const fittings = selectedFittings()
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
+  const equipment = selectedEquipment()
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
 
   const d: [number, number, number] = [...delta]
-  const sink = sinkBelowFloor(profiles, d)
+  const sink = sinkBelowFloor(profiles, d, equipment)
   if (sink < 0) d[1] -= sink
   if (d.every((v) => Math.abs(v) < 1e-6)) return false   // fully clamped: no move, no history entry
 
@@ -158,6 +174,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
       id: f.id,
       updates: { position: [round3(f.position[0] + d[0]), round3(f.position[1] + d[1]), round3(f.position[2] + d[2])] as [number, number, number] },
     })),
+    equipment: equipment.map((e) => ({ id: e.id, updates: { position: shifted(e.position, new THREE.Vector3(...d)) } })),
   })
   if (!reportEditResult(result)) return false
   warnIfNewConflicts(before)
@@ -170,7 +187,8 @@ export function duplicateSelected(): boolean {
   const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
+  const equipment = selectedEquipment(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
   noteNext('duplicate')
   const axis = profiles[0] ? getProfileAxis(profiles[0]) : 'y'
   const d: [number, number, number] = axis === 'x' ? [0, 0, 50] : [50, 0, 0]
@@ -191,16 +209,18 @@ export function duplicateSelected(): boolean {
     ...f, id: nextId('f'), locked: false,
     position: [f.position[0] + d[0], f.position[1] + d[1], f.position[2] + d[2]] as [number, number, number],
   }))
-  if (!addCopies(remapCopiedBindings({ profiles, connectors, panels, fittings },
-    { profiles: newProfiles, connectors: newConnectors, panels: newPanels, fittings: newFittings }))) return false
-  toast(t().toastDuplicated(newProfiles.length + newConnectors.length + newPanels.length + newFittings.length), 'success')
+  const newEquipment = equipment.map((e) => ({ ...e, id: nextId('e'), locked: false,
+    clearance: { ...e.clearance }, position: shifted(e.position, new THREE.Vector3(...d)) }))
+  if (!addCopies(remapCopiedBindings({ profiles, connectors, panels, fittings, equipment },
+    { profiles: newProfiles, connectors: newConnectors, panels: newPanels, fittings: newFittings, equipment: newEquipment }))) return false
+  toast(t().toastDuplicated(newProfiles.length + newConnectors.length + newPanels.length + newFittings.length + newEquipment.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
 
 /** Centre of everything in the document, which is the plane a mirror reflects across */
 function documentCentre(): THREE.Vector3 {
-  const { profiles, connectors, panels, fittings } = useStore.getState()
+  const { profiles, connectors, panels, fittings, equipment } = useStore.getState()
   const min = new THREE.Vector3(Infinity, Infinity, Infinity)
   const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity)
   const add = (v: THREE.Vector3) => { min.min(v); max.max(v) }
@@ -208,6 +228,7 @@ function documentCentre(): THREE.Vector3 {
   for (const c of connectors) add(new THREE.Vector3(...c.position))
   for (const b of panels) add(new THREE.Vector3(...b.position))
   for (const f of fittings) add(new THREE.Vector3(...f.position))
+  for (const e of equipment) add(new THREE.Vector3(...e.position))
   if (!isFinite(min.x)) return new THREE.Vector3()
   return min.add(max).multiplyScalar(0.5)
 }
@@ -238,11 +259,6 @@ function connectorSymmetry(type: string): RotAxis | 'swapXY' {
 /**
  * Mirror the selection across the plane through the centre of the whole frame.
  *
- * The plane is the frame's, not the selection's: building a cabinet means drawing one side
- * and mirroring it to get the other, and a plane through the selection's own centre would
- * only drop the copy back on top of it. With everything selected the two coincide, which
- * turns the gesture into flipping the whole frame — also a reasonable reading.
- *
  * The local X reflection preserves rectangular sections and slabs; doors swap their hung
  * edge so their leaf and opening motion are reflected too.
  */
@@ -251,7 +267,8 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
   const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
+  const equipment = selectedEquipment(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
   noteNext(`mirror ${axis.toUpperCase()}`)
 
   const centre = documentCentre()
@@ -291,9 +308,12 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
       ...(f.meeting ? { meeting: f.meeting === 'left' ? 'right' : 'left' } : {}),
     }
   })
-  if (!addCopies(remapCopiedBindings({ profiles, connectors, panels, fittings },
-    { profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies }, { mirror: true }))) return false
-  toast(t().toastMirrored(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length), 'success')
+  const equipmentCopies: EquipmentData[] = equipment.map((e) => ({ ...e, id: nextId('e'), locked: false,
+    position: positionAt(e.position), quaternion: reflectedQuaternion(e.quaternion, axis),
+    clearance: { ...e.clearance, left: e.clearance.right, right: e.clearance.left } }))
+  if (!addCopies(remapCopiedBindings({ profiles, connectors, panels, fittings, equipment },
+    { profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies, equipment: equipmentCopies }, { mirror: true }))) return false
+  toast(t().toastMirrored(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length + equipmentCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
@@ -304,7 +324,8 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
   const connectors = selectedConnectors(true, true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
+  const equipment = selectedEquipment(true)
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
   if (!isFinite(count) || count < 1 || !isFinite(spacing) || Math.abs(spacing) < 1) return false
   const n = Math.min(Math.floor(count), 50)   // a slip of the keyboard must not make 5000 parts
   noteNext(`array ${axis.toUpperCase()} ×${n} @${spacing}`)
@@ -317,6 +338,7 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
   const connectorCopies: ConnectorData[] = []
   const panelCopies: PanelData[] = []
   const fittingCopies: FittingData[] = []
+  const equipmentCopies: EquipmentData[] = []
   for (let i = 1; i <= n; i++) {
     const d = step.clone().multiplyScalar(i)
     for (const p of profiles) {
@@ -333,6 +355,7 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
     }
     for (const b of panels) panelCopies.push({ ...b, id: nextId('b'), locked: false, position: shifted(b.position, d) })
     for (const f of fittings) fittingCopies.push({ ...f, id: nextId('f'), locked: false, position: shifted(f.position, d) })
+    for (const e of equipment) equipmentCopies.push({ ...e, id: nextId('e'), locked: false, clearance: { ...e.clearance }, position: shifted(e.position, d) })
   }
   for (let i = 0; i < n; i++) {
     const batch = remapCopiedBindings({ profiles, connectors, panels, fittings }, {
@@ -347,16 +370,17 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
     fittingCopies.splice(i * fittings.length, fittings.length, ...batch.fittings)
   }
   // the whole array is lifted as one, so the copies stay in line instead of being clamped apart
-  const sink = sinkBelowFloor(copies, [0, 0, 0])
+  const sink = sinkBelowFloor(copies, [0, 0, 0], equipmentCopies)
   if (sink < 0) {
     for (const p of copies) p.position = [p.position[0], round3(p.position[1] - sink), p.position[2]]
     for (const c of connectorCopies) c.position = [c.position[0], round3(c.position[1] - sink), c.position[2]]
     for (const b of panelCopies) b.position = [b.position[0], round3(b.position[1] - sink), b.position[2]]
     for (const f of fittingCopies) f.position = [f.position[0], round3(f.position[1] - sink), f.position[2]]
+    for (const e of equipmentCopies) e.position = [e.position[0], round3(e.position[1] - sink), e.position[2]]
   }
 
-  if (!addCopies({ profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies })) return false
-  toast(t().toastArrayed(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length), 'success')
+  if (!addCopies({ profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies, equipment: equipmentCopies })) return false
+  toast(t().toastArrayed(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length + equipmentCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
 }
@@ -374,13 +398,14 @@ export type PivotMode = 'center' | 'start' | 'end'
 export function selectionPivot(
   profiles: ProfileData[], connectors: ConnectorData[], mode: PivotMode = 'center',
   panels: PanelData[] = [], fittings: FittingData[] = [], allProfiles: ProfileData[] = profiles,
+  equipment: EquipmentData[] = [],
 ): THREE.Vector3 {
   // A construction endpoint can sit inside a joint, or short of its extended cap. The
   // widget and the turn use the visible solid, with unselected neighbours resolving any
   // automatic cuts. Finished pieces carry their own cuts and need no scene lookup.
   const resolve = profiles.some((p) => !p.fixedTrims) ? createTrimResolver(allProfiles) : null
   const ends = (p: ProfileData) => profileBodyEndpoints(p, p.fixedTrims ? undefined : resolve?.(p))
-  if (mode !== 'center' && profiles.length === 1 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) {
+  if (mode !== 'center' && profiles.length === 1 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) {
     const { start, end } = ends(profiles[0])
     return mode === 'start' ? start : end
   }
@@ -393,6 +418,7 @@ export function selectionPivot(
   for (const b of panels) pts.push(new THREE.Vector3(...b.position))
   // Use fitting geometry when computing the rotation pivot.
   for (const f of fittings) pts.push(fittingObb(f).center)
+  for (const e of equipment) pts.push(new THREE.Vector3(...e.position))
   if (pts.length === 0) return new THREE.Vector3()
   const sum = pts.reduce((acc, v) => acc.add(v), new THREE.Vector3())
   return sum.divideScalar(pts.length)
@@ -416,10 +442,11 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   const connectors = selectedConnectors()
   const panels = selectedPanels()
   const fittings = selectedFittings()
-  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return false
+  const equipment = selectedEquipment()
+  if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
   if (!isFinite(degrees) || degrees % 360 === 0) return false
   noteNext(`turn ${axis.toUpperCase()} ${degrees}°`)
-  const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode, panels, fittings, allProfiles)
+  const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode, panels, fittings, allProfiles, equipment)
   const rot = new THREE.Quaternion().setFromAxisAngle(AXES[axis], THREE.MathUtils.degToRad(degrees))
   const spin = (pos: [number, number, number], quat: [number, number, number, number]) => {
     const p = new THREE.Vector3(...pos).sub(pivot).applyQuaternion(rot).add(pivot)
@@ -433,19 +460,21 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   const spunConnectors = connectors.map((c) => ({ id: c.id, updates: spin(c.position, c.quaternion) }))
   const spunPanels = panels.map((p) => ({ id: p.id, updates: spin(p.position, p.quaternion) }))
   const spunFittings = fittings.map((f) => ({ id: f.id, updates: spin(f.position, f.quaternion) }))
+  const spunEquipment = equipment.map((e) => ({ id: e.id, updates: spin(e.position, e.quaternion) }))
 
   // a turn must not bury the parts: lift the whole selection back onto the floor
   const rotated = profiles.map((p, i) => ({ ...p, ...spunProfiles[i].updates }))
-  const sink = sinkBelowFloor(rotated, [0, 0, 0])
+  const sink = sinkBelowFloor(rotated, [0, 0, 0], equipment.map((e, i) => ({ ...e, ...spunEquipment[i].updates })))
   if (sink < 0) {
     for (const u of spunProfiles) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
     for (const u of spunConnectors) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
     for (const u of spunPanels) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
     for (const u of spunFittings) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
+    for (const u of spunEquipment) u.updates.position = [u.updates.position![0], round3(u.updates.position![1] - sink), u.updates.position![2]]
   }
 
   const before = conflictPairsNow()
-  if (!reportEditResult(useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors, panels: spunPanels, fittings: spunFittings }))) return false
+  if (!reportEditResult(useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors, panels: spunPanels, fittings: spunFittings, equipment: spunEquipment }))) return false
   warnIfNewConflicts(before)
   return true
 }
@@ -471,6 +500,7 @@ export function commitExactMove(distance: number): boolean {
     ?? store.connectors.find((c) => c.id === ts.dragProfileId)
     ?? store.panels.find((b) => b.id === ts.dragProfileId)
     ?? store.fittings.find((f) => f.id === ts.dragProfileId)
+    ?? store.equipment.find((e) => e.id === ts.dragProfileId)
   if (!lead || lead.locked) return false
   const movingIds = new Set(Object.keys(origins))
   movingIds.add(lead.id)
@@ -485,7 +515,9 @@ export function commitExactMove(distance: number): boolean {
   const delta = travelled.normalize().multiplyScalar(distance)
 
   const profiles = store.profiles.filter((p) => movingIds.has(p.id) && !p.locked)
-  const sink = sinkBelowFloor(profiles.map((p) => ({ ...p, position: origins[p.id] ?? leadOrigin })), [delta.x, delta.y, delta.z])
+  const equipment = store.equipment.filter((e) => movingIds.has(e.id) && !e.locked)
+  const sink = sinkBelowFloor(profiles.map((p) => ({ ...p, position: origins[p.id] ?? leadOrigin })), [delta.x, delta.y, delta.z],
+    equipment.map((e) => ({ ...e, position: origins[e.id] ?? leadOrigin })))
   if (sink < 0) delta.y -= sink
 
   const at = (id: string, fallback: [number, number, number]): [number, number, number] => {
@@ -500,6 +532,7 @@ export function commitExactMove(distance: number): boolean {
       .map((b) => ({ id: b.id, updates: { position: at(b.id, b.position) } })),
     fittings: store.fittings.filter((f) => movingIds.has(f.id) && !f.locked)
       .map((f) => ({ id: f.id, updates: { position: at(f.id, f.position) } })),
+    equipment: equipment.map((e) => ({ id: e.id, updates: { position: at(e.id, e.position) } })),
   })
   if (result.status === 'rejected') { reportEditResult(result); return false }
   ts.stopDrag()
@@ -548,9 +581,9 @@ export function commitExactLength(length: number): boolean {
 
 /** Everything in the document, so Ctrl+A means what it means everywhere else */
 export function selectAll(): boolean {
-  const { profiles, connectors, panels, fittings, selectItems } = useStore.getState()
+  const { profiles, connectors, panels, fittings, equipment, selectItems } = useStore.getState()
   const ids = [...profiles.map((p) => p.id), ...connectors.map((c) => c.id),
-    ...panels.map((b) => b.id), ...fittings.map((f) => f.id)]
+    ...panels.map((b) => b.id), ...fittings.map((f) => f.id), ...equipment.map((e) => e.id)]
   if (ids.length === 0) return false
   selectItems(ids)
   return true
@@ -667,6 +700,7 @@ const PART_FIELDS = {
   connectors: ['type', 'series', 'position', 'quaternion'],
   panels: ['width', 'height', 'thickness', 'material', 'position', 'quaternion'],
   fittings: ['kind', 'width', 'height', 'depth', 'frame', 'material', 'open', 'hinge', 'hingeType', 'overlay', 'swing', 'meeting', 'stacked', 'drawer', 'position', 'quaternion'],
+  equipment: ['name', 'width', 'height', 'depth', 'clearance', 'position', 'quaternion'],
 }
 
 const finiteTuple = (value: unknown, length: number): value is number[] => Array.isArray(value)
@@ -708,6 +742,8 @@ function validLiveUpdates(kind: keyof PartDocument, part: { locked?: boolean }, 
     if (!connectorEntry(next.type as string) || ![20, 30, 40].includes((next.series ?? 20) as number)) return null
   } else if (kind === 'panels') {
     if (!numberField('width', 20) || !numberField('height', 20) || !numberField('thickness', 0, 1, true) || !materialValid(next.material)) return null
+  } else if (kind === 'equipment') {
+    if (!validEquipment({ ...part, ...normalised })) return null
   } else {
     if (!['width', 'height', 'depth'].every((field) => numberField(field, MIN_FITTING_OPENING))) return null
     if ('frame' in updates && !numberField('frame', 0)) return null

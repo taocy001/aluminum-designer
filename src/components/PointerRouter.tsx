@@ -15,6 +15,8 @@ import { memberBox } from '../utils/dragSnap'
 import { acceptSuggestion, dismissSuggestion } from '../utils/suggestOps'
 import { profileBodyEndpoints } from '../utils/profileFaces'
 import { computeAllTrims, type ProfileTrims } from '../utils/jointUtils'
+import { equipmentBody } from '../utils/equipmentGeometry'
+import { obbCorners } from '../utils/obb'
 
 /** Where a ray meets a level plane at height `y`, or null when it runs parallel to it */
 function planeHit(ray: THREE.Ray, y: number): THREE.Vector3 | null {
@@ -25,15 +27,14 @@ function planeHit(ray: THREE.Ray, y: number): THREE.Vector3 | null {
 
 const CLICK_SLOP_PX = 5
 
-/** Any movable part by id — members, connectors and boards all carry a position */
+/** All movable parts carry a position. */
 type StoreLike = ReturnType<typeof useStore.getState>
 const partById = (store: StoreLike, id: string) =>
   store.profiles.find((p) => p.id === id)
   ?? store.connectors.find((c) => c.id === id)
   ?? store.panels.find((b) => b.id === id)
-  // A drawer or a door is a part like any other and moves like one. Leaving it out of this
-  // lookup meant the drag found nothing to move and gave up without a word.
   ?? store.fittings.find((f) => f.id === id)
+  ?? store.equipment.find((e) => e.id === id)
 
 /**
  * Handle hover, selection and drag start using screen-space picking.
@@ -135,11 +136,11 @@ const PointerRouter: React.FC = () => {
     const candidatesFor = (cursor: THREE.Vector2, rect: DOMRect) => {
       const ray = rayOf(cursor, rect)
       const store = useStore.getState()
-      const { profiles, connectors, panels, fittings } = store
+      const { profiles, connectors, panels, fittings, equipment } = store
       // put away is put away: a hidden door is not something you can click either
       const visible = useToolStore.getState().showFittings ? fittings : []
       const list = pickCandidatesAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
-        profiles, connectors, panels, visible, trimsFor(store))
+        profiles, connectors, panels, visible, trimsFor(store), equipment)
       return promoteFrontmost(list, frontmostId(scene, ray, camera))
     }
     /** Reuse the same visible/Tab target for hover, handle precedence and pointerdown. */
@@ -224,7 +225,7 @@ const PointerRouter: React.FC = () => {
       const ray = rayOf(cursor, rect)
       const store = useStore.getState()
       const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
-        store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store))
+        store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store), store.equipment)
       let target = hit?.point?.clone() ?? null
       if (!target) {
         // For an empty-space zoom, keep the current view depth along the pointer ray.
@@ -249,7 +250,7 @@ const PointerRouter: React.FC = () => {
       const store = useStore.getState()
       const hit = pickAtScreen(
         new THREE.Vector2(rect.width / 2, rect.height / 2), ray.ray, camera,
-        { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store),
+        { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store), store.equipment,
       )
       const dir = camera.getWorldDirection(new THREE.Vector3())
       let depth: number | null = null
@@ -260,6 +261,9 @@ const PointerRouter: React.FC = () => {
         const box = new THREE.Box3()
         for (const p of store.profiles) box.union(memberBox(p))
         for (const b of store.panels) box.expandByPoint(new THREE.Vector3(...b.position))
+        for (const c of store.connectors) box.expandByPoint(new THREE.Vector3(...c.position))
+        for (const f of store.fittings) box.expandByPoint(new THREE.Vector3(...f.position))
+        for (const e of store.equipment) for (const corner of obbCorners(equipmentBody(e))) box.expandByPoint(corner)
         if (!box.isEmpty()) depth = box.getCenter(new THREE.Vector3()).sub(camera.position).dot(dir)
       }
       if (depth === null || !isFinite(depth) || depth < 1) return
@@ -314,6 +318,7 @@ const PointerRouter: React.FC = () => {
           const lead = store.profiles.find((p) => store.selectedIds.includes(p.id) && !p.locked)
             ?? store.panels.find((b) => store.selectedIds.includes(b.id) && !b.locked)
             ?? store.fittings.find((f) => store.selectedIds.includes(f.id) && !f.locked)
+            ?? store.equipment.find((e) => store.selectedIds.includes(e.id) && !e.locked)
           if (!lead) return
           const groupOrigins: Record<string, [number, number, number]> = {}
           for (const sid of store.selectedIds) {

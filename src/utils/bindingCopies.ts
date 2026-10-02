@@ -40,6 +40,7 @@ export function remapCopiedBindings(
   }) as ProjectGeometry['profiles']
   const copiedProfiles = new Map(profileCopies.map((part) => [part.id, part]))
   return {
+    ...(copies.equipment !== undefined ? { equipment: copies.equipment.map((e) => ({ ...e, clearance: { ...e.clearance } })) } : {}),
     profiles: profileCopies,
     fittings: copies.fittings.map((part, i) => {
       const { openingBinding: omitted, ...copy } = part

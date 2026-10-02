@@ -1,9 +1,10 @@
 import * as THREE from 'three'
-import type { ProfileData, ConnectorData, PanelData, FittingData } from '../store/useStore'
+import type { ProfileData, ConnectorData, PanelData, FittingData, EquipmentData } from '../store/useStore'
 import { getProfileDir, crossExtentAlong } from './geometryCore'
 import { toScreen, closestParamLineToRay, type ScreenSize } from './pickUtils'
 import { panelCorners } from './panelOps'
 import { fittingObb } from './fittingGeometry'
+import { equipmentBody } from './equipmentGeometry'
 import { cutAway } from './frontmost'
 import { obbCorners } from './obb'
 import { profileBodyEndpoints } from './profileFaces'
@@ -83,7 +84,7 @@ function segmentDistancePx(a: THREE.Vector2, b: THREE.Vector2, p: THREE.Vector2)
 }
 
 export interface ScreenPick {
-  kind: 'profile' | 'connector' | 'panel' | 'fitting'
+  kind: 'profile' | 'connector' | 'panel' | 'fitting' | 'equipment'
   id: string
   /** point on the member centerline nearest the sight line (profiles only) */
   point: THREE.Vector3
@@ -115,9 +116,9 @@ export function pickAtScreen(
   cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
   profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
   fittings: FittingData[] = [],
-  trims?: ReadonlyMap<string, ProfileTrims>,
+  trims?: ReadonlyMap<string, ProfileTrims>, equipment: EquipmentData[] = [],
 ): ScreenPick | null {
-  return pickCandidatesAtScreen(cursor, ray, camera, size, profiles, connectors, panels, fittings, trims)[0] ?? null
+  return pickCandidatesAtScreen(cursor, ray, camera, size, profiles, connectors, panels, fittings, trims, equipment)[0] ?? null
 }
 
 /** Return pick candidates under the cursor in depth order for selection cycling. */
@@ -125,7 +126,7 @@ export function pickCandidatesAtScreen(
   cursor: THREE.Vector2, ray: THREE.Ray, camera: THREE.Camera, size: ScreenSize,
   profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [],
   fittings: FittingData[] = [],
-  trims?: ReadonlyMap<string, ProfileTrims>,
+  trims?: ReadonlyMap<string, ProfileTrims>, equipment: EquipmentData[] = [],
 ): ScreenPick[] {
   const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld)
   const fwd = camera.getWorldDirection(new THREE.Vector3())
@@ -190,6 +191,18 @@ export function pickCandidatesAtScreen(
       score: here.distanceTo(camPos) + FITTING_DEPTH_PENALTY,
       pick: { kind: 'fitting', id: f.id, point: here, depth: here.distanceTo(camPos) },
     })
+  }
+
+  // Reservations are not pickable; select the equipment's physical body.
+  for (const e of equipment) {
+    const body = equipmentBody(e), center = body.center
+    if (cutAway(center)) continue
+    const corners = obbCorners(body)
+    if (corners.some((v) => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
+    const outline = hull2d(corners.map((v) => toScreen(v, camera, size)))
+    if (!insideQuad(outline, cursor) && distanceToOutline(outline, cursor) > PANEL_SLACK_PX) continue
+    const depth = center.distanceTo(camPos)
+    found.push({ score: depth, pick: { kind: 'equipment', id: e.id, point: center, depth } })
   }
 
   for (const c of connectors) {

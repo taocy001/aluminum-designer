@@ -4,6 +4,7 @@ import { connectorSolidTop } from './connectorGeometry'
 import { fittingSolids } from './fittingGeometry'
 import { createTrimResolver, type ProfileTrims } from './jointUtils'
 import type { OBB } from './obb'
+import { equipmentBody } from './equipmentGeometry'
 
 /** Highest point of the actual selected solids, including end cuts and section rotation. */
 export function selectedSolidTop(document: ProjectGeometry, selectedIds: readonly string[], trims?: Map<string, ProfileTrims>): number | null {
@@ -22,5 +23,6 @@ export function selectedSolidTop(document: ProjectGeometry, selectedIds: readonl
   for (const part of document.connectors) if (ids.has(part.id)) top = Math.max(top, connectorSolidTop(part))
   for (const part of document.panels) if (ids.has(part.id)) consider(panelOBB(part))
   for (const part of document.fittings) if (ids.has(part.id)) for (const solid of fittingSolids(part)) consider(solid)
+  for (const part of document.equipment ?? []) if (ids.has(part.id)) consider(equipmentBody(part))
   return Number.isFinite(top) ? Math.round(top * 1000) / 1000 : null
 }

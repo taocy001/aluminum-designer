@@ -39,7 +39,7 @@ describe('persisted assembly bindings', () => {
     }
     const current = { ...remapCopiedBindings(source, copies), throughRule: source.throughRule }
     const restored = via === 'file' ? parseProjectDocument(serializeProjectDocument(current)) : await decode(current)
-    expect(restored).toEqual({ ...current, version: PROJECT_VERSION })
+    expect(restored).toEqual({ ...current, equipment: [], version: PROJECT_VERSION })
     expect(parseProjectDocument(restored)).toEqual(restored)
     expect(resolveOpening(restored.fittings[0].openingBinding!.opening, restored.profiles, restored.throughRule).status).toBe('resolved')
   })
@@ -49,7 +49,7 @@ describe('persisted assembly bindings', () => {
     doc.profiles = doc.profiles.filter((part) => part.id !== 'back' && part.id !== 'runner')
     doc.fittings = doc.fittings.filter((part) => part.id !== 'drawer')
     const restored = via === 'file' ? parseProjectDocument(serializeProjectDocument(doc)) : await decode(doc)
-    expect(restored).toEqual({ ...doc, version: PROJECT_VERSION })
+    expect(restored).toEqual({ ...doc, equipment: [], version: PROJECT_VERSION })
     expect(resolveOpening(restored.fittings[0].openingBinding!.opening, restored.profiles, restored.throughRule))
       .toEqual({ status: 'missing-source', sourceIds: ['back'] })
     expect(restored.connectors[0].supportBinding!.profileId).toBe('runner')

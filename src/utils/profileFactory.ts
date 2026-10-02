@@ -138,8 +138,8 @@ export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: Pr
     : useStore.getState().addProfile(candidate)
   if (!reportEditResult(result)) return false
   const st = useStore.getState()
-  const { conflictIds } = analyzeFrame(st.profiles, st.connectors, st.panels, st.fittings)
-  if (conflictIds.has(candidate.id)) showToast(t.toastOverlap, 'error')
+  const { conflictIds, equipmentConflictIds } = analyzeFrame(st.profiles, st.connectors, st.panels, st.fittings, st.equipment)
+  if (conflictIds.has(candidate.id) || equipmentConflictIds.has(candidate.id)) showToast(t.toastOverlap, 'error')
   return true
 }
 

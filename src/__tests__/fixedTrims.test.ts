@@ -268,7 +268,7 @@ describe('copies, direction and persistence keep determined end faces', () => {
       connectors: [], panels: [], fittings: [], throughRule: 'rails' as const }
     const json = serializeProjectDocument(doc)
     expect(JSON.parse(json).version).toBe(PROJECT_VERSION)
-    expect(parseProjectDocument(json)).toEqual({ ...doc, version: PROJECT_VERSION })
+    expect(parseProjectDocument(json)).toEqual({ ...doc, equipment: [], version: PROJECT_VERSION })
     const link = await encodeShareLink(doc, 'https://example.com/')
     const back = await decodeShare(new URL(link).hash.slice(3))
     expect(back.profiles.map(({ id: _id, ...p }) => p)).toEqual(doc.profiles.map(({ id: _id, ...p }) => p))

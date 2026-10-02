@@ -10,18 +10,21 @@ import { readout } from '../utils/measure'
 import SnapMarker from './SnapMarker'
 import EditAlignmentGuides from './EditAlignmentGuides'
 import { translations } from '../utils/translations'
-import { fittingObb, leafObb } from '../utils/fittingGeometry'
+import { fittingObb, leafObb, fittingSolids } from '../utils/fittingGeometry'
+import { equipmentBody, equipmentClearance } from '../utils/equipmentGeometry'
+import { obbCorners } from '../utils/obb'
 import { cutAway } from '../utils/frontmost'
 import { assemblySteps, shownAt } from '../utils/assembly'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/jointUtils'
-import { analyzeFrame, connectorOBB, type Conflict } from '../utils/analysis'
+import { analyzeFrame, connectorOBB, panelOBB, type Conflict } from '../utils/analysis'
 import type { SpecMismatch } from '../utils/specCompat'
 import Profile from './Profile'
 import Connector from './Connector'
 import Panel from './Panel'
 import Fitting from './Fitting'
+import Equipment from './Equipment'
 import Gestures from './Gestures'
 import FrameDimensions from './FrameDimensions'
 import DrawingHandler from './DrawingHandler'
@@ -104,7 +107,7 @@ const CameraController: React.FC = () => {
   useEffect(() => {
     // Fit the view only to content present when the page opens.
     const s = useStore.getState()
-    if (s.profiles.length + s.panels.length + s.fittings.length === 0) return
+    if (s.profiles.length + s.connectors.length + s.panels.length + s.fittings.length + s.equipment.length === 0) return
     useToolStore.getState().triggerCameraReset('all')
   }, [])
 
@@ -112,23 +115,15 @@ const CameraController: React.FC = () => {
     if (cameraResetTrigger === prevTrigger.current) return
     prevTrigger.current = cameraResetTrigger
     const orbit = controls as any
-    // F frames the selection, the Home button frames everything. When only boards are
-    // selected there is still something to look at, so panels count too.
     const doc = useStore.getState()
-    let subject = doc.profiles
-    let bounds: THREE.Box3 | null = null
-    if (cameraFitScope === 'selection' && doc.selectedIds.length > 0) {
-      const ids = new Set(doc.selectedIds)
-      subject = doc.profiles.filter((p) => ids.has(p.id))
-      bounds = subject.length > 0 ? computeFrameBounds(subject) : null
-      for (const b of doc.panels) {
-        if (!ids.has(b.id)) continue
-        const half = Math.max(b.width, b.height, b.thickness) / 2
-        const c = new THREE.Vector3(...b.position)
-        ;(bounds ??= new THREE.Box3()).expandByPoint(c.clone().addScalar(half)).expandByPoint(c.clone().addScalar(-half))
-      }
-    }
-    bounds ??= computeFrameBounds(doc.profiles)
+    const ids = cameraFitScope === 'selection' && doc.selectedIds.length > 0 ? new Set(doc.selectedIds) : null
+    const chosen = <T extends { id: string }>(parts: T[]) => ids ? parts.filter((p) => ids.has(p.id)) : parts
+    let bounds = computeFrameBounds(chosen(doc.profiles))
+    const boxes = [
+      ...chosen(doc.connectors).map(connectorOBB), ...chosen(doc.panels).map(panelOBB),
+      ...chosen(doc.fittings).flatMap((f) => fittingSolids(f)), ...chosen(doc.equipment).map(equipmentBody),
+    ]
+    for (const box of boxes) for (const point of obbCorners(box)) (bounds ??= new THREE.Box3()).expandByPoint(point)
     let target = new THREE.Vector3(0, 0, 0)
     let pos = DEFAULT_CAM.clone()
     if (bounds) {
@@ -199,6 +194,7 @@ const FrameSelector: React.FC = () => {
     for (const c of s.connectors) if (inside(connectorOBB(c).center)) selected.push(c.id)
     for (const b of s.panels) if (inside(new THREE.Vector3(...b.position))) selected.push(b.id)
     for (const f of s.fittings) if (inside(fittingObb(f).center)) selected.push(f.id)
+    for (const e of s.equipment) if (inside(equipmentBody(e).center)) selected.push(e.id)
     s.selectItems(selected)
   }, [frameSelectRect, camera, size, clearFrameSelectRect])
 
@@ -255,6 +251,7 @@ const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims
   const profiles = useStore((s) => s.profiles)
   const panels = useStore((s) => s.panels)
   const fittings = useStore((s) => s.fittings)
+  const equipment = useStore((s) => s.equipment)
   const mm = (v: number) => String(Math.round(v))
   return (
     <>
@@ -273,6 +270,8 @@ const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims
           sizes={[['W', b.width], ['H', b.height], ['T', b.thickness]]} color="#fde68a" />
       ))}
 
+      {equipment.map((e) => <PartDimensions key={e.id} owner={e.id} position={e.position} quaternion={e.quaternion}
+        sizes={[['W', e.width], ['H', e.height], ['D', e.depth]]} color="#5eead4" />)}
       {fittings.map((f) => {
         // A door is labelled as the leaf you would cut: its own width, height and thickness,
         // on the leaf and following it open. Its depth is the cabinet's, and "D 670" on a
@@ -335,6 +334,8 @@ const DevHook: React.FC = () => {
     w.__aluframe.seatFor = seatFor
     w.__aluframe.leafObb = leafObb
     w.__aluframe.fittingObb = fittingObb
+    w.__aluframe.equipmentBody = equipmentBody
+    w.__aluframe.equipmentClearance = equipmentClearance
     w.__aluframe.connectorSeatAt = connectorSeatAt
     // what the renderer actually draws at a pixel, by raycasting the real meshes: the
     // yardstick the screen-space picker is measured against
@@ -349,7 +350,7 @@ const DevHook: React.FC = () => {
         let o: THREE.Object3D | null = h.object
         while (o) {
           const d = o.userData as Record<string, string>
-          const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId
+          const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId ?? d.equipmentId
           if (id) return { id, dist: h.distance }
           o = o.parent
         }
@@ -366,7 +367,7 @@ const DevHook: React.FC = () => {
       const st = useStore.getState()
       const visible = useToolStore.getState().showFittings ? st.fittings : []
       const list = pickCandidatesAtScreen(cursor, rc.ray, camera, { width: rect.width, height: rect.height },
-        st.profiles, st.connectors, st.panels, visible)
+        st.profiles, st.connectors, st.panels, visible, undefined, st.equipment)
       return promoteFrontmost(list, frontmostId(scene, rc.ray, camera)).map((p) => ({ kind: p.kind, id: p.id }))
     }
     w.__aluframe.countByName = (name: string) => {
@@ -400,7 +401,7 @@ const DevHook: React.FC = () => {
  * Marks exactly where members interfere: a bright box with a wire outline, drawn through
  * the geometry so the spot is findable even when it sits inside the parts.
  */
-const ConflictMarker: React.FC<{ conflict: Conflict }> = ({ conflict }) => {
+const ConflictMarker: React.FC<{ conflict: Conflict; clearance?: boolean }> = ({ conflict, clearance = false }) => {
   const size = conflict.region.getSize(new THREE.Vector3())
   const center = conflict.region.getCenter(new THREE.Vector3())
   const [w, h, d] = [size.x + 3, size.y + 3, size.z + 3]
@@ -416,12 +417,12 @@ const ConflictMarker: React.FC<{ conflict: Conflict }> = ({ conflict }) => {
   // everything, it buried the very joint someone had zoomed in to put right. The outline
   // still shows through, so a clash hidden behind a post can be found — and seen past.
   return (
-    <group position={center} raycast={() => null}>
+    <group position={center} raycast={() => null} name={clearance ? 'equipment-clearance-conflict' : 'body-conflict'}>
       <mesh geometry={geometries.box} renderOrder={6}>
-        <meshBasicMaterial color="#ff2d2d" transparent opacity={0.45} depthWrite={false} />
+        <meshBasicMaterial color={clearance ? '#f59e0b' : '#ff2d2d'} transparent opacity={0.45} depthWrite={false} />
       </mesh>
       <lineSegments geometry={geometries.edges} renderOrder={7}>
-        <lineBasicMaterial color="#fecaca" transparent opacity={0.9} depthTest={false} />
+        <lineBasicMaterial color={clearance ? '#fde68a' : '#fecaca'} transparent opacity={0.9} depthTest={false} />
       </lineSegments>
     </group>
   )
@@ -508,7 +509,7 @@ const ConflictMarkers: React.FC<{ conflicts: Conflict[] }> = ({ conflicts }) => 
 )
 
 const Viewport: React.FC = () => {
-  const { profiles, connectors, panels, fittings, selectedIds, throughRule } = useStore()
+  const { profiles, connectors, panels, fittings, equipment, selectedIds, throughRule } = useStore()
   const { isDragging, showDimensionLabels, selectMode, showFittings, buildStep } = useToolStore()
   // Stepping through the build shows what is on by the end of that step and nothing later.
   // The parts are the same parts; this only decides which of them are drawn.
@@ -517,7 +518,15 @@ const Viewport: React.FC = () => {
   const on = useMemo(() => (steps && buildStep !== null ? shownAt(steps, buildStep) : null), [steps, buildStep])
   const showing = <T extends { id: string }>(list: T[], kind: 'profiles' | 'connectors' | 'panels' | 'fittings') =>
     (on ? list.filter((x) => on[kind].has(x.id)) : list)
-  const { trims, conflicts, conflictIds, mismatches } = useMemo(() => analyzeFrame(profiles, connectors, panels, fittings), [profiles, connectors, panels, fittings, throughRule])
+  const { trims, conflicts, conflictIds, equipmentConflicts, mismatches } = useMemo(
+    () => analyzeFrame(profiles, connectors, panels, fittings, equipment), [profiles, connectors, panels, fittings, equipment, throughRule])
+  const equipmentKinds = useMemo(() => {
+    const kinds = new Map<string, 'equipment-body' | 'equipment-clearance'>()
+    for (const c of equipmentConflicts) for (const id of [c.a, c.b]) {
+      if (!kinds.has(id) || c.kind === 'equipment-body') kinds.set(id, c.kind)
+    }
+    return kinds
+  }, [equipmentConflicts])
 
   const orbitEnabled = !isDragging && !selectMode
   // One mapping for the whole canvas, whatever is in hand: the buttons must not change
@@ -556,11 +565,14 @@ const Viewport: React.FC = () => {
         <Fitting key={f.id} {...f} isSelected={selectedIds.includes(f.id)} />
       ))}
 
+      {equipment.map((e) => <Equipment key={e.id} {...e} isSelected={selectedIds.includes(e.id)} conflict={equipmentKinds.get(e.id)} />)}
+
       <MeasureOverlay />
       {showDimensionLabels && <DimensionLabels trims={trims} />}
       <FrameDimensions />
       <LabelLayout />
       <ConflictMarkers conflicts={conflicts} />
+      {equipmentConflicts.map((c) => <ConflictMarker key={`${c.a}-${c.b}-${c.kind}`} conflict={c} clearance={c.kind === 'equipment-clearance'} />)}
       <MismatchMarkers mismatches={mismatches} />
       <EditAlignmentGuides trims={trims} />
 

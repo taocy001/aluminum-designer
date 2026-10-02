@@ -1,6 +1,8 @@
 import * as THREE from 'three'
-import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
-import { findConflicts } from './analysis'
+import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import { findConflicts, trimmedOBB } from './analysis'
+import { equipmentClearance } from './equipmentGeometry'
+import { findEquipmentConflicts } from './equipmentChecks'
 import { computeAllTrims, computeTrims, trimmedBox, type ProfileTrims } from './jointUtils'
 import { closestOnSegment, getProfileAxis, getProfileDir, getProfileEndpoints } from './geometryCore'
 import { memberBox } from './dragSnap'
@@ -19,6 +21,7 @@ export interface SuggestDoc {
   connectors: ConnectorData[]
   panels: PanelData[]
   fittings: FittingData[]
+  equipment?: EquipmentData[]
 }
 
 /** What a suggestion says it does, so it can be held to it */
@@ -77,9 +80,9 @@ function obbBox(o: OBB): THREE.Box3 {
 /** everything close enough to the new member to be affected by it */
 export function neighbourhood(member: ProfileData, doc: SuggestDoc, cache?: VetCache): SuggestDoc {
   const box = memberBox(member).expandByScalar(NEIGHBOURHOOD)
-  // A search holds one immutable document. Its unchanged world bounds are identical
-  // for every candidate; the candidate box and all four original filters stay fresh.
-  const geometry = cachedCheck(cache, 'neighbourhood-geometry', [doc.profiles, doc.connectors, doc.panels, doc.fittings], () => ({
+  // Cache document bounds within one search; filter them for each candidate.
+  const geometry = cachedCheck(cache, 'neighbourhood-geometry', [doc.profiles, doc.connectors, doc.panels, doc.fittings, doc.equipment ?? []], () => ({
+    equipment: (doc.equipment ?? []).map((e) => ({ part: e, box: obbBox(equipmentClearance(e)) })),
     profiles: doc.profiles.map((p) => ({ part: p, box: memberBox(p) })),
     connectors: doc.connectors.map((c) => ({ part: c, point: new THREE.Vector3(...c.position) })),
     panels: doc.panels.map((b) => ({ part: b, box: panelBox(b) })),
@@ -88,6 +91,7 @@ export function neighbourhood(member: ProfileData, doc: SuggestDoc, cache?: VetC
       boxes: [...fittingSolids(f, 0), ...fittingSolids(f, 1)].map(obbBox) })),
   }))
   return {
+    equipment: geometry.equipment.filter((e) => e.box.intersectsBox(box)).map((e) => e.part),
     profiles: geometry.profiles.filter((p) => p.box.intersectsBox(box)).map((p) => p.part),
     connectors: geometry.connectors.filter((c) => box.containsPoint(c.point)).map((c) => c.part),
     panels: geometry.panels.filter((b) => b.box.intersectsBox(box)).map((b) => b.part),
@@ -137,7 +141,7 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
 
   const near = neighbourhood(member, doc, cache)
   const after = [...near.profiles, member]
-  const key = JSON.stringify([near.profiles, near.connectors, near.panels, near.fittings].map((parts) => parts.map((part) => part.id)))
+  const key = JSON.stringify([near.profiles, near.connectors, near.panels, near.fittings, near.equipment ?? []].map((parts) => parts.map((part) => part.id)))
   const baseline = cache?.get(key) ?? new Map<string, unknown>()
   cache?.set(key, baseline)
   const once = <T,>(name: string, calculate: () => T): T => {
@@ -170,6 +174,14 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
 
   const tb = once('trims', () => cachedCheck(cache, 'trims', [near.profiles], () => computeAllTrims(near.profiles)))
   const ta = computeAllTrims(after)
+
+  if (near.equipment?.length) {
+    const clashes = (ps: ProfileData[], trims: Map<string, ProfileTrims>) => new Set(
+      findEquipmentConflicts(near.equipment!, ps.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) })))
+        .map((c) => `${c.kind}:${c.a}|${c.b}`))
+    const added = grew(once('equipment-clashes', () => clashes(near.profiles, tb)), clashes(after, ta))
+    if (added) return { ok: false, why: added }
+  }
 
   // (a) nothing new passes through anything, shut and open
   const clashes = (ps: ProfileData[], t: Map<string, ProfileTrims>, fs: FittingData[]) =>

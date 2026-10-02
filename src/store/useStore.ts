@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { parseProjectDocument, PROJECT_VERSION, type ProjectDocument, type ProjectGeometry } from '../utils/document'
 import { documentStorage } from '../utils/documentPersistence'
 import { validFittings } from '../utils/fittingValidation'
+import { validEquipmentList } from '../utils/equipmentValidation'
 import { reconcileBindings, type EditResult, type FittingOpeningBinding, type PanelOpeningBinding, type RunnerBinding, type SupportBinding } from '../utils/openingBindings'
 import { setThroughRule as applyThroughRule, withFixedProfileCuts, validFixedProfileCut, type ThroughRule } from '../utils/jointUtils'
 
@@ -58,6 +59,21 @@ export interface PanelData {
   position: [number, number, number]
   quaternion: [number, number, number, number]
   material: PanelMaterial
+  locked?: boolean
+}
+
+export interface EquipmentClearance { left: number; right: number; bottom: number; top: number; back: number; front: number }
+
+/** A user-sized appliance envelope: centre position, local X/Y/Z dimensions and +Z front. */
+export interface EquipmentData {
+  id: string
+  name: string
+  width: number
+  height: number
+  depth: number
+  position: [number, number, number]
+  quaternion: [number, number, number, number]
+  clearance: EquipmentClearance
   locked?: boolean
 }
 
@@ -125,13 +141,14 @@ function takeSnapshot(state: ProjectDocument): Snapshot {
   return {
     profiles: [...state.profiles], connectors: [...state.connectors],
     panels: [...state.panels], fittings: [...state.fittings], throughRule: state.throughRule,
+    equipment: [...(state.equipment ?? [])],
   }
 }
 
 /** Keep the editing context when history changes geometry, dropping only removed parts. */
 function survivingSelection(ids: string[], document: Snapshot): string[] {
   const present = new Set([...document.profiles, ...document.connectors,
-    ...(document.panels ?? []), ...(document.fittings ?? [])].map((part) => part.id))
+    ...(document.panels ?? []), ...(document.fittings ?? []), ...(document.equipment ?? [])].map((part) => part.id))
   return ids.filter((id) => present.has(id))
 }
 
@@ -190,6 +207,7 @@ export interface PartUpdates {
   connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>
   panels?: Array<{ id: string; updates: Partial<PanelData> }>
   fittings?: Array<{ id: string; updates: Partial<FittingData> }>
+  equipment?: Array<{ id: string; updates: Partial<EquipmentData> }>
 }
 export interface LiveEditOptions { history?: boolean }
 interface State {
@@ -197,6 +215,7 @@ interface State {
   connectors: ConnectorData[]
   panels: PanelData[]
   fittings: FittingData[]
+  equipment: EquipmentData[]
   throughRule: ThroughRule
   selectedIds: string[]
   past: Snapshot[]
@@ -210,6 +229,8 @@ interface State {
   addItems: (profiles: ProfileData[], connectors: ConnectorData[], select?: boolean) => EditResult
   addPanels: (panels: PanelData[], select?: boolean) => EditResult
   addFittings: (fittings: FittingData[], select?: boolean) => EditResult
+  addEquipment: (equipment: EquipmentData) => EditResult
+  updateEquipment: (id: string, updates: Partial<EquipmentData>) => EditResult
   updateFitting: (id: string, updates: Partial<FittingData>, pushHistory?: boolean) => EditResult
   setFittingOpenings: (ids: string[], open: number) => void
   updatePanel: (id: string, updates: Partial<PanelData>) => EditResult
@@ -238,9 +259,9 @@ interface State {
   selectProfile: (id: string | null) => void
 }
 
-const documentOf = (state: ProjectDocument): ProjectDocument => ({ profiles: state.profiles, connectors: state.connectors,
-  panels: state.panels, fittings: state.fittings, throughRule: state.throughRule })
-const partKinds = ['profiles', 'connectors', 'panels', 'fittings'] as const
+const documentOf = (state: ProjectDocument): ProjectDocument & { equipment: EquipmentData[] } => ({ profiles: state.profiles, connectors: state.connectors,
+  panels: state.panels, fittings: state.fittings, equipment: state.equipment ?? [], throughRule: state.throughRule })
+const partKinds = ['profiles', 'connectors', 'panels', 'fittings', 'equipment'] as const
 const rejectEdit = (reason: Extract<EditResult, { status: 'rejected' }>['reason'], partIds: string[]): Extract<EditResult, { status: 'rejected' }> => ({ status: 'rejected', reason, partIds })
 
 /** Keep rejection separate from no-op: an invalid profile must also cancel mixed edits. */
@@ -248,7 +269,8 @@ function updatedParts(state: State, edits: PartUpdates): Partial<ProjectDocument
   const profiles = applyProfileUpdates(state.profiles, edits.profiles ?? [], state.throughRule)
   if (!profiles) return rejectEdit('invalid-profile', (edits.profiles ?? []).map((u) => u.id))
   return { profiles, connectors: applyPartUpdates(state.connectors, edits.connectors ?? []),
-    panels: applyPartUpdates(state.panels, edits.panels ?? []), fittings: applyPartUpdates(state.fittings, edits.fittings ?? []) }
+    panels: applyPartUpdates(state.panels, edits.panels ?? []), fittings: applyPartUpdates(state.fittings, edits.fittings ?? []),
+    equipment: applyPartUpdates(state.equipment, edits.equipment ?? []) }
 }
 
 export const useStore = create<State>()(
@@ -263,14 +285,23 @@ export const useStore = create<State>()(
         set((state) => {
           const patch = prepare(state)
           if ('status' in patch) { result = patch; return state }
-          const before = documentOf(state), candidate = { ...before, ...patch }
+          const before = documentOf(state), candidate = { ...before, ...patch,
+            equipment: patch.equipment === undefined ? before.equipment : patch.equipment }
+          const candidateEquipment: unknown = candidate.equipment
+          if (!validEquipmentList(candidateEquipment)) {
+            result = rejectEdit('invalid-equipment', Array.isArray(candidateEquipment)
+              ? candidateEquipment.flatMap((e: EquipmentData | null) => typeof e?.id === 'string' ? [e.id] : []) : [])
+            return state
+          }
+          const otherIds = new Set([...candidate.profiles, ...candidate.connectors, ...candidate.panels, ...candidate.fittings].map((p) => p.id))
+          if (candidate.equipment.some((e) => otherIds.has(e.id))) { result = rejectEdit('invalid-equipment', candidate.equipment.filter((e) => otherIds.has(e.id)).map((e) => e.id)); return state }
           if (!validFittings(candidate.fittings)) { result = rejectEdit('invalid-fitting', candidate.fittings.map((f) => f.id)); return state }
           if (candidate.panels.some((p) => ![p.width, p.height, p.thickness].every((n) => Number.isFinite(n) && n > 0))) {
             result = rejectEdit('invalid-opening', candidate.panels.map((p) => p.id)); return state
           }
           const resolved = reconcileBindings(before, candidate)
           if (resolved.status === 'rejected') { result = resolved; return state }
-          const doc = resolved.document
+          const doc = { ...resolved.document, equipment: candidate.equipment }
           for (const kind of partKinds) if (sameValue(doc[kind], state[kind])) (doc[kind] as unknown[]) = state[kind]
           if (partKinds.every((kind) => doc[kind] === state[kind]) && doc.throughRule === state.throughRule) return state
           const old = new Map(partKinds.flatMap((kind) => state[kind].map((p) => [p.id, p] as const)))
@@ -286,7 +317,7 @@ export const useStore = create<State>()(
       }
       const edit = (updates: PartUpdates, history = true) => transact((state) => updatedParts(state, updates), history)
       return {
-        profiles: [], connectors: [], panels: [], fittings: [], throughRule: 'rails', selectedIds: [], past: [], future: [],
+        profiles: [], connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails', selectedIds: [], past: [], future: [],
         setThroughRule: (throughRule) => transact((state) => state.throughRule === throughRule ? {} : {
           throughRule, profiles: automaticUnlockedCuts(state.profiles, state.throughRule),
         }),
@@ -298,6 +329,8 @@ export const useStore = create<State>()(
         addItems: (profiles, connectors, select = false) => transact((state) => ({ profiles: [...fixedLockedCuts(state.profiles, state.throughRule), ...profiles], connectors: [...state.connectors, ...connectors] }), true, select ? [...profiles, ...connectors].map((p) => p.id) : undefined),
         addPanels: (panels, select = false) => transact((state) => ({ panels: [...state.panels, ...panels] }), true, select ? panels.map((p) => p.id) : undefined),
         addFittings: (fittings, select = false) => transact((state) => ({ fittings: [...state.fittings, ...fittings] }), true, select ? fittings.map((p) => p.id) : undefined),
+        addEquipment: (equipment) => transact((state) => ({ equipment: [...state.equipment, equipment] }), true, [equipment.id]),
+        updateEquipment: (id, updates) => edit({ equipment: [{ id, updates }] }),
         updateFitting: (id, updates, history = true) => edit({ fittings: [{ id, updates }] }, history),
         updatePanel: (id, updates) => edit({ panels: [{ id, updates }] }, false),
         commitPanelEdit: (id, updates) => edit({ panels: [{ id, updates }] }),
@@ -319,7 +352,8 @@ export const useStore = create<State>()(
           const ids = new Set(state.selectedIds), removable = (p: { id: string; locked?: boolean }) => ids.has(p.id) && !p.locked
           const profiles = state.profiles.some(removable) ? withFixedProfileCuts(state.profiles, undefined, state.throughRule) : state.profiles
           return { profiles: profiles.filter((p) => !removable(p)), connectors: state.connectors.filter((p) => !removable(p)),
-            panels: state.panels.filter((p) => !removable(p)), fittings: state.fittings.filter((p) => !removable(p)) }
+            panels: state.panels.filter((p) => !removable(p)), fittings: state.fittings.filter((p) => !removable(p)),
+            equipment: state.equipment.filter((p) => !removable(p)) }
         }, true, (state, doc) => survivingSelection(state.selectedIds, doc)),
         toggleLockSelected: () => transact((state) => {
           const ids = new Set(state.selectedIds)
@@ -327,9 +361,10 @@ export const useStore = create<State>()(
           const profiles = locked && state.profiles.some((p) => ids.has(p.id)) ? withFixedProfileCuts(state.profiles, undefined, state.throughRule) : state.profiles
           return { profiles: profiles.map((p) => ids.has(p.id) ? { ...p, locked } : p),
             connectors: state.connectors.map((p) => ids.has(p.id) ? { ...p, locked } : p),
-            panels: state.panels.map((p) => ids.has(p.id) ? { ...p, locked } : p), fittings: state.fittings.map((p) => ids.has(p.id) ? { ...p, locked } : p) }
+            panels: state.panels.map((p) => ids.has(p.id) ? { ...p, locked } : p), fittings: state.fittings.map((p) => ids.has(p.id) ? { ...p, locked } : p),
+            equipment: state.equipment.map((p) => ids.has(p.id) ? { ...p, locked } : p) }
         }),
-        clearAll: () => transact(() => ({ profiles: [], connectors: [], panels: [], fittings: [] }), true, []),
+        clearAll: () => transact(() => ({ profiles: [], connectors: [], panels: [], fittings: [], equipment: [] }), true, []),
         addConnector: (connector) => transact((state) => ({ connectors: [...state.connectors, connector] })),
         removeConnector: (id) => transact((state) => ({ connectors: state.connectors.filter((c) => c.id !== id || c.locked) }), true, (state, doc) => survivingSelection(state.selectedIds, doc)),
         removeConnectors: (ids, history = true) => transact((state) => ({ connectors: state.connectors.filter((c) => !ids.includes(c.id) || c.locked) }), history, (state, doc) => survivingSelection(state.selectedIds, doc)),
@@ -347,20 +382,20 @@ export const useStore = create<State>()(
         undo: () => set((state) => {
           if (!state.past.length) return state
           const prev = state.past[state.past.length - 1]
-          return { ...prev, panels: prev.panels ?? [], fittings: prev.fittings ?? [], throughRule: prev.throughRule ?? 'rails',
+          return { ...prev, panels: prev.panels ?? [], fittings: prev.fittings ?? [], equipment: prev.equipment ?? [], throughRule: prev.throughRule ?? 'rails',
             past: state.past.slice(0, -1), future: [takeSnapshot(state), ...state.future.slice(0, MAX_HISTORY - 1)], selectedIds: survivingSelection(state.selectedIds, prev) }
         }),
         redo: () => set((state) => {
           if (!state.future.length) return state
           const next = state.future[0]
-          return { ...next, panels: next.panels ?? [], fittings: next.fittings ?? [], throughRule: next.throughRule ?? 'rails',
+          return { ...next, panels: next.panels ?? [], fittings: next.fittings ?? [], equipment: next.equipment ?? [], throughRule: next.throughRule ?? 'rails',
             past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: state.future.slice(1), selectedIds: survivingSelection(state.selectedIds, next) }
         }),
       }
     },
     {
       name: 'aluminum-designer-store', storage: documentStorage,
-      partialize: (state) => ({ version: PROJECT_VERSION, profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, throughRule: state.throughRule }),
+      partialize: (state) => ({ version: PROJECT_VERSION, profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, equipment: state.equipment, throughRule: state.throughRule }),
     },
   ),
 )

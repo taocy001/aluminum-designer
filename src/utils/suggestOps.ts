@@ -18,7 +18,7 @@ let accepting = false
 
 const docOf = () => {
   const s = useStore.getState()
-  return { profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings }
+  return { profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings, equipment: s.equipment }
 }
 
 /**
@@ -80,7 +80,7 @@ export function dismissSuggestion(): void {
 useStore.subscribe((st, prev) => {
   if (accepting || !useToolStore.getState().suggestion) return
   if (st.profiles !== prev.profiles || st.connectors !== prev.connectors || st.panels !== prev.panels
-    || st.fittings !== prev.fittings || st.throughRule !== prev.throughRule) {
+    || st.fittings !== prev.fittings || st.equipment !== prev.equipment || st.throughRule !== prev.throughRule) {
     dismissSuggestion()
   }
 })

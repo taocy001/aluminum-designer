@@ -143,7 +143,7 @@ describe('double door design survives files, links and later edits', () => {
     const saved = serializeProjectDocument(document)
     expect(JSON.parse(saved).version).toBe(PROJECT_VERSION)
     const back = parseProjectDocument(saved)
-    expect(back).toEqual({ ...document, version: PROJECT_VERSION })
+    expect(back).toEqual({ ...document, equipment: [], version: PROJECT_VERSION })
     for (let i = 0; i < pair.length; i++) expectSameBox(boundsInOpening(back.fittings[i], source), boundsInOpening(pair[i], source))
   })
 

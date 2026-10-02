@@ -6,13 +6,14 @@
 
 ## 数据模型与坐标
 
-采用右手坐标系，Y 轴向上，长度单位为毫米。四类零件定义在 `src/store/useStore.ts`。
+采用右手坐标系，Y 轴向上，长度单位为毫米。零件及设备定义在 `src/store/useStore.ts`。
 
 | 类型 | 位置和朝向语义 | 主要字段 |
 |---|---|---|
 | `ProfileData` | `position` 为中心线起点，局部 +Z 指向终点 | `spec`、`length`、`quaternion`、`fixedTrims`、`miterCuts`、`holes` |
 | `ConnectorData` | 原点和局部轴由各连接件的模型定义 | `type`、`series`、`position`、`quaternion` |
 | `PanelData` | `position` 为板中心，局部 X 为宽、Y 为高、Z 为厚 | `width`、`height`、`thickness`、`material` |
+| `EquipmentData` | `position` 为本体中心，局部 X/Y/Z 为宽高深，+Z 朝前 | `name`、`width/height/depth`、`clearance` 六面非负预留 |
 | `FittingData` | `position` 为开口中心，局部 X 横跨开口、Y 向上、+Z 朝外 | `kind`、`width/height/depth`、`frame`、`hinge`、`hingeType`、`overlay`、`swing`、`open`、`stacked`、`meeting` |
 
 各类零件都有唯一 ID 和可选的 `locked`。型材规格为 2020、2040、3030、3040、4040；板材及构件材质为 `mdf`、`ply`、`acrylic`、`alu`。
@@ -60,11 +61,11 @@ cutLength = length - start.trim - end.trim
 
 选择使用真实网格射线命中及屏幕空间候选，`frontmost.ts` 处理遮挡和剖切排除，`PointerRouter.tsx` 统一悬停、选择及拖动目标。`Tab` 可指定重叠处的另一候选。
 
-`editOps.ts` 提供四类零件的组平移、旋转、复制、镜像、阵列和属性更新：
+`editOps.ts` 提供零件及设备的组平移、旋转、复制、镜像、阵列和属性更新：
 
 - 平移和旋转修改明确选中的未锁定件，并更新它们的关联部件；单选连接件不直接变换。
 - 复制、镜像和阵列可使用锁定来源，副本使用新 ID 并解除锁定。
-- 旋转中心由所选型材实体端点、连接件原点、板心和构件当前包围盒中心计算；单根型材可使用实际起端或终端。
+- 旋转中心由所选型材实体端点、连接件原点、板心、设备本体中心和构件当前包围盒中心计算；单根型材可使用实际起端或终端。
 - 镜像平面经过整个工程的计算中心：中心由型材中心线端点和其他零件原点的坐标包围范围求得。反射朝向保持模型的截面或板材对称关系，门的左右铰链边及左右会合边随之交换。
 - 阵列沿世界轴生成最多 50 组副本，间距绝对值至少 1mm；若型材副本进入地面以下，全部副本按同一位移抬升。
 - `liveParts` 过滤锁定项并校验批量字段；是否创建快照由 `pushHistory` 参数决定，默认为 `false`。调用者在首次真实合法变更时请求快照，后续预览不重复请求。
@@ -143,6 +144,16 @@ cutLength = length - start.trim - end.trim
 
 `fittingSolids` 只生成构件板材的活动 OBB。拉手随前板运动，铰链显示模型位于固定安装边，两者都不加入板材碰撞实体；拉手也不进入 BOM、DXF 或 STEP。BOM 中的滑轨和铰链行由构件参数生成。
 
+## 设备占位
+
+`EquipmentData` 保存用户输入的本体尺寸和六面预留。`equipmentGeometry.ts` 分别生成本体 OBB 和扩展后的安装空间 OBB；不对尺寸进行厂商规则推导。扩展盒中心偏移为 `[(right-left)/2, (top-bottom)/2, (front-back)/2]`，随设备四元数旋转。
+
+`equipmentChecks.ts` 对设备本体、预留空间与材料实体逐对做分离轴检查，接触容差为 1mm。同一对对象优先报告本体干涉，否则报告安装预留不足。设备对设备检查本体及各自预留对另一实体，预留之间允许重叠。使用门抽当前开度，不计算连续运动或设备进场路径。
+
+设备参与选择、变换、历史、日志、保存和分享，预留线框不参与拾取。自动保存比较设备引用，预留修改会触发写入。设备不进入 BOM、下料或 CAD 实体导出；旧工程缺少设备集合时补为空数组。
+
+建议构件、自动连接及自动补齐滑轨支撑使用设备几何过滤候选。手动操作保留现有干涉提示机制。
+
 ## 检查与估算
 
 | 模块 | 当前方法与范围 |
@@ -164,19 +175,19 @@ cutLength = length - start.trim - end.trim
 
 ## 状态、历史与持久化
 
-`useStore` 管理四类几何集合、工程贯通规则、选择集及 `past/future`。工程快照包含几何与规则，不保存选择；撤销重做后保留仍存在的选中 ID。历史最多 50 步，不持久化。
+`useStore` 管理型材、连接件、板件、构件和设备五类集合、工程贯通规则、选择集及 `past/future`。工程快照包含几何与规则，不保存选择；撤销重做后保留仍存在的选中 ID。历史最多 50 步，不持久化。
 
-`commitDocument` 一次替换传入集合并创建一次历史快照，可同时指定选择集。`commitTransform` 批量提交四类零件的更新；`updateParts` 用于连续预览，一次手势在首次有效变化时拍快照。
+`commitDocument` 一次替换传入集合并创建一次历史快照，可同时指定选择集。`commitTransform` 批量提交五类集合的更新；`updateParts` 用于连续预览，一次手势在首次有效变化时拍快照。
 
 `useToolStore` 保存手持零件、绘制与拖动态、工作面、查看、测量、剖切、装配步骤、相机请求及语言等运行时状态，不持久化。查看模式禁用设计编辑和撤销重做；开合仍可模拟。
 
 工程几何与规则通过 `documentPersistence.ts` 写入 localStorage。选择和历史变更不序列化工程，连续变更合并为 180ms 延迟写入；页面隐藏或离开时尝试刷新待写数据。写入成功才更新已保存快照，失败保留最新待写内容。`AutoSaveStatus.tsx` 显示保存状态，并提供重试和下载当前工程的入口。不可解析的原始存档另存恢复副本，由 `RecoveryNotice.tsx` 提供下载和清除入口。
 
-`opLog.ts` 独立持久化最近 400 条设计差异，覆盖四类零件及规则，排除 `open`。拖动和端面拉伸按手势归并日志；开合不创建设计历史，JSON 和本地工程仍可保存当前开度。
+`opLog.ts` 独立持久化最近 400 条设计差异，覆盖零件、设备及规则，排除 `open`。拖动和端面拉伸按手势归并日志；开合不创建设计历史，JSON 和本地工程仍可保存当前开度。
 
 ## 工程文件与导出
 
-`document.ts` 校验及序列化 JSON v8：四类集合、唯一零件 ID、有限坐标、有效四元数、尺寸、机制枚举、会合边及贯通规则。当前工程保存和载入只校验数据，保留既有抽面尺寸与叠抽标记。无版本及 v1–v5 数据导入时，由 `migrate.ts` 为旧构件补框架厚度和相邻抽屉标记；解析结果及本地存档带工程版本，防止重复迁移。缺省贯通规则为横梁贯通。
+`document.ts` 校验及序列化 JSON v9：五类集合、唯一零件 ID、有限坐标、有效四元数、尺寸、机制枚举、会合边及贯通规则。当前工程保存和载入只校验数据，保留既有抽面尺寸与叠抽标记。无版本及 v1–v5 数据导入时，由 `migrate.ts` 为旧构件补框架厚度和相邻抽屉标记；解析结果及本地存档带工程版本，防止重复迁移。缺省贯通规则为横梁贯通。
 
 `projectFile.ts` 根据浏览器文件选择 API 提供打开、保存和另存。打开仅在浏览器不支持原生选择 API 时回退到普通文件输入；取消选择直接结束打开操作，选择或读取失败显示导入错误，均保留当前工程及保存目标。工程验证通过后才替换几何及文件目标。保存 API 不可用或写入失败时回退为下载文本文件。
 
@@ -186,7 +197,7 @@ cutLength = length - start.trim - end.trim
 | `nesting.ts` | 按下料长度进行原料排料，计入锯口；超长件单列为未满足，不计入原料及利用率 |
 | `dxf.ts` | R12 ASCII，LINE/TEXT 分层；型材、独立板件及当前开度构件板材三视图、整体尺寸和板材平面下料图 |
 | `step.ts` | AP214，以 `MANIFOLD_SOLID_BREP` 和封闭平面壳写简化实体，建立产品装配关系；构件按闭合板材导出，连接件按角形或包围体导出 |
-| `shareLink.ts` | 列数组打包、deflate-raw、base64url，将设计写入 URL 片段；当前打包版本 6，保存零件 ID、关联、`drawer`、`meeting` 并兼容旧链接 |
+| `shareLink.ts` | 列数组打包、deflate-raw、base64url，将设计写入 URL 片段；当前打包版本 7，保存设备占位、零件 ID、关联、`drawer`、`meeting` 并兼容旧链接 |
 
 BOM 的补件行是按对接端、自由端和已放置数量推算的建议。紧固件配方没有包含所有实际五金。DXF 不含连接件，STEP 不含真实螺纹、孔位和铰链机构；两者都不含拉手。
 
@@ -200,7 +211,7 @@ BOM 的补件行是按对接端、自由端和已放置数量推算的建议。�
 - `DrawingHandler`、`DrawContactGuides`：绘制事件与接触提示。
 - `PointerRouter`、`DragHandler`、`EditAlignmentGuides`：指针目标、移动及端面拉伸。
 - `TransformGizmo`、`ResizeHandles`、`QuickMenu`：变换手柄及快捷操作。
-- `Profile`、`Connector`、`Panel`、`Fitting`：四类零件渲染。
+- `Profile`、`Connector`、`Panel`、`Fitting`、`Equipment`：零件与设备渲染。
 - `SnapMarker`、`SnapFaces`、`FrameDimensions`、`TextSprite`、`LabelLayout`：吸附面及标注。
 - `Sidebar`：目录、模板、属性、检查与文件操作；`Gestures` 处理触屏手势；`RecoveryNotice` 处理存档恢复。
 - `src/utils/`：以上几何、检查、编辑及导出模块，另含 `profileShapes/specUtils` 截面表、`selectionBounds` 范围、`templates` 模板、`measure` 测量、`translations` 中英文文案。

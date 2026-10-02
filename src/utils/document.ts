@@ -1,19 +1,22 @@
-import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import type { ThroughRule } from './jointUtils'
 import { CONNECTOR_CATALOG } from './connectorCatalog'
 import { migrateFittings } from './migrate'
 import { validFittingFields, validFittingDimensions } from './fittingValidation'
 import { validOpeningRef, validFittingOpeningBinding, validPanelOpeningBinding, validRunnerBinding, validSupportBinding } from './openingBindings'
+import { normalizeEquipmentClearance, validEquipment } from './equipmentValidation'
 
-export const PROJECT_VERSION = 8
+export const PROJECT_VERSION = 9
 export interface ProjectGeometry {
   profiles: ProfileData[]
   connectors: ConnectorData[]
   panels: PanelData[]
   fittings: FittingData[]
+  equipment?: EquipmentData[]
 }
 export interface ProjectDocument extends ProjectGeometry { throughRule: ThroughRule }
-export interface ParsedProjectDocument extends ProjectDocument { version: typeof PROJECT_VERSION }
+export interface ValidatedProjectDocument extends ProjectDocument { equipment: EquipmentData[] }
+export interface ParsedProjectDocument extends ValidatedProjectDocument { version: typeof PROJECT_VERSION }
 const specs = ['2020', '2040', '3030', '3040', '4040']
 const materials = ['mdf', 'ply', 'acrylic', 'alu']
 const connectorTypes = new Set(CONNECTOR_CATALOG.map((entry) => entry.type))
@@ -25,17 +28,17 @@ const oneOf = (v: unknown, values: readonly unknown[]) => values.includes(v)
 function optional(v: unknown, valid: (v: unknown) => boolean): boolean { return v === undefined || valid(v) }
 function fail(message: string): never { throw new Error(`Invalid project: ${message}`) }
 
-function readProjectDocument(input: unknown): ProjectDocument {
+function readProjectDocument(input: unknown): ValidatedProjectDocument {
   const doc: unknown = typeof input === 'string' ? JSON.parse(input) : input
   if (!record(doc)) fail('expected an object')
   if (!optional(doc.version, (v) => finite(v) && Number.isInteger(v) && v >= 1 && v <= PROJECT_VERSION)) fail('unsupported version')
   if (!optional(doc.throughRule, (v) => oneOf(v, ['rails', 'posts']))) fail('through rule')
   if (!Array.isArray(doc.profiles)) fail('profiles')
-  for (const key of ['connectors', 'panels', 'fittings']) {
+  for (const key of ['connectors', 'panels', 'fittings', 'equipment']) {
     if (doc[key] !== undefined && !Array.isArray(doc[key])) fail(key)
   }
   const ids = new Set<string>()
-  const base = (value: unknown, binding: 'openingBinding' | 'runnerBinding' | 'supportBinding'): Record<string, unknown> => {
+  const base = (value: unknown, binding?: 'openingBinding' | 'runnerBinding' | 'supportBinding'): Record<string, unknown> => {
     if (!record(value)) fail('part must be an object')
     if (typeof value.id !== 'string' || !value.id.trim() || ids.has(value.id)) fail('missing or duplicate part id')
     ids.add(value.id)
@@ -80,6 +83,13 @@ function readProjectDocument(input: unknown): ProjectDocument {
     if (!validFittingFields(f)) fail('fitting dimensions or mechanism')
     return { ...f, open: f.open ?? 0 } as unknown as FittingData
   })
+  const equipment = ((doc.equipment ?? []) as unknown[]).map((value) => {
+    const e = base(value)
+    const clearance = normalizeEquipmentClearance(e.clearance)
+    const normalized = { ...e, clearance }
+    if (!clearance || !validEquipment(normalized)) fail('equipment dimensions, clearance or name')
+    return normalized as unknown as EquipmentData
+  })
   const profileIds = new Set(profiles.map((p) => p.id))
   const drawerIds = new Set(fittings.filter((f) => f.kind === 'drawer').map((f) => f.id))
   const reference = (id: string, expected: Set<string>) => {
@@ -95,18 +105,18 @@ function readProjectDocument(input: unknown): ProjectDocument {
     }
   }
   return {
-    profiles, connectors, panels, fittings,
+    profiles, connectors, panels, fittings, equipment,
     throughRule: (doc.throughRule ?? 'rails') as ThroughRule,
   }
 }
 
-function checkFittingDimensions(doc: ProjectDocument): ProjectDocument {
+function checkFittingDimensions(doc: ValidatedProjectDocument): ValidatedProjectDocument {
   if (!doc.fittings.every(validFittingDimensions)) fail('fitting opening or drawer box dimensions')
   return doc
 }
 
 /** Validate current geometry without inferring or moving any parts. */
-export function validateProjectDocument(input: unknown): ProjectDocument {
+export function validateProjectDocument(input: unknown): ValidatedProjectDocument {
   return checkFittingDimensions(readProjectDocument(input))
 }
 

@@ -9,13 +9,7 @@ import { duplicateSelected, mirrorSelected, rotateSelected, selectAll, selectCon
 const AXIS_COLORS: Record<RotAxis, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 const MIN_WIDTH = 190
 
-/**
- * The actions you reach for constantly, opened at the cursor with Space.
- *
- * Every one of these already lives in the sidebar, which is the problem: a turn and a copy
- * cost a trip across the window and back, over and over. ZBrush answers this with the
- * spacebar shelf under the cursor; this is the same idea, cut down to what a frame needs.
- */
+/** Selection and view commands at the pointer, opened with Space. */
 const QuickMenu: React.FC = () => {
   const at = useToolStore((s) => s.quickMenuAt)
   const closeQuickMenu = useToolStore((s) => s.closeQuickMenu)
@@ -26,6 +20,7 @@ const QuickMenu: React.FC = () => {
   const connectors = useStore((s) => s.connectors)
   const panels = useStore((s) => s.panels)
   const fittings = useStore((s) => s.fittings)
+  const equipment = useStore((s) => s.equipment)
   const viewMode = useToolStore((s) => s.viewMode)
   const toggleLockSelected = useStore((s) => s.toggleLockSelected)
   const removeSelected = useStore((s) => s.removeSelected)
@@ -55,7 +50,7 @@ const QuickMenu: React.FC = () => {
 
   if (!at) return null
 
-  const locked = selectionLocked({ profiles, connectors, panels, fittings }, selectedIds)
+  const locked = selectionLocked({ profiles, connectors, panels, fittings, equipment }, selectedIds)
   const hasSelection = selectedIds.length > 0
 
   const run = (fn: () => void) => () => { fn(); closeQuickMenu() }

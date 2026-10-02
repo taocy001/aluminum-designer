@@ -1,4 +1,4 @@
-import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { computeAllTrims } from './jointUtils'
 
 /**
@@ -25,6 +25,7 @@ export interface Doc {
   connectors: ConnectorData[]
   panels: PanelData[]
   fittings: FittingData[]
+  equipment?: EquipmentData[]
   throughRule?: 'rails' | 'posts'
 }
 
@@ -73,7 +74,7 @@ export function opLogText(): string {
   }).join('\n')
 }
 
-type Part = ProfileData | ConnectorData | PanelData | FittingData
+type Part = ProfileData | ConnectorData | PanelData | FittingData | EquipmentData
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000
 const v3 = (a: number[]) => `[${a.map(round3).join(', ')}]`
@@ -98,12 +99,13 @@ function kindOf(doc: Doc, id: string): string {
   if (doc.profiles.some((p) => p.id === id)) return 'member'
   if (doc.connectors.some((c) => c.id === id)) return 'connector'
   if (doc.panels.some((p) => p.id === id)) return 'board'
+  if (doc.equipment?.some((part) => part.id === id)) return 'equipment'
   return 'fitting'
 }
 
 /** Describe design changes; unchanged documents and opening-only changes return null. */
 export function describeChange(before: Doc, after: Doc): { label: string; detail: string; ids: string[] } | null {
-  const all = (d: Doc): Part[] => [...d.profiles, ...d.connectors, ...d.panels, ...d.fittings]
+  const all = (d: Doc): Part[] => [...d.profiles, ...d.connectors, ...d.panels, ...d.fittings, ...(d.equipment ?? [])]
   const b = new Map(all(before).map((p) => [p.id, p]))
   const a = new Map(all(after).map((p) => [p.id, p]))
 

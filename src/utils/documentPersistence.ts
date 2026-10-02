@@ -13,6 +13,7 @@ type Save = { name: string; value: StorageValue<ProjectDocument> }
 const sameSave = (a: Save | null, b: Save) => a !== null && a.name === b.name && a.value.version === b.value.version
   && a.value.state.profiles === b.value.state.profiles && a.value.state.connectors === b.value.state.connectors
   && a.value.state.panels === b.value.state.panels && a.value.state.fittings === b.value.state.fittings
+  && a.value.state.equipment === b.value.state.equipment
   && a.value.state.throughRule === b.value.state.throughRule
 let rejectedProject: string | null = null
 export const rejectedLocalProject = () => rejectedProject

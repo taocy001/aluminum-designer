@@ -10,7 +10,7 @@ import { decodeShare, takeShareLink } from './utils/shareLink'
 import { translations } from './utils/translations'
 
 const snapshotOf = (s: ReturnType<typeof useStore.getState>): Doc => ({
-  profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings, throughRule: s.throughRule,
+  profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings, equipment: s.equipment, throughRule: s.throughRule,
 })
 import { auditBrackets } from './utils/bracketSeat'
 import { gizmoState } from './components/TransformGizmo'
@@ -61,8 +61,10 @@ if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
     },
     conflicts: () => {
       const s = useStore.getState()
-      const { conflicts, conflictIds } = analyzeFrame(s.profiles, s.connectors, s.panels, s.fittings)
-      return { conflicts: conflicts.map((c) => ({ a: c.a, b: c.b, depth: c.depth })), ids: [...conflictIds] }
+      const { conflicts, conflictIds, equipmentConflicts, equipmentConflictIds } = analyzeFrame(s.profiles, s.connectors, s.panels, s.fittings, s.equipment)
+      return { conflicts: conflicts.map((c) => ({ a: c.a, b: c.b, depth: c.depth })), ids: [...conflictIds],
+        equipmentConflicts: equipmentConflicts.map(({ a, b, kind, depth }) => ({ a, b, kind, depth })),
+        equipmentConflictIds: [...equipmentConflictIds] }
     },
   }
 }
@@ -74,7 +76,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
 {
   let prev = snapshotOf(useStore.getState())
   const unchanged = (a: Doc, b: Doc) => a.profiles === b.profiles && a.connectors === b.connectors
-    && a.panels === b.panels && a.fittings === b.fittings && a.throughRule === b.throughRule
+    && a.panels === b.panels && a.fittings === b.fittings && a.equipment === b.equipment && a.throughRule === b.throughRule
   const flush = () => {
     const next = snapshotOf(useStore.getState())
     if (unchanged(prev, next)) return

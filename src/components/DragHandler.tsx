@@ -5,7 +5,7 @@ import { useToolStore } from '../store/useToolStore'
 import { withFixedProfileCuts } from '../utils/jointUtils'
 import { reportEditResult } from '../utils/editFeedback'
 import type { EditResult } from '../utils/openingBindings'
-import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData } from '../store/useStore'
+import { useStore, type ConnectorData, type EquipmentData, type FittingData, type PanelData, type ProfileData } from '../store/useStore'
 import { getProfileDir } from '../utils/geometryCore'
 import { closestParamLineToRay } from '../utils/pickUtils'
 import { computeDragSnap, alignThreshold, ALIGN_PX, snapProfilePosition, type Axis3 } from '../utils/dragSnap'
@@ -14,6 +14,7 @@ import { MIN_LENGTH } from '../utils/profileFactory'
 import { movingPartsConflict } from '../utils/analysis'
 import { lowestPointY } from '../utils/profileFactory'
 import { roundToGrid } from '../utils/specUtils'
+import { equipmentBody } from '../utils/equipmentGeometry'
 
 /** An axis arrow makes measured adjustments, so its snap window stays tight. */
 const AXIS_SNAP_MAX_MM = 12
@@ -21,12 +22,17 @@ const AXIS_SNAP_MAX_MM = 12
 const RESIZE_SLOP_PX = 4
 
 /** How far the group would sink below the floor at the given offset (0 when clear) */
-function groupSink(profiles: ProfileData[], origins: Record<string, [number, number, number]>, delta: THREE.Vector3): number {
+function groupSink(profiles: ProfileData[], equipment: EquipmentData[], origins: Record<string, [number, number, number]>, delta: THREE.Vector3): number {
   let sink = 0
   for (const p of profiles) {
     const origin = origins[p.id] ?? p.position
     const moved = { ...p, position: [origin[0] + delta.x, origin[1] + delta.y, origin[2] + delta.z] as [number, number, number] }
     sink = Math.min(sink, lowestPointY(moved))
+  }
+  for (const e of equipment) {
+    const box = equipmentBody({ ...e, position: origins[e.id] ?? e.position })
+    const halfHeight = box.axes.reduce((sum, axis, i) => sum + Math.abs(axis.y) * box.half.getComponent(i), 0)
+    sink = Math.min(sink, box.center.y + delta.y - halfHeight)
   }
   return sink
 }
@@ -184,6 +190,7 @@ const DragHandler: React.FC = () => {
         ?? store.connectors.find((c) => c.id === dragProfileId)
         ?? store.panels.find((b) => b.id === dragProfileId)
         ?? store.fittings.find((f) => f.id === dragProfileId)
+        ?? store.equipment.find((part) => part.id === dragProfileId)
       if (!leadPart || leadPart.locked) { ts.stopDrag(); return }
 
       const ids = Object.keys(dragGroupOrigins)
@@ -218,7 +225,7 @@ const DragHandler: React.FC = () => {
       const dragged = all.filter((p) => dragIds.has(p.id) && !p.locked)
 
       // Alignment: unless Shift asks for free placement, pull the group onto the faces,
-      // edges and centrelines of the parts around it — frames are built flush, not near-flush.
+      // edges and centrelines of the surrounding profiles.
       // An endpoint join is the more specific intent, so it is left alone.
       if (joinedAtEndpoint) {
         ts.setSnapRefs([endpointSnap.refId!])
@@ -248,7 +255,7 @@ const DragHandler: React.FC = () => {
 
       // keep the whole group on or above the floor, whatever each part's orientation is,
       // and do it last so no snap can push it back under
-      const sink = groupSink(dragged, dragGroupOrigins, groupDelta)
+      const sink = groupSink(dragged, store.equipment.filter((part) => dragIds.has(part.id) && !part.locked), dragGroupOrigins, groupDelta)
       if (sink < 0) {
         groupDelta.y -= sink
         // Lifting can change the joint and its cut ends as well as its Y plane. These
@@ -282,7 +289,7 @@ const DragHandler: React.FC = () => {
         panelUpdates.push({ id: bid, updates: { position: [np.x, np.y, np.z] } })
       }
 
-      // A drawer or a door moves with the hand like anything else
+      // Apply the same group translation to fittings.
       const fittingUpdates: Array<{ id: string; updates: Partial<FittingData> }> = []
       for (const fid of dragIds) {
         const f = store.fittings.find((q) => q.id === fid)
@@ -292,11 +299,13 @@ const DragHandler: React.FC = () => {
         fittingUpdates.push({ id: fid, updates: { position: [np.x, np.y, np.z] } })
       }
 
-      // Interference is allowed while moving: conflicting members turn red instead of the
-      // drag silently sticking. Only the floor rule still clamps (handled above).
-      // one write per frame: separate sets would re-render the scene N times and show
-      // a frame where the connectors have moved but the members have not
-      const result = store.updateParts({ profiles: updates, connectors: connectorUpdates, panels: panelUpdates, fittings: fittingUpdates }, { history: !ts.dragMoved })
+      const equipmentUpdates: Array<{ id: string; updates: Partial<EquipmentData> }> = []
+      for (const part of store.equipment) if (dragIds.has(part.id) && !part.locked) {
+        const np = new THREE.Vector3(...(dragGroupOrigins[part.id] ?? part.position)).add(groupDelta)
+        equipmentUpdates.push({ id: part.id, updates: { position: [np.x, np.y, np.z] } })
+      }
+      // Publish the complete move once per frame, with collision feedback in the viewport.
+      const result = store.updateParts({ profiles: updates, connectors: connectorUpdates, panels: panelUpdates, fittings: fittingUpdates, equipment: equipmentUpdates }, { history: !ts.dragMoved })
       feedback(result)
       if (result.status === 'applied') ts.markDragMoved()
       if (result.status === 'rejected') { ts.setSnapRefs([]); ts.setSnapGuides([]) }

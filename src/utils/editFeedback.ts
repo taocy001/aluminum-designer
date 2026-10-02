@@ -7,7 +7,7 @@ import { cancelNextNote } from './opLog'
 export function reportEditResult(result: EditResult): boolean {
   const tools = useToolStore.getState(), t = translations[tools.language]
   if (result.status !== 'applied') cancelNextNote()
-  if (result.status === 'rejected') tools.showToast(t.bindingEditRejected, 'error')
+  if (result.status === 'rejected') tools.showToast(result.reason === 'invalid-equipment' ? t.equipmentInvalid : t.bindingEditRejected, 'error')
   else if (result.status === 'applied' && result.orphanedIds.length) tools.showToast(t.bindingMissing, 'info')
   return result.status === 'applied'
 }

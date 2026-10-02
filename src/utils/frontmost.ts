@@ -40,7 +40,7 @@ export function frontmostId(scene: THREE.Object3D, ray: THREE.Ray, camera: THREE
     let o: THREE.Object3D | null = hit.object
     while (o) {
       const d = o.userData as Record<string, string | undefined>
-      const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId
+      const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId ?? d.equipmentId
       if (id) return id
       o = o.parent
     }
