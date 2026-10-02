@@ -154,7 +154,7 @@ cutLength = length - start.trim - end.trim
 
 `useToolStore` 保存手持零件、绘制与拖动态、工作面、查看、测量、剖切、装配步骤、相机请求及语言等运行时状态，不持久化。查看模式禁用设计编辑和撤销重做；开合仍可模拟。
 
-工程几何与规则通过 `documentPersistence.ts` 写入 localStorage。选择和历史变更不序列化工程，连续变更合并为 180ms 延迟写入；页面隐藏或离开时尝试刷新待写数据。不可解析的原始存档另存恢复副本，由 `RecoveryNotice.tsx` 提供下载和清除入口。
+工程几何与规则通过 `documentPersistence.ts` 写入 localStorage。选择和历史变更不序列化工程，连续变更合并为 180ms 延迟写入；页面隐藏或离开时尝试刷新待写数据。写入成功才更新已保存快照，失败保留最新待写内容。`AutoSaveStatus.tsx` 显示保存状态，并提供重试和下载当前工程的入口。不可解析的原始存档另存恢复副本，由 `RecoveryNotice.tsx` 提供下载和清除入口。
 
 `opLog.ts` 独立持久化最近 400 条设计差异，覆盖四类零件及规则，排除 `open`。拖动和端面拉伸按手势归并日志；开合不创建设计历史，JSON 和本地工程仍可保存当前开度。
 

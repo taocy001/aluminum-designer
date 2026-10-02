@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar'
 import QuickMenu from './components/QuickMenu'
 import Tooltip from './components/Tooltip'
 import RecoveryNotice from './components/RecoveryNotice'
+import AutoSaveStatus from './components/AutoSaveStatus'
 import { useStore } from './store/useStore'
 import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
@@ -455,6 +456,7 @@ function App() {
         </div>
       </header>
       <RecoveryNotice />
+      <AutoSaveStatus />
 
       {/* Side by side where there is room, stacked where there is not: on a phone the
           drawing takes the screen and the panel is a sheet along the bottom edge. */}
