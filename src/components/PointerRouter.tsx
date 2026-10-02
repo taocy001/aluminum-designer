@@ -280,10 +280,8 @@ const PointerRouter: React.FC = () => {
         return
       }
 
-      // While looking, a press opens or shuts whatever it lands on and nothing else happens.
-      // Turning the view still works, which is most of what looking is.
+      // View mode toggles the nearest fitting under the pointer.
       if (ts.viewMode) {
-        // while looking, the press means the nearest drawer or door, whatever else is nearer
         const { cursor, rect } = cursorOf(e)
         const hit = candidatesFor(cursor, rect).find((p) => p.kind === 'fitting')
         if (hit) {

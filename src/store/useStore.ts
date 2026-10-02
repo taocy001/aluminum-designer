@@ -203,6 +203,7 @@ interface State {
   addPanels: (panels: PanelData[], select?: boolean) => void
   addFittings: (fittings: FittingData[], select?: boolean) => void
   updateFitting: (id: string, updates: Partial<FittingData>, pushHistory?: boolean) => void
+  setFittingOpenings: (ids: string[], open: number) => void
   updatePanel: (id: string, updates: Partial<PanelData>) => void
   commitPanelEdit: (id: string, updates: Partial<PanelData>) => void
   /** Replace the whole document (import) */
@@ -301,13 +302,25 @@ export const useStore = create<State>()(
           future: [], fittings, ...(select ? { selectedIds: list.map((f) => f.id) } : {}) }
       }),
 
-      // How far open is a way of looking, not a change to the design, so it leaves no
-      // history entry: undo after opening a drawer should undo the last thing you built.
       updateFitting: (id, updates, pushHistory = true) => set((state) => {
         const fittings = applyPartUpdates(state.fittings, [{ id, updates }])
         if (fittings === state.fittings || !validFittings(fittings)) return state
         return { fittings,
           ...(pushHistory ? { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] } : {}) }
+      }),
+
+      // Opening changes ignore design locks and preserve undo/redo history.
+      setFittingOpenings: (ids, open) => set((state) => {
+        if (!Number.isFinite(open)) return state
+        const selected = new Set(ids)
+        const value = Math.max(0, Math.min(1, open))
+        let changed = false
+        const fittings = state.fittings.map((f) => {
+          if (!selected.has(f.id) || f.open === value) return f
+          changed = true
+          return { ...f, open: value }
+        })
+        return changed ? { fittings } : state
       }),
 
       addPanels: (list, select = false) => set((state) => ({

@@ -396,23 +396,18 @@ export function splitSelectedDoors(): boolean {
   return true
 }
 
-/** Open or shut every selected one together. Looking, not building: no history entry. */
+/** Change selected openings without adding design history. */
 export function setFittingsOpen(ids: string[], open: number): void {
-  const v = Math.max(0, Math.min(1, open))
-  const { fittings, updateParts } = useStore.getState()
-  const mine = fittings.filter((f) => ids.includes(f.id))
-  if (mine.length === 0) return
-  updateParts({ fittings: mine.map((f) => ({ id: f.id, updates: { open: v } })) })
+  useStore.getState().setFittingOpenings(ids, open)
 }
 
-/** Swing or slide one fitting. Looking, not building, so it leaves no history entry. */
+/** Change one opening without adding design history. */
 export function setFittingOpen(id: string, open: number): void {
-  useStore.getState().updateFitting(id, { open: Math.max(0, Math.min(1, open)) }, false)
+  useStore.getState().setFittingOpenings([id], open)
 }
 
 /** Everything shut again */
 export function closeAllFittings(): void {
-  for (const f of useStore.getState().fittings) {
-    if (f.open) useStore.getState().updateFitting(f.id, { open: 0 }, false)
-  }
+  const state = useStore.getState()
+  state.setFittingOpenings(state.fittings.map((f) => f.id), 0)
 }

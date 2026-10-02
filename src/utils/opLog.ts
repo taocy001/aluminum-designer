@@ -99,12 +99,7 @@ function kindOf(doc: Doc, id: string): string {
   return 'fitting'
 }
 
-/**
- * What changed between two documents.
- *
- * Returns null when nothing did, and also when the only difference is how far a drawer is
- * open — that is a way of looking, and a log of it would bury the log of the work.
- */
+/** Describe design changes; unchanged documents and opening-only changes return null. */
 export function describeChange(before: Doc, after: Doc): { label: string; detail: string; ids: string[] } | null {
   const all = (d: Doc): Part[] => [...d.profiles, ...d.connectors, ...d.panels, ...d.fittings]
   const b = new Map(all(before).map((p) => [p.id, p]))

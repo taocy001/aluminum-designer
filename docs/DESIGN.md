@@ -127,7 +127,9 @@ cutLength = length - start.trim - end.trim
 
 杯铰和型材合页按安装边长度取 2/3/4 个，长排合页为一条；该数量规则未包含门重和实际五金承载。
 
-`fittingSolids` 只生成构件板材的活动 OBB。拉手与铰链显示模型随前板运动，但不加入板材碰撞实体；拉手也不进入 BOM、DXF 或 STEP。BOM 中的滑轨和铰链行由构件参数生成。
+开度通过 `setFittingOpenings` 统一更新，允许操作锁定构件，保留撤销和重做记录。
+
+`fittingSolids` 只生成构件板材的活动 OBB。拉手随前板运动，铰链显示模型位于固定安装边，两者都不加入板材碰撞实体；拉手也不进入 BOM、DXF 或 STEP。BOM 中的滑轨和铰链行由构件参数生成。
 
 ## 检查与估算
 
