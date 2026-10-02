@@ -216,16 +216,7 @@ const PointerRouter: React.FC = () => {
       candidates.current = { x: 0, y: 0, list: [], index: 0 }
     }
 
-    /**
-     * A double click means "this, closer in", and it has to mean that everywhere.
-     *
-     * It used to mean two things: closer in over empty space, and take-the-sub-assembly over
-     * a member — so whether it zoomed depended on whether you had happened to land on metal,
-     * which is exactly the part you were trying to get closer to. Now it always comes in, at
-     * whatever the pointer is over. Where the ray finds nothing it falls back to the work
-     * plane, and only then to the floor, so a double click while looking at wall units does
-     * not send the camera off to a point on the ground metres below them.
-     */
+    /** Zoom towards the pointer on double-click, using the hit point or the current view-depth fallback. */
     const onDoubleClick = (e: MouseEvent) => {
       const ts = useToolStore.getState()
       if (ts.held !== null || ts.selectMode) return
@@ -236,10 +227,7 @@ const PointerRouter: React.FC = () => {
         store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store))
       let target = hit?.point?.clone() ?? null
       if (!target) {
-        // Nothing under the pointer. Falling through to the floor sends the camera off to
-        // a spot metres below whatever you were looking at, which is why this used to feel
-        // like it had missed. Stay at the depth you are already looking at instead, so the
-        // view comes in on the sky beside a wall unit rather than on the ground under it.
+        // For an empty-space zoom, keep the current view depth along the pointer ray.
         const orbit3 = orbit as any
         const dir = camera.getWorldDirection(new THREE.Vector3())
         const depth = orbit3?.target ? orbit3.target.clone().sub(camera.position).dot(dir) : 0

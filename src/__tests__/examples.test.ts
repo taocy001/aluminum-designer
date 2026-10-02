@@ -102,11 +102,7 @@ describe('bundled example geometry', () => {
       expect(empty).toEqual([])
     })
 
-    /**
-     * Opened, one at a time. The check above sees every door shut, which is how they were
-     * drawn and not how they are used: a leaf turned about the wrong edge went through the
-     * door beside it and into the frame, in a drawing that had just been declared clean.
-     */
+    /** Check fittings fully open, individually and together. */
     it('has no reported fitting collisions at the sampled opening positions', () => {
       const { profiles, connectors, panels, fittings } = load(name)
       const trims = computeAllTrims(profiles)

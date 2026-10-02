@@ -107,12 +107,7 @@ export interface FittingData {
   overlay?: Overlay
   /** The leaf's meeting edge in local X; that edge stops 1.5 mm short of the opening. */
   meeting?: 'left' | 'right'
-  /**
-   * Drawers fitted one above another in the same opening: which of this front's edges meet
-   * the next drawer's front rather than the frame. Those edges get the 3 mm gap between two
-   * fronts, not an overlay onto a rail that is not there — overlaying both fronts onto the
-   * same line put each one 30 mm into its neighbour.
-   */
+  /** Adjacent drawer fronts share a 3 mm gap; only outer edges receive frame overlays. */
   stacked?: { above?: boolean; below?: boolean }
   locked?: boolean
 }

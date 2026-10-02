@@ -75,19 +75,9 @@ function boardAcross(mine: THREE.Box3, reach: number, axis: THREE.Vector3, cabin
   return false
 }
 
-/**
- * Which way the fitting faces.
- *
- * The answer is already in the selection. Picking out an opening means picking the members
- * that frame it, and those are the ones at the front — so the front is whichever side of the
- * whole frame they sit on. Guessing from the shape of the run instead ignored that, and put
- * every door in a kitchen facing the wall.
- */
+/** Infer the fitting's outward direction from the selected opening and its connected frame. */
 function outwardAxis(chosen: ProfileData[], section: number): { out: THREE.Vector3; settled: boolean } {
-  // The cabinet this opening is in, not the drawing it is in. Asked of the whole drawing,
-  // "which way is depth" is answered by the room: eleven cabinets laid out along Z made every
-  // drawer in the flat face along X, turned ninety degrees, with its width and its depth
-  // swapped and its front buried in the upright beside it.
+  // Restrict orientation inference to the connected frame.
   const all = cabinetOf(chosen)
   const whole = new THREE.Box3()
   const members = all.map((profile) => memberBox(profile))
@@ -160,13 +150,7 @@ function outwardAxis(chosen: ProfileData[], section: number): { out: THREE.Vecto
   return { out: facing(coplanar ? thin : (run.z <= run.x ? Z : X)), settled: false }
 }
 
-/**
- * The cabinet this opening belongs to, as a box.
- *
- * Not the whole drawing: a run of base units and the wall units above them are different
- * cabinets with different depths, and asking the whole frame how deep "the cabinet" is gets
- * a door hinged a foot in front of the one it belongs to.
- */
+/** Frame ownership is determined by connected profiles. */
 /** Return profiles connected to the selected members. */
 function cabinetOf(chosen: ProfileData[]): ProfileData[] {
   const profiles = useStore.getState().profiles
@@ -174,14 +158,7 @@ function cabinetOf(chosen: ProfileData[]): ProfileData[] {
   return profiles.filter((p) => own.has(p.id))
 }
 
-/**
- * How far the metal goes back behind an opening.
- *
- * Only what is directly behind it counts: members that overlap the opening across its width
- * and its height. A box query over an L-shaped run answers with the whole L — the long run's
- * doors came out as deep as the return leg is long — because the return leg is inside the
- * same bounding box while being nowhere behind the opening.
- */
+/** Measure depth behind the opening using its connected frame. */
 function depthBehind(chosen: ProfileData[], out: THREE.Vector3): number {
   const mine = new THREE.Box3()
   for (const p of chosen) mine.union(memberBox(p))
@@ -208,10 +185,7 @@ function carcaseAround(chosen: ProfileData[]): THREE.Box3 {
   for (const p of chosen) mine.union(memberBox(p))
   // Expand the local query across X/Y, with an unrestricted Z range.
   const near = new THREE.Box3().copy(mine).expandByVector(new THREE.Vector3(CARCASE_MARGIN, CARCASE_MARGIN, 1e5))
-  // Reaching without limit into the depth is right for one cabinet and disastrous for a
-  // room: it found every cabinet standing behind this one and gave a kitchen door a depth of
-  // eleven metres. What bounds it is not a distance, it is that a separate cabinet is not
-  // bolted to this one — so only the sub-assembly the opening belongs to is considered.
+  // Limit the query to the selected connected frame.
   const box = new THREE.Box3()
   for (const p of cabinetOf(chosen)) {
     const b = memberBox(p)
@@ -299,12 +273,7 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
 
   // Infer depth from members behind a coplanar door opening.
   if (req.kind === 'door' && deep < MIN_OPENING) {
-    // its own cabinet's depth, not the whole drawing's: wall units are shallower than the
-    // base units under them, and a door hung on the deeper figure swings about an axis a
-    // foot in front of the cabinet it belongs to
-    // How far back the cabinet goes *behind this opening*, not across the whole carcase.
-    // An L-shaped run's bounding box is as deep as the return leg is long, and a door on the
-    // long run came out nearly two metres deep, hinged out in the middle of the room.
+    // Measure depth within this opening's connected frame.
     deep = Math.max(MIN_OPENING, depthBehind(chosen, out))
   }
   if (across < MIN_OPENING || size.y < MIN_OPENING || (req.kind === 'drawer' && deep < MIN_OPENING)) {

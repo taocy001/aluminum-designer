@@ -137,11 +137,7 @@ test.describe('Coming in, and turning about what you are looking at', () => {
     await page.mouse.dblclick(c.x, c.y)
     await page.waitForTimeout(350)
     const after = await cam(page)
-    // It comes in on the rail. Exactly where on it is not the promise: when the pick lands
-    // on the member the target is the point on its centreline under the pointer, and when
-    // it narrowly misses the target is the same depth along the same ray — a hand's breadth
-    // away on a rail this long, and the same thing to look at. What would be wrong is
-    // coming in somewhere else entirely, or diving to the floor.
+    // Zoom stays near the rail, using its hit position or the view-depth fallback.
     const before = { pos: [2000, 1600, 2400], target: [300, 300, 200] }
     const dist = (a: number[], b: number[]) => Math.hypot(...a.map((v, i) => v - b[i]))
     expect(dist(after.pos, after.target)).toBeLessThan(dist(before.pos, before.target))

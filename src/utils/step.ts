@@ -7,25 +7,9 @@ import { getProfileDir, getProfileEndpoints } from './geometryCore'
 import { fittingParts } from './fittingGeometry'
 
 /**
- * STEP (ISO 10303-21, AP214) export.
- *
- * Without this a drawing stops here: it cannot be opened in FreeCAD or Fusion and it cannot
- * be sent to a shop's CAM. Every tool this one is measured against has it.
- *
- * Every part is written as a **boundary-represented solid**: a closed shell of flat faces,
- * the section polygon pushed along a straight line with a cap on each end. That is what an
- * extrusion is, and a board is the same thing with four corners. It was written as an
- * EXTRUDED_AREA_SOLID over an ARBITRARY_CLOSED_PROFILE_DEF — the IFC way of saying it, which
- * AP214 readers (OpenCASCADE, and so FreeCAD) do not translate: the file opened with no solid
- * and no face in it at all.
- *
- * Each part is its own PRODUCT under the assembly, named by what it is and how long it is
- * cut, so the tree in the CAD program is the cutting list. The brackets go in too, as simple
- * solids — a shop counting holes wants to see where they are.
- *
- * The profile written is the same outline the screen extrudes, slots and all, so what opens
- * in FreeCAD is what you were looking at — and the length written is the **cut length**,
- * after the joints have been trimmed, because that is the part that gets made.
+ * ISO 10303-21 AP214 export. Each part is a PRODUCT containing a closed BREP shell
+ * of planar faces. Profiles use the display section outline at cut length;
+ * connectors are simplified solids.
  */
 
 export interface StepInput {

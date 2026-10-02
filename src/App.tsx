@@ -351,9 +351,7 @@ function App() {
             </div>
           )}
 
-          {/* Before the first click: what the start point would attach to. A click that finds
-              nothing lands on the work plane, and that used to be invisible until the member
-              appeared somewhere else entirely. */}
+          {/* Suggested member dimensions. */}
           {suggestion && (() => {
             const m = suggestion.cand.member
             const cut = Math.round(computeTrims(m, [...useStore.getState().profiles, m]).cutLength)

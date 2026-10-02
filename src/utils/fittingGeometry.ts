@@ -295,13 +295,7 @@ export function swingClashes(fittings: FittingData[]): Array<[string, string]> {
   return out
 }
 
-/**
- * Where the moving part of a fitting actually is, right now.
- *
- * A door that is open is not where its opening is — it is out in the room, turned about its
- * hinge. Picking it by the opening means clicking the hole it came out of, which is not where
- * anybody looks for it. A drawer is the same, translated rather than turned.
- */
+/** World-space door-leaf bounds or translated drawer-opening bounds for picking. */
 export function fittingObb(f: FittingData): OBB {
   if (f.kind === 'door') {
     const leaf = leafObb(f, f.open ?? 0)
