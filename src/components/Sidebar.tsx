@@ -11,6 +11,8 @@ import { computeFrameBounds } from '../utils/jointUtils'
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel } from '../utils/connectorCatalog'
 import { buildBom, bomToCsv } from '../utils/bom'
+import { partNumber, fittingBoardNumber } from '../utils/partNumbers'
+import { fittingParts } from '../utils/fittingGeometry'
 import { analyzeFrame } from '../utils/analysis'
 import { selectedSolidTop } from '../utils/selectionBounds'
 import { equipmentBody } from '../utils/equipmentGeometry'
@@ -300,7 +302,7 @@ const Sidebar: React.FC = () => {
   }
 
   // Compute assembly steps only while the assembly panel is active.
-  const steps = useMemo(() => (buildStep === null ? [] : assemblySteps(profiles, connectors, panels, fittings)),
+  const steps = useMemo(() => (buildStep === null ? [] : assemblySteps(profiles, connectors, panels, fittings, throughRule)),
     [buildStep, profiles, connectors, panels, fittings, throughRule])
   const step = buildStep !== null ? steps[buildStep - 1] : undefined
 
@@ -369,12 +371,19 @@ const Sidebar: React.FC = () => {
   }
   const handleExportDxf = () => {
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.dxf`,
-      buildDxf({ profiles, panels, fittings }), 'application/dxf')
+      buildDxf({ profiles, panels, fittings, connectors, rule: throughRule, trims }), 'application/dxf')
     notifyExport()
   }
   const handleExportStep = () => {
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.step`,
-      buildStepFile({ profiles, panels, fittings, connectors }), 'application/step')
+      buildStepFile({ profiles, panels, fittings, connectors, rule: throughRule, trims }), 'application/step')
+    notifyExport()
+  }
+  const handleExportAssembly = async () => {
+    const { buildAssemblyHtml } = await import('../utils/assemblyHtml')
+    downloadText(`aluframe-assembly-${new Date().toISOString().slice(0, 10)}.html`,
+      buildAssemblyHtml({ profiles, connectors, panels, fittings, equipment, throughRule }, { language, stockLength: stockMm }),
+      'text/html;charset=utf-8')
     notifyExport()
   }
   const handleSaveProject = async (asNew = false) => {
@@ -750,6 +759,19 @@ const Sidebar: React.FC = () => {
                   className="text-red-400 hover:bg-red-400/10 disabled:opacity-30 p-1.5 rounded-lg"><Trash2 size={14} /></button>
               </div>
             </div>
+            {(selectedProfile || selectedConnector || selectedPanel || selectedFitting) && <div className="space-y-1 text-[10px]" data-testid="selected-part-numbers">
+              <span className="text-slate-500">{t.partNumber}</span>
+              <code className="block break-all select-text text-cyan-300">{selectedProfile ? partNumber('profile', selectedProfile.id)
+                : selectedConnector ? partNumber('connector', selectedConnector.id)
+                : selectedPanel ? partNumber('panel', selectedPanel.id)
+                : selectedFitting ? partNumber('fitting', selectedFitting.id) : ''}</code>
+              {selectedFitting && <details>
+                <summary className="cursor-pointer text-slate-400">{t.boardCutList}</summary>
+                {fittingParts(selectedFitting).boards.map((b) => <code key={b.key} className="block break-all select-text text-cyan-300">
+                  {fittingBoardNumber(selectedFitting.id, b.key)}
+                </code>)}
+              </details>}
+            </div>}
             {selectedEquipment && <EquipmentEditor part={selectedEquipment} />}
             {selectedProfile && (
               <fieldset disabled={viewMode} className="space-y-3">
@@ -1266,13 +1288,17 @@ const Sidebar: React.FC = () => {
         {(bom.profiles.length > 0 || bom.connectors.length > 0 || bom.panels.length > 0) && (
           <div className="max-h-44 overflow-y-auto rounded-lg border border-white/5 text-[10px] font-mono" data-testid="bom-table">
             {bom.profiles.map((r) => (
-              <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
-                <span className="text-slate-400">{r.label}</span><span className="text-slate-200">{r.length} mm</span><span className="text-blue-400">×{r.qty}</span>
-              </div>
+              <details key={r.key} className="px-2 py-1 odd:bg-white/5">
+                <summary className="cursor-pointer"><span className="text-slate-400">{r.label}</span> <span className="text-slate-200">{r.length} mm</span> <span className="text-blue-400">×{r.qty}</span></summary>
+                <div className="break-all select-text text-cyan-300 pt-1" data-testid="bom-part-numbers">{r.partNumbers.join(' · ')}</div>
+              </details>
             ))}
             {bom.connectors.map((r) => (
-              <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
-                <span className="text-slate-400 truncate">{r.label}</span><span className="text-slate-500">{r.spec}</span><span className="text-emerald-400">×{r.qty}</span>
+              <div key={r.key} className="px-2 py-1 odd:bg-white/5">
+                {r.partNumbers.length ? <details>
+                  <summary className="cursor-pointer"><span className="text-slate-400">{r.label}</span> <span className="text-slate-500">{r.spec}</span> <span className="text-emerald-400">×{r.qty}</span></summary>
+                  <div className="break-all select-text text-cyan-300 pt-1" data-testid="bom-part-numbers">{r.partNumbers.join(' · ')}</div>
+                </details> : <div className="flex justify-between"><span className="text-slate-400">{r.label}</span><span className="text-slate-500">{r.spec}</span><span className="text-emerald-400">×{r.qty}</span></div>}
               </div>
             ))}
             {bom.fasteners.length > 0 && (
@@ -1287,9 +1313,10 @@ const Sidebar: React.FC = () => {
               <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-panels">{t.boardCutList}</div>
             )}
             {bom.panels.map((r) => (
-              <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
-                <span className="text-slate-400 truncate">{r.label}</span><span className="text-slate-500">{r.spec}</span><span className="text-orange-400">×{r.qty}</span>
-              </div>
+              <details key={r.key} className="px-2 py-1 odd:bg-white/5">
+                <summary className="cursor-pointer"><span className="text-slate-400">{r.label}</span> <span className="text-slate-500">{r.spec}</span> <span className="text-orange-400">×{r.qty}</span></summary>
+                <div className="break-all select-text text-cyan-300 pt-1" data-testid="bom-part-numbers">{r.partNumbers.join(' · ')}</div>
+              </details>
             ))}
             {bom.suggested.length > 0 && (
               <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-suggested">{t.suggested}</div>
@@ -1340,13 +1367,17 @@ const Sidebar: React.FC = () => {
             <button onClick={handleExportCutting} disabled={bom.profiles.length === 0} data-testid="export-cutting" title={t.hintExportCutting} className={FILE_BTN}>
               <Scissors size={13} className="text-blue-400" /> {t.exportCutting}
             </button>
-            <button onClick={handleExportDxf} disabled={profiles.length + panels.length + fittings.length === 0}
+            <button onClick={handleExportDxf} disabled={profiles.length + connectors.length + panels.length + fittings.length === 0}
               data-testid="export-dxf" title={t.hintExportDxf} className={FILE_BTN}>
               <FileCode size={13} className="text-blue-400" /> {t.exportDxf}
             </button>
             <button onClick={handleExportStep} disabled={profiles.length + connectors.length + panels.length + fittings.length === 0}
               data-testid="export-step" title={t.hintExportStep} className={FILE_BTN}>
               <Box size={13} className="text-blue-400" /> {t.exportStep}
+            </button>
+            <button onClick={handleExportAssembly} disabled={profiles.length + connectors.length + panels.length + fittings.length + equipment.length === 0}
+              data-testid="export-assembly" title={t.hintExportAssembly} className={`${FILE_BTN} col-span-2`}>
+              <FileCode size={13} className="text-blue-400" /> {t.exportAssembly}
             </button>
           </div>
         </div>

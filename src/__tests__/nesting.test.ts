@@ -3,7 +3,7 @@ import { nestProfiles, nestingCsv, STOCK_LENGTH, KERF } from '../utils/nesting'
 import type { BomRow } from '../utils/bom'
 
 const row = (spec: string, length: number, qty: number): BomRow =>
-  ({ kind: 'profile', key: `${spec}-${length}`, label: spec, spec, length, qty })
+  ({ kind: 'profile', key: `${spec}-${length}`, label: spec, spec, length, qty, partNumbers: [] })
 
 describe('how many bars to buy', () => {
   it('says none for an empty cut list', () => {
@@ -55,7 +55,7 @@ describe('how many bars to buy', () => {
     expect(r.totalBars).toBe(0)
     expect(r.bars).toEqual([])
     expect(r.yield).toBe(0)
-    expect(r.unsatisfied).toEqual([{ spec: '2040', length: 7000, qty: 1, reason: 'exceeds-stock' }])
+    expect(r.unsatisfied).toEqual([{ spec: '2040', length: 7000, qty: 1, reason: 'exceeds-stock', partNumbers: [''] }])
     expect(nestingCsv(r)).toContain('Unsatisfied,2040,7000 mm exceeds 6000 mm,1,')
   })
 
@@ -121,7 +121,7 @@ describe('the cutting list', () => {
 
   it('has a line per bar that a saw operator can read', () => {
     const csv = nestingCsv(nestProfiles([row('2020', 1990, 3)]))
-    expect(csv.split('\n')[0]).toBe('Spec,Bar,Cuts (mm),Pieces,Offcut (mm)')
+    expect(csv.split('\n')[0]).toBe('Spec,Bar,Cuts (mm),Pieces,Offcut (mm),Part numbers')
     expect(csv).toContain('2020,1,"1990 + 1990 + 1990",3,')
     expect(csv).toContain('Summary,Total bars,1,,')
   })

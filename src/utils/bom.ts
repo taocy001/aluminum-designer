@@ -1,4 +1,5 @@
 import { drawerLayout } from './drawerLayout'
+import { fittingBoardNumber, partNumber } from './partNumbers'
 import type { ConnectorData, PanelData, ProfileData, FittingData, HingeType } from '../store/useStore'
 import { fittingParts, hingeCount } from './fittingGeometry'
 import { materialLabel } from './panelOps'
@@ -17,6 +18,8 @@ export interface BomRow {
   /** cut length for profiles, blank for everything else */
   length?: number
   qty: number
+  /** Placed parts and fitting boards represented by this row; inferred hardware has none. */
+  partNumbers: string[]
 }
 
 export interface BomResult {
@@ -47,8 +50,9 @@ export function buildBom(
     const cut = cutDimension(trims.get(p.id)?.cutLength ?? p.length)
     totalCutLength += trims.get(p.id)?.cutLength ?? p.length
     const key = `${p.spec}-${cut}`
-    const row = profileRows.get(key) ?? { kind: 'profile' as const, key, label: p.spec, spec: p.spec, length: cut, qty: 0 }
+    const row = profileRows.get(key) ?? { kind: 'profile' as const, key, label: p.spec, spec: p.spec, length: cut, qty: 0, partNumbers: [] }
     row.qty++
+    row.partNumbers.push(partNumber('profile', p.id))
     profileRows.set(key, row)
   }
 
@@ -60,9 +64,10 @@ export function buildBom(
     const key = `${c.type}-${series}`
     const row = connectorRows.get(key) ?? {
       kind: 'connector' as const, key,
-      label: connectorLabel(c.type, language), spec: `${series}${language === 'zh' ? ' 系列' : ' series'}`, qty: 0,
+      label: connectorLabel(c.type, language), spec: `${series}${language === 'zh' ? ' 系列' : ' series'}`, qty: 0, partNumbers: [],
     }
     row.qty++
+    row.partNumbers.push(partNumber('connector', c.id))
     connectorRows.set(key, row)
 
     const recipe = connectorEntry(c.type)?.fasteners
@@ -74,10 +79,10 @@ export function buildBom(
 
   const fasteners: BomRow[] = []
   for (const [series, qty] of [...boltsBySeries].sort((a, b) => a[0] - b[0])) {
-    fasteners.push({ kind: 'fastener', key: `bolt-${series}`, label: boltLabel(series, language), spec: `${series}`, qty })
+    fasteners.push({ kind: 'fastener', key: `bolt-${series}`, label: boltLabel(series, language), spec: `${series}`, qty, partNumbers: [] })
   }
   for (const [series, qty] of [...nutsBySeries].sort((a, b) => a[0] - b[0])) {
-    fasteners.push({ kind: 'fastener', key: `nut-${series}`, label: nutLabel(series, language), spec: `${series}`, qty })
+    fasteners.push({ kind: 'fastener', key: `nut-${series}`, label: nutLabel(series, language), spec: `${series}`, qty, partNumbers: [] })
   }
 
   // Suggested hardware for inferred connections without placed parts.
@@ -107,7 +112,7 @@ export function buildBom(
     suggested.push({
       kind: 'suggested', key: 'suggest-bracket', spec: '',
       label: language === 'zh' ? `${bracketEntry.labelZh}（按对接端推算）` : `${bracketEntry.labelEn} (from butt joints)`,
-      qty: missingBrackets,
+      qty: missingBrackets, partNumbers: [],
     })
   }
   let freeEnds = 0
@@ -119,20 +124,20 @@ export function buildBom(
     suggested.push({
       kind: 'suggested', key: `suggest-cap-${series}`, spec: `${series}`,
       label: language === 'zh' ? `端盖 ${series} 系列（按自由端推算）` : `End cap, ${series} series (from free ends)`,
-      qty: missing,
+      qty: missing, partNumbers: [],
     })
   }
 
   // Group boards by size and material; expand fittings into their boards and hardware.
   const panelRows = new Map<string, BomRow>()
   let totalBoardArea = 0
-  const fittingBoards: PanelData[] = []
+  const boards = panels.map((panel) => ({ panel, number: partNumber('panel', panel.id) }))
   for (const f of fittings) {
     for (const b of fittingParts(f).boards) {
-      fittingBoards.push({
+      boards.push({ number: fittingBoardNumber(f.id, b.key), panel: {
         id: `${f.id}-${b.key}`, width: b.width, height: b.height, thickness: b.thickness,
         position: [0, 0, 0], quaternion: [0, 0, 0, 1], material: f.material,
-      })
+      } })
     }
     if (f.kind === 'drawer') {
       const depth = cutDimension(drawerLayout(f).runnerLength)
@@ -140,7 +145,7 @@ export function buildBom(
       const row = connectorRows.get(key) ?? {
         kind: 'connector' as const, key,
         label: language === 'zh' ? `抽屉滑轨 ${depth}mm` : `Drawer runner ${depth} mm`,
-        spec: language === 'zh' ? '侧装一对' : 'side-mount pair', qty: 0,
+        spec: language === 'zh' ? '侧装一对' : 'side-mount pair', qty: 0, partNumbers: [],
       }
       row.qty++
       connectorRows.set(key, row)
@@ -155,12 +160,12 @@ export function buildBom(
         slot: language === 'zh' ? '型材合页' : 'T-slot leaf hinge',
         continuous: language === 'zh' ? `长排合页 ${length}mm` : `Piano hinge ${length} mm`,
       }
-      const row = connectorRows.get(key) ?? { kind: 'connector' as const, key, label: names[type], spec: '', qty: 0 }
+      const row = connectorRows.get(key) ?? { kind: 'connector' as const, key, label: names[type], spec: '', qty: 0, partNumbers: [] }
       row.qty += n
       connectorRows.set(key, row)
     }
   }
-  for (const b of [...panels, ...fittingBoards]) {
+  for (const { panel: b, number } of boards) {
     const w = cutDimension(b.width), h = cutDimension(b.height)
     // the same board turned on its side is the same cut, so the pair is ordered
     const [a1, a2] = w >= h ? [w, h] : [h, w]
@@ -170,17 +175,20 @@ export function buildBom(
       kind: 'panel' as const, key,
       label: `${a1} × ${a2} mm`,
       spec: `${materialLabel(b.material, language)} ${b.thickness}mm`,
-      qty: 0,
+      qty: 0, partNumbers: [],
     }
     row.qty++
+    row.partNumbers.push(number)
     panelRows.set(key, row)
   }
+
+  for (const row of [...profileRows.values(), ...connectorRows.values(), ...panelRows.values()]) row.partNumbers.sort()
 
   return {
     panels: [...panelRows.values()].sort((a, b) => a.spec.localeCompare(b.spec) || a.label.localeCompare(b.label)),
     totalBoardArea,
     profiles: [...profileRows.values()].sort((a, b) => a.spec.localeCompare(b.spec) || (b.length ?? 0) - (a.length ?? 0)),
-    connectors: [...connectorRows.values()].sort((a, b) => a.label.localeCompare(b.label)),
+    connectors: [...connectorRows.values()].sort((a, b) => a.label.localeCompare(b.label) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)),
     fasteners,
     suggested,
     totalCutLength,
@@ -196,14 +204,16 @@ function cutDimension(value: number): number {
 
 /** CSV with fixed English headers, so downstream tools do not depend on the UI language */
 export function bomToCsv(bom: BomResult, overall: string): string {
-  const lines = ['Category,Item,Spec,Cut length (mm),Quantity']
-  for (const r of bom.profiles) lines.push(`Profile,${r.label},${r.spec},${r.length ?? ''},${r.qty}`)
-  for (const r of bom.connectors) lines.push(`Connector,"${r.label}",${r.spec},,${r.qty}`)
-  for (const r of bom.fasteners) lines.push(`Fastener,"${r.label}",${r.spec},,${r.qty}`)
-  for (const r of bom.panels) lines.push(`Board,"${r.label}","${r.spec}",,${r.qty}`)
-  for (const r of bom.suggested) lines.push(`Suggested,"${r.label}",${r.spec},,${r.qty}`)
-  lines.push(`Summary,Overall WxDxH,${overall},,`)
-  lines.push(`Summary,Total cut length (mm),,${cutDimension(bom.totalCutLength)},`)
-  lines.push(`Summary,Board area (m2),,${bom.totalBoardArea.toFixed(2)},`)
+  const lines = ['Category,Item,Spec,Cut length (mm),Quantity,Part numbers']
+  const quoted = (value: string) => `"${value.replace(/"/g, '""')}"`
+  const numbers = (row: BomRow) => quoted(row.partNumbers.join('; '))
+  for (const r of bom.profiles) lines.push(`Profile,${r.label},${r.spec},${r.length ?? ''},${r.qty},${numbers(r)}`)
+  for (const r of bom.connectors) lines.push(`Connector,${quoted(r.label)},${r.spec},,${r.qty},${numbers(r)}`)
+  for (const r of bom.fasteners) lines.push(`Fastener,${quoted(r.label)},${r.spec},,${r.qty},${numbers(r)}`)
+  for (const r of bom.panels) lines.push(`Board,${quoted(r.label)},${quoted(r.spec)},,${r.qty},${numbers(r)}`)
+  for (const r of bom.suggested) lines.push(`Suggested,${quoted(r.label)},${r.spec},,${r.qty},${numbers(r)}`)
+  lines.push(`Summary,Overall WxDxH,${overall},,,`)
+  lines.push(`Summary,Total cut length (mm),,${cutDimension(bom.totalCutLength)},,`)
+  lines.push(`Summary,Board area (m2),,${bom.totalBoardArea.toFixed(2)},,`)
   return lines.join('\n')
 }

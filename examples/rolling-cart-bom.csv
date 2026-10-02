@@ -1,15 +1,15 @@
-﻿Category,Item,Spec,Cut length (mm),Quantity
-Profile,2020,2020,880,4
-Profile,2020,2020,800,2
-Profile,2020,2020,760,10
-Profile,2020,2020,460,8
-Profile,2020,2020,398,4
-Connector,"内角码",20 系列,,40
-Fastener,"螺栓 M5×10",20,,80
-Fastener,"T型螺母 M5",20,,80
-Board,"760 × 460 mm","密度板 18mm",,2
-Suggested,"L型角码（按对接端推算）",,,8
-Suggested,"端盖 20 系列（按自由端推算）",20,,4
-Summary,Overall WxDxH,800x500x900,,
-Summary,Total cut length (mm),,17992,
-Summary,Board area (m2),,0.70,
+﻿Category,Item,Spec,Cut length (mm),Quantity,Part numbers
+Profile,2020,2020,880,4,"P-p-mufs8zlu9b; P-p-mufs90699c; P-p-mufs90ki9d; P-p-mufs90vh9e"
+Profile,2020,2020,800,2,"P-p-mufs930k9j; P-p-mufs93e29k"
+Profile,2020,2020,760,10,"P-b-mufvmswr14-bearing-back; P-b-mufvmswr14-bearing-front; P-b-mufvmsws17-bearing-back; P-b-mufvmsws17-bearing-front; P-p-mufs91if9f; P-p-mufs91t69g; P-p-mufvmswq12; P-p-mufvmswq13; P-p-mufvmswr15; P-p-mufvmswr16"
+Profile,2020,2020,460,8,"P-p-mufs922g9h; P-p-mufs92ec9i; P-p-mufs93oi9l; P-p-mufs941n9m; P-p-mufs9hqq9v; P-p-mufs9i3v9w; P-p-mufs9je19y; P-p-mufs9jro9z"
+Profile,2020,2020,398,4,"P-b-mufvmswr14-bearing-left; P-b-mufvmswr14-bearing-right; P-b-mufvmsws17-bearing-left; P-b-mufvmsws17-bearing-right"
+Connector,"内角码",20 系列,,40,"C-b-mufvmswr14-bearing-back-end-joint; C-b-mufvmswr14-bearing-back-start-joint; C-b-mufvmswr14-bearing-front-end-joint; C-b-mufvmswr14-bearing-front-start-joint; C-b-mufvmswr14-bearing-left-end-joint; C-b-mufvmswr14-bearing-left-start-joint; C-b-mufvmswr14-bearing-right-end-joint; C-b-mufvmswr14-bearing-right-start-joint; C-b-mufvmsws17-bearing-back-end-joint; C-b-mufvmsws17-bearing-back-start-joint; C-b-mufvmsws17-bearing-front-end-joint; C-b-mufvmsws17-bearing-front-start-joint; C-b-mufvmsws17-bearing-left-end-joint; C-b-mufvmsws17-bearing-left-start-joint; C-b-mufvmsws17-bearing-right-end-joint; C-b-mufvmsws17-bearing-right-start-joint; C-c-mufs9ks7a1; C-c-mufs9ks7a2; C-c-mufs9ks7a3; C-c-mufs9ks7a4; C-c-mufs9ks7a5; C-c-mufs9ks7a6; C-c-mufs9ks7a7; C-c-mufs9ks7a8; C-c-mufs9ks7a9; C-c-mufs9ks7aa; C-c-mufs9ks7ab; C-c-mufs9ks7ac; C-c-mufs9ks7ad; C-c-mufs9ks7ae; C-c-mufs9ks7af; C-c-mufs9ks7ag; C-c-mufs9ks7ah; C-c-mufs9ks7ai; C-c-mufs9ks7aj; C-c-mufs9ks7ak; C-c-mufs9ks7al; C-c-mufs9ks7am; C-c-mufs9ks7an; C-c-mufs9ks7ao"
+Fastener,"螺栓 M5×10",20,,80,""
+Fastener,"T型螺母 M5",20,,80,""
+Board,"760 × 460 mm","密度板 18mm",,2,"B-b-mufvmswr14; B-b-mufvmsws17"
+Suggested,"L型角码（按对接端推算）",,,8,""
+Suggested,"端盖 20 系列（按自由端推算）",20,,4,""
+Summary,Overall WxDxH,800x500x900,,,
+Summary,Total cut length (mm),,17992,,
+Summary,Board area (m2),,0.70,,

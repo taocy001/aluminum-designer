@@ -1,16 +1,16 @@
-﻿Category,Item,Spec,Cut length (mm),Quantity
-Profile,2020,2020,860,10
-Profile,2020,2020,178,10
-Profile,2040,2040,1980,4
-Profile,2040,2040,900,2
-Profile,2040,2040,860,12
-Profile,2040,2040,240,14
-Connector,"内角码",20 系列,,86
-Fastener,"螺栓 M5×10",20,,172
-Fastener,"T型螺母 M5",20,,172
-Board,"860 × 240 mm","密度板 18mm",,5
-Suggested,"L型角码（按对接端推算）",,,10
-Suggested,"端盖 20 系列（按自由端推算）",20,,4
-Summary,Overall WxDxH,900x320x2000,,
-Summary,Total cut length (mm),,33780,
-Summary,Board area (m2),,1.03,
+﻿Category,Item,Spec,Cut length (mm),Quantity,Part numbers
+Profile,2020,2020,860,10,"P-b-mufvmsw13-bearing-back; P-b-mufvmsw13-bearing-front; P-b-mufvmsw46-bearing-back; P-b-mufvmsw46-bearing-front; P-b-mufvmsw69-bearing-back; P-b-mufvmsw69-bearing-front; P-b-mufvmsw8c-bearing-back; P-b-mufvmsw8c-bearing-front; P-b-mufvmsw9f-bearing-back; P-b-mufvmsw9f-bearing-front"
+Profile,2020,2020,178,10,"P-b-mufvmsw13-bearing-left; P-b-mufvmsw13-bearing-right; P-b-mufvmsw46-bearing-left; P-b-mufvmsw46-bearing-right; P-b-mufvmsw69-bearing-left; P-b-mufvmsw69-bearing-right; P-b-mufvmsw8c-bearing-left; P-b-mufvmsw8c-bearing-right; P-b-mufvmsw9f-bearing-left; P-b-mufvmsw9f-bearing-right"
+Profile,2040,2040,1980,4,"P-p-mufrnzzb87; P-p-mufro0k288; P-p-mufro19189; P-p-mufro1pl8a"
+Profile,2040,2040,900,2,"P-p-mufro4748f; P-p-mufro4j48g"
+Profile,2040,2040,860,12,"P-p-mufro2k68b; P-p-mufro2x38c; P-p-mufvmsvx1; P-p-mufvmsvz2; P-p-mufvmsw24; P-p-mufvmsw35; P-p-mufvmsw47; P-p-mufvmsw58; P-p-mufvmsw6a; P-p-mufvmsw7b; P-p-mufvmsw8d; P-p-mufvmsw9e"
+Profile,2040,2040,240,14,"P-p-mufro38k8d; P-p-mufro3iv8e; P-p-mufro4v68h; P-p-mufro56l8i; P-p-mufroj7d8r; P-p-mufrojkh8s; P-p-mufrokrx8u; P-p-mufrol338v; P-p-mufromdm8x; P-p-mufrompg8y; P-p-mufronzn90; P-p-mufroobm91; P-p-mufropmf93; P-p-mufropyb94"
+Connector,"内角码",20 系列,,86,"C-b-mufvmsw13-bearing-back-end-joint; C-b-mufvmsw13-bearing-back-start-joint; C-b-mufvmsw13-bearing-front-end-joint; C-b-mufvmsw13-bearing-front-start-joint; C-b-mufvmsw13-bearing-left-end-joint; C-b-mufvmsw13-bearing-left-start-joint; C-b-mufvmsw13-bearing-right-end-joint; C-b-mufvmsw13-bearing-right-start-joint; C-b-mufvmsw46-bearing-back-end-joint; C-b-mufvmsw46-bearing-back-start-joint; C-b-mufvmsw46-bearing-front-end-joint; C-b-mufvmsw46-bearing-front-start-joint; C-b-mufvmsw46-bearing-left-end-joint; C-b-mufvmsw46-bearing-left-start-joint; C-b-mufvmsw46-bearing-right-end-joint; C-b-mufvmsw46-bearing-right-start-joint; C-b-mufvmsw69-bearing-back-end-joint; C-b-mufvmsw69-bearing-back-start-joint; C-b-mufvmsw69-bearing-front-end-joint; C-b-mufvmsw69-bearing-front-start-joint; C-b-mufvmsw69-bearing-left-end-joint; C-b-mufvmsw69-bearing-left-start-joint; C-b-mufvmsw69-bearing-right-end-joint; C-b-mufvmsw69-bearing-right-start-joint; C-b-mufvmsw8c-bearing-back-end-joint; C-b-mufvmsw8c-bearing-back-start-joint; C-b-mufvmsw8c-bearing-front-end-joint; C-b-mufvmsw8c-bearing-front-start-joint; C-b-mufvmsw8c-bearing-left-end-joint; C-b-mufvmsw8c-bearing-left-start-joint; C-b-mufvmsw8c-bearing-right-end-joint; C-b-mufvmsw8c-bearing-right-start-joint; C-b-mufvmsw9f-bearing-back-end-joint; C-b-mufvmsw9f-bearing-back-start-joint; C-b-mufvmsw9f-bearing-front-end-joint; C-b-mufvmsw9f-bearing-front-start-joint; C-b-mufvmsw9f-bearing-left-end-joint; C-b-mufvmsw9f-bearing-left-start-joint; C-b-mufvmsw9f-bearing-right-end-joint; C-b-mufvmsw9f-bearing-right-start-joint; C-c-mufroqza96; C-c-mufroqza97; C-c-mufroqza98; C-c-mufroqza99; C-c-mufroqza9a; C-c-mufroqza9b; C-c-mufroqza9c; C-c-mufroqza9d; C-c-mufroqza9e; C-c-mufroqza9f; C-c-mufroqza9g; C-c-mufroqza9h; C-c-mufroqza9i; C-c-mufroqza9j; C-c-mufroqza9k; C-c-mufroqza9l; C-c-mufroqza9m; C-c-mufroqza9n; C-c-mufroqza9o; C-c-mufroqza9p; C-c-mufroqza9q; C-c-mufroqza9r; C-c-mufroqza9s; C-c-mufroqza9t; C-c-mufroqza9u; C-c-mufroqza9v; C-c-mufroqza9w; C-c-mufroqza9x; C-c-mufroqza9y; C-c-mufroqza9z; C-c-mufroqzaa0; C-c-mufroqzaa1; C-c-mufroqzaa2; C-c-mufroqzaa3; C-c-mufroqzaa4; C-c-mufroqzaa5; C-c-mufvmswbg; C-c-mufvmswch; C-c-mufvmswci; C-c-mufvmswcj; C-c-mufvmswck; C-c-mufvmswcl; C-c-mufvmswcm; C-c-mufvmswcn; C-c-mufvmswco; C-c-mufvmswcp"
+Fastener,"螺栓 M5×10",20,,172,""
+Fastener,"T型螺母 M5",20,,172,""
+Board,"860 × 240 mm","密度板 18mm",,5,"B-b-mufvmsw13; B-b-mufvmsw46; B-b-mufvmsw69; B-b-mufvmsw8c; B-b-mufvmsw9f"
+Suggested,"L型角码（按对接端推算）",,,10,""
+Suggested,"端盖 20 系列（按自由端推算）",20,,4,""
+Summary,Overall WxDxH,900x320x2000,,,
+Summary,Total cut length (mm),,33780,,
+Summary,Board area (m2),,1.03,,

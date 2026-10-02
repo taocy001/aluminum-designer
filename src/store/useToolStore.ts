@@ -117,6 +117,7 @@ interface ToolState {
   // UI
   /** every measurement on the drawing: the cut length on each member and the overall size */
   showDimensionLabels: boolean
+  showPartNumbers: boolean
   /** on-canvas rotation handles for the selection */
   showGizmo: boolean
   /** what the selection turns about: its centre, or one end of a single member */
@@ -199,6 +200,7 @@ interface ToolState {
   setHoverCandidates: (count: number, index: number) => void
 
   toggleDimensionLabels: () => void
+  togglePartNumbers: () => void
   toggleGizmo: () => void
   setPivotMode: (mode: PivotMode) => void
   setThroughRule: (rule: ThroughRule) => void
@@ -273,6 +275,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   resize: null,
 
   showDimensionLabels: true,
+  showPartNumbers: false,
   showGizmo: true,
   pivotMode: 'center',
   throughRule: useStore.getState().throughRule,
@@ -391,6 +394,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   },
 
   toggleDimensionLabels: () => set((s) => ({ showDimensionLabels: !s.showDimensionLabels })),
+  togglePartNumbers: () => set((s) => ({ showPartNumbers: !s.showPartNumbers })),
   toggleGizmo: () => set((s) => ({ showGizmo: !s.showGizmo })),
   setPivotMode: (pivotMode) => set({ pivotMode }),
   setThroughRule: (rule) => useStore.getState().setThroughRule(rule),

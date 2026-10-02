@@ -1,24 +1,24 @@
-﻿Category,Item,Spec,Cut length (mm),Quantity
-Profile,2020,2020,900,2
-Profile,2020,2020,840,6
-Profile,2020,2020,458,6
-Profile,2040,2040,1800,2
-Profile,2040,2040,840,10
-Profile,2040,2040,520,15
-Profile,4040,4040,2180,6
-Connector,"35 杯铰",,,16
-Connector,"内角码",20 系列,,68
-Connector,"抽屉滑轨 502mm",侧装一对,,2
-Fastener,"螺栓 M5×10",20,,136
-Fastener,"T型螺母 M5",20,,136
-Board,"502 × 174 mm","多层板 15mm",,4
-Board,"785 × 174 mm","多层板 15mm",,4
-Board,"785 × 472 mm","多层板 15mm",,2
-Board,"834 × 195.5 mm","多层板 18mm",,2
-Board,"2130 × 433.5 mm","密度板 18mm",,4
-Board,"840 × 520 mm","密度板 18mm",,3
-Suggested,"L型角码（按对接端推算）",,,12
-Suggested,"端盖 20 系列（按自由端推算）",20,,8
-Summary,Overall WxDxH,1800x600x2200,,
-Summary,Total cut length (mm),,42468,
-Summary,Board area (m2),,6.97,
+﻿Category,Item,Spec,Cut length (mm),Quantity,Part numbers
+Profile,2020,2020,900,2,"P-p-mufs6yys4z; P-p-mufs706c50"
+Profile,2020,2020,840,6,"P-b-mufvmswv1a-bearing-back; P-b-mufvmswv1a-bearing-front; P-b-mufvmsww1d-bearing-back; P-b-mufvmsww1d-bearing-front; P-b-mufvmswy1g-bearing-back; P-b-mufvmswy1g-bearing-front"
+Profile,2020,2020,458,6,"P-b-mufvmswv1a-bearing-left; P-b-mufvmswv1a-bearing-right; P-b-mufvmsww1d-bearing-left; P-b-mufvmsww1d-bearing-right; P-b-mufvmswy1g-bearing-left; P-b-mufvmswy1g-bearing-right"
+Profile,2040,2040,1800,2,"P-p-mufs5y8d4a; P-p-mufs5yt84b"
+Profile,2040,2040,840,10,"P-p-mufs5urf43; P-p-mufs5v5y44; P-p-mufs5vix45; P-p-mufs5vuo46; P-p-mufvmswu18; P-p-mufvmswu19; P-p-mufvmswv1b; P-p-mufvmsww1c; P-p-mufvmswx1e; P-p-mufvmswx1f"
+Profile,2040,2040,520,15,"P-p-mufs5wdg47; P-p-mufs5ws648; P-p-mufs5xb749; P-p-mufs5zav4c; P-p-mufs5zu64d; P-p-mufs60ir4e; P-p-mufs6s564r; P-p-mufs6som4s; P-p-mufs6uf14u; P-p-mufs6v0j4v; P-p-mufs6x0p4x; P-wardrobe-drawer-runner-1780-140; P-wardrobe-drawer-runner-1780-340; P-wardrobe-drawer-runner-900-140; P-wardrobe-drawer-runner-900-340"
+Profile,4040,4040,2180,6,"P-p-mufs5qqx3x; P-p-mufs5rfu3y; P-p-mufs5s483z; P-p-mufs5stz40; P-p-mufs5tie41; P-p-mufs5tvd42"
+Connector,"35 杯铰",,,16,""
+Connector,"内角码",20 系列,,68,"C-b-mufvmswv1a-bearing-back-end-joint; C-b-mufvmswv1a-bearing-back-start-joint; C-b-mufvmswv1a-bearing-front-end-joint; C-b-mufvmswv1a-bearing-front-start-joint; C-b-mufvmswv1a-bearing-left-end-joint; C-b-mufvmswv1a-bearing-left-start-joint; C-b-mufvmswv1a-bearing-right-end-joint; C-b-mufvmswv1a-bearing-right-start-joint; C-b-mufvmsww1d-bearing-back-end-joint; C-b-mufvmsww1d-bearing-back-start-joint; C-b-mufvmsww1d-bearing-front-end-joint; C-b-mufvmsww1d-bearing-front-start-joint; C-b-mufvmsww1d-bearing-left-end-joint; C-b-mufvmsww1d-bearing-left-start-joint; C-b-mufvmsww1d-bearing-right-end-joint; C-b-mufvmsww1d-bearing-right-start-joint; C-b-mufvmswy1g-bearing-back-end-joint; C-b-mufvmswy1g-bearing-back-start-joint; C-b-mufvmswy1g-bearing-front-end-joint; C-b-mufvmswy1g-bearing-front-start-joint; C-b-mufvmswy1g-bearing-left-end-joint; C-b-mufvmswy1g-bearing-left-start-joint; C-b-mufvmswy1g-bearing-right-end-joint; C-b-mufvmswy1g-bearing-right-start-joint; C-c-mufs74kx55; C-c-mufs74kx56; C-c-mufs74kx57; C-c-mufs74kx58; C-c-mufs74kx59; C-c-mufs74kx5a; C-c-mufs74kx5b; C-c-mufs74kx5c; C-c-mufs74kx5d; C-c-mufs74kx5e; C-c-mufs74kx5f; C-c-mufs74kx5g; C-c-mufs74kx5h; C-c-mufs74kx5i; C-c-mufs74kx5j; C-c-mufs74kx5k; C-c-mufs74kx5l; C-c-mufs74kx5m; C-c-mufs74kx5n; C-c-mufs74kx5o; C-c-mufs74kx5p; C-c-mufs74kx5q; C-c-mufs74kx5r; C-c-mufs74kx5s; C-c-mufs74kx5t; C-c-mufs74kx5u; C-c-mufs74kx5v; C-c-mufs74kx5w; C-c-mufs74kx5x; C-c-mufs74kx5y; C-c-mufs74kx5z; C-c-mufs74kx60; C-c-mufs74kx61; C-c-mufs74kx62; C-c-mufs74kx63; C-c-mufs74kx64; C-wardrobe-drawer-corner-12; C-wardrobe-drawer-corner-13; C-wardrobe-drawer-corner-14; C-wardrobe-drawer-corner-15; C-wardrobe-drawer-corner-4; C-wardrobe-drawer-corner-5; C-wardrobe-drawer-corner-6; C-wardrobe-drawer-corner-7"
+Connector,"抽屉滑轨 502mm",侧装一对,,2,""
+Fastener,"螺栓 M5×10",20,,136,""
+Fastener,"T型螺母 M5",20,,136,""
+Board,"502 × 174 mm","多层板 15mm",,4,"F-f-mufs70vt51.B-side-left; F-f-mufs70vt51.B-side-right; F-f-mufs70vt52.B-side-left; F-f-mufs70vt52.B-side-right"
+Board,"785 × 174 mm","多层板 15mm",,4,"F-f-mufs70vt51.B-back; F-f-mufs70vt51.B-inner-front; F-f-mufs70vt52.B-back; F-f-mufs70vt52.B-inner-front"
+Board,"785 × 472 mm","多层板 15mm",,2,"F-f-mufs70vt51.B-base; F-f-mufs70vt52.B-base"
+Board,"834 × 195.5 mm","多层板 18mm",,2,"F-f-mufs70vt51.B-front; F-f-mufs70vt52.B-front"
+Board,"2130 × 433.5 mm","密度板 18mm",,4,"F-f-mufs728r53-left.B-panel; F-f-mufs728r53-right.B-panel; F-f-mufs73nz54-left.B-panel; F-f-mufs73nz54-right.B-panel"
+Board,"840 × 520 mm","密度板 18mm",,3,"B-b-mufvmswv1a; B-b-mufvmsww1d; B-b-mufvmswy1g"
+Suggested,"L型角码（按对接端推算）",,,12,""
+Suggested,"端盖 20 系列（按自由端推算）",20,,8,""
+Summary,Overall WxDxH,1800x600x2200,,,
+Summary,Total cut length (mm),,42468,,
+Summary,Board area (m2),,6.97,,

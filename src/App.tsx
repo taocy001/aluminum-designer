@@ -28,7 +28,7 @@ function App() {
     language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace,
     drawLengthInput: preciseInput, setDrawLengthInput: setPreciseInput,
     held, putDown, triggerCameraReset, setCameraView, zoomBy, cancelDraw, activeSpec, activeConnectorType,
-    isDragging, showDimensionLabels, toggleDimensionLabels, showGizmo, toggleGizmo,
+    isDragging, showDimensionLabels, toggleDimensionLabels, showPartNumbers, togglePartNumbers, showGizmo, toggleGizmo,
     pivotMode, cyclePivotMode, quickMenuAt, openQuickMenu, closeQuickMenu,
     selectMode, setSelectMode,
     isFrameSelecting, frameSelectStart, frameSelectCurrent,
@@ -511,8 +511,6 @@ function App() {
             </button>
             <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <div className={advancedTools}>
-            {/* One switch for every measurement on the drawing: the cut length on each member
-                and the overall size around it are the same question asked at two scales. */}
             <button data-keep-draw onClick={toggleFittings} data-testid="fittings-toggle" title={t.hintShowFittings}
               aria-pressed={showFittings}
               aria-label={t.showFittings} className={iconBtn(!showFittings, 'bg-slate-600/40 text-slate-100')}>
@@ -522,6 +520,11 @@ function App() {
               aria-pressed={showDimensionLabels}
               aria-label={t.labels} className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
               <Ruler size={14} />{mobileLabel(t.labels)}
+            </button>
+            <button data-keep-draw onClick={togglePartNumbers} data-testid="part-numbers-toggle" title={t.partNumbersHint}
+              aria-pressed={showPartNumbers} aria-label={t.partNumbers}
+              className={iconBtn(showPartNumbers, 'bg-cyan-600/20 text-cyan-400')}>
+              <span className="font-mono text-sm">#</span>{mobileLabel(t.partNumbers)}
             </button>
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             <button data-keep-draw data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}

@@ -4,7 +4,11 @@ import { buildProfile } from '../utils/profileFactory'
 import { buildStep } from '../utils/step'
 import { computeAllTrims } from '../utils/jointUtils'
 import { getProfileDir } from '../utils/geometryCore'
-import type { ProfileData, ProfileSpec } from '../store/useStore'
+import { fittingParts, fittingSolids } from '../utils/fittingGeometry'
+import { obbCorners } from '../utils/obb'
+import { fittingBoardNumber, partNumber } from '../utils/partNumbers'
+import { equipment } from './fixtures/equipment'
+import type { FittingData, ProfileData, ProfileSpec } from '../store/useStore'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 const P = (sx: number, sy: number, sz: number, ex: number, ey: number, ez: number, spec: ProfileSpec = '2020'): ProfileData =>
@@ -102,7 +106,8 @@ describe('STEP export', () => {
     expect((out.match(/= NEXT_ASSEMBLY_USAGE_OCCURRENCE\(/g) ?? []).length).toBe(mixed.length)
     // one product per part, plus the assembly they are all used in
     expect((out.match(/= PRODUCT\(/g) ?? []).length).toBe(mixed.length + 1)
-    expect(out).toContain("PRODUCT('4040 L800','4040 L800'")
+    const number = partNumber('profile', mixed[4].id)
+    expect(out).toContain(`PRODUCT('${number}','${number}','4040 L800'`)
   })
 
   it('every shell is closed: each edge used by two faces, once each way round', () => {
@@ -129,7 +134,7 @@ describe('STEP export', () => {
     })
     expect(lengths).toContain(580)
     expect(lengths).not.toContain(600)
-    expect(out).toContain("PRODUCT('2020 L580'")
+    expect(out).toContain("'2020 L580'")
   })
 
   it('a board comes out as a slab of its own thickness', () => {
@@ -140,7 +145,7 @@ describe('STEP export', () => {
     const out = buildStep({ profiles: frame(), panels: [board] })
     const solids = solidsOf(out)
     expect(solids.length).toBe(5)
-    const slab = solids.find((sol) => sol.name === 'mdf 560x760x18')!
+    const slab = solids.find((sol) => sol.name === partNumber('panel', 'b1'))!
     const box = new THREE.Box3().setFromPoints(slab.points)
     expect(box.min.toArray().map(Math.round)).toEqual([20, 20, -29])
     expect(box.max.toArray().map(Math.round)).toEqual([580, 780, -11])
@@ -171,13 +176,63 @@ describe('STEP export', () => {
     for (const u of used) expect(defined.has(u)).toBe(true)
     expect(out).toContain('SHAPE_REPRESENTATION')
   })
+
+  it('preserves instance identifiers when equal parts are reordered, edited or removed', () => {
+    const profiles = [P(0, 0, 0, 0, 600, 0), P(500, 0, 0, 500, 600, 0)]
+      .map((p, i) => ({ ...p, id: `post-${i + 1}` }))
+    const names = (out: string) => [...out.matchAll(/NEXT_ASSEMBLY_USAGE_OCCURRENCE\('([^']+)'/g)].map((m) => m[1]).sort()
+    const before = buildStep({ profiles })
+    expect(names(before)).toEqual(profiles.map((p) => partNumber('profile', p.id)))
+    const updated = buildStep({ profiles: [{ ...profiles[1], length: 800 }, profiles[0]] })
+    expect(names(updated)).toEqual(names(before))
+    expect(names(buildStep({ profiles: [profiles[1]] }))).toEqual([partNumber('profile', profiles[1].id)])
+    for (const p of profiles) expect(updated).toContain(`PRODUCT('${partNumber('profile', p.id)}','${partNumber('profile', p.id)}',`)
+  })
+
+  it('exports configured drawer boards and reinforcements at their closed physical positions', () => {
+    const drawer: FittingData = { id: 'drawer-closed', kind: 'drawer', width: 600, height: 240, depth: 500,
+      position: [400, 800, -200], quaternion: new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2).toArray(),
+      material: 'ply', open: 1, drawer: { sideClearance: 20, boxThickness: 18, bottomThickness: 9,
+        rearClearance: 30, runnerLength: 400, runnerTravel: 300, reinforcement: { count: 2, width: 40, height: 20 } } }
+    const out = buildStep({ profiles: [], fittings: [drawer] })
+    const exported = solidsOf(out)
+    const boards = fittingParts(drawer).boards
+    const expected = fittingSolids(drawer, 0)
+    expect(exported).toHaveLength(8)
+    expect(exported.map((solid) => solid.name)).toEqual(boards.map((board) => fittingBoardNumber(drawer.id, board.key)))
+    for (const [i, solid] of exported.entries()) {
+      const actualBox = new THREE.Box3().setFromPoints(solid.points)
+      const expectedBox = new THREE.Box3().setFromPoints(obbCorners(expected[i]))
+      expect(actualBox.min.distanceTo(expectedBox.min), solid.name).toBeLessThan(1e-5)
+      expect(actualBox.max.distanceTo(expectedBox.max), solid.name).toBeLessThan(1e-5)
+    }
+    expect(solidsOf(buildStep({ profiles: [], fittings: [{ ...drawer, open: 0 }] })))
+      .toEqual(exported)
+  })
+
+  it('uses explicit trim rules and honours supplied and fixed cuts', () => {
+    const profiles = [P(0, 0, 0, 0, 400, 0), P(0, 400, 0, 600, 400, 0)]
+    const rails = solidsOf(buildStep({ profiles, rule: 'rails' }))
+    const posts = solidsOf(buildStep({ profiles, rule: 'posts' }))
+    expect(rails).not.toEqual(posts)
+    expect(solidsOf(buildStep({ profiles, rule: 'posts', trims: computeAllTrims(profiles, 'rails') }))).toEqual(rails)
+    const fixed = { ...P(0, 0, 0, 500, 0, 0), fixedTrims: { start: 10, end: 30 } }
+    const box = new THREE.Box3().setFromPoints(solidsOf(buildStep({ profiles: [fixed] }))[0].points)
+    expect(box.min.toArray()).toEqual([10, -10, -10])
+    expect(box.max.toArray()).toEqual([470, 10, 10])
+  })
+
+  it('excludes equipment from the product tree and geometry', () => {
+    const profiles = frame()
+    const doc = { profiles, equipment: [equipment('excluded-device')] }
+    const out = buildStep(doc)
+    expect(solidsOf(out)).toEqual(solidsOf(buildStep({ profiles })))
+    expect(out.match(/= PRODUCT\(/g)).toHaveLength(profiles.length + 1)
+    expect(out).not.toContain('excluded-device')
+  })
 })
 
-/**
- * The exporter saying it wrote the right thing is not evidence. Reading the file back and
- * finding the frame in it is: every member's cut start and cut length has to be in there,
- * pointing the way the member points.
- */
+/** Verify trimmed dimensions and placement by reading exported BREP points. */
 describe('reading the STEP back finds the frame that went in', () => {
   it('every member is there, where it was, as long as it is cut', () => {
     const frame = [

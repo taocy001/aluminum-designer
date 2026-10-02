@@ -35,6 +35,7 @@ import ResizeHandles from './ResizeHandles'
 import TransformGizmo from './TransformGizmo'
 import TextSprite from './TextSprite'
 import LabelLayout from './LabelLayout'
+import PartNumberLabels from './PartNumberLabels'
 
 const DEFAULT_CAM = new THREE.Vector3(600, 500, 600)
 
@@ -510,10 +511,8 @@ const ConflictMarkers: React.FC<{ conflicts: Conflict[] }> = ({ conflicts }) => 
 
 const Viewport: React.FC = () => {
   const { profiles, connectors, panels, fittings, equipment, selectedIds, throughRule } = useStore()
-  const { isDragging, showDimensionLabels, selectMode, showFittings, buildStep } = useToolStore()
-  // Stepping through the build shows what is on by the end of that step and nothing later.
-  // The parts are the same parts; this only decides which of them are drawn.
-  const steps = useMemo(() => (buildStep === null ? null : assemblySteps(profiles, connectors, panels, fittings)),
+  const { isDragging, showDimensionLabels, showPartNumbers, selectMode, showFittings, buildStep } = useToolStore()
+  const steps = useMemo(() => (buildStep === null ? null : assemblySteps(profiles, connectors, panels, fittings, throughRule)),
     [buildStep, profiles, connectors, panels, fittings, throughRule])
   const on = useMemo(() => (steps && buildStep !== null ? shownAt(steps, buildStep) : null), [steps, buildStep])
   const showing = <T extends { id: string }>(list: T[], kind: 'profiles' | 'connectors' | 'panels' | 'fittings') =>
@@ -569,6 +568,8 @@ const Viewport: React.FC = () => {
 
       <MeasureOverlay />
       {showDimensionLabels && <DimensionLabels trims={trims} />}
+      {showPartNumbers && <PartNumberLabels profiles={showing(profiles, 'profiles')} connectors={showing(connectors, 'connectors')}
+        panels={showing(panels, 'panels')} fittings={showFittings ? showing(fittings, 'fittings') : []} trims={trims} />}
       <FrameDimensions />
       <LabelLayout />
       <ConflictMarkers conflicts={conflicts} />

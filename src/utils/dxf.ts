@@ -1,9 +1,10 @@
 import * as THREE from 'three'
-import type { FittingData, PanelData, ProfileData } from '../store/useStore'
-import { computeAllTrims } from './jointUtils'
+import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
+import { computeAllTrims, type ProfileTrims, type ThroughRule } from './jointUtils'
 import { fittingParts, fittingSolids } from './fittingGeometry'
-import { panelOBB, trimmedOBB } from './analysis'
+import { connectorOBB, panelOBB, trimmedOBB } from './analysis'
 import { obbCorners } from './obb'
+import { fittingBoardNumber, partNumber } from './partNumbers'
 
 /**
  * R12 ASCII DXF export using LINE and TEXT entities.
@@ -118,6 +119,9 @@ export interface DxfInput {
   profiles: ProfileData[]
   panels: PanelData[]
   fittings: FittingData[]
+  connectors?: ConnectorData[]
+  rule?: ThroughRule
+  trims?: Map<string, ProfileTrims>
 }
 
 /**
@@ -126,14 +130,19 @@ export interface DxfInput {
  * The three views are laid out left to right with their own origins, each with its overall
  * width and height dimensioned, and the boards follow underneath as a cut sheet.
  */
-export function buildDxf({ profiles, panels, fittings }: DxfInput): string {
+export function buildDxf({ profiles, panels, fittings, connectors = [], rule, trims: suppliedTrims }: DxfInput): string {
   const d = new Dxf()
-  const trims = computeAllTrims(profiles)
+  const trims = suppliedTrims ?? computeAllTrims(profiles, rule)
 
-  const members = profiles.map((p) => obbCorners(trimmedOBB(p, trims.get(p.id)!)))
-  const boards = panels.map((b) => obbCorners(panelOBB(b)))
-  const fittingBoards = fittings.flatMap((f) => fittingSolids(f).map(obbCorners))
-  const whole = [...members, ...boards, ...fittingBoards].flat()
+  const members = profiles.map((p) => ({ number: partNumber('profile', p.id), points: obbCorners(trimmedOBB(p, trims.get(p.id)!)) }))
+  const hardware = connectors.map((c) => ({ number: partNumber('connector', c.id), points: obbCorners(connectorOBB(c)) }))
+  const boards = panels.map((b) => ({ number: partNumber('panel', b.id), points: obbCorners(panelOBB(b)) }))
+  const fittingBoards = fittings.flatMap((f) => {
+    const parts = fittingParts(f).boards
+    return fittingSolids(f, 0).map((body, i) => ({ number: fittingBoardNumber(f.id, parts[i].key), points: obbCorners(body) }))
+  })
+  const all = [...members, ...hardware, ...boards, ...fittingBoards]
+  const whole = all.flatMap((part) => part.points)
   if (!whole.length) whole.push(new THREE.Vector3())
 
   let cursor = 0
@@ -143,34 +152,47 @@ export function buildDxf({ profiles, panels, fittings }: DxfInput): string {
     const dy = -bounds.min[1]
     const at = (p: Pt): Pt => [p[0] + dx, p[1] + dy]
 
-    for (const [layer, solids] of [['MEMBERS', members], ['BOARDS', boards], ['FITTINGS', fittingBoards]] as const) {
+    for (const [layer, solids] of [['MEMBERS', members], ['CONNECTORS', hardware], ['BOARDS', boards], ['FITTINGS', fittingBoards]] as const) {
       for (const solid of solids) {
-        const outline = silhouette(solid, view)
+        const outline = silhouette(solid.points, view)
         for (let i = 0; i < outline.length; i++) d.line(layer, at(outline[i]), at(outline[(i + 1) % outline.length]))
       }
     }
 
     const lo = at(bounds.min), hi = at(bounds.max)
-    if (profiles.length + panels.length + fittings.length > 0) {
+    if (all.length > 0) {
       d.dim('DIMS', [lo[0], lo[1]], [hi[0], lo[1]], DIM_OFF)
       d.dim('DIMS', [hi[0], lo[1]], [hi[0], hi[1]], DIM_OFF, true)
     }
-    d.text('TEXT', [lo[0], hi[1] + TEXT_H], view.label, TEXT_H)
+    // Place identifiers outside the projection, ordered by their projected centres.
+    const labelH = TEXT_H * 0.4, labelStep = labelH * 1.8
+    const labels = all.map((part) => {
+      const projected = projectPoints(part.points, view)
+      return { number: part.number, centre: at([(projected.min[0] + projected.max[0]) / 2,
+        (projected.min[1] + projected.max[1]) / 2]) }
+    }).sort((a, b) => b.centre[1] - a.centre[1] || a.centre[0] - b.centre[0] || a.number.localeCompare(b.number))
+    const labelTop = Math.max(hi[1], (labels.length - 1) * labelStep)
+    const labelX = hi[0] + DIM_OFF + TEXT_H * 2
+    labels.forEach((label, i) => {
+      const y = labelTop - i * labelStep
+      d.line('PART_NUMBERS', label.centre, [labelX - 10, y + labelH / 2])
+      d.text('PART_NUMBERS', [labelX, y], label.number, labelH)
+    })
+    d.text('TEXT', [lo[0], labelTop + TEXT_H], view.label, TEXT_H)
 
-    cursor += (bounds.max[0] - bounds.min[0]) + GAP + DIM_OFF * 2
+    const labelWidth = Math.max(0, ...labels.map((label) => label.number.length * labelH * 0.75))
+    cursor = labelX + labelWidth + GAP
   }
 
   // Lay out and label each board outline.
   const sheet: Array<{ w: number; h: number; label: string }> = [
-    ...panels.map((b) => ({ w: b.width, h: b.height, label: `${n(b.width)}x${n(b.height)}x${b.thickness} ${b.material}` })),
+    ...panels.map((b) => ({ w: b.width, h: b.height, label: `${partNumber('panel', b.id)} ${n(b.width)}x${n(b.height)}x${b.thickness} ${b.material}` })),
     ...fittings.flatMap((f) => fittingParts(f).boards.map((b) => ({
-      w: b.width, h: b.height, label: `${n(b.width)}x${n(b.height)}x${b.thickness} ${f.kind}/${b.role}`,
+      w: b.width, h: b.height, label: `${fittingBoardNumber(f.id, b.key)} ${n(b.width)}x${n(b.height)}x${b.thickness} ${f.kind}/${b.role}`,
     }))),
   ]
   if (sheet.length > 0) {
-    // Just below the views — including the dimension lines and their numbers, which hang
-    // under them. Leaving a whole elevation's worth of white space between the two is how
-    // a drawing ends up printed on two sheets for no reason.
+    // Keep the cut sheet below the projection dimensions.
     const belowViews = -(DIM_OFF + TEXT_H * 2 + 40)
     let x = 0, y = belowViews - GAP, rowH = 0
     const maxRow = Math.max(cursor, 3000)
@@ -178,11 +200,12 @@ export function buildDxf({ profiles, panels, fittings }: DxfInput): string {
     y -= TEXT_H * 2
     const labelH = TEXT_H * 0.6
     for (const b of sheet) {
-      if (x > 0 && x + b.w > maxRow) { x = 0; y -= rowH + labelH + GAP / 2; rowH = 0 }
+      const slotWidth = Math.max(b.w, b.label.length * labelH * 0.75)
+      if (x > 0 && x + slotWidth > maxRow) { x = 0; y -= rowH + labelH + GAP / 2; rowH = 0 }
       d.rect('CUTSHEET', [x, y - b.h], [x + b.w, y])
       // Place labels below the outline.
       d.text('TEXT', [x, y - b.h - labelH - 10], b.label, labelH)
-      x += b.w + GAP / 2
+      x += slotWidth + GAP / 2
       rowH = Math.max(rowH, b.h)
     }
   }

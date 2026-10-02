@@ -1,6 +1,6 @@
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { getProfileDir } from './geometryCore'
-import { computeAllTrims, trimmedBox } from './jointUtils'
+import { computeAllTrims, trimmedBox, type ThroughRule } from './jointUtils'
 import { connectorOBB, trimmedOBB } from './analysis'
 import { obbPenetration, type OBB } from './obb'
 
@@ -9,9 +9,9 @@ import { obbPenetration, type OBB } from './obb'
  * from its lowest member. Stability, fastener insertion and tool access are not checked.
  */
 
-/** a member whose foot is this close to the floor stands on its own */
+/** Maximum distance from the floor for the initial batch (mm). */
 const GROUND_TOL = 1
-/** as many parts as fit in one step before it is worth splitting */
+/** Maximum number of profiles per step. */
 const STEP_MAX = 10
 
 export interface Step {
@@ -19,12 +19,12 @@ export interface Step {
   n: number
   /** members that go on in this step */
   profiles: string[]
-  /** brackets that can be bolted once those members are on */
+  /** Connectors assigned after their touching profiles. */
   connectors: string[]
   /** boards and fittings, which go in last of all */
   panels: string[]
   fittings: string[]
-  /** the height this step works at (mm), which is what makes the order readable */
+  /** Lowest profile height in this step (mm). */
   atHeight: number
 }
 
@@ -34,7 +34,7 @@ export function bodiesTouch(a: OBB, b: OBB, tolerance = 0.1): boolean {
   return obbPenetration(expanded, b) > 0
 }
 
-/** which members each one is bolted to */
+/** Profile neighbours determined by box contact. */
 function neighbours(profiles: ProfileData[], bodies: Map<string, OBB>): Map<string, string[]> {
   const out = new Map<string, string[]>(profiles.map((p) => [p.id, []]))
   for (const a of profiles) {
@@ -46,21 +46,18 @@ function neighbours(profiles: ProfileData[], bodies: Map<string, OBB>): Map<stri
   return out
 }
 
-/**
- * The order the parts go on in, split into steps.
- *
- * A member is ready when it stands on the floor, or when at least one thing it is bolted to
- * is already on. That is weaker than "everything it touches" on purpose: a rail between two
- * posts is fitted when the first post is up and the second is offered to it, which is how it
- * is really done, and requiring both would deadlock a frame with no free end.
- */
+const compareId = (a: { id: string }, b: { id: string }) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+const orderedIds = (parts: Array<{ id: string }>) => [...parts].sort(compareId).map((part) => part.id)
+
+/** A profile joins a batch when it reaches the floor or touches an earlier batch. */
 export function assemblySteps(
   profiles: ProfileData[], connectors: ConnectorData[] = [],
   panels: PanelData[] = [], fittings: FittingData[] = [],
+  rule?: ThroughRule,
 ): Step[] {
   if (profiles.length === 0) return panels.length || fittings.length || connectors.length
-    ? [{ n: 1, profiles: [], connectors: connectors.map((c) => c.id), panels: panels.map((b) => b.id), fittings: fittings.map((f) => f.id), atHeight: 0 }] : []
-  const trims = computeAllTrims(profiles)
+    ? [{ n: 1, profiles: [], connectors: orderedIds(connectors), panels: orderedIds(panels), fittings: orderedIds(fittings), atHeight: 0 }] : []
+  const trims = computeAllTrims(profiles, rule)
   const bodies = new Map(profiles.map((p) => [p.id, trimmedOBB(p, trims.get(p.id)!)]))
   const height = new Map(profiles.map((p) => [p.id, trimmedBox(p, trims.get(p.id)!).min.y]))
   const lowest = (p: ProfileData) => height.get(p.id)!
@@ -68,13 +65,12 @@ export function assemblySteps(
   const placed = new Set<string>()
   const steps: Step[] = []
   const left = [...profiles].sort((a, b) => lowest(a) - lowest(b)
-    || a.position[0] - b.position[0] || a.position[2] - b.position[2])
+    || a.position[0] - b.position[0] || a.position[2] - b.position[2] || compareId(a, b))
 
   while (placed.size < profiles.length) {
     const ready = left.filter((p) => !placed.has(p.id)
       && (lowest(p) <= GROUND_TOL || near.get(p.id)!.some((q) => placed.has(q))))
-    // nothing is reachable from what is already up — a separate piece of furniture, so start
-    // it the same way the first one started, from its own lowest member
+    // Start an unconnected group at its lowest remaining profile.
     const wave = ready.length > 0 ? ready : left.filter((p) => !placed.has(p.id)).slice(0, 1)
 
     // Prioritize upright members within the ready batch.
@@ -89,11 +85,10 @@ export function assemblySteps(
     })
   }
 
-  // A bracket goes on with the later of the two members it joins, because that is the first
-  // moment both of its flanges have something to sit on.
+  // Assign each connector to the latest step containing a touching profile.
   const stepOf = new Map<string, number>()
   for (const s of steps) for (const id of s.profiles) stepOf.set(id, s.n - 1)
-  for (const c of connectors) {
+  for (const c of [...connectors].sort(compareId)) {
     const body = connectorOBB(c)
     let last = 0
     for (const p of profiles) {
@@ -107,8 +102,8 @@ export function assemblySteps(
     steps.push({
       n: steps.length + 1,
       profiles: [], connectors: [],
-      panels: panels.map((p) => p.id),
-      fittings: fittings.map((f) => f.id),
+      panels: orderedIds(panels),
+      fittings: orderedIds(fittings),
       atHeight: 0,
     })
   }

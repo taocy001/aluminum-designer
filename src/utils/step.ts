@@ -2,9 +2,10 @@ import * as THREE from 'three'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorEntry, connectorExtent, connectorScale } from './connectorCatalog'
 import { getProfileShape } from './profileShapes'
-import { computeAllTrims } from './jointUtils'
-import { getProfileDir, getProfileEndpoints } from './geometryCore'
+import { computeAllTrims, type ProfileTrims, type ThroughRule } from './jointUtils'
+import { getProfileDir } from './geometryCore'
 import { fittingParts } from './fittingGeometry'
+import { fittingBoardNumber, partNumber } from './partNumbers'
 
 /**
  * ISO 10303-21 AP214 export. Each part is a PRODUCT containing a closed BREP shell
@@ -16,13 +17,15 @@ export interface StepInput {
   profiles: ProfileData[]
   panels?: PanelData[]
   fittings?: FittingData[]
-  /** brackets, written as simple solids so they can be seen and counted */
+  /** Simplified connector solids. */
   connectors?: ConnectorData[]
+  rule?: ThroughRule
+  trims?: Map<string, ProfileTrims>
   /** what to call the assembly inside the file */
   name?: string
 }
 
-/** ISO 10303-21 wants 1.2E-5 style reals, and every real must look like a real */
+/** Write integer-valued reals with a decimal point. */
 function num(v: number): string {
   const r = Math.abs(v) < 1e-9 ? 0 : Math.round(v * 1e6) / 1e6
   return Number.isInteger(r) ? `${r}.` : String(r)
@@ -145,7 +148,7 @@ function prism(s: Step, section: THREE.Vector2[], label: string, at: THREE.Vecto
   return s.addUnique(`MANIFOLD_SOLID_BREP('${str(label)}',#${shell})`)
 }
 
-/** a board is the same thing with four corners */
+/** Rectangular section for a board or connector envelope. */
 function slab(w: number, h: number): THREE.Vector2[] {
   return [
     new THREE.Vector2(-w / 2, -h / 2), new THREE.Vector2(w / 2, -h / 2),
@@ -160,7 +163,7 @@ const ANGLE_REACH = 30
 
 const mm = (v: number) => Math.round(v * 10) / 10
 
-export function buildStep({ profiles, panels = [], fittings = [], connectors = [], name = 'frame' }: StepInput): string {
+export function buildStep({ profiles, panels = [], fittings = [], connectors = [], rule, trims: suppliedTrims, name = 'frame' }: StepInput): string {
   const s = new Step()
 
   // units and the one geometric context every representation shares
@@ -177,8 +180,8 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
   const origin = () => s.addUnique(`AXIS2_PLACEMENT_3D('',#${s.point(new THREE.Vector3())},#${s.direction(new THREE.Vector3(0, 0, 1))},#${s.direction(new THREE.Vector3(1, 0, 0))})`)
 
   /** a PRODUCT with its definition, its shape and the representation that is that shape */
-  const product = (label: string, rep: number) => {
-    const prod = s.addUnique(`PRODUCT('${str(label)}','${str(label)}','',(#${prodCtx}))`)
+  const product = (label: string, rep: number, description = '') => {
+    const prod = s.addUnique(`PRODUCT('${str(label)}','${str(label)}','${str(description)}',(#${prodCtx}))`)
     const formation = s.addUnique(`PRODUCT_DEFINITION_FORMATION('','',#${prod})`)
     const pd = s.addUnique(`PRODUCT_DEFINITION('design','',#${formation},#${pdCtx})`)
     const pds = s.addUnique(`PRODUCT_DEFINITION_SHAPE('','',#${pd})`)
@@ -190,32 +193,29 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
   const asmRep = s.addUnique(`SHAPE_REPRESENTATION('${str(name)}',(#${asmOrigin}),#${ctx})`)
   const asm = product(name, asmRep)
 
-  // Geometry is written where it is in the drawing, so every part sits in the assembly with
-  // no transformation of its own: the placement that ties the two together is the identity.
-  let count = 0
-  const part = (label: string, solid: number) => {
-    count++
+  // World-space geometry uses an identity assembly placement.
+  const part = (label: string, description: string, solid: number) => {
     const own = origin()
     const rep = s.addUnique(`ADVANCED_BREP_SHAPE_REPRESENTATION('${str(label)}',(#${solid},#${own}),#${ctx})`)
-    const pd = product(label, rep)
-    const nauo = s.addUnique(`NEXT_ASSEMBLY_USAGE_OCCURRENCE('${count}','${str(label)}','',#${asm},#${pd},$)`)
+    const pd = product(label, rep, description)
+    const nauo = s.addUnique(`NEXT_ASSEMBLY_USAGE_OCCURRENCE('${str(label)}','${str(label)}','${str(description)}',#${asm},#${pd},$)`)
     const pds = s.addUnique(`PRODUCT_DEFINITION_SHAPE('','',#${nauo})`)
     const idt = s.addUnique(`ITEM_DEFINED_TRANSFORMATION('','',#${own},#${asmOrigin})`)
     const rel = s.addUnique(`(REPRESENTATION_RELATIONSHIP('','',#${rep},#${asmRep})REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION(#${idt})SHAPE_REPRESENTATION_RELATIONSHIP())`)
     s.addUnique(`CONTEXT_DEPENDENT_SHAPE_REPRESENTATION(#${rel},#${pds})`)
   }
 
-  const trims = computeAllTrims(profiles)
+  const trims = suppliedTrims ?? computeAllTrims(profiles, rule)
   for (const p of profiles) {
     const t = trims.get(p.id)
     const quat = new THREE.Quaternion(...p.quaternion).normalize()
     const { z, x } = frameFor(quat)
-    // the cut length, from the cut end: what is actually made and what is actually there
+    // Extrude from the trimmed start face over the finished cut length.
     const start = new THREE.Vector3(...p.position).addScaledVector(getProfileDir(p), t?.start.trim ?? 0)
     const depth = t?.cutLength ?? p.length
     if (depth <= 0) continue
-    const label = `${p.spec} L${mm(depth)}`
-    part(label, prism(s, sectionPoints(p.spec), label, start, z, x, depth))
+    const label = partNumber('profile', p.id)
+    part(label, `${p.spec} L${mm(depth)}`, prism(s, sectionPoints(p.spec), label, start, z, x, depth))
   }
 
   for (const b of panels) {
@@ -223,11 +223,12 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const quat = new THREE.Quaternion(...b.quaternion).normalize()
     const { z, x } = frameFor(quat)
     const back = new THREE.Vector3(...b.position).addScaledVector(z, -b.thickness / 2)
-    const label = `${b.material} ${mm(b.width)}x${mm(b.height)}x${mm(b.thickness)}`
-    part(label, prism(s, slab(b.width, b.height), label, back, z, x, b.thickness))
+    const label = partNumber('panel', b.id)
+    part(label, `${b.material} ${mm(b.width)}x${mm(b.height)}x${mm(b.thickness)}`,
+      prism(s, slab(b.width, b.height), label, back, z, x, b.thickness))
   }
 
-  // ...and a door or a drawer is a handful of boards, each one placed in the fitting's frame
+  // Export each fitting board in its closed position.
   for (const f of fittings) {
     const world = new THREE.Quaternion(...f.quaternion).normalize()
     const at = new THREE.Vector3(...f.position)
@@ -237,29 +238,30 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
       const { z, x } = frameFor(quat)
       const centre = new THREE.Vector3(...board.position).applyQuaternion(world).add(at)
       const back = centre.addScaledVector(z, -board.thickness / 2)
-      const label = `${f.kind}-${board.role} ${mm(board.width)}x${mm(board.height)}x${mm(board.thickness)}`
-      part(label, prism(s, slab(board.width, board.height), label, back, z, x, board.thickness))
+      const label = fittingBoardNumber(f.id, board.key)
+      part(label, `${f.kind}/${board.role} ${mm(board.width)}x${mm(board.height)}x${mm(board.thickness)}`,
+        prism(s, slab(board.width, board.height), label, back, z, x, board.thickness))
     }
   }
 
-  // A bracket is a simple solid: a cast angle as its two flanges, anything else as the room
-  // it takes up. Enough to see where every one of them goes and to count them.
+  // Export angle brackets as two flanges and other connectors as their envelopes.
   for (const c of connectors) {
     const series = c.series ?? 20
     const k = connectorScale(series)
     const quat = new THREE.Quaternion(...c.quaternion).normalize()
     const { z, x } = frameFor(quat)
     const at = new THREE.Vector3(...c.position)
-    const label = `${c.type} ${series}`
+    const label = partNumber('connector', c.id)
+    const description = `${c.type} ${series}`
     if (c.type !== 'inside-corner' && connectorEntry(c.type)?.seat === 'angle') {
       const r = ANGLE_REACH * k, t = ANGLE_T * k
       const L = [[0, 0], [r, 0], [r, t], [t, t], [t, r], [0, r]].map(([u, v]) => new THREE.Vector2(u, v))
-      part(label, prism(s, L, label, at.addScaledVector(z, -ANGLE_W * k / 2), z, x, ANGLE_W * k))
+      part(label, description, prism(s, L, label, at.addScaledVector(z, -ANGLE_W * k / 2), z, x, ANGLE_W * k))
     } else {
       const { centre, half } = connectorExtent(c.type)
       const mid = at.add(new THREE.Vector3(...centre).multiplyScalar(k).applyQuaternion(quat))
       const [hx, hy, hz] = half.map((h) => h * k)
-      part(label, prism(s, slab(2 * hx, 2 * hy), label, mid.addScaledVector(z, -hz), z, x, 2 * hz))
+      part(label, description, prism(s, slab(2 * hx, 2 * hy), label, mid.addScaledVector(z, -hz), z, x, 2 * hz))
     }
   }
 

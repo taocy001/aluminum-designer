@@ -54,8 +54,6 @@ const QuickMenu: React.FC = () => {
   const hasSelection = selectedIds.length > 0
 
   const run = (fn: () => void) => () => { fn(); closeQuickMenu() }
-  // Every row says what it does when the pointer rests on it. The label on the row is its
-  // name; the hint is what happens when you press it, which is a different question.
   const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; danger?: boolean; tip?: string; edit?: boolean }> =
     ({ onClick, children, testId, danger, tip, edit }) => (
       <button onClick={onClick} data-testid={testId} title={tip} disabled={viewMode && edit}
@@ -76,13 +74,12 @@ const QuickMenu: React.FC = () => {
         {t.quickMenu}{hasSelection ? ` · ${selectedIds.length}` : ''}
       </div>
 
-      {/* With nothing selected the menu carries what applies to the whole drawing, so the
-          key always does something rather than sometimes nothing. */}
       {!hasSelection && (
         <>
           <Item testId="quick-select-all" tip={t.hintSelectAll} onClick={run(selectAll)}><BoxSelect size={12} />{t.selectAll}</Item>
           <Item testId="quick-fit-view" tip={t.hintFitView} onClick={run(() => useToolStore.getState().triggerCameraReset('all'))}><Maximize size={12} />{t.fitView}</Item>
           <Item testId="quick-labels" tip={t.hintLabels} onClick={run(useToolStore.getState().toggleDimensionLabels)}><Ruler size={12} />{t.labels}</Item>
+          <Item testId="quick-part-numbers" tip={t.partNumbersHint} onClick={run(useToolStore.getState().togglePartNumbers)}><span className="font-mono">#</span>{t.partNumbers}</Item>
         </>
       )}
       {hasSelection && (['x', 'y', 'z'] as RotAxis[]).map((ax) => (

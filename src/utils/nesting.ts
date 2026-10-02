@@ -14,6 +14,8 @@ export interface Bar {
   spec: string
   /** the pieces cut from this bar, in the order they come off it */
   cuts: number[]
+  /** Identity at the same index as each cut; empty for anonymous input rows. */
+  partNumbers: string[]
   /** what is left after the last cut (mm) */
   remainder: number
 }
@@ -21,7 +23,7 @@ export interface Bar {
 export interface NestResult {
   bars: Bar[]
   /** Pieces that cannot be supplied by the chosen stock; never counted as usable bars. */
-  unsatisfied: Array<{ spec: string; length: number; qty: number; reason: 'exceeds-stock' }>
+  unsatisfied: Array<{ spec: string; length: number; qty: number; reason: 'exceeds-stock'; partNumbers: string[] }>
   /** per spec: bars needed, metal used, metal left over */
   bySpec: Array<{ spec: string; bars: number; usedMm: number; offcutMm: number; longestOffcut: number }>
   totalBars: number
@@ -37,11 +39,11 @@ export interface NestResult {
  * mistake an impossible cut for an executable bar.
  */
 export function nestProfiles(rows: BomRow[], stockLength = STOCK_LENGTH, kerf = KERF): NestResult {
-  const bySpecPieces = new Map<string, number[]>()
+  const bySpecPieces = new Map<string, Array<{ length: number; partNumber: string }>>()
   for (const r of rows) {
     if (r.kind !== 'profile' || !r.length) continue
     const list = bySpecPieces.get(r.spec) ?? []
-    for (let i = 0; i < r.qty; i++) list.push(r.length)
+    for (let i = 0; i < r.qty; i++) list.push({ length: r.length, partNumber: r.partNumbers?.[i] ?? '' })
     bySpecPieces.set(r.spec, list)
   }
 
@@ -51,13 +53,14 @@ export function nestProfiles(rows: BomRow[], stockLength = STOCK_LENGTH, kerf = 
   const unavailable = new Map<string, NestResult['unsatisfied'][number]>()
 
   for (const [spec, pieces] of [...bySpecPieces.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    pieces.sort((a, b) => b - a)          // longest first: the hardest pieces get the choice
+    pieces.sort((a, b) => b.length - a.length || (a.partNumber < b.partNumber ? -1 : a.partNumber > b.partNumber ? 1 : 0))
     const open: Bar[] = []
-    for (const piece of pieces) {
+    for (const { length: piece, partNumber } of pieces) {
       if (piece > stockLength) {
         const key = `${spec}:${piece}`
-        const item = unavailable.get(key) ?? { spec, length: piece, qty: 0, reason: 'exceeds-stock' as const }
+        const item = unavailable.get(key) ?? { spec, length: piece, qty: 0, reason: 'exceeds-stock' as const, partNumbers: [] }
         item.qty++
+        item.partNumbers.push(partNumber)
         unavailable.set(key, item)
         continue
       }
@@ -70,8 +73,9 @@ export function nestProfiles(rows: BomRow[], stockLength = STOCK_LENGTH, kerf = 
       if (fits) {
         fits.remainder = take(fits.remainder)
         fits.cuts.push(piece)
+        fits.partNumbers.push(partNumber)
       } else {
-        const bar: Bar = { spec, cuts: [piece], remainder: take(stockLength) }
+        const bar: Bar = { spec, cuts: [piece], partNumbers: [partNumber], remainder: take(stockLength) }
         open.push(bar)
         bars.push(bar)
       }
@@ -93,22 +97,22 @@ export function nestProfiles(rows: BomRow[], stockLength = STOCK_LENGTH, kerf = 
 
 /** The cutting list as CSV: one line per bar, so it can be taken to the saw */
 export function nestingCsv(result: NestResult, stockLength = STOCK_LENGTH): string {
-  const lines = ['Spec,Bar,Cuts (mm),Pieces,Offcut (mm)']
+  const lines = ['Spec,Bar,Cuts (mm),Pieces,Offcut (mm),Part numbers']
   const dimension = (value: number) => Math.round(value * 1000) / 1000
   const n = new Map<string, number>()
   for (const b of result.bars) {
     const i = (n.get(b.spec) ?? 0) + 1
     n.set(b.spec, i)
-    lines.push(`${b.spec},${i},"${b.cuts.join(' + ')}",${b.cuts.length},${dimension(b.remainder)}`)
+    lines.push(`${b.spec},${i},"${b.cuts.join(' + ')}",${b.cuts.length},${dimension(b.remainder)},"${b.partNumbers.join(' + ')}"`)
   }
   lines.push('')
   for (const item of result.unsatisfied) {
-    lines.push(`Unsatisfied,${item.spec},${item.length} mm exceeds ${stockLength} mm,${item.qty},`)
+    lines.push(`Unsatisfied,${item.spec},${item.length} mm exceeds ${stockLength} mm,${item.qty},,"${item.partNumbers.join('; ')}"`)
   }
   for (const s of result.bySpec) {
-    lines.push(`Summary,${s.spec},${s.bars} × ${stockLength}mm,,${dimension(s.offcutMm)}`)
+    lines.push(`Summary,${s.spec},${s.bars} × ${stockLength}mm,,${dimension(s.offcutMm)},`)
   }
-  lines.push(`Summary,Total bars,${result.totalBars},,`)
-  lines.push(`Summary,Yield,${(result.yield * 100).toFixed(1)}%,,`)
+  lines.push(`Summary,Total bars,${result.totalBars},,,`)
+  lines.push(`Summary,Yield,${(result.yield * 100).toFixed(1)}%,,,`)
   return lines.join('\n')
 }

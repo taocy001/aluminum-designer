@@ -51,6 +51,19 @@ test('production UI creates, saves, restores and exports a workbench without tes
   expect(profileRows.reduce((sum, row) => sum + Number(row.split(',')[4]), 0)).toBe(12)
   expect(csv).toContain('Profile,4040,4040,950,1')
   expect(csv).toContain(`Summary,Overall WxDxH,${overall!.replaceAll('×', 'x')}`)
+  const assemblyEvent = page.waitForEvent('download')
+  await page.getByTestId('export-assembly').click()
+  const assembly = await assemblyEvent
+  expect(assembly.suggestedFilename()).toMatch(/^aluframe-assembly-.*\.html$/)
+  const guideChunks: Buffer[] = []
+  for await (const chunk of (await assembly.createReadStream())!) guideChunks.push(chunk)
+  const html = Buffer.concat(guideChunks).toString('utf8')
+  expect(html).toContain('模型概览')
+  expect(html).toContain('950 mm')
+  expect(html).toContain('@media print')
+  const firstNumber = profileRows[0].split(',')[5].replaceAll('"', '').split('; ')[0]
+  expect(firstNumber).toMatch(/^P-/)
+  expect(html).toContain(`id="part-${firstNumber}"`)
   expect(pageErrors).toEqual([])
 })
 

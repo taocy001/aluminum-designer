@@ -1,8 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
 import { assemblySteps, shownAt } from '../utils/assembly'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
+import { getThroughRule, setThroughRule } from '../utils/jointUtils'
+
+afterEach(() => setThroughRule('rails'))
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 const P = (sx: number, sy: number, sz: number, ex: number, ey: number, ez: number, spec: ProfileSpec = '2020'): ProfileData =>
@@ -84,6 +87,40 @@ describe('what to build first', () => {
     const frame = cabinet()
     const a = assemblySteps(frame).map((s) => s.profiles.join(','))
     const b = assemblySteps([...frame].reverse()).map((s) => s.profiles.join(','))
-    expect(a.length).toBe(b.length)
+    expect(a).toEqual(b)
+  })
+
+  it('uses IDs to order coincident profiles across batches', () => {
+    const members = Array.from({ length: 12 }, (_, i) => ({ ...P(0, 0, 0, 0, 500, 0), id: `post-${String(i).padStart(2, '0')}` }))
+    expect(assemblySteps(members)).toEqual(assemblySteps([...members].reverse()))
+    expect(assemblySteps(members)[0].profiles).toEqual(members.slice(0, 10).map((p) => p.id))
+  })
+
+  it('sorts standalone connectors and final boards independently of source order', () => {
+    const connectors = ['c2', 'c1'].map((id) => ({ id, type: 'bracket', position: [0, 0, 0], quaternion: [0, 0, 0, 1] })) as never
+    const panels = [{ id: 'b2' }, { id: 'b1' }] as never
+    const fittings = [{ id: 'f2' }, { id: 'f1' }] as never
+    expect(assemblySteps([], connectors, panels, fittings)[0]).toMatchObject({
+      connectors: ['c1', 'c2'], panels: ['b1', 'b2'], fittings: ['f1', 'f2'],
+    })
+    const last = assemblySteps(cabinet(), [], panels, fittings).at(-1)
+    expect(last).toMatchObject({ panels: ['b1', 'b2'], fittings: ['f1', 'f2'] })
+  })
+
+  it('uses the supplied joint rule without changing the global rule', () => {
+    const post = { ...P(0, 10, 0, 0, 810, 0, '4040'), id: 'post' }
+    const bottom = { ...P(0, 10, 0, 600, 10, 0, '4040'), id: 'rail' }
+    setThroughRule('posts')
+    expect(assemblySteps([post, bottom], [], [], [], 'rails')[0].profiles).toEqual(['rail'])
+    expect(getThroughRule()).toBe('posts')
+    setThroughRule('rails')
+    expect(assemblySteps([post, bottom], [], [], [], 'posts')[0].profiles).toEqual(['post'])
+    expect(getThroughRule()).toBe('rails')
+  })
+
+  it('uses fixed physical cuts when deciding which profiles reach the floor', () => {
+    const post = { ...P(0, 0, 0, 0, 500, 0), id: 'post', fixedTrims: { start: 100, end: 0 } }
+    const rail = { ...P(1000, 50, 0, 1400, 50, 0), id: 'rail' }
+    expect(assemblySteps([post, rail])[0].profiles).toEqual(['rail'])
   })
 })
