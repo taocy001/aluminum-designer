@@ -1,5 +1,5 @@
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
-import { parseProjectDocument, type ProjectDocument } from './document'
+import { parseProjectDocument, validateProjectDocument, PROJECT_VERSION, type ParsedProjectDocument } from './document'
 import type { ThroughRule } from './jointUtils'
 
 /** Encode project data as compact arrays, deflate it and store it in a URL fragment. */
@@ -17,7 +17,7 @@ export const COMFORTABLE_URL = 8000
 
 /** Compact columns, including determined cut faces and door meeting edges. Reads v1–v3. */
 function pack(doc: ShareDoc): unknown[] {
-  const checked = parseProjectDocument(doc)
+  const checked = validateProjectDocument(doc)
   return [
     4, checked.throughRule,
     checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null]),
@@ -31,7 +31,7 @@ function pack(doc: ShareDoc): unknown[] {
   ]
 }
 
-function unpack(raw: unknown): ProjectDocument {
+function unpack(raw: unknown): ParsedProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
   if (version !== 1 && version !== 2 && version !== 3 && version !== 4) throw new Error('unknown link version')
@@ -42,6 +42,7 @@ function unpack(raw: unknown): ProjectDocument {
   let n = 0
   const id = (p: string) => `${p}-s${(n++).toString(36)}`
   return parseProjectDocument({
+    version: version >= 4 ? PROJECT_VERSION : undefined,
     throughRule,
     profiles: (profiles ?? []).map((row) => {
       const [spec, length, position, quaternion, locked, miterCuts, holes, fixedTrims] = row as [string, number, number[], number[], number, ProfileData['miterCuts'], ProfileData['holes'], ProfileData['fixedTrims'] | null]
@@ -78,7 +79,7 @@ function unpack(raw: unknown): ProjectDocument {
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
         material: material as PanelData['material'], open: 0,
-        ...(frame !== undefined ? { frame } : {}),
+        ...(frame !== undefined && frame !== null ? { frame } : {}),
         ...(stacked ? { stacked } : {}),
         ...(locked ? { locked: true } : {}),
         ...(hinge ? { hinge: hinge as FittingData['hinge'] } : {}),
@@ -148,7 +149,7 @@ export function takeShareLink(): string | null {
 }
 
 /** The drawing a payload carries */
-export async function decodeShare(payload: string): Promise<ProjectDocument> {
+export async function decodeShare(payload: string): Promise<ParsedProjectDocument> {
   if (payload.length > 1_400_000) throw new Error('link too large')
   return unpack(JSON.parse(await inflate(fromUrlSafe(payload))))
 }

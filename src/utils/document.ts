@@ -11,6 +11,7 @@ export interface ProjectGeometry {
   fittings: FittingData[]
 }
 export interface ProjectDocument extends ProjectGeometry { throughRule: ThroughRule }
+export interface ParsedProjectDocument extends ProjectDocument { version: typeof PROJECT_VERSION }
 const specs = ['2020', '2040', '3030', '3040', '4040']
 const materials = ['mdf', 'ply', 'acrylic', 'alu']
 const connectorTypes = new Set(CONNECTOR_CATALOG.map((entry) => entry.type))
@@ -22,8 +23,8 @@ const oneOf = (v: unknown, values: readonly unknown[]) => values.includes(v)
 function optional(v: unknown, valid: (v: unknown) => boolean): boolean { return v === undefined || valid(v) }
 function fail(message: string): never { throw new Error(`Invalid project: ${message}`) }
 
-/** Validate all four part types before any document or file target is changed. */
-export function parseProjectDocument(input: unknown): ProjectDocument {
+/** Validate current geometry without inferring or moving any parts. */
+export function validateProjectDocument(input: unknown): ProjectDocument {
   const doc: unknown = typeof input === 'string' ? JSON.parse(input) : input
   if (!record(doc)) fail('expected an object')
   if (!optional(doc.version, (v) => finite(v) && Number.isInteger(v) && v >= 1 && v <= PROJECT_VERSION)) fail('unsupported version')
@@ -81,12 +82,23 @@ export function parseProjectDocument(input: unknown): ProjectDocument {
     return { ...f, open: f.open ?? 0 } as unknown as FittingData
   })
   return {
-    profiles, connectors, panels, fittings: migrateFittings(profiles, fittings),
+    profiles, connectors, panels, fittings,
     throughRule: (doc.throughRule ?? 'rails') as ThroughRule,
   }
 }
 
+/** Read external data; retain the current version so a second parse cannot migrate it again. */
+export function parseProjectDocument(input: unknown): ParsedProjectDocument {
+  const doc: unknown = typeof input === 'string' ? JSON.parse(input) : input
+  const checked = validateProjectDocument(doc)
+  const version = (doc as { version?: number }).version
+  return {
+    ...checked, version: PROJECT_VERSION,
+    fittings: version === undefined || version <= 5 ? migrateFittings(checked.profiles, checked.fittings) : checked.fittings,
+  }
+}
+
 export function serializeProjectDocument(doc: ProjectGeometry & { throughRule?: ThroughRule }): string {
-  const checked = parseProjectDocument(doc)
+  const checked = validateProjectDocument(doc)
   return JSON.stringify({ version: PROJECT_VERSION, savedAt: new Date().toISOString(), ...checked }, null, 2)
 }

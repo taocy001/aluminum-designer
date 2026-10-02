@@ -25,11 +25,10 @@ export default function AutoSaveStatus() {
     </div>
   }
   const retry = () => {
-    const { profiles, connectors, panels, fittings, throughRule } = useStore.getState()
-    const { name, version = 0 } = useStore.persist.getOptions()
+    const { name, version = 0, partialize } = useStore.persist.getOptions()
     // Include the current drawing even when storage was unavailable on the first load
     // and there has not yet been a document edit to queue a save.
-    documentStorage.setItem(name!, { state: { profiles, connectors, panels, fittings, throughRule }, version })
+    documentStorage.setItem(name!, { state: partialize!(useStore.getState()), version })
     documentStorage.flush()
   }
   return <div data-testid="autosave-status" data-state={status} role="alert"

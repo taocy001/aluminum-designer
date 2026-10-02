@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { parseProjectDocument, type ProjectDocument, type ProjectGeometry } from '../utils/document'
+import { parseProjectDocument, PROJECT_VERSION, type ProjectDocument, type ProjectGeometry } from '../utils/document'
 import { documentStorage } from '../utils/documentPersistence'
 import { setThroughRule as applyThroughRule, withFixedProfileCuts, validFixedProfileCut, type ThroughRule } from '../utils/jointUtils'
 
@@ -205,7 +205,7 @@ interface State {
   updatePanel: (id: string, updates: Partial<PanelData>) => void
   commitPanelEdit: (id: string, updates: Partial<PanelData>) => void
   /** Replace the whole document (import) */
-  loadDocument: (doc: Pick<ProjectGeometry, 'profiles' | 'connectors'> & Partial<ProjectDocument>) => void
+  loadDocument: (doc: Pick<ProjectGeometry, 'profiles' | 'connectors'> & Partial<ProjectDocument> & { version?: number }) => void
   removeProfile: (id: string) => void
   removeSelected: () => void
   /** lock or unlock the selection; locked parts are protected from moves and deletion */
@@ -513,7 +513,7 @@ export const useStore = create<State>()(
     {
       name: 'aluminum-designer-store',
       storage: documentStorage,
-      partialize: (state) => ({ profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, throughRule: state.throughRule }),
+      partialize: (state) => ({ version: PROJECT_VERSION, profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, throughRule: state.throughRule }),
     }
   )
 )
