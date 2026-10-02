@@ -53,6 +53,8 @@ function save(): void {
 
 /** Name the next change, if the gesture has a name worth recording */
 export function noteNext(label: string): void { pendingLabel = label }
+/** A rejected command must not label the next unrelated successful edit. */
+export function cancelNextNote(): void { pendingLabel = null }
 
 export function opLog(): LogEntry[] { return entries }
 

@@ -5,6 +5,7 @@ import { memberBox } from './dragSnap'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
 import { noteNext } from './opLog'
+import { reportEditResult } from './editFeedback'
 import { connectedTo } from './editOps'
 import { computeAllTrims, trimmedBox } from './jointUtils'
 
@@ -222,7 +223,7 @@ export function addPanelFromSelection(
 ): boolean {
   const panel = panelFromSelection(material, thickness, fit)
   if (!panel) return false
-  useStore.getState().addPanels([panel], true)
+  if (!reportEditResult(useStore.getState().addPanels([panel], true))) return false
   const t = translations[useToolStore.getState().language]
   useToolStore.getState().showToast(t.toastPanelAdded(Math.round(panel.width), Math.round(panel.height)), 'success')
   return true
@@ -253,8 +254,7 @@ export function setPanelsSize(ids: string[], updates: Partial<Pick<PanelData, 'w
   }
   if (edits.length === 0) { useToolStore.getState().showToast(t.toastPanelTooSmall, 'error'); return false }
   noteNext(edits.length > 1 ? `resize ${edits.length} boards` : 'resize board')
-  commitTransform({ panels: edits })
-  return true
+  return reportEditResult(commitTransform({ panels: edits }))
 }
 
 /** ...and the same for what they are made of */
@@ -263,8 +263,7 @@ export function setPanelsMaterial(ids: string[], material: PanelMaterial): boole
   const mine = panels.filter((p) => ids.includes(p.id) && !p.locked)
   if (mine.length === 0) return false
   noteNext(mine.length > 1 ? `material of ${mine.length} boards` : 'board material')
-  commitTransform({ panels: mine.map((p) => ({ id: p.id, updates: { material } })) })
-  return true
+  return reportEditResult(commitTransform({ panels: mine.map((p) => ({ id: p.id, updates: { material } })) }))
 }
 
 export function setPanelSize(id: string, updates: Partial<Pick<PanelData, 'width' | 'height' | 'thickness'>>): boolean {
@@ -275,17 +274,15 @@ export function setPanelSize(id: string, updates: Partial<Pick<PanelData, 'width
   const next = { ...panel, ...updates }
   if (![next.width, next.height, next.thickness].every((v) => isFinite(v) && v > 0)) return false
   if (next.width < MIN_SIDE || next.height < MIN_SIDE) { useToolStore.getState().showToast(t.toastPanelTooSmall, 'error'); return false }
-  useStore.getState().commitPanelEdit(id, {
+  return reportEditResult(useStore.getState().commitPanelEdit(id, {
     width: Math.round(next.width * 10) / 10,
     height: Math.round(next.height * 10) / 10,
     thickness: Math.round(next.thickness * 10) / 10,
-  })
-  return true
+  }))
 }
 
 export function setPanelMaterial(id: string, material: PanelMaterial): boolean {
   const panel = useStore.getState().panels.find((p) => p.id === id)
   if (!panel || panel.locked) return false
-  useStore.getState().commitPanelEdit(id, { material })
-  return true
+  return reportEditResult(useStore.getState().commitPanelEdit(id, { material }))
 }

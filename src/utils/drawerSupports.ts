@@ -12,9 +12,11 @@ import { auditBrackets, seatsFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { ALL_SPECS, specDims } from './specUtils'
 import { noteNext } from './opLog'
+import { reportEditResult } from './editFeedback'
+import { profileBodyEndpoints } from './profileFaces'
 
 export type DrawerSide = 'left' | 'right'
-export type DrawerSupportFailure = 'locked' | 'invalid-drawer' | 'no-mount' | 'collision' | 'no-connection'
+export type DrawerSupportFailure = 'locked' | 'invalid-drawer' | 'no-mount' | 'collision' | 'no-connection' | 'edit-rejected'
 export interface DrawerSupportsResult {
   generated: Array<{ fittingId: string; side: DrawerSide; profileId: string; connectorIds: string[] }>
   failed: Array<{ fittingId: string; side: DrawerSide; reason: DrawerSupportFailure }>
@@ -44,7 +46,7 @@ function localBounds(body: OBB, f: FittingData): THREE.Box3 {
 }
 
 /** Fill continuous mounting faces for selected drawers, with connected rails and one history entry. */
-export function addDrawerSupports(ids: string[], spec?: ProfileSpec): DrawerSupportsResult {
+export function addDrawerSupports(ids: string[], spec?: ProfileSpec, options?: { linked?: boolean }): DrawerSupportsResult {
   const state = useStore.getState()
   const result: DrawerSupportsResult = { generated: [], failed: [] }
   let profiles = withFixedProfileCuts(state.profiles)
@@ -113,6 +115,21 @@ export function addDrawerSupports(ids: string[], spec?: ProfileSpec): DrawerSupp
         failed = true
         break
       }
+      if (options?.linked) {
+        const inverse = new THREE.Quaternion(...f.quaternion).normalize().invert()
+        const span = profileBodyEndpoints(made.rail)
+        const origin = new THREE.Vector3(...f.position)
+        made.rail.runnerBinding = { fittingId: f.id, side,
+          backOffset: span.start.clone().sub(origin).applyQuaternion(inverse).z + f.depth / 2,
+          frontOffset: span.end.clone().sub(origin).applyQuaternion(inverse).z - f.depth / 2 }
+        const local = new THREE.Quaternion(...made.rail.quaternion).normalize().invert()
+        made.brackets = made.brackets.map((c, index) => {
+          const end = index === 0 ? 'start' : 'end'
+          return { ...c, supportBinding: { profileId: made!.rail.id, end,
+            localPosition: new THREE.Vector3(...c.position).sub(span[end]).applyQuaternion(local).toArray() as [number, number, number],
+            localQuaternion: local.clone().multiply(new THREE.Quaternion(...c.quaternion).normalize()).normalize().toArray() as [number, number, number, number] } }
+        })
+      }
       stagedProfiles.push(made.rail)
       stagedConnectors.push(...made.brackets)
       stagedResults.push({ fittingId: f.id, side, profileId: made.rail.id, connectorIds: made.brackets.map((c) => c.id) })
@@ -125,7 +142,10 @@ export function addDrawerSupports(ids: string[], spec?: ProfileSpec): DrawerSupp
   }
   if (result.generated.length) {
     noteNext('add drawer supports')
-    state.commitDocument({ profiles, connectors })
+    if (!reportEditResult(state.commitDocument({ profiles, connectors }))) {
+      result.failed.push(...result.generated.map(({ fittingId, side }) => ({ fittingId, side, reason: 'edit-rejected' as const })))
+      result.generated = []
+    }
   }
   return result
 }

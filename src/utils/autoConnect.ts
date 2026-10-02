@@ -1,4 +1,5 @@
 import { noteNext } from './opLog'
+import { reportEditResult } from './editFeedback'
 import * as THREE from 'three'
 import { useStore, type ConnectorData, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
@@ -30,13 +31,7 @@ function sameCapSeat(a: Pick<ConnectorData, 'position' | 'quaternion' | 'series'
   return Math.max(Math.abs(x.dot(axis(1, 0, 0, qb))), Math.abs(x.dot(axis(0, 1, 0, qb)))) > 0.999
 }
 
-/**
- * Does this part's body run into anything?
- *
- * Both what is already placed and the frame itself. Stepping a bracket along a post to get it
- * out of another bracket's way is only an improvement if it does not step it into the rail
- * above — which is exactly what happened when this only looked at the other brackets.
- */
+/** Check candidate overlap against placed connectors and frame solids. */
 function crowded(part: ConnectorData, placed: ConnectorData[], metal: OBB[]): boolean {
   const box = connectorOBB(part)
   if (placed.some((q) => obbPenetration(box, connectorOBB(q), 1) > 1)) return true
@@ -65,7 +60,7 @@ export interface AutoConnectResult {
   /** joints that want one and cannot take one: no line is a slot on both members */
   unbolted?: number
   /** why nothing was placed, when nothing was */
-  reason?: 'no-frame' | 'needs-a-surface' | 'nothing-open'
+  reason?: 'no-frame' | 'needs-a-surface' | 'nothing-open' | 'edit-rejected'
 }
 
 /**
@@ -114,8 +109,7 @@ export function autoConnect(type: string): AutoConnectResult {
       // nothing is attached at all
       const wantsOne = entry.fit === 'corner' ? where.butt : where.partners === 0
       if (!wantsOne) continue
-      // A foot goes on the floor. Fitting one to every free end put one on top of each post
-      // as well, which is an end cap's job, not a foot's.
+      // Feet require a free end whose outward direction points down.
       if (entry.axes.towards === 'in') {
         const outward = getProfileDir(p)
         if (at.distanceTo(start) < at.distanceTo(end)) outward.negate()
@@ -125,9 +119,7 @@ export function autoConnect(type: string): AutoConnectResult {
       if (cap) capSeats.push(cap)
       wanted.push(cap ? new THREE.Vector3(...cap.position) : at.clone())
 
-      // Where the part goes is a question about bolts, not about points. `seatBracket` puts
-      // the back on the face the two members share and each hole on a slot line; a part
-      // dropped on the centreline is a marker, not something that can be fitted.
+      // Seat candidates align shared faces and bolt holes with slot lines.
       const partner = partnerAt(at, p, profiles)
       const candidates = partner ? seatsFor(type, p, partner, at) : []
       const seat = candidates.find((s) => auditBrackets(profiles, [{ id: 'candidate', type, ...s }], trims).length === 0)
@@ -193,7 +185,9 @@ export function autoConnect(type: string): AutoConnectResult {
     return { placed: 0, skipped, unbolted, reason: 'nothing-open' }
   }
   noteNext(`fit ${connectorLabel(type, useToolStore.getState().language)}`)
-  store.commitDocument({ connectors: [...connectors.filter((c) => !stale.includes(c.id)), ...made] })
+  if (!reportEditResult(store.commitDocument({ connectors: [...connectors.filter((c) => !stale.includes(c.id)), ...made] }))) {
+    return { placed: 0, skipped, removed: 0, unbolted, reason: 'edit-rejected' }
+  }
   useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, stale.length, unbolted), unbolted ? 'info' : 'success')
   return { placed: made.length, skipped, removed: stale.length, unbolted }
 }

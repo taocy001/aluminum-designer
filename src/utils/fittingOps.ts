@@ -1,4 +1,5 @@
 import { noteNext } from './opLog'
+import { reportEditResult } from './editFeedback'
 import * as THREE from 'three'
 import { useStore, type DrawerConfig, type DrawerReinforcement, type FittingData, type FittingKind, type HingeSide, type HingeType, type Overlay, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
@@ -328,7 +329,7 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
     useToolStore.getState().showToast(t.toastInvalidFittingGeometry, 'error'); return false
   }
   noteNext(req.kind === 'drawer' ? `fit ${made.length} drawer${made.length > 1 ? 's' : ''}` : 'hang a door')
-  store.addFittings(made, false)
+  if (!reportEditResult(store.addFittings(made, false))) return false
   useToolStore.getState().showToast(
     req.kind === 'drawer' ? t.toastDrawerAdded(made.length, made.length) : t.toastDoorAdded(made.length), 'success')
   return true
@@ -350,8 +351,7 @@ export function updateFittings(ids: string[], updates: Partial<FittingData>): bo
   if (mine.every((f) => Object.entries(updates).every(([key, value]) =>
     JSON.stringify(f[key as keyof FittingData]) === JSON.stringify(value)))) return false
   noteNext(mine.length > 1 ? `edit ${mine.length} fittings` : 'edit fitting')
-  commitTransform({ fittings: mine.map((f) => ({ id: f.id, updates })) })
-  return true
+  return reportEditResult(commitTransform({ fittings: mine.map((f) => ({ id: f.id, updates })) }))
 }
 
 export type DrawerConfigPatch = Partial<Omit<DrawerConfig, 'reinforcement'>> & { reinforcement?: Partial<DrawerReinforcement> }
@@ -371,8 +371,7 @@ export function updateDrawerConfig(ids: string[], patch: DrawerConfigPatch): boo
   }
   if (next.every((f, i) => JSON.stringify(f.drawer) === JSON.stringify(mine[i].drawer))) return false
   noteNext('edit drawer construction')
-  commitTransform({ fittings: next.map((f) => ({ id: f.id, updates: { drawer: f.drawer } })) })
-  return true
+  return reportEditResult(commitTransform({ fittings: next.map((f) => ({ id: f.id, updates: { drawer: f.drawer } })) }))
 }
 
 /** A side-hung single door needs room for two openings of at least 60 mm. */
@@ -394,6 +393,10 @@ export function splitDoor(f: FittingData, ids?: readonly [string, string]): [Fit
       ...f, id: children[index], width: f.width / 2,
       position: [position.x, position.y, position.z], quaternion: [...f.quaternion],
       hinge: side, meeting: side === 'left' ? 'right' : 'left',
+      ...(f.openingBinding?.mode === 'door' ? { openingBinding: { ...f.openingBinding,
+        start: side === 'left' ? f.openingBinding.start : (f.openingBinding.start + f.openingBinding.end) / 2,
+        end: side === 'left' ? (f.openingBinding.start + f.openingBinding.end) / 2 : f.openingBinding.end,
+      } } : {}),
     }
   }
   return [make('left', 0), make('right', 1)]
@@ -412,8 +415,8 @@ export function splitSelectedDoors(): boolean {
   }
   if (!replacements.size) return false
   noteNext(`split ${replacements.size} door${replacements.size > 1 ? 's' : ''}`)
-  store.commitDocument({ fittings: store.fittings.flatMap((f) => replacements.get(f.id) ?? [f]) },
-    store.selectedIds.flatMap((id) => replacements.get(id)?.map((f) => f.id) ?? [id]))
+  if (!reportEditResult(store.commitDocument({ fittings: store.fittings.flatMap((f) => replacements.get(f.id) ?? [f]) },
+    store.selectedIds.flatMap((id) => replacements.get(id)?.map((f) => f.id) ?? [id])))) return false
   useToolStore.getState().showToast(translations[useToolStore.getState().language].toastDoorsSplit(replacements.size), 'success')
   return true
 }

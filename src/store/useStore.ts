@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { parseProjectDocument, PROJECT_VERSION, type ProjectDocument, type ProjectGeometry } from '../utils/document'
 import { documentStorage } from '../utils/documentPersistence'
 import { validFittings } from '../utils/fittingValidation'
+import { reconcileBindings, type EditResult, type FittingOpeningBinding, type PanelOpeningBinding, type RunnerBinding, type SupportBinding } from '../utils/openingBindings'
 import { setThroughRule as applyThroughRule, withFixedProfileCuts, validFixedProfileCut, type ThroughRule } from '../utils/jointUtils'
 
 export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
@@ -19,6 +20,7 @@ export interface Hole {
 }
 
 export interface ProfileData {
+  runnerBinding?: RunnerBinding
   id: string
   spec: ProfileSpec
   length: number
@@ -33,6 +35,7 @@ export interface ProfileData {
 }
 
 export interface ConnectorData {
+  supportBinding?: SupportBinding
   id: string
   type: string
   /** extrusion series the part is made for; older files default to the 20 series */
@@ -46,6 +49,7 @@ export interface ConnectorData {
 export type PanelMaterial = 'mdf' | 'ply' | 'acrylic' | 'alu'
 
 export interface PanelData {
+  openingBinding?: PanelOpeningBinding
   id: string
   width: number
   height: number
@@ -85,6 +89,7 @@ export interface DrawerConfig {
 }
 
 export interface FittingData {
+  openingBinding?: FittingOpeningBinding
   /** Frame depth between the opening front and the front board (mm); defaults to zero. */
   frame?: number
   id: string
@@ -135,7 +140,7 @@ const sameValue = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === J
 const shapeFields = ['position', 'quaternion', 'length', 'spec', 'fixedTrims'] as const
 
 /** Every edit path uses the same rigid-part contract, including numeric/live inputs. */
-function applyProfileUpdates(all: ProfileData[], updates: ProfileUpdate[]): ProfileData[] {
+function applyProfileUpdates(all: ProfileData[], updates: ProfileUpdate[], rule: ThroughRule): ProfileData[] | null {
   const byId = new Map(updates.map((u) => [u.id, u.updates]))
   const changed = all.filter((p) => !p.locked && byId.has(p.id)
     && Object.entries(byId.get(p.id)!).some(([key, value]) => !sameValue(p[key as keyof ProfileData], value)))
@@ -143,10 +148,11 @@ function applyProfileUpdates(all: ProfileData[], updates: ProfileUpdate[]): Prof
   const changedIds = new Set(changed.map((p) => p.id))
   const geometryChanged = changed.some((p) => shapeFields.some((key) => key in byId.get(p.id)!
     && !sameValue(p[key], byId.get(p.id)![key])))
-  const baseline = geometryChanged ? withFixedProfileCuts(all) : all
+  const baseline = geometryChanged ? withFixedProfileCuts(all, undefined, rule) : all
   const result = baseline.map((p) => changedIds.has(p.id) ? { ...p, ...byId.get(p.id)! } : p)
   // Reject the whole profile edit, without a snapshot or a partially fixed document.
-  return result.every(validFixedProfileCut) ? result : all
+  return result.every((p) => validFixedProfileCut(p) && Number.isFinite(p.length) && p.length > 0
+    && p.position.every(Number.isFinite) && p.quaternion.every(Number.isFinite) && Math.hypot(...p.quaternion) > 1e-6) ? result : null
 }
 
 function applyPartUpdates<T extends { id: string; locked?: boolean }>(all: T[], updates: Array<{ id: string; updates: Partial<T> }>): T[] {
@@ -163,12 +169,12 @@ function applyPartUpdates<T extends { id: string; locked?: boolean }>(all: T[], 
 
 // Fixing a legacy locked reference changes how automatic neighbours fit against it.
 // Preserve the whole existing assembly before adding anything or changing its rule.
-const fixedLockedCuts = (all: ProfileData[]) =>
-  all.some((p) => p.locked && !p.fixedTrims) ? withFixedProfileCuts(all) : all
+const fixedLockedCuts = (all: ProfileData[], rule: ThroughRule) =>
+  all.some((p) => p.locked && !p.fixedTrims) ? withFixedProfileCuts(all, undefined, rule) : all
 
 /** Changing a joint rule is explicit; a locked finished part still keeps its cut faces. */
-function automaticUnlockedCuts(all: ProfileData[]): ProfileData[] {
-  const protectedParts = fixedLockedCuts(all)
+function automaticUnlockedCuts(all: ProfileData[], rule: ThroughRule): ProfileData[] {
+  const protectedParts = fixedLockedCuts(all, rule)
   let changed = protectedParts !== all
   const next = protectedParts.map((p) => {
     if (p.locked || !p.fixedTrims) return p
@@ -179,361 +185,184 @@ function automaticUnlockedCuts(all: ProfileData[]): ProfileData[] {
   return changed ? next : all
 }
 
+export interface PartUpdates {
+  profiles?: Array<{ id: string; updates: Partial<ProfileData> }>
+  connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>
+  panels?: Array<{ id: string; updates: Partial<PanelData> }>
+  fittings?: Array<{ id: string; updates: Partial<FittingData> }>
+}
+export interface LiveEditOptions { history?: boolean }
 interface State {
   profiles: ProfileData[]
   connectors: ConnectorData[]
   panels: PanelData[]
   fittings: FittingData[]
   throughRule: ThroughRule
-  setThroughRule: (rule: ThroughRule) => void
-  /** Preserve all current physical lengths; the caller owns any gesture history entry. */
-  freezeProfileCuts: () => void
-  /** Explicitly fit unlocked cut faces to the current joints in one undoable action. */
-  recalculateJoints: () => void
-  /** One user command, one complete history entry, including replacements/removals. */
-  commitDocument: (doc: Partial<ProjectDocument>, selection?: string[]) => void
   selectedIds: string[]
   past: Snapshot[]
   future: Snapshot[]
-
-  addProfile: (profile: ProfileData) => void
-  addProfiles: (profiles: ProfileData[], select?: boolean) => void
-  addItems: (profiles: ProfileData[], connectors: ConnectorData[], select?: boolean) => void
-  addPanels: (panels: PanelData[], select?: boolean) => void
-  addFittings: (fittings: FittingData[], select?: boolean) => void
-  updateFitting: (id: string, updates: Partial<FittingData>, pushHistory?: boolean) => void
+  setThroughRule: (rule: ThroughRule) => EditResult
+  freezeProfileCuts: () => EditResult
+  recalculateJoints: () => EditResult
+  commitDocument: (doc: Partial<ProjectDocument>, selection?: string[]) => EditResult
+  addProfile: (profile: ProfileData) => EditResult
+  addProfiles: (profiles: ProfileData[], select?: boolean) => EditResult
+  addItems: (profiles: ProfileData[], connectors: ConnectorData[], select?: boolean) => EditResult
+  addPanels: (panels: PanelData[], select?: boolean) => EditResult
+  addFittings: (fittings: FittingData[], select?: boolean) => EditResult
+  updateFitting: (id: string, updates: Partial<FittingData>, pushHistory?: boolean) => EditResult
   setFittingOpenings: (ids: string[], open: number) => void
-  updatePanel: (id: string, updates: Partial<PanelData>) => void
-  commitPanelEdit: (id: string, updates: Partial<PanelData>) => void
-  /** Replace the whole document (import) */
+  updatePanel: (id: string, updates: Partial<PanelData>) => EditResult
+  commitPanelEdit: (id: string, updates: Partial<PanelData>) => EditResult
   loadDocument: (doc: Pick<ProjectGeometry, 'profiles' | 'connectors'> & Partial<ProjectDocument> & { version?: number }) => void
-  removeProfile: (id: string) => void
-  removeSelected: () => void
-  /** lock or unlock the selection; locked parts are protected from moves and deletion */
-  toggleLockSelected: () => void
-  clearAll: () => void
-  addConnector: (connector: ConnectorData) => void
-  removeConnector: (id: string) => void
-  /** drop several connectors in one history step */
-  removeConnectors: (ids: string[], pushHistory?: boolean) => void
+  removeProfile: (id: string) => EditResult
+  removeSelected: () => EditResult
+  toggleLockSelected: () => EditResult
+  clearAll: () => EditResult
+  addConnector: (connector: ConnectorData) => EditResult
+  removeConnector: (id: string) => EditResult
+  removeConnectors: (ids: string[], pushHistory?: boolean) => EditResult
   selectItem: (id: string, multi?: boolean) => void
   selectItems: (ids: string[]) => void
   clearSelection: () => void
-  // Live update without history (for drag)
-  updateProfile: (id: string, updates: Partial<ProfileData>) => void
-  updateProfiles: (updates: Array<{ id: string; updates: Partial<ProfileData> }>) => void
-  // Commit to history (for sidebar edits)
-  commitProfileEdit: (id: string, updates: Partial<ProfileData>) => void
-  commitProfilesEdit: (updates: Array<{ id: string; updates: Partial<ProfileData> }>) => void
-  /** Move/rotate profiles and connectors together as one undoable step */
-  commitTransform: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>; panels?: Array<{ id: string; updates: Partial<PanelData> }>; fittings?: Array<{ id: string; updates: Partial<FittingData> }> }) => void
-  updateConnector: (id: string, updates: Partial<ConnectorData>) => void
-  /** Live move of several parts at once (no history) — one store write per frame */
-  updateParts: (args: { profiles?: Array<{ id: string; updates: Partial<ProfileData> }>; connectors?: Array<{ id: string; updates: Partial<ConnectorData> }>; panels?: Array<{ id: string; updates: Partial<PanelData> }>; fittings?: Array<{ id: string; updates: Partial<FittingData> }> }) => void
+  updateProfile: (id: string, updates: Partial<ProfileData>, options?: LiveEditOptions) => EditResult
+  updateProfiles: (updates: ProfileUpdate[], options?: LiveEditOptions) => EditResult
+  commitProfileEdit: (id: string, updates: Partial<ProfileData>) => EditResult
+  commitProfilesEdit: (updates: ProfileUpdate[]) => EditResult
+  commitTransform: (args: PartUpdates) => EditResult
+  updateConnector: (id: string, updates: Partial<ConnectorData>) => EditResult
+  updateParts: (args: PartUpdates, options?: LiveEditOptions) => EditResult
   snapshotHistory: () => void
   undo: () => void
   redo: () => void
-  // Backward compat
   selectProfile: (id: string | null) => void
+}
+
+const documentOf = (state: ProjectDocument): ProjectDocument => ({ profiles: state.profiles, connectors: state.connectors,
+  panels: state.panels, fittings: state.fittings, throughRule: state.throughRule })
+const partKinds = ['profiles', 'connectors', 'panels', 'fittings'] as const
+const rejectEdit = (reason: Extract<EditResult, { status: 'rejected' }>['reason'], partIds: string[]): Extract<EditResult, { status: 'rejected' }> => ({ status: 'rejected', reason, partIds })
+
+/** Keep rejection separate from no-op: an invalid profile must also cancel mixed edits. */
+function updatedParts(state: State, edits: PartUpdates): Partial<ProjectDocument> | Extract<EditResult, { status: 'rejected' }> {
+  const profiles = applyProfileUpdates(state.profiles, edits.profiles ?? [], state.throughRule)
+  if (!profiles) return rejectEdit('invalid-profile', (edits.profiles ?? []).map((u) => u.id))
+  return { profiles, connectors: applyPartUpdates(state.connectors, edits.connectors ?? []),
+    panels: applyPartUpdates(state.panels, edits.panels ?? []), fittings: applyPartUpdates(state.fittings, edits.fittings ?? []) }
 }
 
 export const useStore = create<State>()(
   persist(
-    (set) => ({
-      profiles: [],
-      connectors: [],
-      panels: [],
-      fittings: [],
-      throughRule: 'rails',
-      selectedIds: [],
-      past: [],
-      future: [],
-
-      setThroughRule: (throughRule) => set((state) => {
-        if (state.throughRule === throughRule) return state
-        return { throughRule, profiles: automaticUnlockedCuts(state.profiles),
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
-      }),
-      freezeProfileCuts: () => set((state) => {
-        const profiles = withFixedProfileCuts(state.profiles)
-        return profiles === state.profiles ? state : { profiles }
-      }),
-      recalculateJoints: () => set((state) => {
-        if (!state.profiles.some((p) => p.fixedTrims && !p.locked)) return state
-        return { profiles: automaticUnlockedCuts(state.profiles),
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
-      }),
-      commitDocument: (doc, selection) => set((state) => {
-        if (doc.fittings !== undefined && !validFittings(doc.fittings)) return state
-        const changed = Object.entries(doc).some(([key, value]) => state[key as keyof ProjectDocument] !== value)
-        if (!changed) return state
-        return {
-          ...doc, past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [],
-          ...(selection ? { selectedIds: selection } : {}),
-        }
-      }),
-
-      addProfile: (profile) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        profiles: [...fixedLockedCuts(state.profiles), profile],
-      })),
-
-      addProfiles: (list, select = false) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        profiles: [...fixedLockedCuts(state.profiles), ...list],
-        selectedIds: select ? list.map((p) => p.id) : state.selectedIds,
-      })),
-
-      addItems: (list, conns, select = false) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        profiles: [...fixedLockedCuts(state.profiles), ...list],
-        connectors: [...state.connectors, ...conns],
-        selectedIds: select ? [...list.map((p) => p.id), ...conns.map((c) => c.id)] : state.selectedIds,
-      })),
-
-      addFittings: (list, select = false) => set((state) => {
-        const fittings = [...state.fittings, ...list]
-        if (!list.length || !validFittings(fittings)) return state
-        return { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-          future: [], fittings, ...(select ? { selectedIds: list.map((f) => f.id) } : {}) }
-      }),
-
-      updateFitting: (id, updates, pushHistory = true) => set((state) => {
-        const fittings = applyPartUpdates(state.fittings, [{ id, updates }])
-        if (fittings === state.fittings || !validFittings(fittings)) return state
-        return { fittings,
-          ...(pushHistory ? { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] } : {}) }
-      }),
-
-      // Opening changes ignore design locks and preserve undo/redo history.
-      setFittingOpenings: (ids, open) => set((state) => {
-        if (!Number.isFinite(open)) return state
-        const selected = new Set(ids)
-        const value = Math.max(0, Math.min(1, open))
-        let changed = false
-        const fittings = state.fittings.map((f) => {
-          if (!selected.has(f.id) || f.open === value) return f
-          changed = true
-          return { ...f, open: value }
+    (set) => {
+      /** Validate and derive the entire document before allocating history or publishing any part. */
+      const transact = (
+        prepare: (state: State) => Partial<ProjectDocument> | Extract<EditResult, { status: 'rejected' }>,
+        history = true, selection?: string[] | ((state: State, document: ProjectDocument) => string[]),
+      ): EditResult => {
+        let result: EditResult = { status: 'noop' }
+        set((state) => {
+          const patch = prepare(state)
+          if ('status' in patch) { result = patch; return state }
+          const before = documentOf(state), candidate = { ...before, ...patch }
+          if (!validFittings(candidate.fittings)) { result = rejectEdit('invalid-fitting', candidate.fittings.map((f) => f.id)); return state }
+          if (candidate.panels.some((p) => ![p.width, p.height, p.thickness].every((n) => Number.isFinite(n) && n > 0))) {
+            result = rejectEdit('invalid-opening', candidate.panels.map((p) => p.id)); return state
+          }
+          const resolved = reconcileBindings(before, candidate)
+          if (resolved.status === 'rejected') { result = resolved; return state }
+          const doc = resolved.document
+          for (const kind of partKinds) if (sameValue(doc[kind], state[kind])) (doc[kind] as unknown[]) = state[kind]
+          if (partKinds.every((kind) => doc[kind] === state[kind]) && doc.throughRule === state.throughRule) return state
+          const old = new Map(partKinds.flatMap((kind) => state[kind].map((p) => [p.id, p] as const)))
+          const next = new Map(partKinds.flatMap((kind) => doc[kind].map((p) => [p.id, p] as const)))
+          const changedIds = [...new Set([...old.keys(), ...next.keys()])].filter((id) => !sameValue(old.get(id), next.get(id)))
+          result = { status: 'applied', changedIds, orphanedIds: resolved.orphanedIds }
+          return { ...doc,
+            ...(history ? { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] } : {}),
+            ...(selection !== undefined ? { selectedIds: typeof selection === 'function' ? selection(state, doc) : selection } : {}),
+          }
         })
-        return changed ? { fittings } : state
-      }),
-
-      addPanels: (list, select = false) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        panels: [...state.panels, ...list],
-        selectedIds: select ? list.map((p) => p.id) : state.selectedIds,
-      })),
-
-      updatePanel: (id, updates) => set((state) => ({
-        panels: state.panels.map((p) => p.id === id ? { ...p, ...updates } : p),
-      })),
-
-      commitPanelEdit: (id, updates) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        panels: state.panels.map((p) => p.id === id ? { ...p, ...updates } : p),
-      })),
-
-      loadDocument: (doc) => {
-        const checked = parseProjectDocument(doc)
-        set((state) => ({
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-          future: [],
-          ...checked,
-          selectedIds: [],
-        }))
-      },
-
-      removeProfile: (id) => set((state) => {
-        if (!state.profiles.some((p) => p.id === id && !p.locked)) return state
-        return { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [],
-          profiles: withFixedProfileCuts(state.profiles).filter((p) => p.id !== id),
-          selectedIds: state.selectedIds.filter((s) => s !== id) }
-      }),
-
-      removeSelected: () => set((state) => {
-        const ids = new Set(state.selectedIds)
-        if (ids.size === 0) return {}
-        // a lock protects against deletion too, or it would only be half a lock
-        const removable = (x: { id: string; locked?: boolean }) => ids.has(x.id) && !x.locked
-        if (!state.profiles.some(removable) && !state.connectors.some(removable)
-          && !state.panels.some(removable) && !state.fittings.some(removable)) return {}
-        const stillLocked = (id: string) => state.profiles.some((p) => p.id === id && p.locked)
-          || state.connectors.some((c) => c.id === id && c.locked)
-          || state.panels.some((p) => p.id === id && p.locked)
-          || state.fittings.some((f) => f.id === id && f.locked)
-        return {
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-          future: [],
-          profiles: (state.profiles.some(removable) ? withFixedProfileCuts(state.profiles) : state.profiles).filter((p) => !removable(p)),
-          connectors: state.connectors.filter((c) => !removable(c)),
-          panels: state.panels.filter((p) => !removable(p)),
-          fittings: state.fittings.filter((f) => !removable(f)),
-          selectedIds: state.selectedIds.filter(stillLocked),
-        }
-      }),
-
-      toggleLockSelected: () => set((state) => {
-        const ids = new Set(state.selectedIds)
-        if (ids.size === 0) return {}
-        // mixed selections lock rather than unlock: the safer of the two
-        const anyUnlocked = state.profiles.some((p) => ids.has(p.id) && !p.locked)
-          || state.connectors.some((c) => ids.has(c.id) && !c.locked)
-          || state.panels.some((p) => ids.has(p.id) && !p.locked)
-          || state.fittings.some((f) => ids.has(f.id) && !f.locked)
-        return {
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-          future: [],
-          profiles: (anyUnlocked && state.profiles.some((p) => ids.has(p.id)) ? withFixedProfileCuts(state.profiles) : state.profiles)
-            .map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
-          connectors: state.connectors.map((c) => ids.has(c.id) ? { ...c, locked: anyUnlocked } : c),
-          panels: state.panels.map((p) => ids.has(p.id) ? { ...p, locked: anyUnlocked } : p),
-          fittings: state.fittings.map((f) => ids.has(f.id) ? { ...f, locked: anyUnlocked } : f),
-        }
-      }),
-
-      clearAll: () => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        profiles: [],
-        connectors: [],
-        panels: [],
-        fittings: [],
-        selectedIds: [],
-      })),
-
-      addConnector: (connector) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        connectors: [...state.connectors, connector],
-      })),
-
-      removeConnectors: (ids, pushHistory = true) => set((state) => {
-        const drop = new Set(ids)
-        if (drop.size === 0) return {}
-        return {
-          ...(pushHistory ? { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] } : {}),
-          connectors: state.connectors.filter((c) => !drop.has(c.id)),
-          selectedIds: state.selectedIds.filter((s) => !drop.has(s)),
-        }
-      }),
-
-      removeConnector: (id) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        connectors: state.connectors.filter((c) => c.id !== id),
-        selectedIds: state.selectedIds.filter((s) => s !== id),
-      })),
-
-      selectItem: (id, multi = false) => set((state) => {
-        if (multi) {
-          const idx = state.selectedIds.indexOf(id)
-          return { selectedIds: idx >= 0 ? state.selectedIds.filter((s) => s !== id) : [...state.selectedIds, id] }
-        }
-        return { selectedIds: [id] }
-      }),
-
-      selectItems: (ids) => set({ selectedIds: ids }),
-      clearSelection: () => set({ selectedIds: [] }),
-
-      // backward compat
-      selectProfile: (id) => set({ selectedIds: id ? [id] : [] }),
-
-      updateProfile: (id, updates) => set((state) => {
-        const profiles = applyProfileUpdates(state.profiles, [{ id, updates }])
-        return profiles === state.profiles ? state : { profiles }
-      }),
-
-      updateProfiles: (updates) => set((state) => {
-        const profiles = applyProfileUpdates(state.profiles, updates)
-        return profiles === state.profiles ? state : { profiles }
-      }),
-
-      commitProfileEdit: (id, updates) => set((state) => {
-        const profiles = applyProfileUpdates(state.profiles, [{ id, updates }])
-        return profiles === state.profiles ? state : { profiles,
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
-      }),
-
-      commitProfilesEdit: (updates) => set((state) => {
-        const profiles = applyProfileUpdates(state.profiles, updates)
-        return profiles === state.profiles ? state : { profiles,
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
-      }),
-
-      commitTransform: ({ profiles = [], connectors = [], panels = [], fittings = [] }) => set((state) => {
-        if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return {}
-        const next = { profiles: applyProfileUpdates(state.profiles, profiles),
-          connectors: applyPartUpdates(state.connectors, connectors), panels: applyPartUpdates(state.panels, panels),
-          fittings: applyPartUpdates(state.fittings, fittings) }
-        if (!validFittings(next.fittings)) return state
-        if (Object.entries(next).every(([key, value]) => state[key as keyof typeof next] === value)) return state
-        return {
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-          future: [],
-          ...next,
-        }
-      }),
-
-      updateParts: ({ profiles = [], connectors = [], panels = [], fittings = [] }) => set((state) => {
-        if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0) return {}
-        const next = { profiles: applyProfileUpdates(state.profiles, profiles),
-          connectors: applyPartUpdates(state.connectors, connectors), panels: applyPartUpdates(state.panels, panels),
-          fittings: applyPartUpdates(state.fittings, fittings) }
-        if (!validFittings(next.fittings)) return state
-        return Object.entries(next).every(([key, value]) => state[key as keyof typeof next] === value) ? state : next
-      }),
-
-      updateConnector: (id, updates) => set((state) => ({
-        connectors: state.connectors.map((c) => c.id === id ? { ...c, ...updates } : c),
-      })),
-
-      snapshotHistory: () => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-      })),
-
-      undo: () => set((state) => {
-        if (state.past.length === 0) return {}
-        const prev = state.past[state.past.length - 1]
-        return {
-          past: state.past.slice(0, -1),
-          future: [takeSnapshot(state), ...state.future.slice(0, MAX_HISTORY - 1)],
-          profiles: prev.profiles,
-          connectors: prev.connectors,
-          panels: prev.panels ?? [],
-          fittings: prev.fittings ?? [],
-          throughRule: prev.throughRule ?? 'rails',
-          selectedIds: survivingSelection(state.selectedIds, prev),
-        }
-      }),
-
-      redo: () => set((state) => {
-        if (state.future.length === 0) return {}
-        const next = state.future[0]
-        return {
-          past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-          future: state.future.slice(1),
-          profiles: next.profiles,
-          connectors: next.connectors,
-          panels: next.panels ?? [],
-          fittings: next.fittings ?? [],
-          throughRule: next.throughRule ?? 'rails',
-          selectedIds: survivingSelection(state.selectedIds, next),
-        }
-      }),
-    }),
+        return result
+      }
+      const edit = (updates: PartUpdates, history = true) => transact((state) => updatedParts(state, updates), history)
+      return {
+        profiles: [], connectors: [], panels: [], fittings: [], throughRule: 'rails', selectedIds: [], past: [], future: [],
+        setThroughRule: (throughRule) => transact((state) => state.throughRule === throughRule ? {} : {
+          throughRule, profiles: automaticUnlockedCuts(state.profiles, state.throughRule),
+        }),
+        freezeProfileCuts: () => transact((state) => ({ profiles: withFixedProfileCuts(state.profiles, undefined, state.throughRule) }), false),
+        recalculateJoints: () => transact((state) => ({ profiles: automaticUnlockedCuts(state.profiles, state.throughRule) })),
+        commitDocument: (doc, selection) => transact(() => doc, true, selection),
+        addProfile: (profile) => transact((state) => ({ profiles: [...fixedLockedCuts(state.profiles, state.throughRule), profile] })),
+        addProfiles: (profiles, select = false) => transact((state) => ({ profiles: [...fixedLockedCuts(state.profiles, state.throughRule), ...profiles] }), true, select ? profiles.map((p) => p.id) : undefined),
+        addItems: (profiles, connectors, select = false) => transact((state) => ({ profiles: [...fixedLockedCuts(state.profiles, state.throughRule), ...profiles], connectors: [...state.connectors, ...connectors] }), true, select ? [...profiles, ...connectors].map((p) => p.id) : undefined),
+        addPanels: (panels, select = false) => transact((state) => ({ panels: [...state.panels, ...panels] }), true, select ? panels.map((p) => p.id) : undefined),
+        addFittings: (fittings, select = false) => transact((state) => ({ fittings: [...state.fittings, ...fittings] }), true, select ? fittings.map((p) => p.id) : undefined),
+        updateFitting: (id, updates, history = true) => edit({ fittings: [{ id, updates }] }, history),
+        updatePanel: (id, updates) => edit({ panels: [{ id, updates }] }, false),
+        commitPanelEdit: (id, updates) => edit({ panels: [{ id, updates }] }),
+        // Opening is a viewing action, independent of design locks, bindings and history.
+        setFittingOpenings: (ids, open) => set((state) => {
+          if (!Number.isFinite(open)) return state
+          const selected = new Set(ids), value = Math.max(0, Math.min(1, open))
+          const fittings = state.fittings.map((f) => selected.has(f.id) && f.open !== value ? { ...f, open: value } : f)
+          return fittings.some((f, i) => f !== state.fittings[i]) ? { fittings } : state
+        }),
+        loadDocument: (doc) => {
+          const checked = parseProjectDocument(doc)
+          set((state) => ({ ...checked, past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [], selectedIds: [] }))
+        },
+        removeProfile: (id) => transact((state) => state.profiles.some((p) => p.id === id && !p.locked)
+          ? { profiles: withFixedProfileCuts(state.profiles, undefined, state.throughRule).filter((p) => p.id !== id) } : {}, true,
+          (state, doc) => survivingSelection(state.selectedIds, doc)),
+        removeSelected: () => transact((state) => {
+          const ids = new Set(state.selectedIds), removable = (p: { id: string; locked?: boolean }) => ids.has(p.id) && !p.locked
+          const profiles = state.profiles.some(removable) ? withFixedProfileCuts(state.profiles, undefined, state.throughRule) : state.profiles
+          return { profiles: profiles.filter((p) => !removable(p)), connectors: state.connectors.filter((p) => !removable(p)),
+            panels: state.panels.filter((p) => !removable(p)), fittings: state.fittings.filter((p) => !removable(p)) }
+        }, true, (state, doc) => survivingSelection(state.selectedIds, doc)),
+        toggleLockSelected: () => transact((state) => {
+          const ids = new Set(state.selectedIds)
+          const locked = partKinds.some((kind) => state[kind].some((p) => ids.has(p.id) && !p.locked))
+          const profiles = locked && state.profiles.some((p) => ids.has(p.id)) ? withFixedProfileCuts(state.profiles, undefined, state.throughRule) : state.profiles
+          return { profiles: profiles.map((p) => ids.has(p.id) ? { ...p, locked } : p),
+            connectors: state.connectors.map((p) => ids.has(p.id) ? { ...p, locked } : p),
+            panels: state.panels.map((p) => ids.has(p.id) ? { ...p, locked } : p), fittings: state.fittings.map((p) => ids.has(p.id) ? { ...p, locked } : p) }
+        }),
+        clearAll: () => transact(() => ({ profiles: [], connectors: [], panels: [], fittings: [] }), true, []),
+        addConnector: (connector) => transact((state) => ({ connectors: [...state.connectors, connector] })),
+        removeConnector: (id) => transact((state) => ({ connectors: state.connectors.filter((c) => c.id !== id || c.locked) }), true, (state, doc) => survivingSelection(state.selectedIds, doc)),
+        removeConnectors: (ids, history = true) => transact((state) => ({ connectors: state.connectors.filter((c) => !ids.includes(c.id) || c.locked) }), history, (state, doc) => survivingSelection(state.selectedIds, doc)),
+        selectItem: (id, multi = false) => set((state) => ({ selectedIds: multi ? state.selectedIds.includes(id) ? state.selectedIds.filter((v) => v !== id) : [...state.selectedIds, id] : [id] })),
+        selectItems: (selectedIds) => set({ selectedIds }), clearSelection: () => set({ selectedIds: [] }),
+        selectProfile: (id) => set({ selectedIds: id ? [id] : [] }),
+        updateProfile: (id, updates, options) => edit({ profiles: [{ id, updates }] }, options?.history ?? false),
+        updateProfiles: (profiles, options) => edit({ profiles }, options?.history ?? false),
+        commitProfileEdit: (id, updates) => edit({ profiles: [{ id, updates }] }),
+        commitProfilesEdit: (profiles) => edit({ profiles }),
+        commitTransform: (updates) => edit(updates),
+        updateParts: (updates, options) => edit(updates, options?.history ?? false),
+        updateConnector: (id, updates) => edit({ connectors: [{ id, updates }] }, false),
+        snapshotHistory: () => set((state) => ({ past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] })),
+        undo: () => set((state) => {
+          if (!state.past.length) return state
+          const prev = state.past[state.past.length - 1]
+          return { ...prev, panels: prev.panels ?? [], fittings: prev.fittings ?? [], throughRule: prev.throughRule ?? 'rails',
+            past: state.past.slice(0, -1), future: [takeSnapshot(state), ...state.future.slice(0, MAX_HISTORY - 1)], selectedIds: survivingSelection(state.selectedIds, prev) }
+        }),
+        redo: () => set((state) => {
+          if (!state.future.length) return state
+          const next = state.future[0]
+          return { ...next, panels: next.panels ?? [], fittings: next.fittings ?? [], throughRule: next.throughRule ?? 'rails',
+            past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: state.future.slice(1), selectedIds: survivingSelection(state.selectedIds, next) }
+        }),
+      }
+    },
     {
-      name: 'aluminum-designer-store',
-      storage: documentStorage,
+      name: 'aluminum-designer-store', storage: documentStorage,
       partialize: (state) => ({ version: PROJECT_VERSION, profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, throughRule: state.throughRule }),
-    }
-  )
+    },
+  ),
 )
 
 // The compatibility geometry API reads this rule. Synchronize before scene/log subscribers

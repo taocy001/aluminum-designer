@@ -2,7 +2,9 @@ import React, { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { useToolStore } from '../store/useToolStore'
-import { noteNext } from '../utils/opLog'
+import { withFixedProfileCuts } from '../utils/jointUtils'
+import { reportEditResult } from '../utils/editFeedback'
+import type { EditResult } from '../utils/openingBindings'
 import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData } from '../store/useStore'
 import { getProfileDir } from '../utils/geometryCore'
 import { closestParamLineToRay } from '../utils/pickUtils'
@@ -37,9 +39,15 @@ const DragHandler: React.FC = () => {
   const shiftHeld = useRef(false)
   const dragBaseFree = useRef(false)
   const pointerKind = useRef('mouse')
+  const rejectedGesture = useRef('')
 
   useEffect(() => {
     const canvas = gl.domElement
+    const feedback = (result: EditResult) => {
+      if (result.status !== 'rejected') { rejectedGesture.current = ''; return }
+      const key = `${result.reason}:${result.partIds.join(',')}`
+      if (key !== rejectedGesture.current) { rejectedGesture.current = key; reportEditResult(result) }
+    }
     const finishGesture = () => {
       canvas.dispatchEvent(new Event('aluframe:consume-pointer'))
       const ts = useToolStore.getState()
@@ -47,6 +55,7 @@ const DragHandler: React.FC = () => {
     }
     const unsubscribe = useToolStore.subscribe((state, previous) => {
       if (!state.resize) resizingGesture.current = null
+      if (!state.resize && !state.isDragging) rejectedGesture.current = ''
       if (state.isDragging && !previous.isDragging) {
         // A touch gesture can deliberately start free without a physical Shift key.
         dragBaseFree.current = state.dragFree && (!shiftHeld.current || pointerKind.current === 'touch')
@@ -101,7 +110,7 @@ const DragHandler: React.FC = () => {
       const ts = useToolStore.getState()
       const rs = ts.resize
       if (!rs) return false
-      let store = useStore.getState()
+      const store = useStore.getState()
       let profile = store.profiles.find((p) => p.id === rs.id)
       if (!profile) return false
       if (ts.viewMode || profile.locked) {
@@ -120,12 +129,8 @@ const DragHandler: React.FC = () => {
       // and keep the offset between the press point and the end so nothing jumps.
       if (resizingGesture.current !== rs) {
         if (Math.hypot(e.clientX - rs.downX, e.clientY - rs.downY) <= RESIZE_SLOP_PX) return true
-        resizingGesture.current = rs
-        store.snapshotHistory()
-        store.freezeProfileCuts()
-        store = useStore.getState()
-        profile = store.profiles.find((p) => p.id === rs.id)!
-        ts.markDragMoved()   // the gesture now owns a history entry; an exact commit must not add a second
+        // Prepare physical cuts locally. Rejection must not freeze the real document.
+        profile = withFixedProfileCuts(store.profiles, undefined, store.throughRule).find((p) => p.id === rs.id)!
       }
 
       const signed = rs.end === 'start' ? -t : t
@@ -147,7 +152,9 @@ const DragHandler: React.FC = () => {
           position = posFor(length)
         }
       }
-      store.updateProfile(rs.id, { length, position })
+      const result = store.updateProfile(rs.id, { length, position }, { history: !ts.dragMoved })
+      feedback(result)
+      if (result.status === 'applied') { resizingGesture.current = rs; ts.markDragMoved() }
       ts.setDragConflict(movingPartsConflict(useStore.getState().profiles, new Set([rs.id])))
       return true
     }
@@ -172,7 +179,7 @@ const DragHandler: React.FC = () => {
       // a gizmo arrow constrains the move to its own axis
       if (ts.dragAxis === 'x') { delta.y = 0; delta.z = 0 }
       if (ts.dragAxis === 'z') { delta.x = 0; delta.y = 0 }
-      let store = useStore.getState()
+      const store = useStore.getState()
       const leadPart = store.profiles.find((p) => p.id === dragProfileId)
         ?? store.connectors.find((c) => c.id === dragProfileId)
         ?? store.panels.find((b) => b.id === dragProfileId)
@@ -182,19 +189,10 @@ const DragHandler: React.FC = () => {
       const ids = Object.keys(dragGroupOrigins)
       const dragIds = new Set(ids.length ? ids : [dragProfileId])
 
-      if (!ts.dragMoved) {
-        if (delta.lengthSq() <= 0.25) return
-        // First real movement: record one undo entry for the whole drag
-        ts.markDragMoved()
-        store.snapshotHistory()
-        // A move is a rigid transformation. Freeze the existing cut faces before
-        // choosing a snap, so the reference cannot stretch underneath the pointer.
-        if (store.profiles.some((p) => dragIds.has(p.id) && !p.locked)) {
-          store.freezeProfileCuts()
-          store = useStore.getState()
-        }
-      }
-      const all = store.profiles
+      if (!ts.dragMoved && delta.lengthSq() <= 0.25) return
+      // Snapping uses physical cuts, but the document changes only after validation.
+      const all = store.profiles.some((p) => dragIds.has(p.id) && !p.locked)
+        ? withFixedProfileCuts(store.profiles, undefined, store.throughRule) : store.profiles
       const others = all.filter((p) => !dragIds.has(p.id))
       const single = dragIds.size === 1
 
@@ -298,7 +296,10 @@ const DragHandler: React.FC = () => {
       // drag silently sticking. Only the floor rule still clamps (handled above).
       // one write per frame: separate sets would re-render the scene N times and show
       // a frame where the connectors have moved but the members have not
-      store.updateParts({ profiles: updates, connectors: connectorUpdates, panels: panelUpdates, fittings: fittingUpdates })
+      const result = store.updateParts({ profiles: updates, connectors: connectorUpdates, panels: panelUpdates, fittings: fittingUpdates }, { history: !ts.dragMoved })
+      feedback(result)
+      if (result.status === 'applied') ts.markDragMoved()
+      if (result.status === 'rejected') { ts.setSnapRefs([]); ts.setSnapGuides([]) }
       ts.setDragConflict(movingPartsConflict(useStore.getState().profiles, new Set(updates.map((u) => u.id))))
     }
 

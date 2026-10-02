@@ -6,6 +6,7 @@ import { sharedEdge } from './specCompat'
 import { computeAllTrims, withFixedProfileCuts } from './jointUtils'
 import { findConflicts } from './analysis'
 import { rollProfile } from './faceAlign'
+import { reportEditResult } from './editFeedback'
 
 /**
  * Repair unsupported joint seats by trying a quarter-turn first, then a lateral shift.
@@ -94,7 +95,7 @@ const worse = (before: Score, after: Score) =>
 const better = (before: Score, after: Score) =>
   after.bad < before.bad && after.clashes <= before.clashes && after.links >= before.links
 
-/** a quarter turn about the member's own axis, which moves nothing */
+/** Rotate 90° around local Z without changing centerline endpoints. */
 function rolled(p: ProfileData): ProfileData {
   const q = new THREE.Quaternion(...p.quaternion).normalize()
   const turn = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2)
@@ -137,6 +138,8 @@ function scoreRun(profiles: ProfileData[], ids: Set<string>): Score {
 }
 
 export interface Repair {
+  /** The proposed changes could not be applied to the current document. */
+  rejected?: boolean
   /** joints that could not be bolted before, and after */
   before: number
   after: number
@@ -207,9 +210,10 @@ export function repairJoints(): Repair {
   const store = useStore.getState()
   const { profiles, repair } = planRepair(withFixedProfileCuts(store.profiles))
   if (repair.steps.length === 0) return repair
-  store.commitTransform({
+  const result = store.commitTransform({
     profiles: profiles.map((p) => ({ id: p.id, updates: { position: p.position, quaternion: p.quaternion } })),
   })
+  if (!reportEditResult(result)) return { ...repair, after: repair.before, steps: [], rejected: result.status === 'rejected' }
   void rollProfile
   return repair
 }

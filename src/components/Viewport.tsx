@@ -384,11 +384,7 @@ const DevHook: React.FC = () => {
       const orbit = controls as any
       if (orbit) { orbit.target.set(...target); orbit.update() } else camera.lookAt(...target)
     }
-    // The box on screen, not the size R3F last recorded. They are the same once the layout
-    // has settled and different while it has not, and everything else that turns a point
-    // into a pixel — picking, the gizmo, the pointer itself — measures the box. A hook that
-    // measured something else put every test's clicks tens of pixels off the thing they
-    // were aiming at, which read as flakiness.
+    // Project using the current canvas DOM bounds, including layout transitions.
     w.__aluframe.worldToClient = (x: number, y: number, z: number) => {
       // Refresh camera matrices before projecting world coordinates.
       camera.updateMatrixWorld()

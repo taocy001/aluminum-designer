@@ -55,7 +55,7 @@ export interface ConnectorSpecEntry {
   labelZh: string
   labelEn: string
   fit: ConnectorFit
-  /** how the modelled geometry is laid out, read off Connector.tsx */
+  /** Model axes defined in connectorGeometry.ts. */
   axes: FitAxes
   fasteners: FastenerRecipe
   /** a bracket in the sense of "what a butt joint needs" */
@@ -135,13 +135,8 @@ export function nutLabel(series: ConnectorSeries, language: 'zh' | 'en'): string
  */
 export function connectorExtent(type: string): { centre: [number, number, number]; half: [number, number, number] } {
   // The cap's plate is 20×20×3, with a 10×10×6 plug centred at local Z=4.
-  // A generic inline envelope falsely buries ten millimetres of it inside its host.
   if (type === 'end-cap') return { centre: [0, 0, 2.75], half: [10, 10, 4.25] }
-  // An inside corner connector is the one that is *not* in the corner: its two legs slide
-  // into the slots of the two members and nothing of it stands proud of either face. That is
-  // why it is the part used where a drawer runs or a door closes. Modelled as the exposed
-  // angle, every drawer bay's front corners held thirty millimetres of bracket in the path of
-  // the runner. What remains outside the metal is the vertex, and that is all that can clash.
+  // Only the exposed vertex participates in collisions; slot-inserted legs are excluded.
   if (type === 'inside-corner') return { centre: [1, 1, 0], half: [1, 1, 3] }
   switch (connectorEntry(type)?.seat) {
     case 'angle':
@@ -152,13 +147,7 @@ export function connectorExtent(type: string): { centre: [number, number, number
     case 'inline':
       return { centre: [0, 0, 0], half: [30, 10, 10] }
     default: {
-      // A face-mounted part lies *on* the metal. Centred on the surface, half of every hinge,
-      // pivot and cross plate was inside the member it is bolted to — which is what the
-      // interference check says when it is asked, and nothing asked it of a whole drawing
-      // until boards and fittings came under the same check. `primary` is the plate's normal,
-      // and it is a different axis for each of these parts, so the offset follows it.
-      //
-      // A T-nut is the exception: it drops into the slot, which is the whole of its job.
+      // Offset face-mounted envelopes along the primary axis; T-nuts stay slot-centered.
       const entry = connectorEntry(type)
       const axis = entry?.axes.primary ?? 'z'
       const centre: [number, number, number] = [0, 0, 0]

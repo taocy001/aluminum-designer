@@ -8,6 +8,7 @@ import { specDims } from './specUtils'
 import { translations } from './translations'
 import { computeTrims, withFixedProfileCuts } from './jointUtils'
 import { profileBodyEndpoints, profileFace, type ProfileFaceRef } from './profileFaces'
+import { reportEditResult } from './editFeedback'
 
 const JOINT_TOL = 30
 const FLUSH_TOL = 0.5
@@ -329,8 +330,7 @@ export function rollProfile(id: string, quarters = 1): boolean {
   const axis = getProfileDir(p)
   const spin = new THREE.Quaternion().setFromAxisAngle(axis, (Math.PI / 2) * quarters)
   const q = spin.multiply(new THREE.Quaternion(...p.quaternion)).normalize()
-  store.commitTransform({ profiles: [{ id, updates: { quaternion: [q.x, q.y, q.z, q.w] } }] })
-  return true
+  return reportEditResult(store.commitTransform({ profiles: [{ id, updates: { quaternion: [q.x, q.y, q.z, q.w] } }] }))
 }
 
 /** Which way a rectangular section is turned, for the panel: the direction its long side faces */

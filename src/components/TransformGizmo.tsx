@@ -47,12 +47,7 @@ const ARC_START = 0.34
 const ARC_SWEEP = Math.PI / 2 - 0.68
 const ARC_RADIUS = 0.78
 
-/**
- * Move arrows and rotation arcs on the selection, the way every 3D tool does it: a straight
- * arrow per world axis for sliding along it (the green one is how a part is moved vertically,
- * without a modifier), and an arc lying in each axis' own plane for turning 90° about it.
- * Orientation plus colour says which axis a handle belongs to, so nothing has to be labelled.
- */
+/** World-axis arrows translate the selection; each arc rotates it 90° about its axis. */
 const TransformGizmo: React.FC = () => {
   const { camera } = useThree()
   const selectedIds = useStore((s) => s.selectedIds)
@@ -148,18 +143,15 @@ const TransformGizmo: React.FC = () => {
                 <coneGeometry args={[0.075, 0.2, 14]} />
                 <meshBasicMaterial color={colorFor('move', axis)} depthTest={false} transparent opacity={0.95} />
               </mesh>
-              {/* an invisible sleeve makes the thin arrow comfortable to grab */}
+              {/* A larger hidden cylinder receives pointer hits. */}
               <mesh ref={register(`move:${axis}`)} position={[0, 0.1, 0]} visible={false}>
-                {/* the sleeve you actually hit, three times the drawn shaft: aiming at a
-                    two-pixel arrow is not aiming, it is luck */}
                 <cylinderGeometry args={[0.12, 0.12, 1.06, 8]} />
                 <meshBasicMaterial />
               </mesh>
               <object3D ref={registerProbe(`move:${axis}`)} position={[0, 0.25, 0]} />
             </group>
 
-            {/* rotate: an arc lying in the plane this axis turns in, kept clear of the arrows
-                at either end so the two never fight over the same pixels */}
+            {/* Rotation arcs stay clear of the translation arrows. */}
             <group quaternion={quat}>
               <group rotation={[Math.PI / 2, 0, 0]}>
                 <mesh rotation={[0, 0, ARC_START]} renderOrder={25}>

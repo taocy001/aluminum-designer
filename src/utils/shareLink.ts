@@ -15,18 +15,19 @@ export interface ShareDoc {
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-/** Compact columns for geometry and fitting parameters; reads link versions 1–5. */
+/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–6. */
 function pack(doc: ShareDoc): unknown[] {
   const checked = validateProjectDocument(doc)
   return [
-    5, checked.throughRule,
-    checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null]),
-    checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked]),
-    checked.panels.map((b) => [b.width, b.height, b.thickness, b.position, b.quaternion, b.material, !!b.locked]),
+    6, checked.throughRule,
+    checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null,
+      p.id, p.runnerBinding ?? null]),
+    checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked, c.id, c.supportBinding ?? null]),
+    checked.panels.map((b) => [b.width, b.height, b.thickness, b.position, b.quaternion, b.material, !!b.locked, b.id, b.openingBinding ?? null]),
     checked.fittings.map((f) => [
       f.kind, f.width, f.height, f.depth, f.position, f.quaternion,
       f.material, f.hinge ?? '', f.hingeType ?? '', f.overlay ?? '', f.swing ?? 0,
-      f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '', f.drawer ?? null,
+      f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '', f.drawer ?? null, f.id, f.openingBinding ?? null,
     ]),
   ]
 }
@@ -34,7 +35,7 @@ function pack(doc: ShareDoc): unknown[] {
 function unpack(raw: unknown): ParsedProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5) throw new Error('unknown link version')
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6) throw new Error('unknown link version')
   const [profiles, connectors, panels, fittings] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
   if (raw.length !== (version >= 2 ? 6 : 5)
     || ![profiles, connectors, panels, fittings].every(Array.isArray)) throw new Error('incomplete link')
@@ -42,40 +43,43 @@ function unpack(raw: unknown): ParsedProjectDocument {
   let n = 0
   const id = (p: string) => `${p}-s${(n++).toString(36)}`
   return parseProjectDocument({
-    version: version >= 5 ? PROJECT_VERSION : version === 4 ? 6 : undefined,
+    version: version === 6 ? PROJECT_VERSION : version === 5 ? 7 : version === 4 ? 6 : undefined,
     throughRule,
     profiles: (profiles ?? []).map((row) => {
-      const [spec, length, position, quaternion, locked, miterCuts, holes, fixedTrims] = row as [string, number, number[], number[], number, ProfileData['miterCuts'], ProfileData['holes'], ProfileData['fixedTrims'] | null]
+      const [spec, length, position, quaternion, locked, miterCuts, holes, fixedTrims, originalId, runnerBinding] = row as [string, number, number[], number[], number, ProfileData['miterCuts'], ProfileData['holes'], ProfileData['fixedTrims'] | null, string, ProfileData['runnerBinding'] | null]
       return {
-        id: id('p'), spec: spec as ProfileData['spec'], length,
+        id: version >= 6 ? originalId : id('p'), spec: spec as ProfileData['spec'], length,
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
         miterCuts: miterCuts ?? [], holes: holes ?? [], ...(locked ? { locked: true } : {}),
         ...(version >= 3 && fixedTrims !== null && fixedTrims !== undefined ? { fixedTrims } : {}),
+        ...(version >= 6 && runnerBinding !== null && runnerBinding !== undefined ? { runnerBinding } : {}),
       }
     }),
     connectors: (connectors ?? []).map((row) => {
-      const [type, series, position, quaternion, locked] = row as [string, number, number[], number[], boolean]
+      const [type, series, position, quaternion, locked, originalId, supportBinding] = row as [string, number, number[], number[], boolean, string, ConnectorData['supportBinding'] | null]
       return {
-        id: id('c'), type, ...(locked ? { locked: true } : {}), series: series as ConnectorData['series'],
+        id: version >= 6 ? originalId : id('c'), type, ...(locked ? { locked: true } : {}), series: series as ConnectorData['series'],
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
+        ...(version >= 6 && supportBinding !== null && supportBinding !== undefined ? { supportBinding } : {}),
       }
     }),
     panels: (panels ?? []).map((row) => {
-      const [width, height, thickness, position, quaternion, material, locked] = row as [number, number, number, number[], number[], string, boolean]
+      const [width, height, thickness, position, quaternion, material, locked, originalId, openingBinding] = row as [number, number, number, number[], number[], string, boolean, string, PanelData['openingBinding'] | null]
       return {
-        id: id('b'), width, height, thickness, ...(locked ? { locked: true } : {}),
+        id: version >= 6 ? originalId : id('b'), width, height, thickness, ...(locked ? { locked: true } : {}),
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
         material: material as PanelData['material'],
+        ...(version >= 6 && openingBinding !== null && openingBinding !== undefined ? { openingBinding } : {}),
       }
     }),
     fittings: (fittings ?? []).map((row) => {
-      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked, meeting, drawer] =
-        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean, FittingData['meeting'] | '', FittingData['drawer'] | null]
+      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked, meeting, drawer, originalId, openingBinding] =
+        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean, FittingData['meeting'] | '', FittingData['drawer'] | null, string, FittingData['openingBinding'] | null]
       return {
-        id: id('f'), kind: kind as FittingData['kind'], width, height, depth,
+        id: version >= 6 ? originalId : id('f'), kind: kind as FittingData['kind'], width, height, depth,
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
         material: material as PanelData['material'], open: 0,
@@ -88,6 +92,7 @@ function unpack(raw: unknown): ParsedProjectDocument {
         ...(swing ? { swing } : {}),
         ...(version >= 4 && meeting !== undefined && meeting !== '' ? { meeting } : {}),
         ...(version >= 5 && drawer !== undefined && drawer !== null ? { drawer } : {}),
+        ...(version >= 6 && openingBinding !== undefined && openingBinding !== null ? { openingBinding } : {}),
       }
     }),
   })

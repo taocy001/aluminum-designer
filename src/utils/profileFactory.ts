@@ -6,6 +6,7 @@ import { faceAlignOnCreate, constrainDrawingFaces, type DrawingFaceOptions, type
 import { connectorSeatAt } from './bracketSeat'
 import { specDims } from './specUtils'
 import { translations } from './translations'
+import { reportEditResult } from './editFeedback'
 
 let idSeq = 0
 export function nextId(prefix: string): string {
@@ -117,15 +118,11 @@ export function prepareProfilePlacement(
     : { profile, issue: null, blocked: false }
 }
 
-/**
- * Add a profile. Interference no longer blocks placement — the member is created and the
- * conflicting parts are flagged in red, which keeps modelling fluid.
- */
+/** Create a profile and report geometric conflicts. */
 export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: ProfileSpec, faces: DrawingFaceOptions = {}): boolean {
   const { showToast, language } = useToolStore.getState()
   const t = translations[language]
-  // a frame is assembled face to face, not centreline to centreline: nudge the new member
-  // sideways so the faces its brackets will sit on line up with what it landed on
+  // Align section faces before applying explicit drawing constraints.
   const placement = prepareProfilePlacement(start, end, spec, useStore.getState().profiles, faces)
   if (!placement) { showToast(t.toastTooShort, 'error'); return false }
   if (placement.issue) {
@@ -136,11 +133,10 @@ export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: Pr
   }
   if (placement.blocked) return false
   const candidate = placement.profile
-  if (placement.referenceProfiles) {
-    useStore.getState().commitDocument({ profiles: [...placement.referenceProfiles, candidate] })
-  } else {
-    useStore.getState().addProfile(candidate)
-  }
+  const result = placement.referenceProfiles
+    ? useStore.getState().commitDocument({ profiles: [...placement.referenceProfiles, candidate] })
+    : useStore.getState().addProfile(candidate)
+  if (!reportEditResult(result)) return false
   const st = useStore.getState()
   const { conflictIds } = analyzeFrame(st.profiles, st.connectors, st.panels, st.fittings)
   if (conflictIds.has(candidate.id)) showToast(t.toastOverlap, 'error')
@@ -159,11 +155,11 @@ export function placeConnector(point: THREE.Vector3, type: string, surfaceNormal
   if (connectors.some((c) => c.type === type && (c.series ?? 20) === seat.series
     && new THREE.Vector3(...c.position).distanceTo(position) <= 1
     && Math.abs(new THREE.Quaternion(...c.quaternion).normalize().dot(quaternion)) > 0.999)) return
-  addConnector({
+  reportEditResult(addConnector({
     id: nextId('c'),
     type,
     series: seat.series,
     position: seat.position,
     quaternion: seat.quaternion,
-  })
+  }))
 }

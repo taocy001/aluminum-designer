@@ -5,6 +5,7 @@ import { vet } from './suggestGate'
 import { computeTrims } from './jointUtils'
 import { noteNext } from './opLog'
 import { translations } from './translations'
+import { reportEditResult } from './editFeedback'
 
 /**
  * Suggest, accept, skip, drop — the four things the 建议 button and its ghost do.
@@ -59,7 +60,7 @@ export function acceptSuggestion(): boolean {
   accepting = true
   try {
     noteNext(`suggest: ${s.cand.rule}`)
-    useStore.getState().addItems([member], [], true)
+    if (!reportEditResult(useStore.getState().addItems([member], [], true))) return false
   } finally {
     accepting = false
   }

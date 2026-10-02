@@ -1,3 +1,4 @@
+import { reportEditResult } from './utils/editFeedback'
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Viewport from './components/Viewport'
 import Sidebar from './components/Sidebar'
@@ -190,7 +191,7 @@ function App() {
       }
 
       if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return }
-      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); return }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); reportEditResult(removeSelected()); return }
       // R requests a rotation axis; X/Y/Z supplies it.
       if (pendingRotate) {
         const k = e.key.toLowerCase()

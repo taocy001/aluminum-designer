@@ -1,3 +1,4 @@
+import { reportEditResult } from '../utils/editFeedback'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Crosshair, BoxSelect, Maximize, Ruler, Waypoints } from 'lucide-react'
 import { useStore } from '../store/useStore'
@@ -101,8 +102,7 @@ const QuickMenu: React.FC = () => {
         </div>
       ))}
       {hasSelection && <div className="h-px bg-white/10 my-1" />}
-      {/* Double click zooms in now — always, on whatever is under it — so taking the whole
-          joined-up structure lives here instead. */}
+      {/* Select profiles connected to the current selection. */}
       {hasSelection && <Item testId="quick-connected" tip={t.hintSelectConnected}
         onClick={run(() => { const id = selectedIds[0]; if (id) selectConnected(id) })}>
         <Waypoints size={12} />{t.selectConnected}
@@ -126,7 +126,7 @@ const QuickMenu: React.FC = () => {
       {hasSelection && <Item edit testId="quick-lock" tip={t.lockHint} onClick={run(toggleLockSelected)}>
         {locked ? <Lock size={12} className="text-amber-400" /> : <LockOpen size={12} />}{locked ? t.unlock : t.lock}
       </Item>}
-      {hasSelection && <Item edit testId="quick-delete" danger tip={t.hintDelete} onClick={run(removeSelected)}><Trash2 size={12} />{t.delete}</Item>}
+      {hasSelection && <Item edit testId="quick-delete" danger tip={t.hintDelete} onClick={run(() => { reportEditResult(removeSelected()) })}><Trash2 size={12} />{t.delete}</Item>}
     </div>
   )
 }

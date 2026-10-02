@@ -1,3 +1,5 @@
+import { reportEditResult } from '../utils/editFeedback'
+import OpeningBindingEditor, { SupportBindingEditor } from './OpeningBindingEditor'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode, Link2, Wrench } from 'lucide-react'
@@ -43,7 +45,7 @@ function facingLabel(p: ProfileData): string {
   return `${long} → ${value >= 0 ? '+' : '−'}${name}`
 }
 
-/** every button that reads or writes a file wears the same coat */
+/** Shared file action button style. */
 const FILE_BTN = 'flex items-center justify-center gap-1.5 py-2 px-1 bg-slate-800/60 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800/60 border border-white/5 text-slate-300 rounded-lg text-[10px] font-bold'
 
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
@@ -189,6 +191,7 @@ const Sidebar: React.FC = () => {
   const [arraySpacingText, setArraySpacingText] = useState('300')
   const [workPlaneText, setWorkPlaneText] = useState('0')
   const [drawerHeightText, setDrawerHeightText] = useState('200')
+  const [linkDrawerSupports, setLinkDrawerSupports] = useState(false)
   const [drawerCountText, setDrawerCountText] = useState('1')
   const [hingeSide, setHingeSide] = useState<HingeSide>('left')
   const [hingeType, setHingeType] = useState<HingeType>('cup')
@@ -207,11 +210,7 @@ const Sidebar: React.FC = () => {
   // the highest point of whatever is selected, so the work plane can be put on top of it
   const selectionTopY = useMemo(() => selectedSolidTop({ profiles, connectors, panels, fittings }, selectedIds, trims),
     [selectedIds, profiles, connectors, panels, fittings, trims])
-  /**
-   * On a phone the panel is a sheet you pull up, not a column beside the drawing: there is
-   * no room for both, and the drawing is what you came for. It starts out of the way, and
-   * the rail that opens it sits along the edge where a thumb already is.
-   */
+  // Below 768 px, use a collapsed bottom sheet.
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < 768)
@@ -483,7 +482,7 @@ const Sidebar: React.FC = () => {
                     const values: Record<string, number> = {}
                     for (const prm of chosenTemplate.params) values[prm.key] = templateParams[prm.key] ?? prm.value
                     const made = chosenTemplate.build(values)
-                    useStore.getState().addItems(made, [], true)
+                    if (!reportEditResult(useStore.getState().addItems(made, [], true))) return
                     showToast(t.toastTemplateAdded(made.length), 'success')
                     setTemplateId(null)
                   }}
@@ -512,7 +511,7 @@ const Sidebar: React.FC = () => {
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.throughRule}</label>
             <div className="grid grid-cols-2 gap-1" title={t.throughRuleHint}>
               {([['rails', t.throughRails], ['posts', t.throughPosts]] as const).map(([rule, label]) => (
-                <button key={rule} disabled={viewMode} onClick={() => setThroughRule(rule)} data-testid={`through-${rule}`} aria-pressed={throughRule === rule}
+                <button key={rule} disabled={viewMode} onClick={() => reportEditResult(setThroughRule(rule))} data-testid={`through-${rule}`} aria-pressed={throughRule === rule}
                   title={t.throughRuleHint}
                   className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
                     throughRule === rule ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
@@ -523,7 +522,7 @@ const Sidebar: React.FC = () => {
             <p className="mt-2 text-[10px] leading-relaxed text-slate-400">{t.moveKeepsLength}</p>
             <button data-testid="recalculate-joints" title={t.recalculateJointsHint}
               disabled={viewMode || !profiles.some((p) => p.fixedTrims && !p.locked)}
-              onClick={() => recalculateJoints()}
+              onClick={() => reportEditResult(recalculateJoints())}
               className="mt-1 w-full rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700/50 disabled:opacity-35 disabled:cursor-not-allowed">
               {t.recalculateJoints}
             </button>
@@ -742,15 +741,16 @@ const Sidebar: React.FC = () => {
                   className={`p-1.5 rounded-lg ${selectionLocked ? 'text-amber-400 bg-amber-400/10' : 'text-slate-400 hover:bg-white/5'}`}>
                   {selectionLocked ? <Lock size={14} /> : <LockOpen size={14} />}
                 </button>
-                <button onClick={removeSelected} disabled={viewMode || selectionLocked} data-testid="delete-selected" aria-label={t.delete} title={selectionLocked ? t.toastLocked : t.delete}
+                <button onClick={() => reportEditResult(removeSelected())} disabled={viewMode || selectionLocked} data-testid="delete-selected" aria-label={t.delete} title={selectionLocked ? t.toastLocked : t.delete}
                   className="text-red-400 hover:bg-red-400/10 disabled:opacity-30 p-1.5 rounded-lg"><Trash2 size={14} /></button>
               </div>
             </div>
             {selectedProfile && (
               <fieldset disabled={viewMode} className="space-y-3">
+                <SupportBindingEditor part={selectedProfile} />
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.spec}</span>
-                  <select value={selectedProfile.spec} disabled={selectedProfile.locked} onChange={(e) => setProfileSpec(selectedProfile.id, e.target.value as ProfileSpec)}
+                  <select value={selectedProfile.spec} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onChange={(e) => setProfileSpec(selectedProfile.id, e.target.value as ProfileSpec)}
                     aria-label={t.spec}
                     className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-blue-400 outline-none disabled:opacity-40 disabled:cursor-not-allowed">
                     {ALL_SPECS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -762,13 +762,13 @@ const Sidebar: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.length}</span>
-                  <NumField name={t.length} value={selectedProfile.length} disabled={selectedProfile.locked} onCommit={(v) => setProfileLength(selectedProfile.id, v)} />
+                  <NumField name={t.length} value={selectedProfile.length} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onCommit={(v) => setProfileLength(selectedProfile.id, v)} />
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.position}</span>
                   <div className="grid grid-cols-3 gap-1">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
-                      <NumField key={ax} label={ax} name={`${t.position} ${ax}`} value={selectedProfile.position[i]} disabled={selectedProfile.locked} onCommit={(v) => {
+                      <NumField key={ax} label={ax} name={`${t.position} ${ax}`} value={selectedProfile.position[i]} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onCommit={(v) => {
                         const pos = [...selectedProfile.position] as [number, number, number]
                         pos[i] = v
                         setProfilePosition(selectedProfile.id, pos)
@@ -784,7 +784,7 @@ const Sidebar: React.FC = () => {
                     <span className="text-slate-500" title={t.sectionRollHint}>{t.sectionRoll}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-slate-300 text-[11px]">{facingLabel(selectedProfile)}</span>
-                      <button onClick={() => rollProfile(selectedProfile.id)} data-testid="roll-section" disabled={selectedProfile.locked}
+                      <button onClick={() => rollProfile(selectedProfile.id)} data-testid="roll-section" disabled={selectedProfile.locked || !!selectedProfile.runnerBinding}
                         title={t.hintRoll}
                         className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 text-[10px] font-bold">
                         {t.rollQuarter}
@@ -798,7 +798,7 @@ const Sidebar: React.FC = () => {
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.endPosition}</span>
                   <div className="grid grid-cols-3 gap-1">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
-                      <NumField key={ax} label={ax} name={`${t.endPosition} ${ax}`} value={selectedEnd[i]} disabled={selectedProfile.locked} onCommit={(v) => {
+                      <NumField key={ax} label={ax} name={`${t.endPosition} ${ax}`} value={selectedEnd[i]} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onCommit={(v) => {
                         const to = [...selectedEnd] as [number, number, number]
                         to[i] = v
                         setProfileEnd(selectedProfile.id, to)
@@ -830,13 +830,14 @@ const Sidebar: React.FC = () => {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-1">
-                  <button onClick={() => flipProfile(selectedProfile.id)} disabled={selectedProfile.locked} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
+                  <button onClick={() => flipProfile(selectedProfile.id)} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
                   <button onClick={() => duplicateSelected()} title={`${t.duplicate} (Ctrl+D)`} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><Copy size={12} />{t.duplicate}</button>
                 </div>
               </fieldset>
             )}
             {selectedConnector && !selectedProfile && (
               <fieldset disabled={viewMode || selectedConnector.locked} className="space-y-3">
+                <SupportBindingEditor part={selectedConnector} />
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.connectorProps}</span>
                   <span className="text-emerald-400 font-mono">{connectorLabel(selectedConnector.type, language)}</span>
@@ -897,16 +898,17 @@ const Sidebar: React.FC = () => {
                     : ''}</span>
                 </div>
                 <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-3 gap-1">
-                  <NumField label="W" name={t.widthMm} value={selectedFitting.width} step={10}
+                  <NumField label="W" name={t.widthMm} value={selectedFitting.width} step={10} disabled={!!selectedFitting.openingBinding}
                     onLive={(v, history) => liveParts(pickedFittingIds(), { width: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { width: v })} />
-                  <NumField label="H" name={t.heightMm} value={selectedFitting.height} step={10}
+                  <NumField label="H" name={t.heightMm} value={selectedFitting.height} step={10} disabled={selectedFitting.openingBinding?.mode === 'door'}
                     onLive={(v, history) => liveParts(pickedFittingIds(), { height: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { height: v })} />
-                  <NumField label="D" name={t.depthMm} value={selectedFitting.depth} step={10}
+                  <NumField label="D" name={t.depthMm} value={selectedFitting.depth} step={10} disabled={!!selectedFitting.openingBinding}
                     onLive={(v, history) => liveParts(pickedFittingIds(), { depth: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { depth: v })} />
                 </fieldset>
+                <OpeningBindingEditor key={selectedFitting.id} part={selectedFitting} kind="fitting" />
                 {selectedDrawerLayout && (
                   <fieldset disabled={viewMode || selectedFitting.locked} className="space-y-2 border-t border-white/5 pt-2" data-testid="drawer-config">
                     <p className="text-[11px] font-bold text-slate-400">{t.drawerConstruction}</p>
@@ -945,9 +947,13 @@ const Sidebar: React.FC = () => {
                         ))}
                       </div>
                     )}
+                    <label className="flex gap-2 text-[10px] text-slate-400">
+                      <input type="checkbox" data-testid="link-drawer-supports" checked={linkDrawerSupports}
+                        onChange={(e) => setLinkDrawerSupports(e.target.checked)} />{t.bindingLinkSupports}
+                    </label>
                     <button type="button" data-testid="add-drawer-supports" className="w-full rounded-lg bg-slate-700/50 py-1.5 text-[11px] text-slate-300 hover:bg-slate-700 disabled:opacity-40"
                       onClick={() => {
-                        const result = addDrawerSupports(pickedFittingIds())
+                        const result = addDrawerSupports(pickedFittingIds(), undefined, { linked: linkDrawerSupports })
                         showToast(result.failed.length ? t.drawerSupportsFailed(result.failed.length, result.generated.length)
                           : result.generated.length ? t.drawerSupportsAdded(result.generated.length) : t.drawerSupportsReady,
                         result.failed.length ? 'error' : 'success')
@@ -990,16 +996,17 @@ const Sidebar: React.FC = () => {
                   <div className="text-[10px] text-orange-400 font-mono" data-testid="panel-multi">{t.editingCount(pickedPanels.length)}</div>
                 )}
                 <div className="grid grid-cols-3 gap-1">
-                  <NumField label="W" name={t.widthMm} value={selectedPanel.width} step={10}
+                  <NumField label="W" name={t.widthMm} value={selectedPanel.width} step={10} disabled={!!selectedPanel.openingBinding}
                     onLive={(v, history) => liveParts(pickedPanelIds(), { width: v }, history)}
                     onCommit={(v) => setPanelsSize(pickedPanelIds(), { width: v })} />
-                  <NumField label="H" name={t.heightMm} value={selectedPanel.height} step={10}
+                  <NumField label="H" name={t.heightMm} value={selectedPanel.height} step={10} disabled={!!selectedPanel.openingBinding}
                     onLive={(v, history) => liveParts(pickedPanelIds(), { height: v }, history)}
                     onCommit={(v) => setPanelsSize(pickedPanelIds(), { height: v })} />
                   <NumField label="T" name={t.thicknessMm} value={selectedPanel.thickness} step={1}
                     onLive={(v, history) => liveParts(pickedPanelIds(), { thickness: v }, history)}
                     onCommit={(v) => setPanelsSize(pickedPanelIds(), { thickness: v })} />
                 </div>
+                <OpeningBindingEditor key={selectedPanel.id} part={selectedPanel} kind="panel" />
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.panelMaterial}</span>
                   <select value={selectedPanel.material} data-testid="panel-material"
@@ -1195,6 +1202,7 @@ const Sidebar: React.FC = () => {
           <button data-testid="repair-joints" title={t.alignFacesHint} disabled={viewMode}
             onClick={() => {
               const r = repairJoints()
+              if (r.rejected) return
               showToast(r.steps.length ? t.toastRepaired(r.before - r.after, r.after) : t.toastRepairNothing,
                 r.steps.length ? 'success' : 'info')
             }}

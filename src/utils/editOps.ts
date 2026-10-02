@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 import { noteNext } from './opLog'
+import { reportEditResult } from './editFeedback'
+import { remapCopiedBindings } from './bindingCopies'
 import { useStore, type ConnectorData, type FittingData, type PanelData, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { closestOnSegment, getProfileEndpoints } from './geometryCore'
@@ -71,15 +73,15 @@ export function selectionLocked(doc: PartDocument, ids: string[]): boolean {
 }
 
 /** Add every kind of part and select the whole copy in one document transaction. */
-function addCopies(copies: PartDocument): void {
+function addCopies(copies: PartDocument): boolean {
   const store = useStore.getState()
   const ids = [...copies.profiles, ...copies.connectors, ...copies.panels, ...copies.fittings].map((part) => part.id)
-  store.commitDocument({
+  return reportEditResult(store.commitDocument({
     profiles: [...(copies.profiles.length ? withFixedProfileCuts(store.profiles) : store.profiles), ...copies.profiles],
     connectors: [...store.connectors, ...copies.connectors],
     panels: [...store.panels, ...copies.panels],
     fittings: [...store.fittings, ...copies.fittings],
-  }, ids)
+  }, ids))
 }
 
 /** Shift a part's centre by a world delta, rounded the way everything else is */
@@ -109,7 +111,7 @@ function applyProfiles(cands: ProfileData[]): boolean {
     toast(t().toastTooShort); return false
   }
   const before = conflictPairsNow()
-  useStore.getState().commitProfilesEdit(cands.map((c) => ({ id: c.id, updates: c })))
+  if (!reportEditResult(useStore.getState().commitProfilesEdit(cands.map((c) => ({ id: c.id, updates: c }))))) return false
   warnIfNewConflicts(before)
   return true
 }
@@ -139,7 +141,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
 
   noteNext('nudge')
   const before = conflictPairsNow()
-  useStore.getState().commitTransform({
+  const result = useStore.getState().commitTransform({
     profiles: profiles.map((p) => ({
       id: p.id,
       updates: { position: [round3(p.position[0] + d[0]), round3(p.position[1] + d[1]), round3(p.position[2] + d[2])] as [number, number, number] },
@@ -157,6 +159,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
       updates: { position: [round3(f.position[0] + d[0]), round3(f.position[1] + d[1]), round3(f.position[2] + d[2])] as [number, number, number] },
     })),
   })
+  if (!reportEditResult(result)) return false
   warnIfNewConflicts(before)
   return true
 }
@@ -188,7 +191,8 @@ export function duplicateSelected(): boolean {
     ...f, id: nextId('f'), locked: false,
     position: [f.position[0] + d[0], f.position[1] + d[1], f.position[2] + d[2]] as [number, number, number],
   }))
-  addCopies({ profiles: newProfiles, connectors: newConnectors, panels: newPanels, fittings: newFittings })
+  if (!addCopies(remapCopiedBindings({ profiles, connectors, panels, fittings },
+    { profiles: newProfiles, connectors: newConnectors, panels: newPanels, fittings: newFittings }))) return false
   toast(t().toastDuplicated(newProfiles.length + newConnectors.length + newPanels.length + newFittings.length), 'success')
   warnIfNewConflicts(before)
   return true
@@ -287,7 +291,8 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
       ...(f.meeting ? { meeting: f.meeting === 'left' ? 'right' : 'left' } : {}),
     }
   })
-  addCopies({ profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies })
+  if (!addCopies(remapCopiedBindings({ profiles, connectors, panels, fittings },
+    { profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies }, { mirror: true }))) return false
   toast(t().toastMirrored(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
@@ -329,6 +334,18 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
     for (const b of panels) panelCopies.push({ ...b, id: nextId('b'), locked: false, position: shifted(b.position, d) })
     for (const f of fittings) fittingCopies.push({ ...f, id: nextId('f'), locked: false, position: shifted(f.position, d) })
   }
+  for (let i = 0; i < n; i++) {
+    const batch = remapCopiedBindings({ profiles, connectors, panels, fittings }, {
+      profiles: copies.slice(i * profiles.length, (i + 1) * profiles.length),
+      connectors: connectorCopies.slice(i * connectors.length, (i + 1) * connectors.length),
+      panels: panelCopies.slice(i * panels.length, (i + 1) * panels.length),
+      fittings: fittingCopies.slice(i * fittings.length, (i + 1) * fittings.length),
+    })
+    copies.splice(i * profiles.length, profiles.length, ...batch.profiles)
+    connectorCopies.splice(i * connectors.length, connectors.length, ...batch.connectors)
+    panelCopies.splice(i * panels.length, panels.length, ...batch.panels)
+    fittingCopies.splice(i * fittings.length, fittings.length, ...batch.fittings)
+  }
   // the whole array is lifted as one, so the copies stay in line instead of being clamped apart
   const sink = sinkBelowFloor(copies, [0, 0, 0])
   if (sink < 0) {
@@ -338,7 +355,7 @@ export function arraySelected(axis: RotAxis, count: number, spacing: number): bo
     for (const f of fittingCopies) f.position = [f.position[0], round3(f.position[1] - sink), f.position[2]]
   }
 
-  addCopies({ profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies })
+  if (!addCopies({ profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies })) return false
   toast(t().toastArrayed(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length), 'success')
   warnIfNewConflicts(before)
   return true
@@ -428,7 +445,7 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   }
 
   const before = conflictPairsNow()
-  useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors, panels: spunPanels, fittings: spunFittings })
+  if (!reportEditResult(useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors, panels: spunPanels, fittings: spunFittings }))) return false
   warnIfNewConflicts(before)
   return true
 }
@@ -475,7 +492,7 @@ export function commitExactMove(distance: number): boolean {
     const o = origins[id] ?? (id === lead.id ? leadOrigin : fallback)
     return [round3(o[0] + delta.x), round3(o[1] + delta.y), round3(o[2] + delta.z)]
   }
-  store.updateParts({
+  const result = store.updateParts({
     profiles: profiles.map((p) => ({ id: p.id, updates: { position: at(p.id, p.position) } })),
     connectors: store.connectors.filter((c) => movingIds.has(c.id) && !c.locked)
       .map((c) => ({ id: c.id, updates: { position: at(c.id, c.position) } })),
@@ -484,6 +501,7 @@ export function commitExactMove(distance: number): boolean {
     fittings: store.fittings.filter((f) => movingIds.has(f.id) && !f.locked)
       .map((f) => ({ id: f.id, updates: { position: at(f.id, f.position) } })),
   })
+  if (result.status === 'rejected') { reportEditResult(result); return false }
   ts.stopDrag()
   return true
 }
@@ -520,8 +538,8 @@ export function commitExactLength(length: number): boolean {
   const changed = modelLength !== profile.length || position.some((v, i) => v !== profile.position[i])
     || fixedTrims.start !== fixedProfile.fixedTrims!.start || fixedTrims.end !== fixedProfile.fixedTrims!.end
   if (changed) {
-    if (!ts.dragMoved) store.snapshotHistory()
-    store.updateProfile(rs.id, { length: modelLength, position, fixedTrims })
+    const result = store.updateProfile(rs.id, { length: modelLength, position, fixedTrims }, { history: !ts.dragMoved })
+    if (result.status === 'rejected') { reportEditResult(result); return false }
   }
   ts.stopResize()
   ts.setDragConflict(false)
@@ -625,8 +643,7 @@ export function setProfileSpec(id: string, spec: ProfileSpec): boolean {
 export function setConnectorSeries(id: string, series: 20 | 30 | 40): boolean {
   const c = useStore.getState().connectors.find((q) => q.id === id)
   if (!c || c.locked || ![20, 30, 40].includes(series)) return false
-  useStore.getState().commitTransform({ connectors: [{ id, updates: { series } }] })
-  return true
+  return reportEditResult(useStore.getState().commitTransform({ connectors: [{ id, updates: { series } }] }))
 }
 
 /** Direction label like "+X" for the properties panel; free rotations show the vector */
@@ -644,14 +661,6 @@ export function orientationDegrees(quaternion: [number, number, number, number])
   return [deg(e.x), deg(e.y), deg(e.z)]
 }
 
-
-/**
- * Apply live edits without adding individual history entries.
- * beginLiveEdit supplies the snapshot used to undo the completed edit as one step.
- */
-export function beginLiveEdit(): void {
-  useStore.getState().snapshotHistory()
-}
 
 const PART_FIELDS = {
   profiles: ['spec', 'length', 'position', 'quaternion', 'miterCuts', 'holes'],
@@ -735,9 +744,7 @@ export function liveParts(ids: string[], updates: Record<string, unknown>, pushH
       toast(t().toastTooShort); return false
     }
   }
-  if (pushHistory) store.snapshotHistory()
-  store.updateParts(edits)
-  return true
+  return reportEditResult(store.updateParts(edits, { history: pushHistory }))
 }
 
 export function livePart(id: string, updates: Record<string, unknown>, pushHistory = false): boolean {

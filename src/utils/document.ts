@@ -3,8 +3,9 @@ import type { ThroughRule } from './jointUtils'
 import { CONNECTOR_CATALOG } from './connectorCatalog'
 import { migrateFittings } from './migrate'
 import { validFittingFields, validFittingDimensions } from './fittingValidation'
+import { validOpeningRef, validFittingOpeningBinding, validPanelOpeningBinding, validRunnerBinding, validSupportBinding } from './openingBindings'
 
-export const PROJECT_VERSION = 7
+export const PROJECT_VERSION = 8
 export interface ProjectGeometry {
   profiles: ProfileData[]
   connectors: ConnectorData[]
@@ -34,7 +35,7 @@ function readProjectDocument(input: unknown): ProjectDocument {
     if (doc[key] !== undefined && !Array.isArray(doc[key])) fail(key)
   }
   const ids = new Set<string>()
-  const base = (value: unknown): Record<string, unknown> => {
+  const base = (value: unknown, binding: 'openingBinding' | 'runnerBinding' | 'supportBinding'): Record<string, unknown> => {
     if (!record(value)) fail('part must be an object')
     if (typeof value.id !== 'string' || !value.id.trim() || ids.has(value.id)) fail('missing or duplicate part id')
     ids.add(value.id)
@@ -42,10 +43,14 @@ function readProjectDocument(input: unknown): ProjectDocument {
     const norm = value.quaternion.reduce((sum, v) => sum + v * v, 0)
     if (!finite(norm) || norm < 1e-12) fail(`orientation of ${value.id}`)
     if (!optional(value.locked, (v) => typeof v === 'boolean')) fail('locked')
+    for (const key of ['openingBinding', 'runnerBinding', 'supportBinding']) {
+      if (key !== binding && value[key] !== undefined) fail(`binding of ${value.id}`)
+    }
     return value
   }
   const profiles = doc.profiles.map((value) => {
-    const p = base(value)
+    const p = base(value, 'runnerBinding')
+    if (!optional(p.runnerBinding, validRunnerBinding)) fail('runner binding')
     if (!oneOf(p.spec, specs) || !positive(p.length)) fail('profile size')
     if (!optional(p.fixedTrims, (v) => record(v) && finite(v.start) && finite(v.end)
       && finite((p.length as number) - v.start - v.end)
@@ -57,21 +62,38 @@ function readProjectDocument(input: unknown): ProjectDocument {
     return { ...p, miterCuts: p.miterCuts ?? [], holes: p.holes ?? [] } as unknown as ProfileData
   })
   const connectors = ((doc.connectors ?? []) as unknown[]).map((value) => {
-    const c = base(value)
+    const c = base(value, 'supportBinding')
+    if (!optional(c.supportBinding, validSupportBinding)) fail('support binding')
     if (typeof c.type !== 'string' || !connectorTypes.has(c.type)
       || !optional(c.series, (v) => oneOf(v, [20, 30, 40]))) fail('connector type or series')
     return { ...c } as unknown as ConnectorData
   })
   const panels = ((doc.panels ?? []) as unknown[]).map((value) => {
-    const b = base(value)
+    const b = base(value, 'openingBinding')
+    if (!optional(b.openingBinding, validPanelOpeningBinding)) fail('panel opening binding')
     if (![b.width, b.height, b.thickness].every(positive) || !oneOf(b.material, materials)) fail('panel size or material')
     return { ...b } as unknown as PanelData
   })
   const fittings = ((doc.fittings ?? []) as unknown[]).map((value) => {
-    const f = base(value)
+    const f = base(value, 'openingBinding')
+    if (!optional(f.openingBinding, (v) => validFittingOpeningBinding(v) && v.mode === f.kind)) fail('fitting opening binding')
     if (!validFittingFields(f)) fail('fitting dimensions or mechanism')
     return { ...f, open: f.open ?? 0 } as unknown as FittingData
   })
+  const profileIds = new Set(profiles.map((p) => p.id))
+  const drawerIds = new Set(fittings.filter((f) => f.kind === 'drawer').map((f) => f.id))
+  const reference = (id: string, expected: Set<string>) => {
+    if (ids.has(id) && !expected.has(id)) fail('binding source type')
+  }
+  for (const p of profiles) if (p.runnerBinding) reference(p.runnerBinding.fittingId, drawerIds)
+  for (const c of connectors) if (c.supportBinding) reference(c.supportBinding.profileId, profileIds)
+  for (const part of [...panels, ...fittings]) if (part.openingBinding) {
+    const opening = part.openingBinding.opening
+    if (!validOpeningRef(opening)) fail('opening reference')
+    for (const key of ['left', 'right', 'bottom', 'top', 'front', 'back'] as const) {
+      if (opening[key]) reference(opening[key].profileId, profileIds)
+    }
+  }
   return {
     profiles, connectors, panels, fittings,
     throughRule: (doc.throughRule ?? 'rails') as ThroughRule,
