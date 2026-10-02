@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { parseProjectDocument, PROJECT_VERSION, type ProjectDocument, type ProjectGeometry } from '../utils/document'
 import { documentStorage } from '../utils/documentPersistence'
+import { validFittings } from '../utils/fittingValidation'
 import { setThroughRule as applyThroughRule, withFixedProfileCuts, validFixedProfileCut, type ThroughRule } from '../utils/jointUtils'
 
 export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
@@ -263,6 +264,7 @@ export const useStore = create<State>()(
           past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] }
       }),
       commitDocument: (doc, selection) => set((state) => {
+        if (doc.fittings !== undefined && !validFittings(doc.fittings)) return state
         const changed = Object.entries(doc).some(([key, value]) => state[key as keyof ProjectDocument] !== value)
         if (!changed) return state
         return {
@@ -292,19 +294,21 @@ export const useStore = create<State>()(
         selectedIds: select ? [...list.map((p) => p.id), ...conns.map((c) => c.id)] : state.selectedIds,
       })),
 
-      addFittings: (list, select = false) => set((state) => ({
-        past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
-        future: [],
-        fittings: [...state.fittings, ...list],
-        ...(select ? { selectedIds: list.map((f) => f.id) } : {}),
-      })),
+      addFittings: (list, select = false) => set((state) => {
+        const fittings = [...state.fittings, ...list]
+        if (!list.length || !validFittings(fittings)) return state
+        return { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
+          future: [], fittings, ...(select ? { selectedIds: list.map((f) => f.id) } : {}) }
+      }),
 
       // How far open is a way of looking, not a change to the design, so it leaves no
       // history entry: undo after opening a drawer should undo the last thing you built.
-      updateFitting: (id, updates, pushHistory = true) => set((state) => ({
-        ...(pushHistory ? { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] } : {}),
-        fittings: state.fittings.map((f) => f.id === id ? { ...f, ...updates } : f),
-      })),
+      updateFitting: (id, updates, pushHistory = true) => set((state) => {
+        const fittings = applyPartUpdates(state.fittings, [{ id, updates }])
+        if (fittings === state.fittings || !validFittings(fittings)) return state
+        return { fittings,
+          ...(pushHistory ? { past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [] } : {}) }
+      }),
 
       addPanels: (list, select = false) => set((state) => ({
         past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
@@ -455,6 +459,7 @@ export const useStore = create<State>()(
         const next = { profiles: applyProfileUpdates(state.profiles, profiles),
           connectors: applyPartUpdates(state.connectors, connectors), panels: applyPartUpdates(state.panels, panels),
           fittings: applyPartUpdates(state.fittings, fittings) }
+        if (!validFittings(next.fittings)) return state
         if (Object.entries(next).every(([key, value]) => state[key as keyof typeof next] === value)) return state
         return {
           past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)],
@@ -468,6 +473,7 @@ export const useStore = create<State>()(
         const next = { profiles: applyProfileUpdates(state.profiles, profiles),
           connectors: applyPartUpdates(state.connectors, connectors), panels: applyPartUpdates(state.panels, panels),
           fittings: applyPartUpdates(state.fittings, fittings) }
+        if (!validFittings(next.fittings)) return state
         return Object.entries(next).every(([key, value]) => state[key as keyof typeof next] === value) ? state : next
       }),
 

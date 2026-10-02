@@ -2,6 +2,7 @@ import type { ConnectorData, FittingData, PanelData, ProfileData } from '../stor
 import type { ThroughRule } from './jointUtils'
 import { CONNECTOR_CATALOG } from './connectorCatalog'
 import { migrateFittings } from './migrate'
+import { validFittingFields, validFittingDimensions } from './fittingValidation'
 
 export const PROJECT_VERSION = 6
 export interface ProjectGeometry {
@@ -23,8 +24,7 @@ const oneOf = (v: unknown, values: readonly unknown[]) => values.includes(v)
 function optional(v: unknown, valid: (v: unknown) => boolean): boolean { return v === undefined || valid(v) }
 function fail(message: string): never { throw new Error(`Invalid project: ${message}`) }
 
-/** Validate current geometry without inferring or moving any parts. */
-export function validateProjectDocument(input: unknown): ProjectDocument {
+function readProjectDocument(input: unknown): ProjectDocument {
   const doc: unknown = typeof input === 'string' ? JSON.parse(input) : input
   if (!record(doc)) fail('expected an object')
   if (!optional(doc.version, (v) => finite(v) && Number.isInteger(v) && v >= 1 && v <= PROJECT_VERSION)) fail('unsupported version')
@@ -69,16 +69,7 @@ export function validateProjectDocument(input: unknown): ProjectDocument {
   })
   const fittings = ((doc.fittings ?? []) as unknown[]).map((value) => {
     const f = base(value)
-    if (!oneOf(f.kind, ['drawer', 'door']) || ![f.width, f.height, f.depth].every(positive)
-      || !oneOf(f.material, materials) || !optional(f.open, (v) => finite(v) && v >= 0 && v <= 1)
-      || !optional(f.frame, (v) => finite(v) && v >= 0)
-      || !optional(f.hinge, (v) => oneOf(v, ['left', 'right', 'top', 'bottom']))
-      || !optional(f.hingeType, (v) => oneOf(v, ['cup', 'slot', 'continuous']))
-      || !optional(f.overlay, (v) => oneOf(v, ['full', 'half', 'inset']))
-      || !optional(f.meeting, (v) => f.kind === 'door' && oneOf(v, ['left', 'right']))
-      || !optional(f.swing, (v) => finite(v) && v > 0 && v <= 180)
-      || !optional(f.stacked, (v) => record(v) && optional(v.above, (x) => typeof x === 'boolean')
-        && optional(v.below, (x) => typeof x === 'boolean'))) fail('fitting dimensions or mechanism')
+    if (!validFittingFields(f)) fail('fitting dimensions or mechanism')
     return { ...f, open: f.open ?? 0 } as unknown as FittingData
   })
   return {
@@ -87,14 +78,25 @@ export function validateProjectDocument(input: unknown): ProjectDocument {
   }
 }
 
+function checkFittingDimensions(doc: ProjectDocument): ProjectDocument {
+  if (!doc.fittings.every(validFittingDimensions)) fail('fitting opening or drawer box dimensions')
+  return doc
+}
+
+/** Validate current geometry without inferring or moving any parts. */
+export function validateProjectDocument(input: unknown): ProjectDocument {
+  return checkFittingDimensions(readProjectDocument(input))
+}
+
 /** Read external data; retain the current version so a second parse cannot migrate it again. */
 export function parseProjectDocument(input: unknown): ParsedProjectDocument {
   const doc: unknown = typeof input === 'string' ? JSON.parse(input) : input
-  const checked = validateProjectDocument(doc)
+  const checked = readProjectDocument(doc)
   const version = (doc as { version?: number }).version
   return {
-    ...checked, version: PROJECT_VERSION,
-    fittings: version === undefined || version <= 5 ? migrateFittings(checked.profiles, checked.fittings) : checked.fittings,
+    ...checkFittingDimensions({ ...checked,
+      fittings: version === undefined || version <= 5 ? migrateFittings(checked.profiles, checked.fittings) : checked.fittings,
+    }), version: PROJECT_VERSION,
   }
 }
 

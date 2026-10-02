@@ -144,14 +144,20 @@ export function fittingHandle(f: FittingData): { grip: HandleBlock; mounts: Hand
  * Build drawer boards with a 12.5 mm runner allowance on each side.
  * Structural runner supports belong to the frame and are checked by runnerFaults.
  */
+export function drawerBoxSize(f: Pick<FittingData, 'width' | 'height' | 'depth' | 'frame' | 'overlay'>) {
+  return {
+    width: f.width - RUNNER_CLEARANCE * 2,
+    height: Math.max(40, f.height - FRONT_GAP * 2 - 20),
+    depth: f.depth + (f.frame ?? 0) - DRAWER_REAR_CLEARANCE - (f.overlay === 'inset' ? FRONT_BOARD : 0),
+  }
+}
+
 function drawerParts(f: FittingData): FittingParts {
   const front = frontBoard(f)
-  const boxW = f.width - RUNNER_CLEARANCE * 2
+  const { width: boxW, height: boxH, depth: boxD } = drawerBoxSize(f)
   const backZ = -f.depth / 2 + DRAWER_REAR_CLEARANCE
   const frontZ = front.position[2] - front.thickness / 2
-  const boxD = frontZ - backZ
   const boxZ = (frontZ + backZ) / 2
-  const boxH = Math.max(40, f.height - FRONT_GAP * 2 - 20)
   const boxY = -f.height / 2 + boxH / 2
   const boards: Board[] = []
   if (boxW > 40 && boxD > 40) {

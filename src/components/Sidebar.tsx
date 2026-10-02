@@ -895,13 +895,13 @@ const Sidebar: React.FC = () => {
                 <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-3 gap-1">
                   <NumField label="W" name={t.widthMm} value={selectedFitting.width} step={10}
                     onLive={(v, history) => liveParts(pickedFittingIds(), { width: v }, history)}
-                    onCommit={(v) => updateFittings(pickedFittingIds(), { width: Math.max(60, v) })} />
+                    onCommit={(v) => updateFittings(pickedFittingIds(), { width: v })} />
                   <NumField label="H" name={t.heightMm} value={selectedFitting.height} step={10}
                     onLive={(v, history) => liveParts(pickedFittingIds(), { height: v }, history)}
-                    onCommit={(v) => updateFittings(pickedFittingIds(), { height: Math.max(60, v) })} />
+                    onCommit={(v) => updateFittings(pickedFittingIds(), { height: v })} />
                   <NumField label="D" name={t.depthMm} value={selectedFitting.depth} step={10}
                     onLive={(v, history) => liveParts(pickedFittingIds(), { depth: v }, history)}
-                    onCommit={(v) => updateFittings(pickedFittingIds(), { depth: Math.max(60, v) })} />
+                    onCommit={(v) => updateFittings(pickedFittingIds(), { depth: v })} />
                 </fieldset>
                 {selectedFitting.kind === 'door' && (
                   <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-6 gap-1">

@@ -11,6 +11,7 @@ import { translations } from './translations'
 import { fittingObb } from './fittingGeometry'
 import { ALL_SPECS } from './specUtils'
 import { connectorEntry } from './connectorCatalog'
+import { MIN_FITTING_OPENING, validFitting } from './fittingValidation'
 
 export type RotAxis = 'x' | 'y' | 'z'
 const AXES: Record<RotAxis, THREE.Vector3> = {
@@ -682,7 +683,7 @@ function validLiveUpdates(kind: keyof PartDocument, part: { locked?: boolean }, 
     if (field in updates) {
       const scale = 10 ** digits
       const rounded = Math.round(value * scale) / scale
-      if (strict ? rounded <= min : rounded < min) return false
+      if (!Number.isFinite(rounded) || (strict ? rounded <= min : rounded < min)) return false
       normalised[field] = rounded
     }
     return true
@@ -699,22 +700,14 @@ function validLiveUpdates(kind: keyof PartDocument, part: { locked?: boolean }, 
   } else if (kind === 'panels') {
     if (!numberField('width', 20) || !numberField('height', 20) || !numberField('thickness', 0, 1, true) || !materialValid(next.material)) return null
   } else {
-    if (!['door', 'drawer'].includes(next.kind as string) || !['width', 'height', 'depth'].every((field) => numberField(field, 60)) || !materialValid(next.material)) return null
+    if (!['width', 'height', 'depth'].every((field) => numberField(field, MIN_FITTING_OPENING))) return null
     if ('frame' in updates && !numberField('frame', 0)) return null
     if ('open' in updates && (!numberField('open', 0, 3) || (next.open as number) > 1)) return null
     if ('swing' in updates && (!numberField('swing', 0, 3, true) || (next.swing as number) > 180)) return null
-    if ('hinge' in updates && !['left', 'right', 'top', 'bottom'].includes(updates.hinge as string)) return null
-    if ('hingeType' in updates && !['cup', 'slot', 'continuous'].includes(updates.hingeType as string)) return null
-    if ('overlay' in updates && !['full', 'half', 'inset'].includes(updates.overlay as string)) return null
-    if (next.meeting !== undefined && (next.kind !== 'door' || !['left', 'right'].includes(next.meeting as string))) return null
-    if ('stacked' in updates) {
-      const stacked = updates.stacked as FittingData['stacked']
-      if (!stacked || typeof stacked !== 'object' || Object.keys(stacked).some((key) =>
-        !['above', 'below'].includes(key) || typeof stacked[key as keyof typeof stacked] !== 'boolean')) return null
-    }
+    if (!validFitting({ ...part, ...normalised })) return null
   }
   const changed = Object.entries(normalised).some(([key, value]) => JSON.stringify((part as Record<string, unknown>)[key]) !== JSON.stringify(value))
-  return changed ? normalised : null
+  return changed ? normalised : {}
 }
 
 /** Apply one valid preview to all selected targets; take history only on its first real change. */
@@ -723,11 +716,16 @@ export function liveParts(ids: string[], updates: Record<string, unknown>, pushH
   const selected = new Set(ids)
   const edits: Parameters<typeof store.updateParts>[0] = {}
   for (const kind of Object.keys(PART_FIELDS) as Array<keyof PartDocument>) {
-    const changes = store[kind].flatMap((part) => {
-      if (!selected.has(part.id)) return []
+    const changes: Array<{ id: string; updates: Record<string, unknown> }> = []
+    for (const part of store[kind]) {
+      if (!selected.has(part.id) || part.locked) continue
       const validated = validLiveUpdates(kind, part, updates)
-      return validated ? [{ id: part.id, updates: validated }] : []
-    })
+      if (!validated) {
+        if (kind === 'fittings') toast(t().toastInvalidFittingGeometry)
+        return false
+      }
+      if (Object.keys(validated).length) changes.push({ id: part.id, updates: validated })
+    }
     if (changes.length) edits[kind] = changes
   }
   if (Object.keys(edits).length === 0) return false

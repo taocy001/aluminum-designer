@@ -8,11 +8,10 @@ import { specDims } from './specUtils'
 import { translations } from './translations'
 import { connectedTo } from './editOps'
 import { makeOBB, obbCorners } from './obb'
+import { MIN_FITTING_OPENING as MIN_OPENING, validFitting } from './fittingValidation'
 
 /** Derive an opening from the selected frame members, insetting axes with enough clearance. */
 
-/** the smallest opening worth fitting anything to (mm) */
-const MIN_OPENING = 60
 /** how far past an opening still counts as the same cabinet, across and up (mm) */
 const CARCASE_MARGIN = 120
 
@@ -224,7 +223,7 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
   if (useToolStore.getState().viewMode) return false
   if (req.kind === 'drawer') {
     const height = req.frontHeight ?? 200, count = req.count ?? 1
-    if (!Number.isFinite(height) || height < 60 || !Number.isInteger(count) || count < 1 || count > 8) {
+    if (!Number.isFinite(height) || height < MIN_OPENING || !Number.isInteger(count) || count < 1 || count > 8) {
       useToolStore.getState().showToast(t.toastInvalidFitting, 'error')
       return false
     }
@@ -324,6 +323,9 @@ export function addFittingFromSelection(req: FittingRequest): boolean {
   }
 
   if (made.length === 0) { useToolStore.getState().showToast(t.toastDrawerTooSmall, 'error'); return false }
+  if (!made.every(validFitting)) {
+    useToolStore.getState().showToast(t.toastInvalidFittingGeometry, 'error'); return false
+  }
   noteNext(req.kind === 'drawer' ? `fit ${made.length} drawer${made.length > 1 ? 's' : ''}` : 'hang a door')
   store.addFittings(made, false)
   useToolStore.getState().showToast(
@@ -340,6 +342,12 @@ export function updateFittings(ids: string[], updates: Partial<FittingData>): bo
   const { fittings, commitTransform } = useStore.getState()
   const mine = fittings.filter((f) => ids.includes(f.id) && !f.locked)
   if (mine.length === 0) return false
+  if (!mine.every((f) => validFitting({ ...f, ...updates }))) {
+    useToolStore.getState().showToast(translations[useToolStore.getState().language].toastInvalidFittingGeometry, 'error')
+    return false
+  }
+  if (mine.every((f) => Object.entries(updates).every(([key, value]) =>
+    JSON.stringify(f[key as keyof FittingData]) === JSON.stringify(value)))) return false
   noteNext(mine.length > 1 ? `edit ${mine.length} fittings` : 'edit fitting')
   commitTransform({ fittings: mine.map((f) => ({ id: f.id, updates })) })
   return true
@@ -347,7 +355,7 @@ export function updateFittings(ids: string[], updates: Partial<FittingData>): bo
 
 /** A side-hung single door needs room for two openings of at least 60 mm. */
 export function canSplitDoor(f: FittingData): boolean {
-  return f.kind === 'door' && f.meeting === undefined && Number.isFinite(f.width)
+  return validFitting(f) && f.kind === 'door' && f.meeting === undefined
     && f.width >= MIN_OPENING * 2 && (f.hinge === undefined || f.hinge === 'left' || f.hinge === 'right')
 }
 
