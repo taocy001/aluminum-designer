@@ -23,12 +23,16 @@ interface FileHandleLike {
   requestPermission?: (d: { mode: string }) => Promise<string>
 }
 
-type PickerWindow = Window & {
-  showSaveFilePicker?: (opts: unknown) => Promise<FileHandleLike>
-  showOpenFilePicker?: (opts: unknown) => Promise<FileHandleLike[]>
+interface ReadableFileHandleLike extends FileHandleLike {
+  getFile: () => Promise<File>
 }
 
-/** the file this drawing was last saved to, so "save" can mean "save over that one" */
+type PickerWindow = Window & {
+  showSaveFilePicker?: (opts: unknown) => Promise<FileHandleLike>
+  showOpenFilePicker?: (opts: unknown) => Promise<ReadableFileHandleLike[]>
+}
+
+/** Accepted target for subsequent saves. */
 let handle: FileHandleLike | null = null
 
 export function savedFileName(): string | null {
@@ -83,18 +87,32 @@ export async function saveProject(text: string, suggested: string, asNew = false
   }
 }
 
-/** Open a drawing through the same dialog, remembering it so a later save writes back to it */
-export async function openProject(): Promise<{ text: string; name: string; accept: () => void } | null> {
+export type OpenProjectResult =
+  | { outcome: 'opened'; text: string; name: string; accept: () => void }
+  | { outcome: 'cancelled' }
+  | { outcome: 'unsupported' }
+  | { outcome: 'failed' }
+
+/** Read a chosen file; adopt its save target only after the caller validates the project. */
+export async function openProject(): Promise<OpenProjectResult> {
   const w = window as PickerWindow
-  if (!w.showOpenFilePicker) return null
+  if (typeof w.showOpenFilePicker !== 'function') return { outcome: 'unsupported' }
+  let h: ReadableFileHandleLike | undefined
   try {
-    const [h] = await w.showOpenFilePicker({
+    h = (await w.showOpenFilePicker({
       types: [{ description: 'Aluminium frame project', accept: { 'application/json': ['.json'] } }],
       multiple: false,
-    })
-    const file = await (h as unknown as { getFile: () => Promise<File> }).getFile()
-    return { text: await file.text(), name: h.name, accept: () => { handle = h } }
+    }))[0]
+  } catch (e) {
+    return { outcome: (e as DOMException)?.name === 'AbortError' ? 'cancelled' : 'failed' }
+  }
+  if (!h) return { outcome: 'failed' }
+  const chosen = h
+  try {
+    const file = await chosen.getFile()
+    return { outcome: 'opened', text: await file.text(), name: chosen.name, accept: () => { handle = chosen } }
   } catch {
-    return null
+    // A failed read, including AbortError, is not a dismissed picker.
+    return { outcome: 'failed' }
   }
 }

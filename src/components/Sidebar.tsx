@@ -387,7 +387,9 @@ const Sidebar: React.FC = () => {
   }
   const handleOpenProject = async () => {
     const picked = await openProject()
-    if (!picked) { fileRef.current?.click(); return }
+    if (picked.outcome === 'unsupported') { fileRef.current?.click(); return }
+    if (picked.outcome === 'cancelled') return
+    if (picked.outcome === 'failed') { showToast(t.toastImportFailed, 'error'); return }
     try {
       applyDocument(JSON.parse(picked.text))
       picked.accept()
