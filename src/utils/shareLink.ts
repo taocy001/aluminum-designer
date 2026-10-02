@@ -15,18 +15,18 @@ export interface ShareDoc {
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-/** Compact columns, including determined cut faces and door meeting edges. Reads v1–v3. */
+/** Compact columns for geometry and fitting parameters; reads link versions 1–5. */
 function pack(doc: ShareDoc): unknown[] {
   const checked = validateProjectDocument(doc)
   return [
-    4, checked.throughRule,
+    5, checked.throughRule,
     checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null]),
     checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked]),
     checked.panels.map((b) => [b.width, b.height, b.thickness, b.position, b.quaternion, b.material, !!b.locked]),
     checked.fittings.map((f) => [
       f.kind, f.width, f.height, f.depth, f.position, f.quaternion,
       f.material, f.hinge ?? '', f.hingeType ?? '', f.overlay ?? '', f.swing ?? 0,
-      f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '',
+      f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '', f.drawer ?? null,
     ]),
   ]
 }
@@ -34,7 +34,7 @@ function pack(doc: ShareDoc): unknown[] {
 function unpack(raw: unknown): ParsedProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) throw new Error('unknown link version')
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5) throw new Error('unknown link version')
   const [profiles, connectors, panels, fittings] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
   if (raw.length !== (version >= 2 ? 6 : 5)
     || ![profiles, connectors, panels, fittings].every(Array.isArray)) throw new Error('incomplete link')
@@ -42,7 +42,7 @@ function unpack(raw: unknown): ParsedProjectDocument {
   let n = 0
   const id = (p: string) => `${p}-s${(n++).toString(36)}`
   return parseProjectDocument({
-    version: version >= 4 ? PROJECT_VERSION : undefined,
+    version: version >= 5 ? PROJECT_VERSION : version === 4 ? 6 : undefined,
     throughRule,
     profiles: (profiles ?? []).map((row) => {
       const [spec, length, position, quaternion, locked, miterCuts, holes, fixedTrims] = row as [string, number, number[], number[], number, ProfileData['miterCuts'], ProfileData['holes'], ProfileData['fixedTrims'] | null]
@@ -72,8 +72,8 @@ function unpack(raw: unknown): ParsedProjectDocument {
       }
     }),
     fittings: (fittings ?? []).map((row) => {
-      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked, meeting] =
-        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean, FittingData['meeting'] | '']
+      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked, meeting, drawer] =
+        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean, FittingData['meeting'] | '', FittingData['drawer'] | null]
       return {
         id: id('f'), kind: kind as FittingData['kind'], width, height, depth,
         position: position as [number, number, number],
@@ -87,6 +87,7 @@ function unpack(raw: unknown): ParsedProjectDocument {
         ...(overlay ? { overlay: overlay as FittingData['overlay'] } : {}),
         ...(swing ? { swing } : {}),
         ...(version >= 4 && meeting !== undefined && meeting !== '' ? { meeting } : {}),
+        ...(version >= 5 && drawer !== undefined && drawer !== null ? { drawer } : {}),
       }
     }),
   })

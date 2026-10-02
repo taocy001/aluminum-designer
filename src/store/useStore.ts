@@ -64,30 +64,28 @@ export interface PanelData {
 export type FittingKind = 'drawer' | 'door'
 /** which edge the door is hung on, looking at it from the front */
 export type HingeSide = 'left' | 'right' | 'top' | 'bottom'
-/**
- * Three kinds, and they are not interchangeable.
- *
- *  - `cup`: the 35 mm concealed hinge every kitchen uses. Bored into the back of the door,
- *    a plate on the carcase, adjustable in three directions, opens about 110°.
- *  - `slot`: the two-leaf hinge made for extrusion. Bolts straight into the T-slots of the
- *    profile and of the door frame, nothing bored, and it will go past 180°.
- *  - `continuous`: a piano hinge down the whole edge, for a tall or heavy door, or a flap.
- */
+/** Concealed cup, extrusion-slot or continuous hinge representation. */
 export type HingeType = 'cup' | 'slot' | 'continuous'
 /** Maximum simulated door opening angle in degrees. Actual hinge travel depends on the hardware. */
 export const HINGE_ANGLES = [90, 95, 110, 135, 165, 180] as const
 /** how the door sits on the opening: over it, half over it, or inside it */
 export type Overlay = 'full' | 'half' | 'inset'
 
+export interface DrawerReinforcement { count: number; width: number; height: number }
+
+/** User-specified construction and runner dimensions in millimetres. */
+export interface DrawerConfig {
+  sideClearance?: number
+  boxThickness?: number
+  bottomThickness?: number
+  rearClearance?: number
+  runnerLength?: number
+  runnerTravel?: number
+  reinforcement?: DrawerReinforcement
+}
+
 export interface FittingData {
-  /**
-   * How thick the frame is that this front lies on (mm).
-   *
-   * A full-overlay front covers the uprights it is fitted to, so it sits that much further
-   * out than the box behind it. Without the number the two cannot both be right: put the box
-   * where it belongs and the front is inside the frame, put the front where it belongs and
-   * the box is through the post. Absent on documents written before this, and then zero.
-   */
+  /** Frame depth between the opening front and the front board (mm); defaults to zero. */
   frame?: number
   id: string
   kind: FittingKind
@@ -110,6 +108,7 @@ export interface FittingData {
   meeting?: 'left' | 'right'
   /** Adjacent drawer fronts share a 3 mm gap; only outer edges receive frame overlays. */
   stacked?: { above?: boolean; below?: boolean }
+  drawer?: DrawerConfig
   locked?: boolean
 }
 

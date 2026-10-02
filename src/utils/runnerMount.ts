@@ -3,11 +3,11 @@ import type { FittingData, PanelData, ProfileData } from '../store/useStore'
 import type { ProfileTrims } from './jointUtils'
 import { panelOBB, trimmedOBB } from './analysis'
 import { obbCorners, type OBB } from './obb'
-import { FRONT_GAP } from './fittingGeometry'
+import { drawerLayout } from './drawerLayout'
 
 /**
  * Check geometry available for runner mounting on both sides of each drawer:
- * a depth rail, front/back uprights, or a side board. Runner allowance is 12.5 mm per side.
+ * a depth rail, front/back uprights, or a side board, using the configured runner envelope.
  */
 export interface RunnerFault {
   id: string
@@ -81,6 +81,7 @@ function horizontalBandWidth(face: FacePoint[]): number {
 
 export function runnerFaults(
   profiles: ProfileData[], trims: Map<string, ProfileTrims>, fittings: FittingData[], panels: PanelData[] = [],
+  allowUprightBridge = true,
 ): RunnerFault[] {
   const drawers = fittings.filter((f) => f.kind === 'drawer')
   if (drawers.length === 0) return []
@@ -93,9 +94,9 @@ export function runnerFaults(
     const origin = new THREE.Vector3(...f.position)
     const inv = new THREE.Quaternion(...f.quaternion).normalize().invert()
     // the height the box occupies, which is where a runner can be fixed
-    const y0 = -f.height / 2
-    const y1 = y0 + Math.max(40, f.height - FRONT_GAP * 2 - 20)
-    const halfW = f.width / 2, halfD = f.depth / 2
+    const layout = drawerLayout(f)
+    const y0 = layout.boxBottom, y1 = y0 + layout.boxHeight
+    const halfW = f.width / 2
     const boxes = solids.map((o) => localBox(o, inv, origin))
     for (const [s, side] of [[-1, 'left'], [1, 'right']] as const) {
       let front = false, back = false, along = false
@@ -118,21 +119,22 @@ export function runnerFaults(
           return { y: p.y, z: p.z }
         })
         footprint = clipFace(clipFace(footprint, 'y', y0, true), 'y', y1, false)
-        footprint = clipFace(clipFace(footprint, 'z', -halfD, true), 'z', halfD, false)
+        const size = b.getSize(new THREE.Vector3())
+        const uprightFace = clipFace(clipFace(footprint, 'z', -f.depth / 2, true), 'z', f.depth / 2, false)
+        if (allowUprightBridge && size.y > size.z && size.y > size.x && uprightFace.length >= 3
+          && Math.max(...uprightFace.map((p) => p.y)) - Math.min(...uprightFace.map((p) => p.y)) >= REACH) {
+          if ((b.min.z + b.max.z) / 2 >= 0) front = true
+          else back = true
+        }
+        footprint = clipFace(clipFace(footprint, 'z', layout.runnerBack, true), 'z', layout.runnerFront, false)
         if (footprint.length < 3) continue
         const range = (axis: 'y' | 'z') => Math.max(...footprint.map((p) => p[axis])) - Math.min(...footprint.map((p) => p[axis]))
         if (range('y') < REACH) continue
         const inDepth = range('z')
         if (inDepth <= 0) continue
-        const size = b.getSize(new THREE.Vector3())
-        if (horizontalBandWidth(footprint) >= f.depth * 0.5 && size.z >= size.x) { along = true; break }
-        if (size.y > size.z && size.y > size.x) {
-          const mid = (b.min.z + b.max.z) / 2
-          if (mid >= 0) front = true
-          else back = true
-        }
+        if (horizontalBandWidth(footprint) >= layout.runnerLength * 0.5 && size.z >= size.x) { along = true; break }
       }
-      if (!along && !(front && back)) out.push({ id: f.id, side })
+      if (!along && !(allowUprightBridge && front && back)) out.push({ id: f.id, side })
     }
   }
   return out

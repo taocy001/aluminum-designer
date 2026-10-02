@@ -14,7 +14,9 @@ import { autoConnect } from '../utils/autoConnect'
 import { ALL_SPECS, specDims } from '../utils/specUtils'
 import { addPanelFromSelection, materialLabel, PANEL_MATERIALS, setPanelMaterial, setPanelSize, setPanelsMaterial, setPanelsSize } from '../utils/panelOps'
 import { rollProfile, sectionFacing } from '../utils/faceAlign'
-import { addFittingFromSelection, canSplitDoor, setFittingsOpen, splitSelectedDoors, updateFittings } from '../utils/fittingOps'
+import { addFittingFromSelection, canSplitDoor, setFittingsOpen, splitSelectedDoors, updateFittings, updateDrawerConfig } from '../utils/fittingOps'
+import { drawerLayout } from '../utils/drawerLayout'
+import { addDrawerSupports } from '../utils/drawerSupports'
 import { downloadText, forgetSavedFile, openProject, saveProject, savedFileName } from '../utils/projectFile'
 import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
@@ -268,6 +270,7 @@ const Sidebar: React.FC = () => {
   const clashes = useMemo(() => swingClashes(fittings), [fittings])
   const pickedFittings = fittings.filter((f) => selectedIds.includes(f.id))
   const selectedFitting = pickedFittings.find((f) => !f.locked) ?? pickedFittings[0]
+  const selectedDrawerLayout = selectedFitting?.kind === 'drawer' ? drawerLayout(selectedFitting) : null
   const pickedPanelIds = () => pickedPanels.map((b) => b.id)
   const pickedFittingIds = () => pickedFittings.map((f) => f.id)
   const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors, throughRule])
@@ -881,8 +884,7 @@ const Sidebar: React.FC = () => {
               </fieldset>
             )}
 
-            {/* A drawer and a door are one part each, so their size is three numbers, named
-                the same way they are named on the drawing: across, up, and into the cabinet. */}
+            {/* Fitting dimensions describe the clear opening. */}
             {selectedFitting && (
               <div className="space-y-2" data-testid="fitting-props">
                 {pickedFittings.length > 1 && (
@@ -905,6 +907,53 @@ const Sidebar: React.FC = () => {
                     onLive={(v, history) => liveParts(pickedFittingIds(), { depth: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { depth: v })} />
                 </fieldset>
+                {selectedDrawerLayout && (
+                  <fieldset disabled={viewMode || selectedFitting.locked} className="space-y-2 border-t border-white/5 pt-2" data-testid="drawer-config">
+                    <p className="text-[11px] font-bold text-slate-400">{t.drawerConstruction}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        ['sideClearance', t.drawerSideClearance], ['boxThickness', t.drawerBoxThickness],
+                        ['bottomThickness', t.drawerBottomThickness], ['rearClearance', t.drawerRearClearance],
+                        ['runnerLength', t.drawerRunnerLength], ['runnerTravel', t.drawerRunnerTravel],
+                      ] as const).map(([key, name]) => (
+                        <div key={key} className="space-y-1">
+                          <div className="text-[9px] text-slate-500">{name}</div>
+                          <NumField name={name} value={selectedDrawerLayout.config[key]} step={key.includes('Thickness') || key === 'sideClearance' ? 0.5 : 10}
+                            onCommit={(value) => updateDrawerConfig(pickedFittingIds(), { [key]: value })} />
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-500" data-testid="drawer-box-size">
+                      {t.drawerBoxSize(selectedDrawerLayout.boxWidth, selectedDrawerLayout.boxHeight, selectedDrawerLayout.boxDepth)}
+                    </p>
+                    <label className="flex items-center justify-between text-[10px] text-slate-400">
+                      {t.drawerReinforcement}
+                      <select aria-label={t.drawerReinforcement} data-testid="drawer-reinforcement" value={selectedDrawerLayout.config.reinforcement.count}
+                        onChange={(e) => updateDrawerConfig(pickedFittingIds(), { reinforcement: { count: Number(e.target.value) } })}
+                        className="bg-slate-900 rounded px-2 py-1">
+                        {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </label>
+                    {selectedDrawerLayout.config.reinforcement.count > 0 && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {([['width', t.drawerReinforcementWidth], ['height', t.drawerReinforcementHeight]] as const).map(([key, name]) => (
+                          <div key={key} className="space-y-1">
+                            <div className="text-[9px] text-slate-500">{name}</div>
+                            <NumField name={name} value={selectedDrawerLayout.config.reinforcement[key]} step={5}
+                              onCommit={(value) => updateDrawerConfig(pickedFittingIds(), { reinforcement: { [key]: value } })} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button type="button" data-testid="add-drawer-supports" className="w-full rounded-lg bg-slate-700/50 py-1.5 text-[11px] text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+                      onClick={() => {
+                        const result = addDrawerSupports(pickedFittingIds())
+                        showToast(result.failed.length ? t.drawerSupportsFailed(result.failed.length, result.generated.length)
+                          : result.generated.length ? t.drawerSupportsAdded(result.generated.length) : t.drawerSupportsReady,
+                        result.failed.length ? 'error' : 'success')
+                      }}>{t.addDrawerSupports}</button>
+                  </fieldset>
+                )}
                 {selectedFitting.kind === 'door' && (
                   <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-6 gap-1">
                     {HINGE_ANGLES.map((deg) => (

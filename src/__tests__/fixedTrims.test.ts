@@ -5,7 +5,7 @@ import { useToolStore } from '../store/useToolStore'
 import { buildProfile } from '../utils/profileFactory'
 import { computeAllTrims, computeTrims, getProfileDir, setThroughRule, withFixedProfileCuts } from '../utils/jointUtils'
 import { arraySelected, commitExactLength, commitExactMove, duplicateSelected, flipProfile, liveParts, mirrorSelected, nudgeSelected, rotateSelected, setProfileLength, setProfilePosition } from '../utils/editOps'
-import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
+import { parseProjectDocument, serializeProjectDocument, PROJECT_VERSION } from '../utils/document'
 import { encodeShareLink, decodeShare } from '../utils/shareLink'
 import { buildBom } from '../utils/bom'
 import { describeChange } from '../utils/opLog'
@@ -267,8 +267,8 @@ describe('copies, direction and persistence keep determined end faces', () => {
     const doc = { profiles: useStore.getState().profiles.map((p) => ({ ...p, locked: true })),
       connectors: [], panels: [], fittings: [], throughRule: 'rails' as const }
     const json = serializeProjectDocument(doc)
-    expect(JSON.parse(json).version).toBe(6)
-    expect(parseProjectDocument(json)).toEqual({ ...doc, version: 6 })
+    expect(JSON.parse(json).version).toBe(PROJECT_VERSION)
+    expect(parseProjectDocument(json)).toEqual({ ...doc, version: PROJECT_VERSION })
     const link = await encodeShareLink(doc, 'https://example.com/')
     const back = await decodeShare(new URL(link).hash.slice(3))
     expect(back.profiles.map(({ id: _id, ...p }) => p)).toEqual(doc.profiles.map(({ id: _id, ...p }) => p))

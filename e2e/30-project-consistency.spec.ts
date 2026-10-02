@@ -1,3 +1,4 @@
+import { PROJECT_VERSION } from '../src/utils/document'
 import { expect, test } from '@playwright/test'
 import { openApp, useDownloadFallback } from './helpers'
 
@@ -29,7 +30,7 @@ test('贯通规则、显示、导出、保存恢复与撤销使用同一个工�
   const chunks: Buffer[] = []
   for await (const chunk of stream!) chunks.push(chunk)
   const saved = JSON.parse(Buffer.concat(chunks).toString())
-  expect(saved.version).toBe(6)
+  expect(saved.version).toBe(PROJECT_VERSION)
   expect(saved.throughRule).toBe('posts')
   await page.reload()
   await page.waitForFunction(() => (window as any).__aluframe?.setView)

@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useStore, type FittingData, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { buildBom } from '../utils/bom'
-import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
+import { parseProjectDocument, serializeProjectDocument, PROJECT_VERSION } from '../utils/document'
 import { liveParts, mirrorSelected } from '../utils/editOps'
 import { fittingHandle, fittingParts, hingeAxis, leafObb, openTransform, swingClashes } from '../utils/fittingGeometry'
 import { canSplitDoor, splitDoor, splitSelectedDoors, updateFittings } from '../utils/fittingOps'
@@ -141,9 +141,9 @@ describe('double door design survives files, links and later edits', () => {
     const pair = splitDoor(source, ['left', 'right'])!
     const document = docOf(pair)
     const saved = serializeProjectDocument(document)
-    expect(JSON.parse(saved).version).toBe(6)
+    expect(JSON.parse(saved).version).toBe(PROJECT_VERSION)
     const back = parseProjectDocument(saved)
-    expect(back).toEqual({ ...document, version: 6 })
+    expect(back).toEqual({ ...document, version: PROJECT_VERSION })
     for (let i = 0; i < pair.length; i++) expectSameBox(boundsInOpening(back.fittings[i], source), boundsInOpening(pair[i], source))
   })
 

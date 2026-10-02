@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 import type { FittingData, HingeSide, HingeType, Overlay } from '../store/useStore'
+import { drawerLayout, FRONT_GAP, FRONT_BOARD } from './drawerLayout'
+export { RUNNER_CLEARANCE, FRONT_GAP, BOX_BOARD, DRAWER_REAR_CLEARANCE, FRONT_BOARD } from './drawerLayout'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
 
 /**
@@ -7,16 +9,6 @@ import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
  * Local axes: X across the opening, Y up and +Z outward; origin is the opening centre.
  */
 
-/** side clearance each side of a drawer box, which is what a side-mount runner occupies (mm) */
-export const RUNNER_CLEARANCE = 12.5
-/** gap all round a front, so neighbouring fronts do not rub (mm) */
-export const FRONT_GAP = 3
-/** the boards a drawer box is made from (mm) */
-export const BOX_BOARD = 15
-/** space behind a closed drawer box, measured from the clear opening's rear plane (mm) */
-export const DRAWER_REAR_CLEARANCE = 20
-/** a door or a drawer front (mm) */
-export const FRONT_BOARD = 18
 /** how much of the frame a full-overlay front covers on each side (mm) */
 export const OVERLAY_FULL = 18
 /** ...and a half overlay */
@@ -46,7 +38,8 @@ export function hingeCount(type: HingeType, heightMm: number): number {
 
 export interface Board {
   /** what it is, for the cut list */
-  role: 'side' | 'back' | 'inner-front' | 'base' | 'front' | 'panel'
+  key: string
+  role: 'side' | 'back' | 'inner-front' | 'base' | 'front' | 'panel' | 'reinforcement'
   width: number
   height: number
   thickness: number
@@ -96,6 +89,7 @@ function frontBoard(f: FittingData): Board {
   const top = f.kind === 'drawer' && f.stacked?.above ? meet : lap
   const bottom = f.kind === 'drawer' && f.stacked?.below ? meet : lap
   return {
+    key: f.kind === 'door' ? 'panel' : 'front',
     role: f.kind === 'door' ? 'panel' : 'front',
     width: Math.max(20, f.width + left + right),
     height: Math.max(20, f.height + top + bottom),
@@ -140,45 +134,38 @@ export function fittingHandle(f: FittingData): { grip: HandleBlock; mounts: Hand
   return { grip, mounts }
 }
 
-/**
- * Build drawer boards with a 12.5 mm runner allowance on each side.
- * Structural runner supports belong to the frame and are checked by runnerFaults.
- */
-export function drawerBoxSize(f: Pick<FittingData, 'width' | 'height' | 'depth' | 'frame' | 'overlay'>) {
-  return {
-    width: f.width - RUNNER_CLEARANCE * 2,
-    height: Math.max(40, f.height - FRONT_GAP * 2 - 20),
-    depth: f.depth + (f.frame ?? 0) - DRAWER_REAR_CLEARANCE - (f.overlay === 'inset' ? FRONT_BOARD : 0),
-  }
+/** Box dimensions shared with validation and runner placement. */
+export function drawerBoxSize(f: Pick<FittingData, 'width' | 'height' | 'depth' | 'frame' | 'overlay' | 'drawer'>) {
+  const layout = drawerLayout(f)
+  return { width: layout.boxWidth, height: layout.boxHeight, depth: layout.boxDepth }
 }
 
 function drawerParts(f: FittingData): FittingParts {
-  const front = frontBoard(f)
-  const { width: boxW, height: boxH, depth: boxD } = drawerBoxSize(f)
-  const backZ = -f.depth / 2 + DRAWER_REAR_CLEARANCE
-  const frontZ = front.position[2] - front.thickness / 2
-  const boxZ = (frontZ + backZ) / 2
-  const boxY = -f.height / 2 + boxH / 2
+  const d = drawerLayout(f)
+  const { boxWidth: boxW, boxHeight: boxH, boxDepth: boxD, boxY, boxZ, config } = d
+  const { boxThickness: t, bottomThickness, reinforcement } = config
   const boards: Board[] = []
   if (boxW > 40 && boxD > 40) {
     for (const s of [-1, 1]) {
-      boards.push({ role: 'side', width: boxD, height: boxH, thickness: BOX_BOARD,
-        position: [s * (boxW / 2 - BOX_BOARD / 2), boxY, boxZ], quaternion: Q_SIDE })
+      boards.push({ key: s < 0 ? 'side-left' : 'side-right', role: 'side', width: boxD, height: boxH, thickness: t,
+        position: [s * (boxW / 2 - t / 2), boxY, boxZ], quaternion: Q_SIDE })
     }
     for (const [s, role] of [[-1, 'back'], [1, 'inner-front']] as const) {
-      boards.push({ role, width: boxW - BOX_BOARD * 2, height: boxH, thickness: BOX_BOARD,
-        position: [0, boxY, boxZ + s * (boxD / 2 - BOX_BOARD / 2)], quaternion: Q_FLAT })
+      boards.push({ key: role, role, width: d.innerWidth, height: boxH, thickness: t,
+        position: [0, boxY, boxZ + s * (boxD / 2 - t / 2)], quaternion: Q_FLAT })
     }
-    boards.push({ role: 'base', width: boxW - BOX_BOARD * 2, height: boxD - BOX_BOARD * 2, thickness: BOX_BOARD,
-      position: [0, boxY - boxH / 2 + BOX_BOARD / 2, boxZ], quaternion: Q_LEVEL })
+    boards.push({ key: 'base', role: 'base', width: d.innerWidth, height: d.innerDepth, thickness: bottomThickness,
+      position: [0, d.baseBottom + bottomThickness / 2, boxZ], quaternion: Q_LEVEL })
+    const gap = (d.innerWidth - reinforcement.count * reinforcement.width) / (reinforcement.count + 1)
+    for (let i = 0; i < reinforcement.count; i++) {
+      boards.push({ key: `reinforcement-${i + 1}`, role: 'reinforcement', width: reinforcement.width,
+        height: d.innerDepth, thickness: reinforcement.height,
+        position: [-d.innerWidth / 2 + gap + reinforcement.width / 2 + i * (gap + reinforcement.width),
+          d.boxBottom + reinforcement.height / 2, boxZ], quaternion: Q_LEVEL })
+    }
   }
-  boards.push(front)
-  return {
-    boards,
-    hinges: [],
-    // it comes out far enough to reach the back of the box, less the bit a runner keeps
-    travel: Math.max(0, f.depth - 30),
-  }
+  boards.push(frontBoard(f))
+  return { boards, hinges: [], travel: d.travel }
 }
 
 /**

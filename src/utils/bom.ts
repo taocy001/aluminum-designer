@@ -1,3 +1,4 @@
+import { drawerLayout } from './drawerLayout'
 import type { ConnectorData, PanelData, ProfileData, FittingData, HingeType } from '../store/useStore'
 import { fittingParts, hingeCount } from './fittingGeometry'
 import { materialLabel } from './panelOps'
@@ -129,12 +130,12 @@ export function buildBom(
   for (const f of fittings) {
     for (const b of fittingParts(f).boards) {
       fittingBoards.push({
-        id: `${f.id}-${b.role}`, width: b.width, height: b.height, thickness: b.thickness,
+        id: `${f.id}-${b.key}`, width: b.width, height: b.height, thickness: b.thickness,
         position: [0, 0, 0], quaternion: [0, 0, 0, 1], material: f.material,
       })
     }
     if (f.kind === 'drawer') {
-      const depth = cutDimension(f.depth)
+      const depth = cutDimension(drawerLayout(f).runnerLength)
       const key = `runner-${depth}`
       const row = connectorRows.get(key) ?? {
         kind: 'connector' as const, key,

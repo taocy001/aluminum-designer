@@ -1,6 +1,6 @@
 import { noteNext } from './opLog'
 import * as THREE from 'three'
-import { useStore, type FittingData, type FittingKind, type HingeSide, type HingeType, type Overlay, type ProfileData } from '../store/useStore'
+import { useStore, type DrawerConfig, type DrawerReinforcement, type FittingData, type FittingKind, type HingeSide, type HingeType, type Overlay, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { memberBox } from './dragSnap'
 import { nextId } from './profileFactory'
@@ -9,6 +9,7 @@ import { translations } from './translations'
 import { connectedTo } from './editOps'
 import { makeOBB, obbCorners } from './obb'
 import { MIN_FITTING_OPENING as MIN_OPENING, validFitting } from './fittingValidation'
+import { DEFAULT_REINFORCEMENT } from './drawerLayout'
 
 /** Derive an opening from the selected frame members, insetting axes with enough clearance. */
 
@@ -350,6 +351,27 @@ export function updateFittings(ids: string[], updates: Partial<FittingData>): bo
     JSON.stringify(f[key as keyof FittingData]) === JSON.stringify(value)))) return false
   noteNext(mine.length > 1 ? `edit ${mine.length} fittings` : 'edit fitting')
   commitTransform({ fittings: mine.map((f) => ({ id: f.id, updates })) })
+  return true
+}
+
+export type DrawerConfigPatch = Partial<Omit<DrawerConfig, 'reinforcement'>> & { reinforcement?: Partial<DrawerReinforcement> }
+
+/** Merge each selected drawer's own values and validate the complete edit before committing. */
+export function updateDrawerConfig(ids: string[], patch: DrawerConfigPatch): boolean {
+  const { fittings, commitTransform } = useStore.getState()
+  const mine = fittings.filter((f) => ids.includes(f.id) && f.kind === 'drawer' && !f.locked)
+  const { reinforcement, ...dimensions } = patch
+  const next = mine.map((f) => ({ ...f, drawer: { ...f.drawer, ...dimensions,
+    ...(reinforcement ? { reinforcement: { ...DEFAULT_REINFORCEMENT, ...f.drawer?.reinforcement, ...reinforcement } } : {}),
+  } }))
+  if (!next.length) return false
+  if (!next.every(validFitting)) {
+    useToolStore.getState().showToast(translations[useToolStore.getState().language].toastInvalidFittingGeometry, 'error')
+    return false
+  }
+  if (next.every((f, i) => JSON.stringify(f.drawer) === JSON.stringify(mine[i].drawer))) return false
+  noteNext('edit drawer construction')
+  commitTransform({ fittings: next.map((f) => ({ id: f.id, updates: { drawer: f.drawer } })) })
   return true
 }
 

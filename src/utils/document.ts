@@ -4,7 +4,7 @@ import { CONNECTOR_CATALOG } from './connectorCatalog'
 import { migrateFittings } from './migrate'
 import { validFittingFields, validFittingDimensions } from './fittingValidation'
 
-export const PROJECT_VERSION = 6
+export const PROJECT_VERSION = 7
 export interface ProjectGeometry {
   profiles: ProfileData[]
   connectors: ConnectorData[]

@@ -657,7 +657,7 @@ const PART_FIELDS = {
   profiles: ['spec', 'length', 'position', 'quaternion', 'miterCuts', 'holes'],
   connectors: ['type', 'series', 'position', 'quaternion'],
   panels: ['width', 'height', 'thickness', 'material', 'position', 'quaternion'],
-  fittings: ['kind', 'width', 'height', 'depth', 'frame', 'material', 'open', 'hinge', 'hingeType', 'overlay', 'swing', 'meeting', 'stacked', 'position', 'quaternion'],
+  fittings: ['kind', 'width', 'height', 'depth', 'frame', 'material', 'open', 'hinge', 'hingeType', 'overlay', 'swing', 'meeting', 'stacked', 'drawer', 'position', 'quaternion'],
 }
 
 const finiteTuple = (value: unknown, length: number): value is number[] => Array.isArray(value)
