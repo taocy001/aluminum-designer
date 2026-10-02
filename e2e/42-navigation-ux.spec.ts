@@ -152,6 +152,52 @@ test('pivot state stays visible and Escape closes narrow tools before clearing s
   expect((await store(page)).selectedIds).toEqual(selected)
 })
 
+test('phone tools and view controls remain reachable above an open bottom panel', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.getByTestId('sidebar')).toBeVisible()
+  const toolbar = page.getByTestId('viewport-toolbar')
+  const views = page.getByTestId('standard-views')
+  for (const language of ['zh', 'en']) {
+    if (language === 'en') await page.getByRole('button', { name: 'English', exact: true }).click()
+    for (const expanded of [false, true]) {
+      if (expanded) await page.getByTestId('mobile-tools-toggle').click()
+      await expect(page.getByTestId('mobile-tools-toggle')).toHaveAttribute('aria-expanded', String(expanded))
+      const toolbarRect = await toolbar.boundingBox()
+      const viewsRect = await views.boundingBox()
+      expect(toolbarRect!.y + toolbarRect!.height).toBeLessThan(viewsRect!.y)
+      const helpRect = await page.getByTestId('help-toggle').boundingBox()
+      expect(helpRect!.x + helpRect!.width).toBeLessThan(viewsRect!.x)
+      for (const view of ['top', 'front', 'right', 'iso']) {
+        const button = page.getByTestId(`view-${view}`)
+        const rect = await button.boundingBox()
+        expect(rect!.width).toBeGreaterThanOrEqual(44)
+        expect(rect!.height).toBeGreaterThanOrEqual(44)
+        await button.click()
+      }
+      if (expanded) {
+        const lastTool = page.getByTestId('zoom-in')
+        await lastTool.scrollIntoViewIfNeeded()
+        expect(await lastTool.evaluate(el => {
+          const r = el.getBoundingClientRect()
+          return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))
+        })).toBe(true)
+        await lastTool.click()
+        await page.keyboard.press('Escape')
+      }
+      await page.getByTestId('help-toggle').click()
+      await expect(page.getByTestId('help-panel')).toBeVisible()
+      const helpPanel = page.getByTestId('help-panel')
+      const panelRect = await helpPanel.boundingBox()
+      const viewport = await page.getByTestId('viewport').boundingBox()
+      expect(panelRect!.y).toBeGreaterThanOrEqual(viewport!.y)
+      expect(panelRect!.y + panelRect!.height).toBeLessThan(viewsRect!.y)
+      expect(panelRect!.x + panelRect!.width).toBeLessThanOrEqual(viewport!.x + viewport!.width)
+      await helpPanel.getByRole('button').click()
+      await expect(helpPanel).toHaveCount(0)
+    }
+  }
+})
+
 test('fast exact input keeps every digit and Escape gives control back to the canvas', async ({ page }) => {
   await singleMember(page)
   const from = await w2c(page, [300, 10, 0]), to = await w2c(page, [300, 10, 70])

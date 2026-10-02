@@ -747,9 +747,21 @@ const Sidebar: React.FC = () => {
       >
         {selectedProfile || selectedConnector || selectedPanel || selectedFitting || selectedEquipment ? (
           <div className="bg-slate-900/50 rounded-xl p-3 border border-white/5 space-y-3 shadow-xl" data-testid="properties">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-              <span className="text-[10px] font-black uppercase text-slate-400">{t.properties}</span>
-              <div className="flex items-center gap-1">
+            <div className="flex items-start justify-between gap-2 border-b border-white/5 pb-2">
+              {(selectedProfile || selectedConnector || selectedPanel || selectedFitting) ? <div className="min-w-0 flex-1 text-[10px]" data-testid="selected-part-numbers">
+                <span className="text-slate-500">{t.partNumber}</span>
+                <code className="block break-all select-text text-cyan-300">{selectedProfile ? partNumber('profile', selectedProfile.id)
+                  : selectedConnector ? partNumber('connector', selectedConnector.id)
+                  : selectedPanel ? partNumber('panel', selectedPanel.id)
+                  : selectedFitting ? partNumber('fitting', selectedFitting.id) : ''}</code>
+                {selectedFitting && <details className="mt-1">
+                  <summary className="cursor-pointer text-slate-400">{t.boardCutList}</summary>
+                  {fittingParts(selectedFitting).boards.map((b) => <code key={b.key} className="block break-all select-text text-cyan-300">
+                    {fittingBoardNumber(selectedFitting.id, b.key)}
+                  </code>)}
+                </details>}
+              </div> : <span className="text-[10px] font-bold text-slate-400">{t.equipment}</span>}
+              <div className="flex shrink-0 items-center gap-1">
                 <button onClick={toggleLockSelected} title={t.lockHint} data-testid="lock-toggle"
                   disabled={viewMode} aria-pressed={selectionLocked} aria-label={selectionLocked ? t.unlock : t.lock}
                   className={`p-1.5 rounded-lg ${selectionLocked ? 'text-amber-400 bg-amber-400/10' : 'text-slate-400 hover:bg-white/5'}`}>
@@ -759,34 +771,23 @@ const Sidebar: React.FC = () => {
                   className="text-red-400 hover:bg-red-400/10 disabled:opacity-30 p-1.5 rounded-lg"><Trash2 size={14} /></button>
               </div>
             </div>
-            {(selectedProfile || selectedConnector || selectedPanel || selectedFitting) && <div className="space-y-1 text-[10px]" data-testid="selected-part-numbers">
-              <span className="text-slate-500">{t.partNumber}</span>
-              <code className="block break-all select-text text-cyan-300">{selectedProfile ? partNumber('profile', selectedProfile.id)
-                : selectedConnector ? partNumber('connector', selectedConnector.id)
-                : selectedPanel ? partNumber('panel', selectedPanel.id)
-                : selectedFitting ? partNumber('fitting', selectedFitting.id) : ''}</code>
-              {selectedFitting && <details>
-                <summary className="cursor-pointer text-slate-400">{t.boardCutList}</summary>
-                {fittingParts(selectedFitting).boards.map((b) => <code key={b.key} className="block break-all select-text text-cyan-300">
-                  {fittingBoardNumber(selectedFitting.id, b.key)}
-                </code>)}
-              </details>}
-            </div>}
             {selectedEquipment && <EquipmentEditor part={selectedEquipment} />}
             {selectedProfile && (
-              <fieldset disabled={viewMode} className="space-y-3">
+              <fieldset disabled={viewMode} className="space-y-2">
                 <SupportBindingEditor part={selectedProfile} />
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">{t.spec}</span>
-                  <select value={selectedProfile.spec} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onChange={(e) => setProfileSpec(selectedProfile.id, e.target.value as ProfileSpec)}
-                    aria-label={t.spec}
-                    className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-blue-400 outline-none disabled:opacity-40 disabled:cursor-not-allowed">
-                    {ALL_SPECS.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">{t.direction}</span>
-                  <span className="font-mono text-slate-300">{directionLabel(selectedProfile)}</span>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="flex justify-between items-center gap-1">
+                    <span className="text-slate-500">{t.spec}</span>
+                    <select value={selectedProfile.spec} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onChange={(e) => setProfileSpec(selectedProfile.id, e.target.value as ProfileSpec)}
+                      aria-label={t.spec}
+                      className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-blue-400 outline-none disabled:opacity-40 disabled:cursor-not-allowed">
+                      {ALL_SPECS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex justify-between items-center gap-1">
+                    <span className="text-slate-500">{t.direction}</span>
+                    <span className="font-mono text-slate-300">{directionLabel(selectedProfile)}</span>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-bold">{t.length}</span>

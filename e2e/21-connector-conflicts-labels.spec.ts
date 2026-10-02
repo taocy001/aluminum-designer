@@ -128,7 +128,7 @@ test.describe('A board and a drawer say their size on the drawing', () => {
     await page.evaluate((id) => (window as any).__aluframe.store.getState().selectItem(id, false), f.id)
     await settle(page)
     await expect(page.getByTestId('fitting-props')).toBeVisible()
-    const fields = await page.getByTestId('fitting-props').locator('input[type=number]')
+    const fields = await page.getByTestId('fitting-props').getByRole('spinbutton', { name: /^(宽度|高度|深度)（mm）$/ })
       .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))
     expect(fields).toEqual([String(Math.round(f.width)), String(Math.round(f.height)), String(Math.round(f.depth))])
   })

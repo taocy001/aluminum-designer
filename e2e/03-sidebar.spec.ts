@@ -89,7 +89,7 @@ test.describe('BOM, project files, clear', () => {
     await expect(page.getByTestId('bom-brackets')).toHaveText('0/4')   // none fitted yet, four joints want one
     await expect(page.getByTestId('bom-table')).toContainText('600 mm')
     await expect(page.getByTestId('bom-table')).toContainText('380 mm')
-    await expect(page.getByTestId('bom-table').locator('div', { hasText: '380 mm' }).first()).toContainText('×2')
+    await expect(page.getByTestId('bom-table').locator('summary', { hasText: '380 mm' })).toHaveText('2020 380 mm ×2')
     await expect(page.getByTestId('bom-overall')).toHaveText('600×420×20')
   })
 

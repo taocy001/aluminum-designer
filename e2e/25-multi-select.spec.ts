@@ -54,13 +54,16 @@ test.describe('Doors, boards and brackets select together', () => {
   test('a box dragged round them catches them, not just the frame behind', async ({ page }) => {
     await page.getByTestId('select-toggle').click()
     await page.waitForTimeout(100)
-    await page.mouse.move(360, 60)
+    const canvas = await page.getByTestId('viewport').boundingBox()
+    expect(canvas).not.toBeNull()
+    await page.mouse.move(canvas!.x + 40, canvas!.y + 8)
     await page.mouse.down()
-    await page.mouse.move(1380, 860, { steps: 8 })
+    await page.mouse.move(canvas!.x + canvas!.width - 20, canvas!.y + canvas!.height - 40, { steps: 8 })
     await page.mouse.up()
     await page.waitForTimeout(250)
     const s = await store(page)
     const picked = await sel(page)
+    expect(s.fittings).toHaveLength(2)
     expect(s.fittings.every((f) => picked.includes(f.id))).toBe(true)
   })
 

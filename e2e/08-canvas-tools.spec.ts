@@ -251,6 +251,52 @@ test.describe('Sidebar panels', () => {
     const box2 = await page.getByTestId('rotate-block').boundingBox()
     expect(box2!.y + box2!.height).toBeLessThanOrEqual(720)
   })
+
+  test('full part numbers wrap while controls and fitting board numbers stay accessible', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    const profileId = '12345678-1234-1234-1234-123456789012'
+    await page.evaluate((id) => {
+      const s = (window as any).__aluframe.store.getState()
+      s.loadDocument({
+        version: 9, throughRule: 'posts',
+        profiles: [{ id, spec: '2020', length: 600, position: [0, 10, 0], quaternion: [0, Math.SQRT1_2, 0, Math.SQRT1_2] }],
+        connectors: [], panels: [], equipment: [],
+        fittings: [{ id: 'drawer', kind: 'drawer', width: 600, height: 200, depth: 500, frame: 20, material: 'ply',
+          position: [800, 200, 0], quaternion: [0, 0, 0, 1], open: 0,
+          drawer: { reinforcement: { count: 1, width: 40, height: 20 } } }],
+      })
+      s.selectItems([id])
+    }, profileId)
+    await page.getByTestId('section-components').click()
+    await page.getByTestId('sidebar-scroll').evaluate((el) => { el.scrollTop = 0 })
+    const number = page.getByTestId('selected-part-numbers').locator('code').first()
+    await expect(number).toHaveText(`P-${profileId}`)
+    const size = await number.evaluate((el) => ({
+      width: el.clientWidth, contentWidth: el.scrollWidth,
+      height: el.clientHeight, lineHeight: Number.parseFloat(getComputedStyle(el).lineHeight),
+      selectable: getComputedStyle(el).userSelect,
+    }))
+    expect(size.contentWidth).toBeLessThanOrEqual(size.width)
+    expect(size.height).toBeGreaterThan(size.lineHeight)
+    expect(size.selectable).toBe('text')
+    const rotation = await page.getByTestId('rotate-block').boundingBox()
+    expect(rotation).not.toBeNull()
+    expect(rotation!.y + rotation!.height).toBeLessThanOrEqual(720)
+    await expect(page.getByTestId('lock-toggle')).toBeInViewport()
+    await expect(page.getByTestId('delete-selected')).toBeInViewport()
+    await page.getByTestId('lock-toggle').click()
+    await expect(page.getByTestId('lock-toggle')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByTestId('delete-selected')).toBeDisabled()
+    await page.getByTestId('lock-toggle').click()
+    await expect(page.getByTestId('delete-selected')).toBeEnabled()
+
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['drawer']))
+    const numbers = page.getByTestId('selected-part-numbers')
+    await numbers.locator('summary').click()
+    await expect(numbers.locator('details')).toHaveAttribute('open', '')
+    await expect(numbers).toContainText('F-drawer.B-front')
+    await expect(numbers).toContainText('F-drawer.B-reinforcement-1')
+  })
 })
 
 test.describe('Snapping while dragging', () => {

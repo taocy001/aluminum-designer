@@ -37,7 +37,6 @@ async function bom(page: Page) {
     brackets: await page.getByTestId('bom-brackets').textContent(),
     overall: await page.getByTestId('bom-overall').textContent(),
     pen: await page.getByTestId('bom-penetrations').textContent(),
-    table: (await page.getByTestId('bom-table').textContent())!.replace(/\s+/g, ' '),
   }
 }
 
@@ -119,9 +118,12 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     expect(b.count).toBe('12')
     expect(b.pen).toBe('无干涉')
     expect(b.brackets).toBe('0/16')   // none fitted yet, sixteen joints want one
-    expect(b.table).toContain(`${h} mm×4`) // later rails do not lengthen the existing posts
-    expect(b.table).toContain(`${ax1 - ax0 - 20} mm×4`)
-    expect(b.table).toContain(`${az1 - az0 - 20} mm×4`)
+    const rows = page.getByTestId('bom-table').locator('summary')
+    await expect(rows).toHaveText([
+      `2020 ${h} mm ×4`,
+      `2020 ${ax1 - ax0 - 20} mm ×4`,
+      `2020 ${az1 - az0 - 20} mm ×4`,
+    ])
     expect(b.overall).toBe(`${ax1 - ax0 + 20}×${az1 - az0 + 20}×${h + 10}`)
     await page.screenshot({ path: 'test-results/cabinet-A.png' })
   })

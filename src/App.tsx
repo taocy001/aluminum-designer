@@ -484,10 +484,9 @@ function App() {
           )}
 
           {/* Toolbar */}
-          {/* Keep related controls together and wrap whole groups when the viewport is
-              narrow. Every action stays visible, including when the held part or pivot
-              label makes the toolbar wider. The drawing HUD follows its measured height. */}
-          <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap whitespace-nowrap w-[calc(100%-1rem)] md:w-auto max-w-[calc(100%-1rem)] bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
+          {/* Related controls wrap together; short mobile canvases scroll the toolbar
+              above the bottom controls. The drawing HUD follows its measured height. */}
+          <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap whitespace-nowrap w-[calc(100%-1rem)] md:w-auto max-w-[calc(100%-1rem)] max-h-[calc(100%-6rem)] md:max-h-none overflow-y-auto md:overflow-visible bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
             {/* What is in hand, and the way to put it down. Not a mode switch: it only ever
                 empties the hand, because filling it is the sidebar's job. */}
             {/* the label is the part's name, but the accessible name says what the button does,
@@ -586,8 +585,9 @@ function App() {
             </button>
           </div>
 
+          <div className="absolute bottom-6 left-6 right-3 z-10 flex items-end justify-between gap-2 pointer-events-none">
           <div data-testid="standard-views" data-keep-draw role="group" aria-label={t.standardViews}
-            className="absolute bottom-6 right-3 z-10 flex flex-col gap-0.5 p-1 rounded-xl bg-slate-900/90 border border-white/10 shadow-lg">
+            className="order-2 flex flex-row md:flex-col shrink-0 gap-0.5 p-1 rounded-xl bg-slate-900/90 border border-white/10 shadow-lg pointer-events-auto">
             {(['top', 'front', 'right', 'iso'] as const).map((view) => <button key={view}
               data-testid={`view-${view}`} onClick={() => setCameraView(view)} title={t.viewNames[view]}
               className="min-w-11 min-h-11 md:min-h-8 px-2 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white hover:bg-slate-700/70">
@@ -596,22 +596,23 @@ function App() {
           </div>
 
           {/* Current interaction mode and help access. */}
-          <div className="absolute bottom-6 left-6 flex items-center gap-2 z-10">
-            <div className={`pointer-events-none bg-slate-900/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-bold shadow-2xl ${
+          <div className="min-w-0 flex items-center gap-2 pointer-events-auto">
+            <div className={`min-w-0 truncate pointer-events-none bg-slate-900/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-bold shadow-2xl ${
               measuring ? 'text-amber-400' : viewMode ? 'text-emerald-400' : selectMode ? 'text-violet-400' : held !== null ? 'text-blue-400' : 'text-slate-300'}`}
               data-testid="mode-line">
               {measuring ? (t.measureHint) : viewMode ? t.look : selectMode ? t.selectMode : held !== null ? `${t.draw} · ${heldName}` : t.emptyHand}
             </div>
             <button data-keep-draw data-testid="help-toggle" onClick={toggleHelp} title={t.hintHelp} aria-label={t.help}
               aria-expanded={helpOpen}
-              className="flex items-center justify-center w-11 h-11 md:w-7 md:h-7 rounded-full bg-slate-900/80 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/25 shadow-2xl">
+              className="flex shrink-0 items-center justify-center w-11 h-11 md:w-7 md:h-7 rounded-full bg-slate-900/80 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/25 shadow-2xl">
               <HelpCircle size={13} />
             </button>
+          </div>
           </div>
 
           {helpOpen && (
             <div data-keep-draw data-testid="help-panel"
-              className="absolute bottom-16 left-6 z-20 bg-slate-900/95 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 shadow-2xl max-w-sm text-[10px] text-slate-400 space-y-1">
+              className="absolute bottom-20 md:bottom-16 left-6 z-20 bg-slate-900/95 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 shadow-2xl max-w-sm max-h-[calc(100%-6rem)] md:max-h-none overflow-y-auto md:overflow-visible text-[10px] text-slate-400 space-y-1">
               <div className="flex items-center justify-between pb-1.5 mb-1 border-b border-white/10">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t.help}</span>
                 <button onClick={toggleHelp} aria-label={t.help} className="text-slate-500 hover:text-white"><X size={12} /></button>

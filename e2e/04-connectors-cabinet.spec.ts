@@ -88,9 +88,9 @@ test.describe('Cabinet build', () => {
     await expect(table).toContainText('800 mm')
     await expect(table).toContainText('580 mm')   // X rails between uprights
     await expect(table).toContainText('380 mm')   // Z rails and side rails
-    await expect(table.locator('div', { hasText: '800 mm' }).first()).toContainText('×4')
-    await expect(table.locator('div', { hasText: '580 mm' }).first()).toContainText('×6')
-    await expect(table.locator('div', { hasText: '380 mm' }).first()).toContainText('×6')
+    await expect(table.locator('summary', { hasText: '800 mm' })).toHaveText('2020 800 mm ×4')
+    await expect(table.locator('summary', { hasText: '580 mm' })).toHaveText('2020 580 mm ×6')
+    await expect(table.locator('summary', { hasText: '380 mm' })).toHaveText('2020 380 mm ×6')
     // 12 rails × 2 butt ends = 24 brackets
     await expect(page.getByTestId('bom-brackets')).toHaveText('0/24')
     await page.screenshot({ path: 'test-results/cabinet.png' })
