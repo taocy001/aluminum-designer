@@ -1,6 +1,8 @@
 import { reportEditResult } from '../utils/editFeedback'
 import EquipmentEditor, { EquipmentCreator } from './EquipmentEditor'
 import ConnectorEditor from './ConnectorEditor'
+import ConnectorThumbnail from './ConnectorThumbnail'
+import { hardwareReference } from '../utils/connectorHardware'
 import OpeningBindingEditor, { SupportBindingEditor } from './OpeningBindingEditor'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -643,14 +645,16 @@ const Sidebar: React.FC = () => {
 
           <div>
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.connectors}</label>
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-4 gap-1">
               {CONNECTOR_LIST.map(({ type, labelZh, labelEn }) => (
                 <button key={type} onClick={() => handleConnectorClick(type)} data-testid={`connector-${type}`}
-                  title={t.hintConnectorPick(language === 'zh' ? labelZh : labelEn)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all text-left ${
+                  aria-label={language === 'zh' ? labelZh : labelEn}
+                  aria-pressed={held === 'connector' && activeConnectorType === type}
+                  title={`${language === 'zh' ? labelZh : labelEn}\n${language === 'zh' ? hardwareReference(type)?.descriptionZh ?? '' : hardwareReference(type)?.descriptionEn ?? ''}\n${t.hintConnectorPick(language === 'zh' ? labelZh : labelEn)}`}
+                  className={`aspect-square min-h-11 rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-cyan-300 ${
                     held === 'connector' && activeConnectorType === type
-                      ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
-                  {language === 'zh' ? labelZh : labelEn}
+                      ? 'border-emerald-400 bg-emerald-900 shadow-lg' : 'border-white/5 bg-slate-800/70 hover:bg-slate-700'}`}>
+                  <ConnectorThumbnail type={type} />
                 </button>
               ))}
             </div>

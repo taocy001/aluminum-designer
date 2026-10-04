@@ -16,14 +16,14 @@ export interface ShareDoc {
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–7. */
+/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–8. */
 function pack(doc: ShareDoc): unknown[] {
   const checked = validateProjectDocument(doc)
   return [
-    7, checked.throughRule,
+    8, checked.throughRule,
     checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null,
       p.id, p.runnerBinding ?? null]),
-    checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked, c.id, c.supportBinding ?? null]),
+    checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked, c.id, c.supportBinding ?? null, c.profileSpec ?? null, c.mountSeries ?? null]),
     checked.panels.map((b) => [b.width, b.height, b.thickness, b.position, b.quaternion, b.material, !!b.locked, b.id, b.openingBinding ?? null]),
     checked.fittings.map((f) => [
       f.kind, f.width, f.height, f.depth, f.position, f.quaternion,
@@ -37,7 +37,7 @@ function pack(doc: ShareDoc): unknown[] {
 function unpack(raw: unknown): ParsedProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7) throw new Error('unknown link version')
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8) throw new Error('unknown link version')
   const [profiles, connectors, panels, fittings, equipment = []] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
   if (raw.length !== (version >= 7 ? 7 : version >= 2 ? 6 : 5)
     || ![profiles, connectors, panels, fittings, equipment].every(Array.isArray)) throw new Error('incomplete link')
@@ -45,7 +45,7 @@ function unpack(raw: unknown): ParsedProjectDocument {
   let n = 0
   const id = (p: string) => `${p}-s${(n++).toString(36)}`
   return parseProjectDocument({
-    version: version === 7 ? PROJECT_VERSION : version === 6 ? 8 : version === 5 ? 7 : version === 4 ? 6 : undefined,
+    version: version >= 7 ? PROJECT_VERSION : version === 6 ? 8 : version === 5 ? 7 : version === 4 ? 6 : undefined,
     throughRule,
     equipment: equipment.map((row) => {
       if (!Array.isArray(row) || row.length !== 9) throw new Error('invalid equipment link')
@@ -64,11 +64,13 @@ function unpack(raw: unknown): ParsedProjectDocument {
       }
     }),
     connectors: (connectors ?? []).map((row) => {
-      const [type, series, position, quaternion, locked, originalId, supportBinding] = row as [string, number, number[], number[], boolean, string, ConnectorData['supportBinding'] | null]
+      const [type, series, position, quaternion, locked, originalId, supportBinding, profileSpec, mountSeries] = row as [string, number, number[], number[], boolean, string, ConnectorData['supportBinding'] | null, ConnectorData['profileSpec'] | null, ConnectorData['mountSeries'] | null]
       return {
         id: version >= 6 ? originalId : id('c'), type, ...(locked ? { locked: true } : {}), series: series as ConnectorData['series'],
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
+        ...(version >= 8 && profileSpec != null ? { profileSpec } : {}),
+        ...(version >= 8 && mountSeries != null ? { mountSeries } : {}),
         ...(version >= 6 && supportBinding !== null && supportBinding !== undefined ? { supportBinding } : {}),
       }
     }),

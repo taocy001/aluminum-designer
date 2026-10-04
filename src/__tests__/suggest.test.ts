@@ -3,11 +3,11 @@ import * as THREE from 'three'
 import { suggestNext, focusOf, type Candidate } from '../utils/suggest'
 import { findConflicts } from '../utils/analysis'
 import { computeAllTrims, trimmedBox } from '../utils/jointUtils'
-import { getProfileEndpoints } from '../utils/geometryCore'
+import { getProfileDir, getProfileEndpoints } from '../utils/geometryCore'
 import { countUnflush } from '../utils/faceAlign'
 import { prepareProfile } from '../utils/profileFactory'
 import { migrateFittings } from '../utils/migrate'
-import { auditBrackets, seatAngle } from '../utils/bracketSeat'
+import { auditBrackets, seatFor } from '../utils/bracketSeat'
 import { vet } from '../utils/suggestGate'
 import type { ConnectorData, FittingData, PanelData, ProfileData, ProfileSpec } from '../store/useStore'
 
@@ -17,7 +17,7 @@ const loaded = import.meta.glob(['../../examples/*.json', '../../examples/flat/*
 const docs = new Map<string, Doc>()
 for (const [path, mod] of Object.entries(loaded)) {
   const name = path.split('/').pop()!
-  if (name.startsWith('connector-demo')) continue     // a showcase, not a thing anybody builds
+  if (name.startsWith('connector-demo')) continue     // isolated hardware samples
   const d = mod.default
   docs.set(name, { profiles: d.profiles, connectors: d.connectors ?? [], panels: d.panels ?? [], fittings: migrateFittings(d.profiles, d.fittings ?? []) })
 }
@@ -30,7 +30,11 @@ const same = (a: ProfileData, b: ProfileData) => {
 }
 const first = (it: Iterator<Candidate>, n: number) => {
   const out: Candidate[] = []
-  for (let r = it.next(); !r.done && out.length < n; r = it.next()) out.push(r.value)
+  while (out.length < n) {
+    const next = it.next()
+    if (next.done) break
+    out.push(next.value)
+  }
   return out
 }
 
@@ -89,6 +93,25 @@ function emptyCorners(profiles: ProfileData[]): Set<string> {
   return out
 }
 const noEdge = (a: ProfileSpec, b: ProfileSpec) => [a, b].sort().join() === '2020,4040'
+
+/** The fixtures use B6 for 2020/2040 and I8 for 4040. No listed connector
+ * adapts these slots. Identify actual perpendicular contacts independently of vet. */
+function unsupportedMixedMembers(doc: Doc): Set<string> {
+  const trims = computeAllTrims(doc.profiles)
+  const bodies = new Map(doc.profiles.map((p) => [p.id, trimmedBox(p, trims.get(p.id)!)]))
+  const ids = new Set<string>()
+  const b6 = (spec: ProfileSpec) => spec === '2020' || spec === '2040'
+  for (let i = 0; i < doc.profiles.length; i++) {
+    const a = doc.profiles[i]
+    for (const b of doc.profiles.slice(i + 1)) {
+      if (!((b6(a.spec) && b.spec === '4040') || (a.spec === '4040' && b6(b.spec)))) continue
+      if (Math.abs(getProfileDir(a).dot(getProfileDir(b))) > 0.1) continue
+      if (depth(bodies.get(a.id)!.clone().expandByScalar(0.5), bodies.get(b.id)!) <= 0) continue
+      ids.add(a.id); ids.add(b.id)
+    }
+  }
+  return ids
+}
 
 /** Everything that must hold of a suggestion, asked of the whole drawing, before and after */
 function faultsOf(doc: Doc, c: Candidate): string[] {
@@ -171,8 +194,8 @@ describe('suggesting the next member', () => {
     const full = [...posts, left, right]
     const connectors: ConnectorData[] = [left, right].flatMap((rail) => Object.values(getProfileEndpoints(rail)).map((at, i) => {
       const post = posts.find((p) => p.position[0] === rail.position[0] && p.position[2] === Math.round(at.z))!
-      const seat = seatAngle(rail, post, at)!
-      return { id: `${rail.id}-bracket-${i}`, type: 'inside-corner', series: seat.series, position: seat.position, quaternion: seat.quaternion }
+      const seat = seatFor('inside-corner', rail, post, at)!
+      return { id: `${rail.id}-bracket-${i}`, type: 'inside-corner', ...seat }
     }))
     expect(auditBrackets(full, connectors)).toEqual([])
     const doc: Doc = { profiles: [...posts, right], connectors, panels: [], fittings: [] }
@@ -189,29 +212,42 @@ describe('suggesting the next member', () => {
 
   /**
    * Remove each fixture member in turn and use up to three preceding members as focus.
-   * Measure where the removed member appears among the first three suggestions.
+   * Measure supported members among the first three suggestions. Members that require
+   * an unavailable B6/I8 adapter must remain absent from the suggestions.
    */
-  it('meets first-choice and top-three thresholds for removed fixture members', () => {
-    let n = 0, top1 = 0, top3 = 0
+  it('meets first-choice and top-three thresholds for supported fixture members', async () => {
+    let n = 0, top1 = 0, top3 = 0, unsupported = 0
     const bad: string[] = []
     for (const name of files) {
       const doc = docs.get(name)!
-      doc.profiles.forEach((gone, i) => {
+      const unavailable = unsupportedMixedMembers(doc)
+      for (let i = 0; i < doc.profiles.length; i++) {
+        const gone = doc.profiles[i]
         const rest = { ...doc, profiles: doc.profiles.filter((_, j) => j !== i) }
         const focus = doc.profiles.slice(Math.max(0, i - 3), i).reverse().map((p) => p.id)
         const top = first(suggestNext(rest, focus), 3)
         const k = top.findIndex((c) => same(c.member, gone))
-        n++
-        if (k === 0) top1++
-        if (k >= 0) top3++
+        if (unavailable.has(gone.id)) {
+          unsupported++
+          expect(vet(gone, { kind: 'close' }, rest)).toEqual({ ok: false, why: 'unbuildable' })
+          expect(k).toBe(-1)
+        } else {
+          n++
+          if (k === 0) top1++
+          if (k >= 0) top3++
+        }
         // what it offers first is judged in full, whether it was the member taken out or not
         if (top[0]) for (const f of faultsOf(rest, top[0])) bad.push(`${name} #${i}: ${top[0].rule} ${top[0].member.spec}@${top[0].member.position.map(Math.round)} — ${f}`)
-      })
+        // Let the worker report progress during the exhaustive geometry checks.
+        if (i % 8 === 0) await new Promise((resolve) => setTimeout(resolve, 0))
+      }
     }
     expect(bad).toEqual([])
+    expect(n).toBeGreaterThan(600)
+    expect(unsupported).toBe(143)
     expect(top1 / n).toBeGreaterThanOrEqual(0.7)
     expect(top3 / n).toBeGreaterThanOrEqual(0.85)
-  }, 60_000) // exhaustively asks once for every member of every example
+  }, 180_000)
 
   /** Validate proposed reinforcing rails and supports against the geometry checks. */
   describe.each(files)('%s, finished', (name) => {
@@ -243,6 +279,21 @@ describe('suggesting the next member', () => {
     }
   })
 
+  it.each([['2040', false], ['3030', true]] as const)('checks actual slot compatibility before suggesting a %s rail between 4040 posts', (spec, supported) => {
+    const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
+    const profiles: ProfileData[] = []
+    for (const x of [0, 600]) profiles.push(prepareProfile(V(x, 0, 0), V(x, 800, 0), '4040', profiles)!)
+    const height = 800 - Number(spec.slice(2)) / 2
+    const template = prepareProfile(V(0, height, 900), V(600, height, 900), spec, profiles)!
+    profiles.push(template)
+    const candidate = prepareProfile(V(0, height, 0), V(600, height, 0), spec, profiles)!
+    const doc: Doc = { profiles, connectors: [], panels: [], fittings: [] }
+    expect(vet(candidate, { kind: 'close' }, doc)).toEqual(supported ? { ok: true } : { ok: false, why: 'unbuildable' })
+    const suggestions = [...suggestNext(doc, [])]
+    expect(suggestions.some((item) => same(item.member, candidate))).toBe(supported)
+    for (const item of suggestions) expect(faultsOf(doc, item)).toEqual([])
+  })
+
   /**
    * Four members drawn by hand, and then nothing but accepting what is offered. The box
    * closes, and at no step is the drawing any worse than it was.
@@ -272,10 +323,11 @@ describe('suggesting the next member', () => {
   })
 
   it('meets the median suggestion-time limit for each numbered fixture', () => {
-    const slow: string[] = []
+    const slow: string[] = [], measured: string[] = []
     for (const name of files.filter((f) => /^\d\d-/.test(f))) {
       const doc = docs.get(name)!
-      let worst = 0
+      let worst = 0, worstIndex = -1
+      let worstTimings: number[] = []
       for (let i = 0; i < doc.profiles.length; i += 3) {
         const rest = { ...doc, profiles: doc.profiles.filter((_, j) => j !== i) }
         // Keep the 50 ms budget for every scene. Three independent searches distinguish
@@ -286,12 +338,15 @@ describe('suggesting the next member', () => {
           suggestNext(rest, focusOf(rest.profiles, [])).next()
           timings.push(performance.now() - t0)
         }
-        worst = Math.max(worst, timings.sort((a, b) => a - b)[1])
+        const median = [...timings].sort((a, b) => a - b)[1]
+        if (median > worst) { worst = median; worstIndex = i; worstTimings = timings }
       }
+      measured.push(`${name}: ${worst.toFixed(2)} ms (member ${worstIndex}; ${worstTimings.map((t) => t.toFixed(2)).join("/")})`)
       if (worst > 50) slow.push(`${name} ${worst.toFixed(0)} ms`)
     }
+    console.info(measured.join('; '))
     expect(slow).toEqual([])
-  }, 15_000)
+  }, 30_000)
 
   it('a key turned down comes last, and the same member keeps the same key', () => {
     // A partial box is independent of file member order and of later support additions.

@@ -3,10 +3,13 @@ import * as THREE from 'three'
 import { useStore, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { useConnectorEditStore } from '../store/useConnectorEditStore'
-import { boltLabel, connectorEntry, connectorLabel, nutLabel } from '../utils/connectorCatalog'
+import { connectorEntry, connectorLabel } from '../utils/connectorCatalog'
 import { connectorInstallationKey, connectorPlacementCandidates, validateConnectorPlacement, type ConnectorPlacementReason } from '../utils/connectorPlacement'
 import { reseatConnector, setConnectorAngles, setConnectorPose } from '../utils/connectorEdits'
 import { orientationDegrees, setConnectorSeries } from '../utils/editOps'
+import { hardwareReference } from '../utils/connectorHardware'
+import { accessoryCapReference } from '../utils/connectorAccessoryReferences'
+import { hardwareFastenerLabel } from '../utils/connectorFasteners'
 import { partNumber } from '../utils/partNumbers'
 import { translations } from '../utils/translations'
 import { SupportBindingEditor } from './OpeningBindingEditor'
@@ -57,8 +60,9 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
   const { profiles, connectors, equipment, panels, fittings } = useStore()
   const { language, viewMode, held } = useToolStore()
   const t = translations[language]
-  const entry = connectorEntry(connector.type), recipe = entry?.fasteners
+  const entry = connectorEntry(connector.type)
   const series = connector.series ?? 20
+  const reference = connector.type === 'end-cap' ? accessoryCapReference(connector.profileSpec ?? `${series}${series}` as '2020' | '3030' | '4040') : hardwareReference(connector.type, series)
   const disabled = viewMode || connector.locked
   const euler = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(...connector.quaternion).normalize(), 'YXZ')
   const angles = [euler.x, euler.y, euler.z].map(THREE.MathUtils.radToDeg) as [number, number, number]
@@ -81,6 +85,7 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
     return () => setPreview(null)
   }, [anchor, chosen, connector.type, disabled, held, setPreview])
   const reason = (value?: ConnectorPlacementReason) => value === 'occupied' ? t.connectorOccupied
+    : value === 'unverified' ? t.connectorReasonUnverified
     : value === 'collision' ? t.connectorReasonCollision : value === 'equipment' ? t.connectorReasonEquipment : t.connectorNoSeat
   const openSeats = () => {
     setAnchor([...connector.position])
@@ -104,9 +109,17 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
     <div className="flex justify-between items-center text-[11px]">
       <span className="text-slate-500">{t.fasteners}</span>
       <span className="font-mono text-slate-300" data-testid="connector-fasteners">
-        {!recipe || (!recipe.bolts && !recipe.nuts) ? '—' : `${recipe.bolts}× ${boltLabel(series, language)} · ${recipe.nuts}× ${nutLabel(series, language)}`}
+        {!reference?.verified || !reference.fasteners.length ? '—' : reference.fasteners.map((fastener) => `${fastener.count}× ${hardwareFastenerLabel(fastener, language)}`).join(' · ')}
       </span>
     </div>
+    {reference && <div className="space-y-1 text-[10px] text-slate-400" data-testid="connector-reference">
+      <a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="text-cyan-400 underline">{reference.sku}</a>
+      <p>{language === 'zh' ? reference.descriptionZh : reference.descriptionEn}</p>
+      {!reference.verified && <p className="text-amber-400">{language === 'zh' ? '当前型号未核定适配安装，不提供自动安装。' : 'Installation compatibility is unverified; automatic placement is unavailable.'}</p>}
+      {reference.machining?.map((item) => <p key={item}>{item}</p>)}
+      {reference.limitations?.map((item) => <p key={item}>{item}</p>)}
+      {connector.type === 'end-cap' && <p>{language === 'zh' ? '端盖截面' : 'Cap section'}: {connector.profileSpec ?? `${series}${series}`}</p>}
+    </div>}
     <div className="space-y-1">
       <span className="text-[10px] text-slate-500">{t.position}</span>
       <div className="grid grid-cols-3 gap-1" data-testid="connector-position">

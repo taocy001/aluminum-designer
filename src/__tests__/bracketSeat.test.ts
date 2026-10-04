@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import * as THREE from 'three'
 import { buildProfile } from '../utils/profileFactory'
 import { setThroughRule } from '../utils/jointUtils'
-import { auditBrackets, seatAngle, seatBracket, seatFor, sharedSlotLine } from '../utils/bracketSeat'
+import { auditBrackets, connectorSeatsAt, seatAngle, seatBracket, seatFor, sharedSlotLine } from '../utils/bracketSeat'
 import { slotOffsets, nearestSlot } from '../utils/specUtils'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
 
@@ -20,7 +20,7 @@ describe('where the slots run', () => {
   it('a 20 face has one slot, down the middle', () => {
     expect(slotOffsets(20)).toEqual([0])
   })
-  it('a 40 face has two, ten either side — the middle is metal', () => {
+  it('the 40 mm face of series 20 has two slots, ten either side', () => {
     expect(slotOffsets(40)).toEqual([-10, 10])
     expect(slotOffsets(40)).not.toContain(0)
   })
@@ -96,7 +96,7 @@ describe('seating a bracket at a corner', () => {
   })
 })
 
-describe('a bolt on a 40 face is offset, because its middle is metal', () => {
+describe('slot placement follows the profile series', () => {
   it('shifts along the wide member so the hole finds a slot', () => {
     // a 2040 rail lying with its 40 face up, butting into a 4040 post; outside faces flush
     const post = P(0, 20, 0, 0, 620, 0, '4040')
@@ -109,11 +109,12 @@ describe('a bolt on a 40 face is offset, because its middle is metal', () => {
     }
   })
 
-  it('a 4040 to 4040 corner offsets both bolts off the middle', () => {
+  it('a 4040 I8 corner uses the single central slot on each face', () => {
     const post = P(0, 20, 0, 0, 620, 0, '4040')
     const rail = P(0, 20, 0, 600, 20, 0, '4040')
     const seat = seatBracket(rail, post, V(0, 20, 0))!
-    expect(seat.slotOffsets.map(Math.abs)).toEqual([10, 10])
+    expect(seat.slotOffsets.map(Math.abs)).toEqual([0, 0])
+    expect(slotOffsets(40, 40)).toEqual([0])
   })
 })
 
@@ -200,18 +201,18 @@ describe('a cast corner bracket sits inside the corner', () => {
     expect(seat.slotOffsets[1]).toBeCloseTo(0, 2)
   })
 
-  it('a 2020 centred on a 4040 has no such line, so no single bracket fits', () => {
+  it('the geometric 2020 and 4040 central slot lines coincide', () => {
     const wide = P(0, 20, 0, 0, 620, 0, '4040')
     const small = P(0, 20, 0, 600, 20, 0, '2020')
-    // the 2020's only slot line is its middle; the 4040's are ten either side of its middle
-    expect(seatAngle(small, wide, V(0, 20, 0))).toBeNull()
+    expect(seatAngle(small, wide, V(0, 20, 0))!.slotOffsets).toEqual([0, 0])
+    // A geometric line alone does not make a series 20 connector compatible with I8.
+    expect(seatFor('bracket', small, wide, V(0, 20, 0))).toBeNull()
   })
 
-  it('...and pushing it flush to one side gives it one', () => {
+  it('offsetting the small member by 10 mm separates those central slot lines', () => {
     const wide = P(0, 20, 0, 0, 620, 0, '4040')
     const flush = P(0, 20, 10, 600, 20, 10, '2020')
-    const seat = seatAngle(flush, wide, V(0, 20, 10))
-    expect(seat).not.toBeNull()
+    expect(seatAngle(flush, wide, V(0, 20, 10))).toBeNull()
   })
 
   it('it is sized to the smaller of the two, which is what bolts to both', () => {
@@ -242,19 +243,21 @@ describe('a cast corner bracket sits inside the corner', () => {
     expect(auditBrackets([rail, post], [{ ...fitted, series: 40 }])).toHaveLength(1)
   })
 
-  it('a three-way connector needs a separately supported third arm', () => {
-    const rail = P(0, 10, 0, 600, 10, 0), post = P(0, 0, 0, 0, 800, 0)
-    const seat = seatAngle(rail, post, V(0, 10, 0))!
+  it('a three-way cube requires three matching end faces', () => {
+    const rail = P(-300, 100, 0, -20, 100, 0, '4040')
+    const post = P(0, -200, 0, 0, 80, 0, '4040')
+    const third = P(0, 100, -300, 0, 100, -20, '4040')
+    const seat = connectorSeatsAt('corner-3way', V(0, 100, 0), [rail, post, third])[0]
+    expect(seat).toBeDefined()
     const c = { id: 'three-way', type: 'corner-3way', ...seat }
     expect(auditBrackets([rail, post], [c])).toHaveLength(1)
-    const third = P(10, 10, 0, 10, 10, 600)
     expect(auditBrackets([rail, post, third], [c])).toEqual([])
-    const missingFace = { ...third, position: [20, 10, 0] as [number, number, number] }
+    const missingFace = { ...third, position: [5, 100, -300] as [number, number, number] }
     expect(auditBrackets([rail, post, missingFace], [c])).toHaveLength(1)
   })
 })
 
-describe('sections with no edge in common are not joined end to face', () => {
+describe('connector series compatibility', () => {
   it('no part offers a 2020 butting onto a 4040, flush or not', () => {
     for (const z of [0, 10, -10]) {
       const post = P(0, 20, 0, 0, 620, 0, '4040')
@@ -265,10 +268,10 @@ describe('sections with no edge in common are not joined end to face', () => {
     }
   })
 
-  it('but a 2040 onto a 4040 is fine, because they share the 40 edge', () => {
+  it('a shared 40 mm edge does not make B6 and I8 connectors interchangeable', () => {
     const post = P(0, 20, 0, 0, 620, 0, '4040')
     const rail = P(0, 20, 10, 600, 20, 10, '2040')
-    expect(seatFor('bracket', rail, post, V(0, 20, 10))).not.toBeNull()
+    expect(seatFor('bracket', rail, post, V(0, 20, 10))).toBeNull()
   })
 
   it('and a 2020 onto a 2040, because they share the 20 edge', () => {

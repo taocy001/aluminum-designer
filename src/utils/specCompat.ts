@@ -1,16 +1,12 @@
 import * as THREE from 'three'
 import type { ProfileData, ProfileSpec } from '../store/useStore'
 import { specDims } from './specUtils'
+import { unsupportedProfileJoint } from './connectorSupport'
+import { computeAllTrims } from './jointUtils'
 import { seriesOf } from './connectorCatalog'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong } from './geometryCore'
 
-/**
- * Whether two sections have an edge in common at all.
- *
- * A rough, spec-only test: a 2040 and a 4040 share their 40 side, a 2020 and a 2040 share
- * their 20 side, a 2020 and a 4040 share nothing. It says whether a joint between them
- * could ever line up — not whether the one that was actually drawn does.
- */
+/** Section dimensions only; a matching edge does not establish hardware compatibility. */
 export function sharedEdge(a: ProfileSpec, b: ProfileSpec): boolean {
   const da = specDims(a), db = specDims(b)
   return [da.w, da.h].some((v) => v === db.w || v === db.h)
@@ -37,15 +33,7 @@ export function bracketNormal(a: ProfileData, b: ProfileData): THREE.Vector3 | n
 /** how far two faces may sit apart and still take one flat bracket (mm) */
 const FLUSH_TOL = 0.5
 
-/**
- * Where a flat bracket can lie across this joint, if anywhere.
- *
- * Each member offers two faces perpendicular to `n`, at its centreline plus and minus its
- * half section. The bracket needs one face from each that are the same plane — that is what
- * "the two profiles share an edge" means once the parts are actually placed, and it is why a
- * rail centred on a wider post does not work while the same rail pushed flush to one of the
- * post's faces does.
- */
+/** Coplanar outside faces for flat plates; slot pattern and hardware are checked separately. */
 export function flushFaces(a: ProfileData, b: ProfileData, at: THREE.Vector3): { normal: THREE.Vector3; offset: number }[] {
   const axis = bracketNormal(a, b)
   if (!axis) return []
@@ -81,7 +69,7 @@ export interface SpecMismatch {
 const JOINT_TOL = 30
 
 /**
- * Joints that no flat bracket can be bolted across.
+ * Joints without a supported inside angle, outside angle or gusset seat.
  *
  * A joint is an end of one member landing on another member — the same shape the trimming
  * rules work on. Members running parallel are skipped: they meet end to end or side by side,
@@ -89,6 +77,7 @@ const JOINT_TOL = 30
  */
 export function findSpecMismatches(profiles: ProfileData[]): SpecMismatch[] {
   const worst = new Map<string, SpecMismatch>()
+  const trims = computeAllTrims(profiles)
   const ends = new Map<string, { start: THREE.Vector3; end: THREE.Vector3 }>()
   for (const p of profiles) ends.set(p.id, getProfileEndpoints(p))
 
@@ -110,15 +99,8 @@ export function findSpecMismatches(profiles: ProfileData[]): SpecMismatch[] {
       if (touch.d > JOINT_TOL) continue
       if (!bracketNormal(a, b)) continue          // parallel: not a bracket joint
 
-      // Two conditions, and both have to hold. The sections must have an edge in common,
-      // or the bracket has no edge to line up to and no hole pattern that matches; and the
-      // parts as placed must present that edge to each other, which is what a plate lying
-      // flat across the corner means. A 2020 pushed against one face of a 4040 satisfies the
-      // second and still fails the first.
-      const kind: MismatchKind | null = !sharedEdge(a.spec, b.spec) || !flushFace(a, b, touch.pt) ? 'face'
-        : crossesSeries(a.spec, b.spec) ? 'series'
-        : null
-      if (!kind) continue
+      if (!unsupportedProfileJoint(a, b, touch.pt, trims)) continue
+      const kind: MismatchKind = crossesSeries(a.spec, b.spec) ? 'series' : 'face'
 
       const key = [a.id, b.id].sort().join('|')
       const seen = worst.get(key)

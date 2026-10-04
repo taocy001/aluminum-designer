@@ -15,7 +15,7 @@ const equipment = (extra: Partial<EquipmentData>): EquipmentData => ({
   position: [0, 50, 0], quaternion: [0, 0, 0, 1], clearance: noClearance(), ...extra,
 })
 const drawer: FittingData = { id: 'drawer', kind: 'drawer', width: 600, height: 240, depth: 500,
-  material: 'ply', open: 0, position: [0, 200, 0], quaternion: [0, 0, 0, 1] }
+  frame: 20, material: 'ply', open: 0, position: [0, 200, 0], quaternion: [0, 0, 0, 1] }
 
 beforeEach(() => {
   useToolStore.setState({ viewMode: false })

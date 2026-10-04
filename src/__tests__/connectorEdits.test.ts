@@ -149,35 +149,45 @@ describe('mirroring installed connectors', () => {
   for (const axis of ['x', 'y', 'z'] as const) {
     it(`preserves a gusset's solid and mounting faces across ${axis.toUpperCase()}`, () => {
       const profiles = [
-        { ...buildProfile(V(0, 10, 0), V(600, 10, 0), '2020')!, id: 'rail' },
-        { ...buildProfile(V(0, 0, 0), V(0, 800, 0), '2020')!, id: 'post' },
+        { ...buildProfile(V(0, 20, 0), V(600, 20, 0), '4040')!, id: 'rail' },
+        { ...buildProfile(V(0, 0, 0), V(0, 800, 0), '4040')!, id: 'post' },
       ]
-      const c: ConnectorData = { id: 'c', type: 'gusset', ...seatFor('gusset', profiles[0], profiles[1], V(0, 10, 0))! }
+      const c: ConnectorData = { id: 'c', type: 'gusset', ...seatFor('gusset', profiles[0], profiles[1], V(0, 20, 0))! }
       load([c], profiles)
       useStore.getState().selectItems(['rail', 'post', 'c'])
       expect(auditBrackets(profiles, [c])).toEqual([])
       expect(mirrorSelected(axis)).toBe(true)
       const state = useStore.getState(), copy = state.connectors[1]
       expect(auditBrackets(state.profiles.slice(2), [copy])).toEqual([])
-      const vertices = (part: ConnectorData) => connectorMeshes(part.type, part.series).filter((mesh) => !mesh.dark).flatMap((mesh) => {
-        const attr = mesh.geometry.getAttribute('position')
-        return Array.from({ length: attr.count }, (_, i) => V(0, 0, 0).fromBufferAttribute(attr, i)
-          .applyQuaternion(new THREE.Quaternion(...part.quaternion)))
+      const triangles = (part: ConnectorData) => connectorMeshes(part.type, part.series).filter((mesh) => !mesh.visualOnly).flatMap((mesh) => {
+        const attr = mesh.geometry.getAttribute('position'), index = mesh.geometry.getIndex()
+        const result: THREE.Triangle[] = []
+        for (let i = 0; i < (index?.count ?? attr.count); i += 3) {
+          const points = [0, 1, 2].map((j) => V(0, 0, 0).fromBufferAttribute(attr, index ? index.getX(i + j) : i + j)
+            .applyQuaternion(new THREE.Quaternion(...part.quaternion)))
+          result.push(new THREE.Triangle(...points as [THREE.Vector3, THREE.Vector3, THREE.Vector3]))
+        }
+        return result
       })
-      const actual = vertices(copy)
-      for (const point of vertices(c)) {
+      const actual = triangles(copy), closest = new THREE.Vector3()
+      const vertices = new Map<string, THREE.Vector3>()
+      for (const triangle of triangles(c)) for (const point of [triangle.a, triangle.b, triangle.c]) vertices.set(point.toArray().join(), point)
+      // Different triangulations of a circular hole need not share vertices; compare surfaces.
+      for (const point of vertices.values()) {
         point[axis] *= -1
-        expect(Math.min(...actual.map((vertex) => vertex.distanceTo(point)))).toBeLessThan(0.001)
+        expect(Math.min(...actual.map((triangle) => triangle.closestPointToPoint(point, closest).distanceTo(point)))).toBeLessThan(.025)
       }
     })
 
     it(`refits a handed three-way connector to the reflected supports across ${axis.toUpperCase()}`, () => {
       const profiles = [
-        { ...buildProfile(V(-600, 10, 0), V(600, 10, 0), '2020')!, id: 'rail' },
-        { ...buildProfile(V(0, 0, 0), V(0, 800, 0), '2020')!, id: 'post' },
-        { ...buildProfile(V(10, 10, -600), V(10, 10, 600), '2020')!, id: 'cross' },
+        { ...buildProfile(V(-300, 100, 0), V(-20, 100, 0), '4040')!, id: 'rail' },
+        { ...buildProfile(V(0, -200, 0), V(0, 80, 0), '4040')!, id: 'post' },
+        { ...buildProfile(V(0, 100, -300), V(0, 100, -20), '4040')!, id: 'cross' },
       ]
-      const c: ConnectorData = { id: 'c', type: 'corner-3way', ...seatFor('corner-3way', profiles[0], profiles[1], V(0, 10, 0))! }
+      const candidate = connectorPlacementCandidates('corner-3way', V(0, 100, 0), profiles, []).find((s) => s.allowed)!
+      expect(candidate).toBeDefined()
+      const c: ConnectorData = { id: 'c', type: 'corner-3way', ...candidate.seat }
       const reference = { ...buildProfile(V(3000, 3000, 3000), V(3000, 3100, 3000), '2020')!, id: 'reference' }
       // The unused reference puts the mirror plane outside this assembly on every axis.
       load([c], [...profiles, reference])
@@ -204,20 +214,20 @@ describe('mirroring installed connectors', () => {
 describe('reinstalling a connector', () => {
   function setup() {
     const profiles = [
-      { ...buildProfile(V(0, 100, 0), V(600, 100, 0), '2020')!, id: 'rail' },
-      { ...buildProfile(V(0, 100, 0), V(0, 600, 0), '2020')!, id: 'post' },
+      { ...buildProfile(V(0, 100, 0), V(600, 100, 0), '2040')!, id: 'rail', quaternion: [.5, .5, .5, .5] as [number, number, number, number] },
+      { ...buildProfile(V(0, 100, 0), V(0, 600, 0), '2040')!, id: 'post' },
     ]
     const anchor: ConnectorData['position'] = [0, 100, 0]
-    const candidates = connectorPlacementCandidates('gusset', new THREE.Vector3(...anchor), profiles, []).filter((candidate) => candidate.allowed)
+    const candidates = connectorPlacementCandidates('inside-corner', new THREE.Vector3(...anchor), profiles, []).filter((candidate) => candidate.allowed)
     expect(candidates.length).toBeGreaterThanOrEqual(2)
-    const c: ConnectorData = { id: 'c', type: 'gusset', ...candidates[0].seat }
+    const c: ConnectorData = { id: 'c', type: 'inside-corner', ...candidates[0].seat }
     load([c], profiles)
     return { c, anchor, target: candidates[1], profiles }
   }
 
   it('offers the current seat and can change mounting face in one undo step', () => {
     const { c, anchor, target, profiles } = setup()
-    const seats = connectorPlacementCandidates('gusset', new THREE.Vector3(...anchor), profiles, [c], undefined, undefined, { excludeConnectorId: c.id })
+    const seats = connectorPlacementCandidates('inside-corner', new THREE.Vector3(...anchor), profiles, [c], undefined, undefined, { excludeConnectorId: c.id })
     expect(seats.filter((seat) => seat.allowed).length).toBeGreaterThanOrEqual(2)
     expect(reseatConnector(c.id, target.key, anchor)).toBe(true)
     expect(useStore.getState().connectors[0].position).toEqual(target.seat.position)

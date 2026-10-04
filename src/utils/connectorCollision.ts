@@ -1,8 +1,8 @@
 import * as THREE from 'three'
-import type { ConnectorData } from '../store/useStore'
-import { connectorMounts, connectorScale, insideCornerSection } from './connectorCatalog'
+import type { ConnectorData, ProfileSpec } from '../store/useStore'
+import { connectorScale } from './connectorCatalog'
 import { connectorMeshes } from './connectorGeometry'
-import { profileSlotDimensions, slotOffsets } from './specUtils'
+import { getProfileShape } from './profileShapes'
 import { makeOBB, type OBB } from './obb'
 
 interface Solid {
@@ -13,16 +13,6 @@ interface Solid {
   bounds: THREE.Box3
 }
 type V3 = [number, number, number]
-const meshBounds = new Map<string, { centre: V3; half: V3 }[]>()
-
-function componentBounds(type: string) {
-  if (!meshBounds.has(type)) meshBounds.set(type, connectorMeshes(type).filter((mesh) => !mesh.dark).map(({ geometry }) => {
-    if (!geometry.boundingBox) geometry.computeBoundingBox()
-    return { centre: geometry.boundingBox!.getCenter(new THREE.Vector3()).toArray() as V3,
-      half: geometry.boundingBox!.getSize(new THREE.Vector3()).multiplyScalar(0.5).toArray() as V3 }
-  }))
-  return meshBounds.get(type)!
-}
 
 function boxBounds({ center, half, axes }: OBB): THREE.Box3 {
   const rx = Math.abs(axes[0].x) * half.x + Math.abs(axes[1].x) * half.y + Math.abs(axes[2].x) * half.z
@@ -36,49 +26,53 @@ function boxSolid(box: OBB): Solid {
   return { box, normals: box.axes, edges: box.axes, bounds: boxBounds(box) }
 }
 
-/** Convex pieces of the modeled connector; excludes decorative hole markers. */
-function buildSolids(c: ConnectorData, againstMetal = false): Solid[] {
+function polySolid(vertices: THREE.Vector3[]): Solid {
+  const edges: THREE.Vector3[] = [], normals: THREE.Vector3[] = []
+  const add = (list: THREE.Vector3[], v: THREE.Vector3) => {
+    if (v.lengthSq() < 1e-12) return
+    v.normalize()
+    if (!list.some((x) => Math.abs(x.dot(v)) > 0.99999)) list.push(v)
+  }
+  for (let i = 0; i < vertices.length; i++) for (let j = i + 1; j < vertices.length; j++) {
+    const edge = vertices[j].clone().sub(vertices[i]); add(edges, edge.clone())
+    for (let k = j + 1; k < vertices.length; k++) add(normals, new THREE.Vector3().crossVectors(edge, vertices[k].clone().sub(vertices[i])))
+  }
+  return { vertices, normals, edges, bounds: new THREE.Box3().setFromPoints(vertices) }
+}
+
+/** Mesh producers expose convex pieces in the same local coordinates as the visible part. */
+function buildSolids(c: ConnectorData): Solid[] {
   const q = new THREE.Quaternion(...c.quaternion).normalize(), k = connectorScale(c.series ?? 20)
   const position = new THREE.Vector3(...c.position)
   const point = (v: V3) => new THREE.Vector3(...v).multiplyScalar(k).applyQuaternion(q).add(position)
-  const direction = (v: V3) => new THREE.Vector3(...v).normalize().applyQuaternion(q)
   const box = (centre: V3, half: V3) => boxSolid(makeOBB(point(centre), new THREE.Vector3(...half).multiplyScalar(k), q))
-  if (c.type === 'gusset') {
-    const vertices = [0, 4].flatMap((z) => [[-8, -8, z], [30, -8, z], [-8, 30, z]].map((v) => point(v as V3)))
-    return [{ vertices, bounds: new THREE.Box3().setFromPoints(vertices),
-    normals: [[1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1]].map((v) => direction(v as V3)),
-    edges: [[1, 0, 0], [0, 1, 0], [1, -1, 0], [0, 0, 1]].map((v) => direction(v as V3)),
-    }]
-  }
-  if (c.type === 't-bracket') return [box([0, 0, 2], [35, 10, 2]), box([0, 20, 2], [10, 20, 2])]
-  if (c.type === 'bracket') return [box([15, 2, 0], [15, 2, 9]), box([2, 15, 0], [2, 15, 9])]
-  if (c.type === 'inside-corner') {
-    const { depth, width } = insideCornerSection(c.series ?? 20)
-    return [box([10, -depth / 2, 0], [10, depth / 2, width / 2]),
-      box([-depth / 2, 10, 0], [depth / 2, 10, width / 2]),
-      box([depth / 2, depth / 2, 0], [depth / 2, depth / 2, width / 2])]
-  }
-  if (c.type === 'corner-3way') return [box([10, 2, 0], [10, 2, 4]), box([2, 10, 0], [2, 10, 4]),
-    box([2, 2, 5], [2, 2, 5]), box([0, 2, 15], [4, 2, 5]), box([0, 0, 0], [2, 2, 2])]
-  // Only the parts outside the mounting face remain for a correctly aligned slot nut.
-  if (c.type === 't-nut' && againstMetal) return [box([0, 1, 0], [9, 1, 3.5]), box([0, 5, 0], [2.5, 5, 2.5])]
-  return componentBounds(c.type).map((bounds) => box(bounds.centre, bounds.half))
+  return connectorMeshes(c.type, c.series, c.profileSpec, c.mountSeries).filter((mesh) => !mesh.visualOnly).flatMap((mesh) => {
+    if (mesh.collisionParts) return mesh.collisionParts.map((part) => 'vertices' in part
+      ? polySolid(part.vertices.map((v) => point(v as V3))) : box(part.centre, part.half))
+    if (mesh.collisionVertices) return [polySolid(mesh.collisionVertices.map((v) => point(v as V3)))]
+    if (mesh.collisionBoxes) return mesh.collisionBoxes.map((b) => box(b.centre, b.half))
+    mesh.geometry.computeBoundingBox()
+    const bounds = mesh.geometry.boundingBox!
+    return [box(bounds.getCenter(new THREE.Vector3()).toArray(), bounds.getSize(new THREE.Vector3()).multiplyScalar(0.5).toArray())]
+  })
 }
 
 interface ShapeGeometry {
-  type: string; series: ConnectorData['series']; position: number[]; quaternion: number[]; full: Solid[]; metal: Solid[]
+  type: string; series: ConnectorData['series']; profileSpec: ConnectorData['profileSpec']; mountSeries: string; position: number[]; quaternion: number[]; full: Solid[]; metal: Solid[]
   mounts?: { axis: THREE.Vector3; normal: THREE.Vector3; point: THREE.Vector3 }[]
+  bodyHits: Map<string, boolean>
 }
 const shapeCache = new WeakMap<ConnectorData, ShapeGeometry>()
 function shapeGeometry(c: ConnectorData): ShapeGeometry {
   let cached = shapeCache.get(c)
-  if (!cached || cached.type !== c.type || cached.series !== c.series
+  if (!cached || cached.type !== c.type || cached.series !== c.series || cached.profileSpec !== c.profileSpec
+    || cached.mountSeries !== (c.mountSeries?.join(':') ?? '')
     || cached.position[0] !== c.position[0] || cached.position[1] !== c.position[1] || cached.position[2] !== c.position[2]
     || cached.quaternion[0] !== c.quaternion[0] || cached.quaternion[1] !== c.quaternion[1]
     || cached.quaternion[2] !== c.quaternion[2] || cached.quaternion[3] !== c.quaternion[3]) {
     const full = buildSolids(c)
-    cached = { type: c.type, series: c.series, position: [...c.position], quaternion: [...c.quaternion],
-      full, metal: c.type === 't-nut' ? buildSolids(c, true) : full }
+    cached = { type: c.type, series: c.series, profileSpec: c.profileSpec, mountSeries: c.mountSeries?.join(':') ?? '', position: [...c.position], quaternion: [...c.quaternion],
+      full, metal: full, bodyHits: new Map() }
     shapeCache.set(c, cached)
   }
   return cached
@@ -88,14 +82,13 @@ function solids(c: ConnectorData, againstMetal = false): Solid[] {
   return againstMetal ? geometry.metal : geometry.full
 }
 
-type Slot = { face: 0 | 1; side: number; offset: number }
 interface BodyGeometry {
   pose: number[]
   bounds: THREE.Box3
   axes?: OBB['axes']
   solid?: Solid
   slots?: [number[], number[]]
-  cavities?: { slot: Slot; metal: Solid[] }[]
+  metal?: Solid[]
 }
 const bodyCache = new WeakMap<OBB, BodyGeometry>()
 function sameVector(v: THREE.Vector3, pose: number[], offset: number): boolean {
@@ -171,99 +164,79 @@ export function connectorsCollide(a: ConnectorData, b: ConnectorData): boolean {
   return solids(a).some((x) => solids(b).some((y) => overlap(x, y, 1)))
 }
 
-/** The nut's normal, along-slot axis and origin must match this member's slot face. */
-function nutInSlot(c: ConnectorData, body: OBB): boolean {
-  const q = new THREE.Quaternion(...c.quaternion).normalize()
-  const normal = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
-  const along = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
-  if (Math.abs(along.dot(body.axes[2])) < 0.999) return false
-  const delta = new THREE.Vector3(...c.position).sub(body.center)
-  if (Math.abs(delta.dot(body.axes[2])) > body.half.z + 0.5) return false
-  for (const i of [0, 1] as const) {
-    const facing = normal.dot(body.axes[i])
-    if (Math.abs(facing) < 0.999) continue
-    if (Math.abs(delta.dot(body.axes[i]) - Math.sign(facing) * body.half.getComponent(i)) > 0.5) continue
-    const across = 1 - i, offset = delta.dot(body.axes[across])
-    if (slotOffsets(body.half.getComponent(across) * 2).some((slot) => Math.abs(offset - slot) <= 1)) return true
+const sectionTriangles = new Map<ProfileSpec, THREE.Vector2[][]>()
+const metalByPose = new Map<string, Solid[]>()
+
+/** Extrude the rendered section's triangulation, including slot undercuts and core holes. */
+function profileMetal(body: OBB, cache: BodyGeometry): Solid[] {
+  if (cache.metal) return cache.metal
+  const width = Math.round(body.half.x * 2), height = Math.round(body.half.y * 2)
+  const spec = `${width}${height}` as ProfileSpec
+  if (!['2020', '2040', '3030', '3040', '4040'].includes(spec)) return [bodySolid(body, cache)]
+  const key = cache.pose.join(':')
+  const saved = metalByPose.get(key)
+  if (saved) return cache.metal = saved
+  let triangles = sectionTriangles.get(spec)
+  if (!triangles) {
+    const shape = getProfileShape(spec).extractPoints(6)
+    for (const ring of [shape.shape, ...shape.holes]) if (ring.length > 1 && ring[0].equals(ring[ring.length - 1])) ring.pop()
+    const points = [...shape.shape, ...shape.holes.flat()]
+    triangles = THREE.ShapeUtils.triangulateShape(shape.shape, shape.holes).map((tri) => tri.map((i) => points[i]))
+    sectionTriangles.set(spec, triangles)
   }
-  return false
+  cache.metal = triangles.map((tri): Solid => {
+    const vertices = [-body.half.z, body.half.z].flatMap((z) => tri.map((p) =>
+      body.center.clone().addScaledVector(body.axes[0], p.x)
+        .addScaledVector(body.axes[1], p.y).addScaledVector(body.axes[2], z)))
+    // A triangular prism has three in-plane edge directions and one extrusion axis.
+    const axis = body.axes[2].clone()
+    const sides = [0, 1, 2].map((i) => vertices[(i + 1) % 3].clone().sub(vertices[i]).normalize())
+    return { vertices, edges: [...sides, axis], normals: [axis, ...sides.map((e) => new THREE.Vector3().crossVectors(e, axis).normalize())],
+      bounds: new THREE.Box3().setFromPoints(vertices) }
+  })
+  // Door-motion checks rebuild profile OBBs. Reuse unchanged poses with bounded memory.
+  if (metalByPose.size >= 256) metalByPose.delete(metalByPose.keys().next().value!)
+  metalByPose.set(key, cache.metal)
+  return cache.metal
 }
 
-/** The actual mounting slot for an inside-corner arm on this particular member. */
-function insideMountSlot(c: ConnectorData, body: OBB, shape: ShapeGeometry, member: BodyGeometry): Slot | null {
-  if (!shape.mounts) {
-    const q = new THREE.Quaternion(...c.quaternion).normalize(), k = connectorScale(c.series ?? 20)
-    const origin = new THREE.Vector3(...c.position), axes = shape.full[0].normals
-    const index = { x: 0, y: 1, z: 2 }
-    shape.mounts = connectorMounts('inside-corner').map((mount) => ({ axis: axes[index[mount.axis]],
-      normal: axes[index[mount.normal]], point: new THREE.Vector3(...mount.bolts[0]).multiplyScalar(k).applyQuaternion(q).add(origin) }))
-  }
-  for (const mount of shape.mounts) {
-    if (Math.abs(mount.axis.dot(body.axes[2])) < 0.999) continue
-    const dx = mount.point.x - body.center.x, dy = mount.point.y - body.center.y, dz = mount.point.z - body.center.z
-    const length = body.axes[2]
-    if (Math.abs(dx * length.x + dy * length.y + dz * length.z) > body.half.z + 0.5) continue
-    for (const face of [0, 1] as const) {
-      const normal = body.axes[face], facing = mount.normal.dot(normal)
-      if (Math.abs(facing) < 0.999) continue
-      const side = Math.sign(facing)
-      if (Math.abs(dx * normal.x + dy * normal.y + dz * normal.z - side * body.half.getComponent(face)) > 0.5) continue
-      const across = 1 - face, transverse = body.axes[across]
-      const offset = dx * transverse.x + dy * transverse.y + dz * transverse.z
-      member.slots ??= [slotOffsets(body.half.x * 2), slotOffsets(body.half.y * 2)]
-      const slot = member.slots[across].find((at) => Math.abs(offset - at) <= 1)
-      if (slot !== undefined) return { face, side, offset: slot }
-    }
-  }
-  return null
-}
-
-/** Subtract one rectangular slot cavity from the trimmed member, retaining its metal walls. */
-function slottedMember(body: OBB, slot: Slot, geometry: BodyGeometry): Solid[] {
-  const cached = geometry.cavities?.find((entry) => entry.slot.face === slot.face && entry.slot.side === slot.side && entry.slot.offset === slot.offset)
-  if (cached) return cached.metal
-  const { face, side, offset } = slot, across = 1 - face
-  const axes = bodyAxes(body, geometry)
-  const { width, depth } = profileSlotDimensions(body.half.x * 2)
-  const h = body.half.getComponent(face), a = body.half.getComponent(across)
-  const piece = (lo: number[], hi: number[]): Solid | null => {
-    const half = new THREE.Vector3(...hi).sub(new THREE.Vector3(...lo)).multiplyScalar(0.5)
-    if (half.x <= 0 || half.y <= 0 || half.z <= 0) return null
-    const center = body.center.clone()
-    for (let i = 0; i < 3; i++) center.addScaledVector(body.axes[i], (lo[i] + hi[i]) / 2)
-    return boxSolid({ center, half, axes })
-  }
-  const low = [-body.half.x, -body.half.y, -body.half.z], high = [body.half.x, body.half.y, body.half.z]
-  const coreLow = [...low], coreHigh = [...high]
-  if (side > 0) coreHigh[face] = h - depth
-  else coreLow[face] = -h + depth
-  const pieces = [piece(coreLow, coreHigh)]
-  for (const [from, to] of [[-a, offset - width / 2], [offset + width / 2, a]]) {
-    const lo = [...low], hi = [...high]
-    if (side > 0) lo[face] = h - depth
-    else hi[face] = -h + depth
-    lo[across] = Math.max(-a, from)
-    hi[across] = Math.min(a, to)
-    pieces.push(piece(lo, hi))
-  }
-  const metal = pieces.filter((part): part is Solid => part !== null)
-  ;(geometry.cavities ??= []).push({ slot, metal })
-  return metal
-}
-
-/** Profiles use solid section envelopes, with the modeled slot inserts handled separately. */
-export function connectorHitsBody(c: ConnectorData, body: OBB, tolerance = 3, againstMetal = true): boolean {
+/** Profile metal follows its visible section; panel/equipment checks use complete solid bounds. */
+export function connectorHitsBody(c: ConnectorData, body: OBB, tolerance = 0.15, againstMetal = true): boolean {
   const member = bodyGeometry(body), shape = shapeGeometry(c)
   if (!shape.full.some((part) => part.bounds.intersectsBox(member.bounds))) return false
-  if (againstMetal && c.type === 'inside-corner') {
-    const parts = shape.full, slot = insideMountSlot(c, body, shape, member)
-    if (slot) {
-      // Contact tolerance must not conceal an insert crossing a slot side or floor.
-      const metal = slottedMember(body, slot, member)
-      return parts.some((part) => metal.some((wall) => overlap(part, wall, 0)))
-    }
-    return parts.some((part) => overlap(part, bodySolid(body, member), tolerance))
-  }
-  const excludeInserts = againstMetal && (c.type !== 't-nut' || nutInSlot(c, body))
-  return (excludeInserts ? shape.metal : shape.full).some((part) => overlap(part, bodySolid(body, member), tolerance))
+  // Rebuilt OBBs often describe the same cut profile during suggestion and door
+  // checks. All body coordinates, clearance and material mode belong to the key;
+  // changing any connector coordinate replaces shapeGeometry and this cache.
+  const key = `${againstMetal}:${tolerance}:${member.pose.join(':')}`
+  const previous = shape.bodyHits.get(key)
+  if (previous !== undefined) return previous
+  const metal = againstMetal ? profileMetal(body, member) : [bodySolid(body, member)]
+  // The M8 envelope may overlap only its coaxial 3030/4040 tapping pilot. The foot's
+  // locknut/base, other members and non-metal obstacles retain normal clearance.
+  const origin = new THREE.Vector3(...c.position), into = new THREE.Vector3(0, 1, 0).applyQuaternion(new THREE.Quaternion(...c.quaternion).normalize())
+  const delta = origin.clone().sub(body.center)
+  const tappedFootHost = againstMetal && c.type === 'foot' && (c.series === 30 || c.series === 40)
+    && Math.abs(body.half.x - c.series / 2) < 1e-6 && Math.abs(body.half.y - c.series / 2) < 1e-6
+    && Math.abs(delta.dot(body.axes[0])) < 1e-5 && Math.abs(delta.dot(body.axes[1])) < 1e-5
+    && Math.abs(Math.abs(delta.dot(body.axes[2])) - body.half.z) < 1e-5
+    && Math.abs(into.dot(body.axes[2])) > .999999 && into.dot(delta) < 0
+  const q = new THREE.Quaternion(...c.quaternion).normalize()
+  const capNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
+  const capX = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
+  const capSpec = c.profileSpec ?? `${c.series ?? 20}${c.series ?? 20}`
+  const pressFitCapHost = againstMetal && c.type === 'end-cap' && capSpec !== '3040'
+    && capSpec === `${Math.round(body.half.x * 2)}${Math.round(body.half.y * 2)}`
+    && Math.abs(delta.dot(body.axes[0])) < 1e-5 && Math.abs(delta.dot(body.axes[1])) < 1e-5
+    && Math.abs(Math.abs(delta.dot(body.axes[2])) - body.half.z) < 1e-5
+    && Math.abs(capNormal.dot(body.axes[2])) > .999999 && capNormal.dot(delta) > 0
+    && (Math.abs(capX.dot(body.axes[0])) > .999999
+      || (body.half.x === body.half.y && Math.abs(capX.dot(body.axes[1])) > .999999))
+  // Retention ribs of the matching plastic cap interfere with the core by up to
+  // 0.6 mm in the manufacturer CAD. Only those inserted pieces permit press fit;
+  // the cover plate (piece 0) and unrelated obstacles keep normal clearance.
+  const hit = shape.full.some((part, i) => metal.some((wall) => overlap(part, wall,
+    tappedFootHost && i === 0 ? .85 : pressFitCapHost && i > 0 ? .65 : tolerance)))
+  if (shape.bodyHits.size >= 128) shape.bodyHits.delete(shape.bodyHits.keys().next().value!)
+  shape.bodyHits.set(key, hit)
+  return hit
 }

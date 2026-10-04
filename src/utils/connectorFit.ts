@@ -87,7 +87,7 @@ function anyPerpendicular(v: THREE.Vector3): THREE.Vector3 {
  * Rotation that sends the part's own axes onto the world directions they should follow.
  * `localA → worldA` exactly; `localB → worldB` as closely as the first constraint allows.
  */
-function alignAxes(
+export function alignAxes(
   localA: THREE.Vector3, worldA: THREE.Vector3,
   localB: THREE.Vector3, worldB: THREE.Vector3,
 ): THREE.Quaternion {

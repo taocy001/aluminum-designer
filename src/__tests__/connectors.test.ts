@@ -4,7 +4,7 @@ import { buildProfile } from '../utils/profileFactory'
 import { fitConnector, membersAt } from '../utils/connectorFit'
 import { buildBom, bomToCsv } from '../utils/bom'
 import { computeAllTrims, setThroughRule } from '../utils/jointUtils'
-import { seriesOf, connectorEntry, boltThread } from '../utils/connectorCatalog'
+import { seriesOf, boltThread } from '../utils/connectorCatalog'
 import type { ConnectorData, ProfileData, ProfileSpec } from '../store/useStore'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
@@ -102,18 +102,27 @@ describe('bill of materials', () => {
   it('derives bolts and T-nuts from the connectors actually placed', () => {
     const all = frame()
     const bom = buildBom(all, [connector('bracket'), connector('bracket'), connector('t-bracket')], computeAllTrims(all), 'en')
-    const bolts = bom.fasteners.find((r) => r.key === 'bolt-20')!
-    const nuts = bom.fasteners.find((r) => r.key === 'nut-20')!
-    expect(bolts.qty).toBe(connectorEntry('bracket')!.fasteners.bolts * 2 + connectorEntry('t-bracket')!.fasteners.bolts)
-    expect(nuts.qty).toBe(bolts.qty)
-    expect(bolts.label).toContain('M5')
+    // S6BBR20 uses M4×8; the 20-4080 five-hole plate uses its own M5 hardware.
+    expect(bom.fasteners).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'M4×8 DIN 7984 screw', qty: 4 }),
+      expect.objectContaining({ label: 'M4 T-slot nut', qty: 4 }),
+      expect.objectContaining({ label: 'M5×10 screw', qty: 5 }),
+      expect.objectContaining({ label: 'M5 T-slot nut', qty: 5 }),
+      expect.objectContaining({ label: 'M5 ISO 7089 washer (1 mm washer for slot-floor clearance)', qty: 5 }),
+    ]))
+    expect(bom.fasteners).toHaveLength(5)
   })
 
   it('keeps series apart and uses the matching thread', () => {
     const all = frame()
     const bom = buildBom(all, [connector('bracket', 20), connector('bracket', 40)], computeAllTrims(all), 'en')
-    expect(bom.fasteners.map((r) => r.key).sort()).toEqual(['bolt-20', 'bolt-40', 'nut-20', 'nut-40'])
-    expect(bom.fasteners.find((r) => r.key === 'bolt-40')!.label).toContain('M8')
+    expect(bom.fasteners).toHaveLength(4)
+    expect(bom.fasteners).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'M4×8 DIN 7984 screw', qty: 2 }),
+      expect.objectContaining({ label: 'M8×16 DIN 912 screw', qty: 2 }),
+      expect.objectContaining({ label: 'M4 T-slot nut', qty: 2 }),
+      expect.objectContaining({ label: 'M8 T-slot nut', qty: 2 }),
+    ]))
   })
 
   it('counts only real corner brackets against the bracket suggestion', () => {
@@ -129,7 +138,7 @@ describe('bill of materials', () => {
     const post = P(0, 0, 0, 0, 800, 0, '4040')
     const trims = computeAllTrims([post])
     const bom = buildBom([post], [], trims, 'en')
-    const cap = bom.suggested.find((r) => r.key === 'suggest-cap-40')!
+    const cap = bom.suggested.find((r) => r.key === 'suggest-cap-4040')!
     expect(cap.qty).toBe(2)
     expect(cap.label).toContain('40')
   })
@@ -141,11 +150,11 @@ describe('bill of materials', () => {
     expect(bare.buttEnds).toBe(1)                     // the rail butts into the post
     expect(bare.freeEnds).toBe(2)             // the post's top and the rail's far end
     expect(bare.suggested.find((r) => r.key === 'suggest-bracket')!.qty).toBe(1)
-    expect(bare.suggested.find((r) => r.key === 'suggest-cap-20')!.qty).toBe(2)
+    expect(bare.suggested.find((r) => r.key === 'suggest-cap-2020')!.qty).toBe(2)
 
     const withParts = buildBom(all, [connector('bracket'), connector('end-cap')], trims, 'en')
     expect(withParts.suggested.find((r) => r.key === 'suggest-bracket')).toBeUndefined()
-    expect(withParts.suggested.find((r) => r.key === 'suggest-cap-20')!.qty).toBe(1)
+    expect(withParts.suggested.find((r) => r.key === 'suggest-cap-2020')!.qty).toBe(1)
   })
 
   it('exports a CSV with fixed English headers and every section', () => {
@@ -155,7 +164,7 @@ describe('bill of materials', () => {
     expect(csv.split('\n')[0]).toBe('Category,Item,Spec,Cut length (mm),Quantity,Part numbers')
     expect(csv).toMatch(/^Profile,2020,2020,\d+,\d+,"P-[^"]+"$/m)
     expect(csv).toContain('Connector,"L型角码"')
-    expect(csv).toMatch(/Fastener,"螺栓 M5×10"/)
+    expect(csv).toMatch(/Fastener,"M4×8 DIN 7984 螺钉"/)
     expect(csv).toContain('Summary,Overall WxDxH,620x20x810')
   })
 
@@ -173,8 +182,8 @@ describe('bill of materials', () => {
   it('deducts end caps only from their own series', () => {
     const all = [P(0, 0, 0, 0, 800, 0), P(200, 0, 0, 200, 800, 0, '4040')]
     const bom = buildBom(all, [connector('end-cap', 40)], computeAllTrims(all), 'en')
-    expect(bom.suggested.find((r) => r.key === 'suggest-cap-20')!.qty).toBe(2)
-    expect(bom.suggested.find((r) => r.key === 'suggest-cap-40')!.qty).toBe(1)
+    expect(bom.suggested.find((r) => r.key === 'suggest-cap-2020')!.qty).toBe(2)
+    expect(bom.suggested.find((r) => r.key === 'suggest-cap-4040')!.qty).toBe(1)
   })
 
   it('orders hinges by the hung edge and keeps piano hinge lengths separate', () => {
@@ -297,27 +306,32 @@ import { findConflicts } from '../utils/analysis'
 
 /** Check that levelling feet seat below a post end without reported interference. */
 describe('a part that stands under a post stands under it', () => {
-  const post = buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 800, 0), '2020')!
+  const post = buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 800, 0), '4040')!
 
-  it('is seated below the foot of the post, not inside it', () => {
+  it('puts the locknut contact at the post end with only the stud entering its tapped hole', () => {
     const seat = connectorSeatAt('foot', new THREE.Vector3(0, 0, 0), [post])
     expect(seat.seated).toBe(true)
-    expect(seat.position[1]).toBeLessThan(0)
+    expect(seat.position[1]).toBe(0)
     const clash = findConflicts([post], computeAllTrims([post]), [{
       id: 'f', type: 'foot', series: seat.series, position: seat.position, quaternion: seat.quaternion,
     } as never])
     expect(clash).toEqual([])
   })
 
+  it('does not present a direct M8 foot seat on a B6 profile with an M6 centre hole', () => {
+    const narrow = P(0, 0, 0, 0, 800, 0, '2020')
+    expect(connectorSeatAt('foot', V(0, 0, 0), [narrow]).seated).toBe(false)
+  })
+
   it('goes to the nearer end when it is dropped a little off', () => {
     const near = connectorSeatAt('foot', new THREE.Vector3(6, 14, 4), [post])
-    expect(near.position[1]).toBeLessThan(0)
+    expect(near.position[1]).toBe(0)
     const top = connectorSeatAt('foot', new THREE.Vector3(0, 790, 0), [post])
-    expect(top.position[1]).toBeGreaterThan(800)
+    expect(top.seated).toBe(false)
   })
 
   it('a plate that bridges two members is still left where it was put', () => {
-    const rail = buildProfile(new THREE.Vector3(0, 800, 0), new THREE.Vector3(600, 800, 0), '2020')!
+    const rail = buildProfile(new THREE.Vector3(0, 800, 0), new THREE.Vector3(600, 800, 0), '4040')!
     const at = new THREE.Vector3(0, 800, 0)
     const seat = connectorSeatAt('joining-plate', at, [post, rail])
     expect(seat.position[1]).toBeCloseTo(800, 1)
@@ -331,21 +345,21 @@ describe('a part that stands under a post stands under it', () => {
  */
 describe('a foot picks the member that is standing on it', () => {
   it('goes under the post, not on the end of the rail beside it', () => {
-    const post = buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 800, 0), '2020')!
-    const rail = buildProfile(new THREE.Vector3(0, 20, 0), new THREE.Vector3(600, 20, 0), '2020')!
-    const cross = buildProfile(new THREE.Vector3(0, 20, 0), new THREE.Vector3(0, 20, 400), '2020')!
+    const post = buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 800, 0), '4040')!
+    const rail = buildProfile(new THREE.Vector3(0, 20, 0), new THREE.Vector3(600, 20, 0), '4040')!
+    const cross = buildProfile(new THREE.Vector3(0, 20, 0), new THREE.Vector3(0, 20, 400), '4040')!
     const seat = connectorSeatAt('foot', new THREE.Vector3(0, 0, 0), [post, rail, cross])
-    expect(seat.position[1]).toBeLessThan(0)
+    expect(seat.position[1]).toBe(0)
     expect(findConflicts([post, rail, cross], computeAllTrims([post, rail, cross]), [{
       id: 'f', type: 'foot', series: seat.series, position: seat.position, quaternion: seat.quaternion,
     } as never]).filter((c) => c.a === 'f' || c.b === 'f')).toEqual([])
   })
 
-  it('a heavier post takes a bigger foot, seated further down', () => {
+  it('a 4040 post uses the same physical M8 foot with contact at its end', () => {
     const post = buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 800, 0), '4040')!
     const seat = connectorSeatAt('foot', new THREE.Vector3(0, 0, 0), [post])
     expect(seat.series).toBe(40)
-    expect(seat.position[1]).toBeLessThan(-15)
+    expect(seat.position[1]).toBe(0)
   })
 })
 
@@ -363,10 +377,10 @@ import { auditBrackets } from '../utils/bracketSeat'
 describe('fitting the feet first does not cost you the brackets', () => {
   const bay = (): ProfileData[] => {
     const out: ProfileData[] = []
-    for (const x of [0, 600]) for (const z of [0, 400]) out.push(buildProfile(V(x, 0, z), V(x, 800, z), '2020')!)
-    for (const y of [20, 780]) {
-      for (const z of [0, 400]) out.push(buildProfile(V(0, y, z), V(600, y, z), '2020')!)
-      for (const x of [0, 600]) out.push(buildProfile(V(x, y, 0), V(x, y, 400), '2020')!)
+    for (const x of [0, 600]) for (const z of [0, 400]) out.push(buildProfile(V(x, 0, z), V(x, 800, z), '4040')!)
+    for (const y of [40, 760]) {
+      for (const z of [0, 400]) out.push(buildProfile(V(0, y, z), V(600, y, z), '4040')!)
+      for (const x of [0, 600]) out.push(buildProfile(V(x, y, 0), V(x, y, 400), '4040')!)
     }
     return out
   }
@@ -374,14 +388,14 @@ describe('fitting the feet first does not cost you the brackets', () => {
     useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [] } as never)
 
   it('automatic feet use the same actual end seat as manual placement', () => {
-    const post = P(0, 0, 0, 0, 800, 0)
+    const post = P(0, 0, 0, 0, 800, 0, '4040')
     load([post])
     expect(autoConnect('foot').placed).toBe(1)
     const c = useStore.getState().connectors[0]
     const manual = connectorSeatAt('foot', V(0, 0, 0), [post])
     expect(c.position).toEqual(manual.position)
     expect(c.quaternion).toEqual(manual.quaternion)
-    expect(c.position).toEqual([0, -28, 0])
+    expect(c.position).toEqual([0, 0, 0])
     expect(findConflicts([post], computeAllTrims([post]), [c])).toEqual([])
   })
 

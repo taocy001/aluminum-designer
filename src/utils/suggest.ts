@@ -4,9 +4,9 @@ import { getProfileAxis, getProfileDir, getProfileEndpoints, crossExtentAlong, t
 import { memberBox } from './dragSnap'
 import { buildProfile, prepareProfile } from './profileFactory'
 import { shelfEdges, oppositeEdge, panelBox } from './shelfSupport'
-import { vet, cachedCheck, NEIGHBOURHOOD, type Claim, type SuggestDoc, type VetCache } from './suggestGate'
-import { auditBrackets } from './bracketSeat'
-import { computeAllTrims, trimmedBox } from './jointUtils'
+import { vet, cachedCheck, createVetSearchCache, refreshVetSearchCache, NEIGHBOURHOOD, type Claim, type SuggestDoc, type VetCache } from './suggestGate'
+import { cachedHardwareSupports } from './connectorAuditCache'
+import { computeAllTrims, getThroughRule } from './jointUtils'
 
 export type { SuggestDoc } from './suggestGate'
 
@@ -45,6 +45,8 @@ interface Raw {
   rule: SuggestRule; reason: SuggestReason; src: string[]; base: number; claim: Claim
   /** Existing hardware that this copy must actually restore. */
   hardware?: ConnectorData
+  /** A generated hardware recipe's stable geometry key; focus ranking is separate. */
+  geometryKey?: string
 }
 
 interface Seg { p: ProfileData; a: THREE.Vector3; b: THREE.Vector3; axis: Axis | null; box: THREE.Box3 }
@@ -134,11 +136,20 @@ function routeAxis(a: THREE.Vector3, b: THREE.Vector3): Axis | null {
   return null
 }
 
-const round = (v: THREE.Vector3) => v.toArray().map((x) => Math.round(x) || 0).join(',')
+const round = (v: THREE.Vector3) => `${Math.round(v.x) || 0},${Math.round(v.y) || 0},${Math.round(v.z) || 0}`
+function rawGeometryKey(r: Raw): string {
+  const claim = r.claim.kind === 'shelf' ? `${r.claim.panelId}:${r.claim.edge}` : r.hardware?.id ?? ''
+  return `${r.rule}|${r.claim.kind}|${claim}|${r.spec}|${[round(r.s), round(r.e)].sort().join('|')}|${r.twin?.quaternion.join(',')}`
+}
+
 export function candidateKey(rule: SuggestRule, m: ProfileData): string {
   const { start, end } = getProfileEndpoints(m)
+  return candidateKeyFromEndpoints(rule, m.spec, start, end)
+}
+
+function candidateKeyFromEndpoints(rule: SuggestRule, spec: ProfileSpec, start: THREE.Vector3, end: THREE.Vector3): string {
   const [a, b] = [round(start), round(end)].sort()
-  return `${rule}|${m.spec}|${a}|${b}`
+  return `${rule}|${spec}|${a}|${b}`
 }
 
 /** a parallel member of about this length to copy the section and roll from */
@@ -158,7 +169,45 @@ function findTwin(all: Seg[], axis: Axis, length: number, near: THREE.Vector3, s
   return best?.s.p ?? null
 }
 
+interface HardwareRecipe {
+  s: [number, number, number]
+  e: [number, number, number]
+  spec: ProfileSpec
+  twinId: string
+  hardwareId: string
+  geometryKey: string
+}
+const hardwareRecipeCache = new Map<string, HardwareRecipe[]>()
+
+/** Cache only numeric generation recipes. Raw objects are edited during preparation,
+ * so every search gets its own vectors, claim, and references to the current document. */
 function generateHardware(doc: SuggestDoc, all: Seg[], scope: Seg[], cache: VetCache): Raw[] {
+  if (!doc.connectors.length) return []
+  // Trims are a pure result of the complete profile values and manufacturing rule.
+  // Scope controls available templates; focus ranking is applied later for each search.
+  const key = JSON.stringify([doc.profiles, doc.connectors, scope.map((s) => s.p.id), getThroughRule()])
+  const cached = hardwareRecipeCache.get(key)
+  if (cached) {
+    const members = new Map(doc.profiles.map((p) => [p.id, p]))
+    const hardware = new Map(doc.connectors.map((c) => [c.id, c]))
+    return cached.map((r): Raw => ({ s: new THREE.Vector3(...r.s), e: new THREE.Vector3(...r.e),
+      spec: r.spec, twin: members.get(r.twinId)!, hardware: hardware.get(r.hardwareId)!,
+      geometryKey: r.geometryKey, rule: 'copy', reason: 'copyClosed', src: [r.twinId], base: 3,
+      claim: { kind: 'close', hardwareId: r.hardwareId },
+    }))
+  }
+  const raw = buildHardwareRaw(doc, all, scope, cache)
+  const recipes = raw.map((r): HardwareRecipe => {
+    r.geometryKey = rawGeometryKey(r)
+    return { s: r.s.toArray(), e: r.e.toArray(), spec: r.spec,
+      twinId: r.twin!.id, hardwareId: r.hardware!.id, geometryKey: r.geometryKey }
+  })
+  if (hardwareRecipeCache.size >= 8) hardwareRecipeCache.delete(hardwareRecipeCache.keys().next().value!)
+  hardwareRecipeCache.set(key, recipes)
+  return raw
+}
+
+function buildHardwareRaw(doc: SuggestDoc, all: Seg[], scope: Seg[], cache: VetCache): Raw[] {
   const out: Raw[] = []
   const scopeIds = new Set(scope.map((s) => s.p.id))
 
@@ -167,9 +216,9 @@ function generateHardware(doc: SuggestDoc, all: Seg[], scope: Seg[], cache: VetC
   // roll and length. Its actual bolt support is checked again after preparation below.
   if (doc.connectors.length) {
     const trims = cachedCheck(cache, 'trims', [doc.profiles], () => computeAllTrims(doc.profiles))
-    const faults = cachedCheck(cache, 'brackets', [doc.profiles, doc.connectors], () => new Set(auditBrackets(doc.profiles, doc.connectors, trims).map((f) => f.id)))
+    const { faults, supported } = cachedHardwareSupports(doc, trims)
     if (faults.size) {
-      const bodies = all.map((s) => ({ s, box: trimmedBox(s.p, trims.get(s.p.id)!).expandByScalar(0.1) }))
+      const members = new Map(all.map((s) => [s.p.id, s]))
       const templates = doc.connectors.filter((c) => !faults.has(c.id)).map((c) => ({
         c, pose: new THREE.Quaternion(...c.quaternion).normalize(), members: undefined as Seg[] | undefined,
       }))
@@ -181,8 +230,10 @@ function generateHardware(doc: SuggestDoc, all: Seg[], scope: Seg[], cache: VetC
             || Math.abs(pose.dot(template.pose)) < 0.999999) continue
           // Locate supports only for templates that can restore this hardware pose.
           if (!template.members) {
-            const point = new THREE.Vector3(...c.position)
-            template.members = bodies.filter(({ box }) => box.containsPoint(point)).map(({ s }) => s)
+            template.members = (supported.get(c.id) ?? []).flatMap((id) => {
+              const member = members.get(id)
+              return member ? [member] : []
+            })
           }
           const delta = new THREE.Vector3(...hardware.position).sub(new THREE.Vector3(...c.position))
           for (const m of template.members) if (scopeIds.has(m.p.id)) out.push({
@@ -304,13 +355,12 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
   for (const s of scope) frame.union(s.box)
 
   const scored: Candidate[] = []
-  const baselineChecks: VetCache = new Map()
+  const baselineChecks = createVetSearchCache(doc)
   const rooms = new Map<string, THREE.Box3>()
   const raw = new Map<string, Raw>()
   const rawFocusRank = (r: Raw) => Math.min(...r.src.map((id) => rank.get(id) ?? Infinity))
   const addRaw = (r: Raw) => {
-    const claim = r.claim.kind === 'shelf' ? `${r.claim.panelId}:${r.claim.edge}` : r.hardware?.id ?? ''
-    const geometry = `${r.rule}|${r.claim.kind}|${claim}|${r.spec}|${[round(r.s), round(r.e)].sort().join('|')}|${r.twin?.quaternion.join(',')}`
+    const geometry = r.geometryKey ?? rawGeometryKey(r)
     const existing = raw.get(geometry)
     // Open copies need their source in the focus. Keep that usable derivation when
     // another, non-focused template happens to generate the same route first.
@@ -321,33 +371,60 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
   }
   for (const r of generateHardware(doc, all, scope, baselineChecks)) addRaw(r)
 
-  const mid = (c: Candidate) => { const e = getProfileEndpoints(c.member); return e.start.clone().add(e.end).multiplyScalar(0.5) }
-  const low = (c: Candidate) => { const e = getProfileEndpoints(c.member); return Math.min(e.start.y, e.end.y) }
-  const order = (a: Candidate, b: Candidate) =>
-    Number(skipped.has(a.key)) - Number(skipped.has(b.key))
-    || b.score - a.score
-    || mid(a).distanceTo(focusMid) - mid(b).distanceTo(focusMid)
-    || low(a) - low(b)
-    || a.member.length - b.member.length
+  const ordered = (candidates: Candidate[]) => {
+    // Geometry is unchanged during this synchronous sort. Keep its tie breakers
+    // only for this call, so no cached pose can survive a yield or document edit.
+    const geometry = new Map<ProfileData, { distance: number; low: number }>()
+    const tie = (c: Candidate) => {
+      let value = geometry.get(c.member)
+      if (!value) {
+        const e = getProfileEndpoints(c.member)
+        value = { distance: e.start.clone().add(e.end).multiplyScalar(0.5).distanceTo(focusMid),
+          low: Math.min(e.start.y, e.end.y) }
+        geometry.set(c.member, value)
+      }
+      return value
+    }
+    return candidates.sort((a, b) => Number(skipped.has(a.key)) - Number(skipped.has(b.key))
+      || b.score - a.score
+      || tie(a).distance - tie(b).distance
+      || tie(a).low - tie(b).low
+      || a.member.length - b.member.length)
+  }
   const yielded = new Set<string>()
   const yieldedRoutes = new Set<string>()
   const routeOf = (c: Candidate) => candidateKey('copy', c.member)
   const priority = new Set<Raw>()
   const hardwareCandidates: Candidate[] = []
+  // Different brackets can require the exact same missing member. Reuse only
+  // its construction and existing-route check; every hardware claim stays separate.
+  const hardwareMembers = new Map<string, { member: ProfileData; key: string; duplicate?: boolean } | null>()
   for (const r of raw.values()) {
     if (!r.hardware || !r.twin) continue
-    const built = buildProfile(r.s, r.e, r.spec)
-    if (!built) continue
-    const member = { ...built, quaternion: [...r.twin.quaternion] as ProfileData['quaternion'] }
-    const key = candidateKey(r.rule, member)
+    // Use exact raw coordinates, not the rounded candidate key: nearby routes
+    // and different section rolls must still construct and validate independently.
+    const geometry = `${r.rule}|${r.spec}|${r.s.x},${r.s.y},${r.s.z}|${r.e.x},${r.e.y},${r.e.z}|${r.twin.quaternion.join(',')}`
+    let prepared = hardwareMembers.get(geometry)
+    if (prepared === undefined) {
+      const built = buildProfile(r.s, r.e, r.spec)
+      if (!built) { hardwareMembers.set(geometry, null); continue }
+      const member = { ...built, quaternion: [...r.twin.quaternion] as ProfileData['quaternion'] }
+      prepared = { member, key: candidateKey(r.rule, member) }
+      hardwareMembers.set(geometry, prepared)
+    }
+    if (!prepared) continue
+    const { member, key } = prepared
     if (skipped.has(key)) continue
     priority.add(r)
-    const { start, end } = getProfileEndpoints(member)
-    const memberAxis = routeAxis(start, end)
-    if (all.some((s) => {
-      if (memberAxis && s.axis && memberAxis !== s.axis) return false
-      const c = coaxial(start, end, s.a, s.b); return c !== null && c.lateral <= DUP_LATERAL && c.overlap >= 0.5
-    })) continue
+    if (prepared.duplicate === undefined) {
+      const { start, end } = getProfileEndpoints(member)
+      const memberAxis = routeAxis(start, end)
+      prepared.duplicate = all.some((s) => {
+        if (memberAxis && s.axis && memberAxis !== s.axis) return false
+        const c = coaxial(start, end, s.a, s.b); return c !== null && c.lateral <= DUP_LATERAL && c.overlap >= 0.5
+      })
+    }
+    if (prepared.duplicate) continue
     const r0 = rawFocusRank(r)
     hardwareCandidates.push({ key, rule: r.rule, reasons: [r.reason], member, anchors: r.src,
       score: r.base + (isFinite(r0) ? 1.5 / (1 + r0) : 0), claim: r.claim })
@@ -356,7 +433,7 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
   // focus and ring bonuses. Check this leading group before generating or preparing
   // the lower-ranked rules. A subsequent next() still visits those other routes.
   const rejectedHardwarePoses = new Set<string>()
-  for (const c of hardwareCandidates.sort(order)) {
+  for (const c of ordered(hardwareCandidates)) {
     if (yielded.has(c.key)) continue
     const pose = JSON.stringify([c.member.spec, c.member.length, c.member.position, c.member.quaternion])
     if (rejectedHardwarePoses.has(pose)) continue
@@ -368,6 +445,7 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
       continue
     }
     yielded.add(c.key); yieldedRoutes.add(routeOf(c)); yield c
+    refreshVetSearchCache(baselineChecks, doc)
   }
   for (const r of generate(doc, all, scope, baselineChecks)) addRaw(r)
   const rawOrder = new Map([...raw.values()].map((r, i) => [r, i]))
@@ -392,13 +470,14 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
     }
     if (!room.containsPoint(r.s) || !room.containsPoint(r.e)) return
     const rawAxis = routeAxis(r.s, r.e)
+    const rawLength = r.s.distanceTo(r.e)
     // Reject unchanged routes before fitting their sections. This does not suppress nearby
     // inboard routes, and avoids repeating face alignment for copies already in the frame.
     if (all.some((s) => {
       if (rawAxis && s.axis && rawAxis !== s.axis) return false
       const c = coaxial(r.s, r.e, s.a, s.b)
       return c !== null && c.lateral <= 0.1 && c.overlap >= 0.99
-        && Math.abs(r.s.distanceTo(r.e) - s.p.length) <= 0.1
+        && Math.abs(rawLength - s.p.length) <= 0.1
     })) return
     const axis = r.twin ? getProfileAxis(r.twin) : null
     // Anchor structural candidates to the floor or another member endpoint.
@@ -438,7 +517,7 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
     })) return
     const r0 = Math.min(...r.src.map((id) => rank.get(id) ?? Infinity))
     const score = r.base + (isFinite(r0) ? 1.5 / (1 + r0) : 0)
-    const candidate: Candidate = { key: candidateKey(r.rule, member), rule: r.rule, reasons: [r.reason], member, anchors: r.src, score, claim: r.claim }
+    const candidate: Candidate = { key: candidateKeyFromEndpoints(r.rule, member.spec, start, end), rule: r.rule, reasons: [r.reason], member, anchors: r.src, score, claim: r.claim }
     preparationOrder.set(candidate, rawOrder.get(r)!)
     scored.push(candidate)
   }
@@ -483,7 +562,7 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
       if (closes) { c.score += 0.1; c.reasons.push('ring') }
     }
 
-    mergedCandidates = merged.sort(order)
+    mergedCandidates = ordered(merged)
     return mergedCandidates
   }
 
@@ -531,7 +610,11 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
     })
     if (related.length) { for (const r of related) prepareRaw(r); continue }
     rejected.add(variantOf(c))
-    if (vet(c.member, c.claim, doc, frame, baselineChecks).ok) { yielded.add(c.key); yieldedRoutes.add(routeOf(c)); yield c; continue }
+    if (vet(c.member, c.claim, doc, frame, baselineChecks).ok) {
+      yielded.add(c.key); yieldedRoutes.add(routeOf(c)); yield c
+      refreshVetSearchCache(baselineChecks, doc)
+      continue
+    }
     if (c.claim.kind === 'close' && c.claim.hardwareId) continue
     // a rectangular section may fit turned a quarter the other way
     const { w, h } = { w: Number(c.member.spec.slice(0, 2)), h: Number(c.member.spec.slice(2)) }
@@ -539,7 +622,10 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
     const dir = getProfileDir(c.member)
     const q = new THREE.Quaternion().setFromAxisAngle(dir, Math.PI / 2).multiply(new THREE.Quaternion(...c.member.quaternion)).normalize()
     const rolled = { ...c.member, quaternion: [q.x, q.y, q.z, q.w] as [number, number, number, number] }
-    if (vet(rolled, c.claim, doc, frame, baselineChecks).ok) { yielded.add(c.key); yieldedRoutes.add(routeOf(c)); yield { ...c, member: rolled } }
+    if (vet(rolled, c.claim, doc, frame, baselineChecks).ok) {
+      yielded.add(c.key); yieldedRoutes.add(routeOf(c)); yield { ...c, member: rolled }
+      refreshVetSearchCache(baselineChecks, doc)
+    }
   }
 }
 

@@ -18,7 +18,7 @@ const clashes = (ps: ProfileData[]) => findConflicts(ps, computeAllTrims(ps)).le
 /** Repairs must reduce the joint score and preserve the checked geometric constraints. */
 describe('putting unbuildable joints right', () => {
   it('does not report a repair that would require moving a locked member', () => {
-    const profiles = [P(0, 0, 0, 0, 800, 0, '4040'), P(0, 400, 0, 600, 400, 0, '2040')]
+    const profiles = [P(0, 0, 0, 0, 800, 0, '2040'), P(0, 400, 0, 600, 400, 0, '2020')]
       .map((p) => ({ ...p, locked: true }))
     useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [], throughRule: 'rails' })
     const before = useStore.getState()
@@ -31,7 +31,7 @@ describe('putting unbuildable joints right', () => {
   })
 
   it('commits the geometry it evaluated and preserves actual cut lengths in one undo', () => {
-    const profiles = [P(0, 0, 0, 0, 800, 0, '4040'), P(0, 400, 0, 600, 400, 0, '2040')]
+    const profiles = [P(0, 0, 0, 0, 800, 0, '2040'), P(0, 400, 0, 600, 400, 0, '2020')]
     useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [], throughRule: 'rails' })
     const before = useStore.getState()
     const cuts = computeAllTrims(profiles)
@@ -46,25 +46,25 @@ describe('putting unbuildable joints right', () => {
     expect(useStore.getState().profiles).toEqual(before.profiles)
   })
 
-  it('a 2040 rail centred on a 4040 post is turned rather than moved', () => {
-    const post = P(0, 20, 0, 0, 820, 0, '4040')
-    const rail = P(0, 400, 0, 600, 400, 0, '2040')
+  it('aligns a B6 rail with one slot on the B6 wide-face post', () => {
+    const post = P(0, 20, 0, 0, 820, 0, '2040')
+    const rail = P(0, 400, 0, 600, 400, 0, '2020')
     const before = unbuildable([post, rail]).length
     expect(before).toBeGreaterThan(0)
     const { profiles, repair } = planRepair([post, rail])
     expect(repair.after).toBe(0)
-    // turning keeps it where it is: a shift would have moved the line it sits on
+    // The 2040 wide face has slots at ±10 mm; a centered 2020 rail needs that offset.
     const after = profiles.find((p) => p.id === rail.id)!
-    expect(after.position.map(Math.round)).toEqual(rail.position.map(Math.round))
+    expect(after.position.map(Math.round)).toEqual([0, 400, 10])
     expect(after.length).toBe(rail.length)
   })
 
   it('it never makes the drawing worse', () => {
     const frame = [
-      P(0, 0, 0, 0, 800, 0, '4040'), P(900, 0, 0, 900, 800, 0, '4040'),
-      P(0, 0, 500, 0, 800, 500, '4040'), P(900, 0, 500, 900, 800, 500, '4040'),
-      P(0, 40, 0, 900, 40, 0, '2040'), P(0, 40, 500, 900, 40, 500, '2040'),
-      P(0, 780, 0, 900, 780, 0, '2040'), P(0, 780, 500, 900, 780, 500, '2040'),
+      P(0, 0, 0, 0, 800, 0, '2040'), P(900, 0, 0, 900, 800, 0, '2040'),
+      P(0, 0, 500, 0, 800, 500, '2040'), P(900, 0, 500, 900, 800, 500, '2040'),
+      P(0, 40, 0, 900, 40, 0, '2020'), P(0, 40, 500, 900, 40, 500, '2020'),
+      P(0, 780, 0, 900, 780, 0, '2020'), P(0, 780, 500, 900, 780, 500, '2020'),
     ]
     const was = { bad: unbuildable(frame).length, clash: clashes(frame) }
     const { profiles, repair } = planRepair(frame)
@@ -82,18 +82,20 @@ describe('putting unbuildable joints right', () => {
     expect(repair.steps).toEqual([])
   })
 
-  it('it does not try to mend a pair no part is made for', () => {
-    // 2020 onto 4040 share no edge, so it is not a fault to fix — it is not a joint
+  it('keeps an unsupported B6/I8 joint visible without attempting a geometric repair', () => {
     const post = P(0, 20, 0, 0, 820, 0, '4040')
     const rail = P(0, 400, 0, 600, 400, 0, '2020')
-    expect(unbuildable([post, rail])).toEqual([])
-    expect(planRepair([post, rail]).repair.steps).toEqual([])
+    const bad = unbuildable([post, rail])
+    expect(bad.length).toBeGreaterThan(0)
+    const { repair } = planRepair([post, rail])
+    expect(repair.steps).toEqual([])
+    expect(repair.after).toBe(repair.before)
   })
 
   it('it keeps every member the length it was', () => {
     const frame = [
-      P(0, 0, 0, 0, 800, 0, '4040'), P(900, 0, 0, 900, 800, 0, '4040'),
-      P(0, 400, 0, 900, 400, 0, '2040'), P(0, 40, 0, 900, 40, 0, '2040'),
+      P(0, 0, 0, 0, 800, 0, '2040'), P(900, 0, 0, 900, 800, 0, '2040'),
+      P(0, 400, 0, 900, 400, 0, '2020'), P(0, 40, 0, 900, 40, 0, '2020'),
     ]
     const { profiles } = planRepair(frame)
     for (const p of profiles) {
@@ -103,8 +105,8 @@ describe('putting unbuildable joints right', () => {
 
   it('it stops rather than wandering: the same drawing twice gives the same answer', () => {
     const frame = [
-      P(0, 0, 0, 0, 800, 0, '4040'), P(900, 0, 0, 900, 800, 0, '4040'),
-      P(0, 40, 0, 900, 40, 0, '2040'), P(0, 400, 0, 900, 400, 0, '2040'),
+      P(0, 0, 0, 0, 800, 0, '2040'), P(900, 0, 0, 900, 800, 0, '2040'),
+      P(0, 40, 0, 900, 40, 0, '2020'), P(0, 400, 0, 900, 400, 0, '2020'),
     ]
     const a = planRepair(frame.map((p) => ({ ...p })))
     const b = planRepair(frame.map((p) => ({ ...p })))
@@ -113,9 +115,9 @@ describe('putting unbuildable joints right', () => {
 
   it('it converges: running it again finds nothing more to do', () => {
     const frame = [
-      P(0, 0, 0, 0, 800, 0, '4040'), P(900, 0, 0, 900, 800, 0, '4040'),
-      P(0, 0, 500, 0, 800, 500, '4040'), P(900, 0, 500, 900, 800, 500, '4040'),
-      P(0, 40, 0, 900, 40, 0, '2040'), P(0, 400, 0, 900, 400, 0, '2040'),
+      P(0, 0, 0, 0, 800, 0, '2040'), P(900, 0, 0, 900, 800, 0, '2040'),
+      P(0, 0, 500, 0, 800, 500, '2040'), P(900, 0, 500, 900, 800, 500, '2040'),
+      P(0, 40, 0, 900, 40, 0, '2020'), P(0, 400, 0, 900, 400, 0, '2020'),
     ]
     const once = planRepair(frame)
     const twice = planRepair(once.profiles)
@@ -141,14 +143,14 @@ describe('a repair may not solve a joint by walking away from it', () => {
   it('keeps every member meeting what it met before', () => {
     // a bay: two posts, a rail across the top of each face, and a cross rail between them
     const frame = [
-      P(0, 0, 0, 0, 2400, 0, '4040'),
-      P(0, 0, 600, 0, 2400, 600, '4040'),
-      P(1000, 0, 0, 1000, 2400, 0, '4040'),
-      P(1000, 0, 600, 1000, 2400, 600, '4040'),
-      P(0, 20, 0, 1000, 20, 0, '2040'),
-      P(0, 20, 600, 1000, 20, 600, '2040'),
-      P(0, 20, 0, 0, 20, 600, '2040'),
-      P(1000, 20, 0, 1000, 20, 600, '2040'),
+      P(0, 0, 0, 0, 2400, 0, '2040'),
+      P(0, 0, 600, 0, 2400, 600, '2040'),
+      P(1000, 0, 0, 1000, 2400, 0, '2040'),
+      P(1000, 0, 600, 1000, 2400, 600, '2040'),
+      P(0, 20, 0, 1000, 20, 0, '2020'),
+      P(0, 20, 600, 1000, 20, 600, '2020'),
+      P(0, 20, 0, 0, 20, 600, '2020'),
+      P(1000, 20, 0, 1000, 20, 600, '2020'),
     ]
     const linkedBefore = joinedEnds(frame)
     const { profiles, repair } = planRepair(frame)
@@ -158,7 +160,7 @@ describe('a repair may not solve a joint by walking away from it', () => {
     expect(joinedEnds(profiles)).toBeGreaterThanOrEqual(linkedBefore)
     // and no post left its bay line by more than the width of a slot
     for (const [i, p] of profiles.entries()) {
-      if (!p.spec.startsWith('40')) continue
+      if (p.spec !== '2040') continue
       const was = frame[i].position
       expect(Math.hypot(p.position[0] - was[0], p.position[2] - was[2])).toBeLessThanOrEqual(20)
     }
@@ -171,10 +173,10 @@ import { countUnflush } from '../utils/faceAlign'
 describe('one joint, one answer', () => {
   const wardrobe = (): ProfileData[] => {
     const out: ProfileData[] = []
-    for (const x of [0, 600, 1200]) for (const z of [0, 600]) out.push(P(x, 0, z, x, 2200, z, '4040'))
+    for (const x of [0, 600, 1200]) for (const z of [0, 600]) out.push(P(x, 0, z, x, 2200, z, '2020'))
     for (const y of [20, 2180]) {
-      for (const [a, b] of [[0, 600], [600, 1200]]) for (const z of [0, 600]) out.push(P(a, y, z, b, y, z, '2040'))
-      for (const x of [0, 600, 1200]) out.push(P(x, y, 0, x, y, 600, '2040'))
+      for (const [a, b] of [[0, 600], [600, 1200]]) for (const z of [0, 600]) out.push(P(a, y, z, b, y, z, '2020'))
+      for (const x of [0, 600, 1200]) out.push(P(x, y, 0, x, y, 600, '2020'))
     }
     return out
   }
@@ -187,7 +189,7 @@ describe('one joint, one answer', () => {
   })
 
   it('and a pairing no part is made for is still counted', () => {
-    // 2020 butted onto 4040: no common edge, so nothing in the catalogue joins them
+    // B6 and I8 have no verified connecting kit in the catalogue.
     const odd = [P(0, 0, 0, 0, 800, 0, '4040'), P(0, 400, 0, 600, 400, 0, '2020')]
     expect(countUnflush(odd)).toBeGreaterThan(0)
   })

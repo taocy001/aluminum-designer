@@ -55,7 +55,7 @@ export function reseatConnector(id: string, key: string, anchor: ConnectorData['
     store.profiles, store.connectors, undefined, undefined,
     { excludeConnectorId: id, equipment: store.equipment, panels: store.panels, fittings: store.fittings }).find((seat) => seat.key === key)
   if (!candidate?.allowed) return false
-  const { position, quaternion, series } = candidate.seat
+  const { position, quaternion, series, profileSpec, mountSeries } = candidate.seat
   return reportEditResult(store.commitTransform({ connectors: [{ id,
-    updates: { position, quaternion, series, supportBinding: undefined } }] }))
+    updates: { position, quaternion, series, profileSpec, mountSeries, supportBinding: undefined } }] }))
 }

@@ -7,7 +7,7 @@ import { profileBodyEndpoints, profileFace } from '../utils/profileFaces'
 import { toScreen } from '../utils/pickUtils'
 import type { ConnectorData, FittingData } from '../store/useStore'
 import { connectorMeshes } from '../utils/connectorGeometry'
-import { connectorScale } from '../utils/connectorCatalog'
+import { CONNECTOR_CATALOG, connectorScale } from '../utils/connectorCatalog'
 import { frontmostId, promoteFrontmost } from '../utils/frontmost'
 import { useToolStore } from '../store/useToolStore'
 
@@ -87,7 +87,7 @@ function connectorScene(parts: ConnectorData[]) {
     group.position.set(...part.position)
     group.quaternion.set(...part.quaternion).normalize()
     group.scale.setScalar(connectorScale(part.series ?? 20))
-    for (const { geometry } of connectorMeshes(part.type, part.series)) group.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()))
+    for (const { geometry } of connectorMeshes(part.type, part.series, part.profileSpec, part.mountSeries)) group.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()))
     scene.add(group)
   }
   scene.updateMatrixWorld(true)
@@ -106,14 +106,17 @@ function closePointer(point: THREE.Vector3, zoom = 4) {
 }
 
 it.each([
-  { type: 'inside-corner', point: V(18, -3) },
-  { type: 'bracket', point: V(28, 2) },
-  { type: 't-bracket', point: V(32, 0) },
-  { type: 'joining-plate', point: V(0, 0, 23), turned: true },
+  // Physical millimetres on the solid ends of the actual 40-series references:
+  // S8IBIBM6 ends at local X=28.25 (35.25 overall), S8IBR40 at 36,
+  // 40-4480 at 60 and 40-4307 at 40.
+  { type: 'inside-corner', point: V(26, -4.5) },
+  { type: 'bracket', point: V(34, 3) },
+  { type: 't-bracket', point: V(55, 0) },
+  { type: 'joining-plate', point: V(0, 0, 35), turned: true },
 ])('includes directly visible $type ends far from the installation origin', ({ type, point, turned }) => {
   const part = connector('visible', type, 40)
   if (turned) part.quaternion = new THREE.Quaternion().setFromAxisAngle(V(0, 1), Math.PI / 2).toArray()
-  const aim = point.clone().multiplyScalar(2).applyQuaternion(new THREE.Quaternion(...part.quaternion))
+  const aim = point.clone().applyQuaternion(new THREE.Quaternion(...part.quaternion))
   const { view, cursor, ray } = closePointer(aim)
   expect(cursor.distanceTo(toScreen(V(0, 0), view, size))).toBeGreaterThan(20)
   const list = pickCandidatesAtScreen(cursor, ray, view, size, [], [part])
@@ -133,6 +136,58 @@ it('does not fill the gap between magnified bracket arms with a pickable box', (
   const part = connector('corner', 'inside-corner')
   const { view, cursor, ray } = closePointer(V(12, 12))
   expect(pickCandidatesAtScreen(cursor, ray, view, size, [], [part])).toEqual([])
+})
+
+it.each([
+  { type: 't-bracket', point: V(36, 36), zoom: 4 },
+  { type: 'gusset', point: V(12, 12), zoom: 8 },
+  { type: 'pivot', point: V(0, 11), zoom: 8 },
+])('leaves the $type opening empty and allows the member behind it to be picked', ({ type, point, zoom }) => {
+  const part = connector('open-part', type, 40)
+  const background = buildProfile(V(point.x - 50, point.y, -80), V(point.x + 50, point.y, -80), '2020')!
+  const { view, cursor, ray } = closePointer(point, zoom)
+  const scene = connectorScene([part])
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(100, 20, 20), new THREE.MeshBasicMaterial())
+  beam.position.set(point.x, point.y, -80)
+  beam.userData.profileId = background.id
+  scene.add(beam)
+  scene.updateMatrixWorld(true)
+  // The independently raycast display mesh has no material at this position.
+  expect(frontmostId(scene, ray, view)).toBe(background.id)
+  const candidates = pickCandidatesAtScreen(cursor, ray, view, size, [background], [part])
+  expect(candidates.map(({ id }) => id)).toEqual([background.id])
+  expect(pickAtScreen(cursor, ray, view, size, [background], [part])?.id).toBe(background.id)
+})
+
+it('keeps the existing 20px slack at a T plate notch while rejecting its deeper empty area', () => {
+  const part = connector('t', 't-bracket', 40)
+  // The stem ends at X=19. These points are 16px and 24px from the real edge.
+  for (const [x, accepted] of [[23, true], [25, false]] as const) {
+    const { view, cursor, ray } = closePointer(V(x, 35), 4)
+    expect(frontmostId(connectorScene([part]), ray, view)).toBeNull()
+    expect(pickCandidatesAtScreen(cursor, ray, view, size, [], [part]).some(({ id }) => id === part.id)).toBe(accepted)
+  }
+})
+
+it.each(CONNECTOR_CATALOG.map(({ type }) => type))('keeps the displayed %s surface pickable', (type) => {
+  const part = connector('surface', type, 40)
+  // Aim inside an actual front-facing triangle, not at an assumed part origin.
+  let point: THREE.Vector3 | undefined
+  for (const { geometry } of connectorMeshes(type, part.series)) {
+    const positions = geometry.getAttribute('position'), indices = geometry.getIndex()
+    for (let i = 0; i < (indices?.count ?? positions.count); i += 3) {
+      const triangle = [0, 1, 2].map((n) => new THREE.Vector3().fromBufferAttribute(positions, indices ? indices.getX(i + n) : i + n))
+      const normal = triangle[1].clone().sub(triangle[0]).cross(triangle[2].clone().sub(triangle[0]))
+      if (normal.z <= 1e-6) continue
+      point = triangle.reduce((sum, v) => sum.add(v), new THREE.Vector3()).multiplyScalar(connectorScale(40) / 3)
+      break
+    }
+    if (point) break
+  }
+  expect(point).toBeDefined()
+  const { view, cursor, ray } = closePointer(point!)
+  expect(frontmostId(connectorScene([part]), ray, view)).toBe(part.id)
+  expect(pickAtScreen(cursor, ray, view, size, [], [part])?.id).toBe(part.id)
 })
 
 it('aiming at an arm prefers it to another connector whose origin is closer', () => {
@@ -165,7 +220,8 @@ it('picks a rotated plate end in perspective without depending on camera scale',
   part.position = [100, 200, -40]
   part.quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0.9, 0.3)).toArray()
   const centre = new THREE.Vector3(...part.position)
-  const point = V(0, 0, 23).multiplyScalar(1.5).applyQuaternion(new THREE.Quaternion(...part.quaternion)).add(centre)
+  // The actual 30-4307 plate is 60 mm long; pick solid material near its +30 mm end.
+  const point = V(0, 0, 28).applyQuaternion(new THREE.Quaternion(...part.quaternion)).add(centre)
   const view = new THREE.PerspectiveCamera(45, 1, 1, 10000)
   view.position.copy(centre).add(V(90, 80, 220))
   view.lookAt(centre); view.updateProjectionMatrix(); view.updateMatrixWorld()

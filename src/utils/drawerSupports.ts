@@ -4,17 +4,19 @@ import { drawerLayout } from './drawerLayout'
 import { validFitting } from './fittingValidation'
 import { runnerFaults } from './runnerMount'
 import { computeAllTrims, withFixedProfileCuts } from './jointUtils'
-import { connectorOBB, panelOBB, trimmedOBB } from './analysis'
+import { panelOBB, trimmedOBB } from './analysis'
 import { fittingSolids } from './fittingGeometry'
 import { obbCorners, obbPenetration, type OBB } from './obb'
 import { getProfileDir } from './geometryCore'
-import { auditBrackets, seatsFor } from './bracketSeat'
+import { seatsFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { ALL_SPECS, specDims } from './specUtils'
 import { noteNext } from './opLog'
 import { reportEditResult } from './editFeedback'
 import { profileBodyEndpoints } from './profileFaces'
 import { equipmentClearance } from './equipmentGeometry'
+import { createConnectorPlacementValidator } from './connectorPlacement'
+import { connectorHitsBody } from './connectorCollision'
 
 export type DrawerSide = 'left' | 'right'
 export type DrawerSupportFailure = 'locked' | 'invalid-drawer' | 'no-mount' | 'collision' | 'no-connection' | 'edit-rejected'
@@ -91,22 +93,16 @@ export function addDrawerSupports(ids: string[], spec?: ProfileSpec, options?: {
           const body = trimmedOBB(rail, trims.get(rail.id)!)
           const otherBodies = [...profiles, ...stagedProfiles].map((p) => trimmedOBB(p, trims.get(p.id)!))
           const boards = [...state.panels.map(panelOBB), ...state.fittings.flatMap((v) => fittingSolids(v, 0))]
-          if ([...otherBodies, ...boards, ...connectors.map(connectorOBB), ...stagedConnectors.map(connectorOBB)]
-            .some((b) => obbPenetration(body, b, 1) > 1)
+          if ([...otherBodies, ...boards].some((b) => obbPenetration(body, b, 1) > 1)
+            || [...connectors, ...stagedConnectors].some(c => connectorHitsBody(c, body))
             || reserved.some((b) => obbPenetration(body, b, 1) > 0)) { reason = 'collision'; continue }
           const brackets: ConnectorData[] = []
+          const validate = createConnectorPlacementValidator(all, { panels: state.panels, fittings: state.fittings, equipment: state.equipment })
           for (const [host, end] of [[back.p, 0], [front.p, rail.length]] as const) {
             const at = new THREE.Vector3(...rail.position).addScaledVector(getProfileDir(rail), end)
-            const candidates = seatsFor('bracket', rail, host, at)
-            const bracket = candidates.map((seat) => ({ id: nextId('c'), type: 'bracket', series: seat.series,
-              position: seat.position, quaternion: seat.quaternion })).find((c) => {
-              if (auditBrackets(all, [c], trims).length) return false
-              const b = connectorOBB(c)
-              return ![...connectors, ...stagedConnectors, ...brackets].some((v) => obbPenetration(b, connectorOBB(v), 1) > 1)
-                && ![...otherBodies, body].some((v) => obbPenetration(b, v, 3) > 3)
-                && !boards.some((v) => obbPenetration(b, v, 1) > 1)
-                && !reserved.some((v) => obbPenetration(b, v, 1) > 0)
-            })
+            const bracket = ['inside-corner', 'bracket'].flatMap(type => seatsFor(type, rail, host, at)
+              .map(seat => ({ id: nextId('c'), type, ...seat })))
+              .find(c => validate(c, [...connectors, ...stagedConnectors, ...brackets]).allowed)
             if (bracket) brackets.push(bracket)
           }
           if (brackets.length !== 2) { reason = 'no-connection'; continue }

@@ -3,10 +3,10 @@ import { useStore, type ProfileData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong, round3 } from './geometryCore'
 import { bracketNormal, flushFace, sharedEdge } from './specCompat'
-import { seatFor } from './bracketSeat'
+import { unsupportedProfileJoint } from './connectorSupport'
 import { specDims } from './specUtils'
 import { translations } from './translations'
-import { computeTrims, withFixedProfileCuts } from './jointUtils'
+import { computeAllTrims, computeTrims, withFixedProfileCuts, type ProfileTrims } from './jointUtils'
 import { profileBodyEndpoints, profileFace, type ProfileFaceRef } from './profileFaces'
 import { reportEditResult } from './editFeedback'
 
@@ -16,6 +16,15 @@ const FLUSH_TOL = 0.5
 const MAX_SHIFT = 60
 
 interface Shift { axis: THREE.Vector3; amount: number }
+type Endpoints = ReturnType<typeof getProfileEndpoints>
+
+/** Equal distances keep the starting endpoint, matching the original stable sort. */
+function closestTouch(start: THREE.Vector3, end: THREE.Vector3, other: Endpoints, startOnly: boolean) {
+  const startDistance = closestOnSegment(start, other.start, other.end).point.distanceTo(start)
+  if (startOnly) return { pt: start, d: startDistance }
+  const endDistance = closestOnSegment(end, other.start, other.end).point.distanceTo(end)
+  return endDistance < startDistance ? { pt: end, d: endDistance } : { pt: start, d: startDistance }
+}
 
 export interface DrawingFaceOptions {
   startFace?: ProfileFaceRef | null
@@ -41,8 +50,7 @@ export interface DrawingFacePlacement {
  * be worth reaching for.
  */
 function shiftForJoint(a: ProfileData, b: ProfileData, at: THREE.Vector3): Shift | null {
-  // sections with no edge in common cannot be bolted together however they are placed, so
-  // sliding one of them about would only hide the problem
+  // This operation only aligns matching outside dimensions; hardware compatibility is checked separately.
   if (!sharedEdge(a.spec, b.spec)) return null
   const n = bracketNormal(a, b)
   if (!n) return null
@@ -57,9 +65,7 @@ function shiftForJoint(a: ProfileData, b: ProfileData, at: THREE.Vector3): Shift
   // position, and it would outvote the real correction because it is smaller.
   if (Math.abs(aBase - bBase) > FLUSH_TOL) return null
 
-  // Both of the partner's faces are reachable, and the shift to either is the same size, so
-  // size cannot choose between them. Take the outer one: a frame is meant to be flush on the
-  // outside, and a rail hung under a cabinet should meet its bottom edge, not its top.
+  // Prefer the outside plane when two corrections have the same distance.
   let best: { delta: number; outward: number } | null = null
   for (const sa of [1, -1]) {
     for (const sb of [1, -1]) {
@@ -79,18 +85,16 @@ function shiftForJoint(a: ProfileData, b: ProfileData, at: THREE.Vector3): Shift
  * Turn the section a quarter turn if that makes more of its joints flush than leaving it.
  * Returns the turned member, or null when turning is no help or there is nothing to turn.
  */
-function tryRoll(candidate: ProfileData, others: ProfileData[], startOnly = false): ProfileData | null {
+function tryRoll(candidate: ProfileData, others: ProfileData[], otherEnds: Endpoints[], startOnly: boolean): ProfileData | null {
   const { w, h } = specDims(candidate.spec)
   if (w === h) return null                      // square: nothing to turn
 
   const flushCount = (p: ProfileData) => {
     const { start, end } = getProfileEndpoints(p)
     let n = 0
-    for (const b of others) {
-      const eb = getProfileEndpoints(b)
-      const touch = (startOnly ? [start] : [start, end])
-        .map((pt) => ({ pt, d: closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) }))
-        .sort((x, y) => x.d - y.d)[0]
+    for (let i = 0; i < others.length; i++) {
+      const b = others[i]
+      const touch = closestTouch(start, end, otherEnds[i], startOnly)
       if (touch.d > JOINT_TOL) continue
       if (!sharedEdge(p.spec, b.spec)) continue
       if (flushFace(p, b, touch.pt)) n++
@@ -112,19 +116,19 @@ function tryRoll(candidate: ProfileData, others: ProfileData[], startOnly = fals
  */
 export function faceAlignOnCreate(candidate: ProfileData, others: ProfileData[], startOnly = false): ProfileData {
   if (others.length === 0) return candidate
+  // Both roll choices and the final shift use the same unchanged neighbours.
+  const otherEnds = others.map(getProfileEndpoints)
 
   // Try a quarter-turn of rectangular sections before shifting them to align slot planes.
-  const rolled = tryRoll(candidate, others, startOnly)
+  const rolled = tryRoll(candidate, others, otherEnds, startOnly)
   if (rolled) return rolled
 
   const { start, end } = getProfileEndpoints(candidate)
   const votes: THREE.Vector3[] = []
 
-  for (const b of others) {
-    const eb = getProfileEndpoints(b)
-    const touch = (startOnly ? [start] : [start, end])
-      .map((pt) => ({ pt, d: closestOnSegment(pt, eb.start, eb.end).point.distanceTo(pt) }))
-      .sort((x, y) => x.d - y.d)[0]
+  for (let i = 0; i < others.length; i++) {
+    const b = others[i]
+    const touch = closestTouch(start, end, otherEnds[i], startOnly)
     if (touch.d > JOINT_TOL) continue
     const shift = shiftForJoint(candidate, b, touch.pt)
     if (!shift || Math.abs(shift.amount) <= FLUSH_TOL) continue
@@ -292,7 +296,7 @@ export function countUnflush(profiles: ProfileData[]): number {
 }
 
 /** Return the identities of joints for which no supported connector seat is found. */
-export function unflushPairs(profiles: ProfileData[]): Array<{ a: string; b: string; at: [number, number, number] }> {
+export function unflushPairs(profiles: ProfileData[], trims: Map<string, ProfileTrims> = computeAllTrims(profiles)): Array<{ a: string; b: string; at: [number, number, number] }> {
   const ends = new Map(profiles.map((p) => [p.id, getProfileEndpoints(p)]))
   const seen = new Map<string, { a: string; b: string; at: [number, number, number] }>()
   for (const a of profiles) {
@@ -305,14 +309,7 @@ export function unflushPairs(profiles: ProfileData[]): Array<{ a: string; b: str
         .sort((x, y) => x.d - y.d)[0]
       if (touch.d > JOINT_TOL) continue
       if (!bracketNormal(a, b)) continue
-      if (!sharedEdge(a.spec, b.spec)) {
-        // no edge in common: no part joins these two, and the tool says so elsewhere as a
-        // section mismatch rather than counting it twice here
-        const key0 = [a.id, b.id].sort().join('|')
-        if (!seen.has(key0)) seen.set(key0, { a: a.id, b: b.id, at: touch.pt.toArray() as [number, number, number] })
-        continue
-      }
-      if (seatFor('bracket', a, b, touch.pt) || seatFor('gusset', a, b, touch.pt)) continue
+      if (!unsupportedProfileJoint(a, b, touch.pt, trims)) continue
       const key = [a.id, b.id].sort().join('|')
       if (!seen.has(key)) seen.set(key, { a: a.id, b: b.id, at: touch.pt.toArray() as [number, number, number] })
     }

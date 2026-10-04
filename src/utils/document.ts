@@ -68,7 +68,9 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
     const c = base(value, 'supportBinding')
     if (!optional(c.supportBinding, validSupportBinding)) fail('support binding')
     if (typeof c.type !== 'string' || !connectorTypes.has(c.type)
-      || !optional(c.series, (v) => oneOf(v, [20, 30, 40]))) fail('connector type or series')
+      || !optional(c.series, (v) => oneOf(v, [20, 30, 40]))
+      || !optional(c.mountSeries, (v) => Array.isArray(v) && v.length === 2 && v.every((x) => oneOf(x, [20, 30, 40])))
+      || !optional(c.profileSpec, (v) => oneOf(v, ['2020', '2040', '3030', '3040', '4040']))) fail('connector type or series')
     return { ...c } as unknown as ConnectorData
   })
   const panels = ((doc.panels ?? []) as unknown[]).map((value) => {

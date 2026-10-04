@@ -1,9 +1,8 @@
 import * as THREE from 'three'
 import { useStore, type ProfileData } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment } from './geometryCore'
-import { seatFor } from './bracketSeat'
-import { sharedEdge } from './specCompat'
-import { computeAllTrims, withFixedProfileCuts } from './jointUtils'
+import { actualTouching, supportsProfileJoint, unsupportedProfileJoint } from './connectorSupport'
+import { computeAllTrims, withFixedProfileCuts, type ProfileTrims } from './jointUtils'
 import { findConflicts } from './analysis'
 import { rollProfile } from './faceAlign'
 import { reportEditResult } from './editFeedback'
@@ -25,7 +24,7 @@ export interface Joint {
 }
 
 /** Every place one member's end lands on another, which is every place a bracket goes */
-export function joints(profiles: ProfileData[]): Joint[] {
+export function joints(profiles: ProfileData[], trims = computeAllTrims(profiles)): Joint[] {
   const out: Joint[] = []
   const ends = new Map(profiles.map((p) => [p.id, getProfileEndpoints(p)]))
   for (const a of profiles) {
@@ -36,6 +35,9 @@ export function joints(profiles: ProfileData[]): Joint[] {
         if (Math.abs(getProfileDir(a).dot(getProfileDir(b))) > 0.9) continue
         const eb = ends.get(b.id)!
         if (closestOnSegment(at, eb.start, eb.end).point.distanceTo(at) > JOINT_TOL) continue
+        // Count actual links as well as mismatch faults: otherwise sliding apart
+        // within the old 30 mm search radius could falsely improve the repair score.
+        if (!supportsProfileJoint(a, b, at, trims) && !actualTouching(a, b, trims)) continue
         out.push({ a, b, at: at.clone() })
       }
     }
@@ -43,9 +45,11 @@ export function joints(profiles: ProfileData[]): Joint[] {
   return out
 }
 
-/** The joints no bracket can be bolted to, ignoring the pairs no part is made for */
-export function unbuildable(profiles: ProfileData[]): Joint[] {
-  return joints(profiles).filter((j) => sharedEdge(j.a.spec, j.b.spec) && !seatFor('bracket', j.a, j.b, j.at))
+const unsupported = (j: Joint, trims: Map<string, ProfileTrims>) => unsupportedProfileJoint(j.a, j.b, j.at, trims)
+
+/** Unsupported joints remain visible even when rotation or translation cannot fix their slot family. */
+export function unbuildable(profiles: ProfileData[], trims = computeAllTrims(profiles)): Joint[] {
+  return joints(profiles, trims).filter((j) => unsupported(j, trims))
 }
 
 /** Score joints and clashes involving this member within its nearby-member set. */
@@ -53,13 +57,14 @@ function scoreAround(profiles: ProfileData[], id: string): Score {
   const me = profiles.find((p) => p.id === id)
   if (!me) return { bad: 0, clashes: 0, links: 0 }
   const near = profiles.filter((p) => p.id === id || touching(me, p))
-  const mine = joints(near).filter((j) => j.a.id === id || j.b.id === id)
-  const bad = mine.filter((j) => sharedEdge(j.a.spec, j.b.spec) && !seatFor('bracket', j.a, j.b, j.at)).length
+  const trims = computeAllTrims(near)
+  const mine = joints(near, trims).filter((j) => j.a.id === id || j.b.id === id)
+  const bad = mine.filter((j) => unsupported(j, trims)).length
   // Keep the inferred-link count so disconnecting members cannot improve the score.
   const links = mine.length
   // trims for the neighbourhood, not the document: a member's trim is decided by what it
   // meets, and everything it meets is in `near` by construction
-  const clashes = findConflicts(near, computeAllTrims(near)).filter((c) => c.a === id || c.b === id).length
+  const clashes = findConflicts(near, trims).filter((c) => c.a === id || c.b === id).length
   return { bad, clashes, links }
 }
 
@@ -83,10 +88,11 @@ interface Score { bad: number; clashes: number; links: number }
 
 /** How bad the whole drawing is, for the before-and-after the caller is told */
 function score(profiles: ProfileData[]): Score {
+  const trims = computeAllTrims(profiles)
   return {
-    bad: unbuildable(profiles).length,
-    clashes: findConflicts(profiles, computeAllTrims(profiles)).length,
-    links: joints(profiles).length,
+    bad: unbuildable(profiles, trims).length,
+    clashes: findConflicts(profiles, trims).length,
+    links: joints(profiles, trims).length,
   }
 }
 

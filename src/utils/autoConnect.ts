@@ -5,9 +5,9 @@ import { useStore, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
 import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from './connectorCatalog'
+import { endCornerSeats } from './connectorMounting'
 import { fitConnector, jointPartnersAt } from './connectorFit'
 import { getProfileDir, getProfileEndpoints } from './geometryCore'
-import { sharedEdge } from './specCompat'
 import { auditBrackets, connectorSeatAt, endCapSeat, seatsFor } from './bracketSeat'
 import { nextId } from './profileFactory'
 import { translations } from './translations'
@@ -67,6 +67,10 @@ export function autoConnect(type: string): AutoConnectResult {
     if (!tr) continue
     const { start, end } = getProfileEndpoints(p)
     for (const [where, at] of [[tr.start, start], [tr.end, end]] as const) {
+      if (type === 'corner-3way') {
+        for (const seat of endCornerSeats(at, profiles)) consider({ id: 'candidate', type, ...seat })
+        continue
+      }
       if (entry.fit === 'corner') {
         for (const { a, b, at: joint } of jointPartnersAt(at, p, profiles)) {
           const key = JSON.stringify([a.id, b.id])
@@ -74,9 +78,20 @@ export function autoConnect(type: string): AutoConnectResult {
           visitedPairs.add(key)
           const candidates = seatsFor(type, a, b, joint)
             .filter((s) => auditBrackets(profiles, [{ id: 'candidate', type, ...s }], trims).length === 0)
-          if (!candidates.length) { if (sharedEdge(a.spec, b.spec)) unbolted++; continue }
-          // Each independently mountable side and slot is a distinct installation.
-          for (const seat of candidates) consider({ id: 'candidate', type, ...seat })
+          if (!candidates.length) { unbolted++; continue }
+          // Reversing an asymmetric inner bracket is an alternative at the same slot.
+          const slots: Array<typeof candidates> = []
+          for (const seat of candidates) {
+            const group = slots.find(alternatives => new THREE.Vector3(...alternatives[0].position)
+              .distanceTo(new THREE.Vector3(...seat.position)) < 1)
+            if (group) group.push(seat)
+            else slots.push([seat])
+          }
+          for (const alternatives of slots) {
+            const available = alternatives.map(seat => ({ id: 'candidate', type, ...seat }))
+            const selected = available.find(c => { const status = validate(c, [...connectors, ...made]); return status.allowed || status.occupied }) ?? available[0]
+            consider(selected)
+          }
         }
         continue
       }
@@ -109,7 +124,7 @@ export function autoConnect(type: string): AutoConnectResult {
         quaternion = placement.quaternion
         series = placement.series ?? seriesOf(p.spec)
       }
-      consider({ id: 'candidate', type, series, position, quaternion })
+      consider({ id: 'candidate', type, series, position, quaternion, profileSpec: p.spec })
     }
   }
 

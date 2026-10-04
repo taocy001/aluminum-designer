@@ -176,8 +176,8 @@ describe('slot walls identify their owning outer reference face', () => {
     { spec: '2020', point: [-7, -3, 300], normal: [0, 1, 0], axis: 0, side: -1 },
     { spec: '2040', point: [5, 13, 300], normal: [0, -1, 0], axis: 0, side: 1 },
     { spec: '2040', point: [-5, 13, 300], normal: [0, -1, 0], axis: 0, side: -1 },
-    { spec: '3040', point: [8, 14, 300], normal: [0, -1, 0], axis: 0, side: 1 },
-    { spec: '4040', point: [14, 15, 300], normal: [-1, 0, 0], axis: 1, side: 1 },
+    { spec: '3040', point: [8, 4, 300], normal: [0, -1, 0], axis: 0, side: 1 },
+    { spec: '4040', point: [10, 14, 300], normal: [-1, 0, 0], axis: 1, side: 1 },
   ]
 
   it.each(cases)('$spec wall at $point uses its owning side instead of its triangle normal', ({ spec, point, normal, axis, side }) => {
@@ -191,7 +191,7 @@ describe('slot walls identify their owning outer reference face', () => {
     expect(hit.normal.toArray()).toEqual(normal)
   })
 
-  it('classifies the same rectangular slot after arbitrary direction and section roll', () => {
+  it('classifies the same slot after arbitrary direction and section roll', () => {
     const p = buildProfile(new THREE.Vector3(20, 40, 60), new THREE.Vector3(320, 440, 660), '2040')!
     const q = new THREE.Quaternion(...p.quaternion)
       .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 5))
@@ -222,11 +222,12 @@ describe('slot walls identify their owning outer reference face', () => {
     const mesh = new THREE.Mesh(geometry, material)
     mesh.updateMatrixWorld()
     try {
-      // Enter the slot through x=10,y=11 and meet its upper inner wall at x=5,y=13.
-      const raycaster = new THREE.Raycaster(new THREE.Vector3(30, 3, 300), new THREE.Vector3(-25, 10, 0).normalize())
+      // The B6 cavity widens behind the retaining lip to y=16, while its
+      // mouth remains on the right reference face x=10.
+      const raycaster = new THREE.Raycaster(new THREE.Vector3(7.5, 10, 300), new THREE.Vector3(0, 1, 0))
       const intersection = raycaster.intersectObject(mesh, false)[0]
       expect(intersection).toBeDefined()
-      expect(intersection.point.distanceTo(new THREE.Vector3(5, 13, 300))).toBeLessThan(1e-6)
+      expect(intersection.point.distanceTo(new THREE.Vector3(7.5, 16, 300))).toBeLessThan(1e-6)
       const normal = intersection.face!.normal.clone().transformDirection(mesh.matrixWorld)
       expect(normal.distanceTo(new THREE.Vector3(0, -1, 0))).toBeLessThan(1e-6)
       const picked = modelPointFromHit({ profileId: p.id, point: intersection.point, normal }, [p], raycaster.ray)!

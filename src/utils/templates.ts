@@ -63,8 +63,8 @@ export const TEMPLATES: Template[] = [
   {
     id: 'bench',
     labelZh: '工作台', labelEn: 'Workbench',
-    noteZh: '四角 4040 承重，台面高 900，下方一道中撑',
-    noteEn: '4040 corner posts, 900 worktop, one mid rail',
+    noteZh: '4040 框架，默认高 900，下方一道围框',
+    noteEn: '4040 frame, default height 900, lower perimeter rails',
     params: [
       { key: 'w', labelZh: '长', labelEn: 'Length', value: 1500, min: 400, max: 6000, step: 100 },
       { key: 'd', labelZh: '深', labelEn: 'Depth', value: 700, min: 300, max: 1200, step: 50 },
@@ -73,9 +73,9 @@ export const TEMPLATES: Template[] = [
     build: ({ w, d, h }) => {
       const out: Array<ProfileData | null> = []
       for (const x of [0, w]) for (const z of [0, d]) out.push(bar(V(x, 0, z), V(x, h, z), '4040'))
-      for (const y of [40, h]) out.push(...perimeter(w, d, y, 40, 20, '2040'))
-      // one rail across the middle so a long top does not sag
-      if (w > 1200) out.push(bar(V(w / 2, h, 0), V(w / 2, h, d), '2040'))
+      for (const y of [40, h]) out.push(...perimeter(w, d, y, 40, 40, '4040'))
+      // Centre rail for wider tops; load capacity is checked separately.
+      if (w > 1200) out.push(bar(V(w / 2, h, 0), V(w / 2, h, d), '4040'))
       return keep(out)
     },
   },
@@ -145,7 +145,7 @@ export const TEMPLATES: Template[] = [
     build: ({ w, d, h }) => {
       const out: Array<ProfileData | null> = []
       for (const x of [0, w]) for (const z of [0, d]) out.push(bar(V(x, 0, z), V(x, h, z), '4040'))
-      out.push(...perimeter(w, d, h, 40, 20, '2040'))
+      out.push(...perimeter(w, d, h, 40, 40, '4040'))
       return keep(out)
     },
   },

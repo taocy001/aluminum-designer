@@ -179,14 +179,23 @@ describe('example cabinet layouts', () => {
 
   it('bolts both ends of the kitchen cupboard shelf rails to their posts', () => {
     const doc = load('01-kitchen-base')
-    for (const z of [0, 650]) for (const x of [2690, 3370]) {
+    const supports = new Map<string, string[]>()
+    expect(auditBrackets(doc.profiles, doc.connectors, computeAllTrims(doc.profiles), supports)).toEqual([])
+    for (const z of [0, 650]) for (const x of [2680, 3380]) {
+      const rail = doc.profiles.find((p) => p.position[0] === 2680 && p.position[1] === 440
+        && p.position[2] === z && getProfileDir(p).x > 0.999)!
+      const post = doc.profiles.find((p) => p.position[0] === x && p.position[2] === z
+        && getProfileDir(p).y > 0.999)!
+      expect(rail).toBeDefined()
+      expect(post).toBeDefined()
       const bracket = doc.connectors.find((c) => c.type === 'inside-corner'
-        && new THREE.Vector3(...c.position).distanceTo(V(x, 450, z)) < 1e-5)
+        && supports.get(c.id)?.includes(rail.id) && supports.get(c.id)?.includes(post.id)
+        && [V(1, 0, 0), V(0, 1, 0)].some((axis) => axis.applyQuaternion(new THREE.Quaternion(...c.quaternion)).y > 0.999))
       expect(bracket).toBeDefined()
       const q = new THREE.Quaternion(...bracket!.quaternion)
       const arms = [V(1, 0, 0).applyQuaternion(q), V(0, 1, 0).applyQuaternion(q)]
       expect(arms.some((v) => v.y > 0.999)).toBe(true)
-      expect(arms.some((v) => v.x * (x === 2690 ? 1 : -1) > 0.999)).toBe(true)
+      expect(arms.some((v) => v.x * (x === 2680 ? 1 : -1) > 0.999)).toBe(true)
       expect(auditBrackets(doc.profiles, [bracket!])).toEqual([])
     }
   })

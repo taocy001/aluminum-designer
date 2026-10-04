@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import type { ConnectorData } from '../store/useStore'
-import { connectorSeatAt } from '../utils/bracketSeat'
 import { connectorOBB } from '../utils/analysis'
 import { connectorHitsBody } from '../utils/connectorCollision'
 import { connectorMeshes, connectorSolidTop } from '../utils/connectorGeometry'
-import { buildProfile } from '../utils/profileFactory'
 import { makeOBB, obbCorners, type OBB } from '../utils/obb'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
@@ -29,90 +27,95 @@ describe('modeled connector collision bodies', () => {
     for (let i = 0; i < 180; i++) {
       const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(random() * 6, random() * 6, random() * 6))
       const position = V(random() * 1000, random() * 1000, random() * 1000)
-      const series = ([20, 30, 40] as const)[i % 3], scale = series / 20
-      const c: ConnectorData = { ...part('cross-bracket'), series, position: position.toArray(), quaternion: rotation.toArray() }
-      const reference = [V(24, 2, 2), V(2, 24, 2)].map((half) => makeOBB(position, half.multiplyScalar(scale), rotation))
+      const series = ([20, 30, 40] as const)[i % 3]
+      const thickness = series === 40 ? 6 : 4, width = series === 20 ? 18 : series === 30 ? 27 : 39.8
+      const c: ConnectorData = { ...part('flat-plate'), series, position: position.toArray(), quaternion: rotation.toArray() }
+      const centre = V(0, thickness / 2, 0).applyQuaternion(rotation).add(position)
+      const reference = makeOBB(centre, V(2 * series, thickness / 2, width / 2), rotation)
       const body = i % 5 === 0 ? makeOBB(position.clone(), V(60, 60, 60), rotation)
         : i % 5 === 1 ? makeOBB(position.clone(), V(1, 1, 1), rotation)
-          : i % 5 === 2 ? makeOBB(V(24 * scale + 2, 0, 0).applyQuaternion(rotation).add(position), V(2, 2, 2), rotation)
+          : i % 5 === 2 ? makeOBB(V(2 * series + 2, thickness / 2, 0).applyQuaternion(rotation).add(position), V(2, 2, 2), rotation)
             : makeOBB(V(random() * 70 - 35, random() * 70 - 35, random() * 20 - 10).applyQuaternion(rotation).add(position),
               V(random() * 8 + 1, random() * 8 + 1, random() * 8 + 1),
               rotation.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(random(), random(), i % 2 ? 0.00001 : random()))))
       for (const tolerance of [0, 1, 3]) expect(connectorHitsBody(c, body, tolerance, false))
-        .toBe(reference.some((box) => vertexOverlap(box, body, tolerance)))
+        .toBe(vertexOverlap(reference, body, tolerance))
     }
   })
 
   it.each(['flat-plate', 'joining-plate', 'end-cap', 'cross-bracket', 'hinge', 'pivot', 'caster-mount', 'foot', 't-nut'])(
     'keeps all visible physical %s vertices within the broad-phase envelope', (type) => {
       const envelope = connectorOBB(part(type))
-      for (const mesh of connectorMeshes(type).filter((m) => !m.dark)) {
+      let maximumOverflow = -Infinity
+      for (const mesh of connectorMeshes(type).filter((m) => !m.visualOnly)) {
         const positions = mesh.geometry.getAttribute('position')
         for (let i = 0; i < positions.count; i++) {
           const point = V(positions.getX(i), positions.getY(i), positions.getZ(i)).sub(envelope.center)
-          for (let j = 0; j < 3; j++) expect(Math.abs(point.dot(envelope.axes[j])))
-            .toBeLessThanOrEqual(envelope.half.getComponent(j) + 1e-6)
+          for (let j = 0; j < 3; j++) maximumOverflow = Math.max(maximumOverflow,
+            Math.abs(point.dot(envelope.axes[j])) - envelope.half.getComponent(j))
         }
       }
+      expect(maximumOverflow).toBeLessThanOrEqual(1e-6)
     },
   )
 
-  it('checks the cross arms without filling the empty quadrants', () => {
-    expect(connectorHitsBody(part('cross-bracket'), makeOBB(V(20, 20, 0), V(3, 3, 3), Q), 1, false)).toBe(false)
-    expect(connectorHitsBody(part('cross-bracket'), makeOBB(V(22, 0, 0), V(3, 3, 3), Q), 1, false)).toBe(true)
-    expect(connectorHitsBody(part('hinge'), makeOBB(V(10, 0, 0), V(2, 2, 2), Q), 1, false)).toBe(false)
-    expect(connectorHitsBody(part('foot'), makeOBB(V(12, 12, 0), V(2, 2, 2), Q), 1, false)).toBe(false)
-    expect(connectorHitsBody(part('foot'), makeOBB(V(0, 25, 0), V(3, 3, 3), Q), 1, false)).toBe(true)
+  it('keeps the cross plate clipped corners and the gaps around the foot clear', () => {
+    expect(connectorHitsBody(part('cross-bracket'), makeOBB(V(60, 40, 2), V(1, 1, 1), Q), 0, false)).toBe(false)
+    expect(connectorHitsBody(part('cross-bracket'), makeOBB(V(60, 0, 2), V(1, 1, 1), Q), 0, false)).toBe(true)
+    expect(connectorHitsBody(part('foot'), makeOBB(V(12, 12, 0), V(2, 2, 2), Q), 0, false)).toBe(false)
+    expect(connectorHitsBody(part('foot'), makeOBB(V(0, 5, 0), V(1, 1, 1), Q), 0, false)).toBe(true)
   })
 
-  it('exempts a nut insert only on its aligned slot and preserves its exposed bolt', () => {
-    const nut = part('t-nut'), profile = makeOBB(V(0, -10, 0), V(10, 10, 100), Q)
-    expect(connectorHitsBody(nut, profile)).toBe(false)
-    expect(connectorHitsBody(nut, profile, 1, false)).toBe(true)
-    expect(connectorHitsBody({ ...nut, position: [4, 0, 0] }, profile)).toBe(true)
-    expect(connectorHitsBody({ ...nut, quaternion: new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2).toArray() }, profile)).toBe(true)
-    expect(connectorHitsBody(nut, makeOBB(V(0, 6, 0), V(5, 4, 5), Q))).toBe(true)
-    expect(connectorHitsBody(nut, makeOBB(V(5, -10, 0), V(10, 10, 100), Q))).toBe(true)
+  it('checks the loose nut body without an invented attached bolt', () => {
+    const nut = part('t-nut')
+    expect(connectorHitsBody(nut, makeOBB(V(4, -3, 0), V(.5, .5, 1), Q), 0, false)).toBe(true)
+    expect(connectorHitsBody(nut, makeOBB(V(0, 6, 0), V(2, 2, 2), Q), 0, false)).toBe(false)
+    const wrongSlot = makeOBB(V(5, -10, 0), V(10, 10, 100), Q)
+    expect(connectorHitsBody(nut, wrongSlot)).toBe(true)
   })
 
-  it.each([20, 30, 40] as const)('fits the %s inside corner arms within the mounting slot', (series) => {
-    const q = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2)
-    const alongX = makeOBB(V(0, -series / 2, 0), V(series / 2, series / 2, 100), q)
-    const c: ConnectorData = { ...part('inside-corner'), series, position: [0, 0, series === 40 ? 10 : 0] }
+  it.each([[20, .5, .6], [30, 1.2, .7], [40, 3.5, 3]] as const)(
+    'fits series %s shoulders behind the real slot lips at a clear cut end', (series, insetX, insetY) => {
+    const alongX = makeOBB(V(50, -series / 2, 0), V(series / 2, series / 2, 50),
+      new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2))
+    const c: ConnectorData = { ...part('inside-corner'), series, position: [-insetX, -insetY, 0] }
     expect(connectorHitsBody(c, alongX)).toBe(false)
-    const alongY = makeOBB(V(-series / 2, 0, 0), V(series / 2, series / 2, 100),
+    const alongY = makeOBB(V(-series / 2, 50, 0), V(series / 2, series / 2, 50),
       new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), -Math.PI / 2))
     expect(connectorHitsBody(c, alongY)).toBe(false)
-    expect(connectorHitsBody(c, alongX, 1, false)).toBe(true)
-    // Even a submillimetre intrusion into a slot wall or floor is real metal overlap.
-    expect(connectorHitsBody({ ...c, position: [0, -0.2, c.position[2]] }, alongX)).toBe(true)
-    expect(connectorHitsBody({ ...c, position: [0, 0, c.position[2] + 0.2] }, alongX)).toBe(true)
+    expect(connectorHitsBody(c, alongX, .15, false)).toBe(true)
+    expect(connectorHitsBody({ ...c, position: [-insetX, -insetY - 1, 0] }, alongX)).toBe(true)
+    expect(connectorHitsBody({ ...c, position: [-insetX, -insetY, 2] }, alongX)).toBe(true)
+    // Extending this member behind the cut end traps the other insert arm in metal.
+    alongX.center.x = 0
+    expect(connectorHitsBody(c, alongX)).toBe(true)
   })
 
-  it('uses both 2040 slots and the same cavity under rigid transforms', () => {
+  it('uses both 2040 slots and preserves the physical cavity under rigid transforms', () => {
     const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(V(0, 1, 0), V(0, 0, 1), V(1, 0, 0)))
     for (const z of [-10, 10]) for (let i = 0; i < 5; i++) {
-      const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(i * 0.19, i * 0.31, i * 0.43))
+      const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(i * .19, i * .31, i * .43))
       const shift = V(i * 17, -i * 31, i * 10.2)
-      const host = makeOBB(V(0, -10, 0).applyQuaternion(rotation).add(shift), V(10, 20, 100), rotation.clone().multiply(q))
-      const c: ConnectorData = { ...part('inside-corner'), position: V(0, 0, z).applyQuaternion(rotation).add(shift).toArray(),
+      const host = makeOBB(V(50, -10, 0).applyQuaternion(rotation).add(shift), V(10, 20, 50), rotation.clone().multiply(q))
+      const c: ConnectorData = { ...part('inside-corner'), position: V(-.6, -.6, z).applyQuaternion(rotation).add(shift).toArray(),
         quaternion: rotation.toArray() }
       expect(connectorHitsBody(c, host)).toBe(false)
+      c.position = V(-.6, -.6, 0).applyQuaternion(rotation).add(shift).toArray()
+      expect(connectorHitsBody(c, host)).toBe(true)
     }
   })
 
-  it('checks the exposed root and rejects unrelated metal while leaving the negative quadrant empty', () => {
+  it('checks the real negative heel and leaves the open positive quadrant clear', () => {
     const c = part('inside-corner')
-    expect(connectorHitsBody(c, makeOBB(V(3, 3, 0), V(2, 2, 2), Q), 1, false)).toBe(true)
-    expect(connectorHitsBody(c, makeOBB(V(-3, -3, 0), V(2, 2, 2), Q), 0, false)).toBe(false)
-    expect(connectorHitsBody(c, makeOBB(V(3, 3, 0), V(2, 2, 2), Q), 1)).toBe(true)
-    const alongX = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2)
-    expect(connectorHitsBody(c, makeOBB(V(0, -10, 0), V(10, 10, 10), alongX))).toBe(true)
-    expect(connectorHitsBody(c, makeOBB(V(10, -10, 0), V(10, 10, 10), Q))).toBe(true)
+    expect(connectorHitsBody(c, makeOBB(V(-2, -2, 0), V(1, 1, 1), Q), 0, false)).toBe(true)
+    expect(connectorHitsBody(c, makeOBB(V(3, 3, 0), V(1, 1, 1), Q), 0, false)).toBe(false)
+    // Unrelated metal still blocks the heel and either arm.
+    for (const centre of [V(-2, -2, 0), V(8, -2, 0), V(-2, 8, 0)])
+      expect(connectorHitsBody(c, makeOBB(centre, V(1, 1, 1), Q))).toBe(true)
   })
 
   it('refreshes cached solids after in-place pose, series and type edits', () => {
-    const connector = part('cross-bracket'), body = makeOBB(V(22, 0, 0), V(3, 3, 3), Q)
+    const connector = part('flat-plate'), body = makeOBB(V(35, 2, 0), V(2, 2, 2), Q)
     const check = () => {
       const fresh = { ...connector, position: [...connector.position], quaternion: [...connector.quaternion] } as ConnectorData
       const collision = connectorHitsBody(connector, body, 1, false)
@@ -133,64 +136,67 @@ describe('modeled connector collision bodies', () => {
     check()
   })
 
-  it('refreshes cached slot walls after in-place member and connector edits', () => {
-    const c = part('inside-corner'), q = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2)
-    const body = makeOBB(V(0, -10, 0), V(10, 10, 100), q)
-    const check = (expected: boolean) => {
+  it('refreshes cached profile metal after in-place member and connector edits', () => {
+    const c: ConnectorData = { ...part('inside-corner'), position: [-.6, -.6, 0] }
+    const q = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2)
+    const body = makeOBB(V(50, -10, 0), V(10, 10, 50), q)
+    const check = (expected?: boolean) => {
       const freshBody = { center: body.center.clone(), half: body.half.clone(), axes: body.axes.map((axis) => axis.clone()) as typeof body.axes }
       const freshPart = { ...c, position: [...c.position], quaternion: [...c.quaternion] } as ConnectorData
-      expect(connectorHitsBody(c, body)).toBe(expected)
-      expect(connectorHitsBody(c, body)).toBe(connectorHitsBody(freshPart, freshBody))
+      const actual = connectorHitsBody(c, body)
+      if (expected !== undefined) expect(actual).toBe(expected)
+      expect(actual).toBe(connectorHitsBody(freshPart, freshBody))
     }
     check(false)
-    body.center.y = -9.8
-    check(true)
-    body.center.y = -10
-    check(false)
-    body.half.y = 10.2
-    check(true)
-    body.half.y = 10
-    body.half.z = 10
-    check(true)
-    body.half.z = 100
-    body.half.x = 20
-    check(true)
-    body.half.x = 10
-    check(false)
+    body.center.y += 1; check(true)
+    body.center.y -= 1; check(false)
+    body.half.y += 1; check(true)
+    body.half.y -= 1; check(false)
+    body.half.z = 100; check(true)
+    body.half.z = 50; check(false)
+    body.half.x = 20; check()
+    body.half.x = 10; check(false)
     const originalAxes = body.axes.map((axis) => axis.clone())
-    body.axes.forEach((axis) => axis.applyQuaternion(q))
-    check(true)
-    body.axes.forEach((axis, index) => axis.copy(originalAxes[index]))
-    check(false)
-    c.position[2] = 0.2
-    check(true)
-    c.position[2] = 0
-    check(false)
-    c.series = 30
-    check(true)
-    c.series = 20
-    check(false)
-    c.quaternion = q.toArray()
-    check(true)
-    c.quaternion = [0, 0, 0, 1]
-    check(false)
+    body.axes.forEach((axis) => axis.applyQuaternion(q)); check()
+    body.axes.forEach((axis, index) => axis.copy(originalAxes[index])); check(false)
+    c.position[2] = 2; check(true)
+    c.position[2] = 0; check(false)
+    c.series = 30; check(true)
+    c.series = 20; check(false)
+    c.quaternion = q.toArray(); check()
+    c.quaternion = [0, 0, 0, 1]; check(false)
   })
 
   it('preserves contact tolerance under rigid transforms while detecting deeper intersections', () => {
     for (let i = 0; i < 9; i++) {
       const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(i * 0.19, i * 0.31, i * 0.43))
       const translation = V(i * 17, -i * 31, i * 10.2)
-      const connector: ConnectorData = { ...part('joining-plate'), position: translation.toArray(), quaternion: rotation.toArray() }
+      const connector: ConnectorData = { ...part('joining-plate'), position: V(-3, 0, 0).applyQuaternion(rotation).add(translation).toArray(), quaternion: rotation.toArray() }
       const body = makeOBB(V(-10, 0, 0).applyQuaternion(rotation).add(translation), V(10, 10, 100), rotation)
-      expect(connectorHitsBody(connector, body, 3)).toBe(false)
-      connector.position = V(-0.01, 0, 0).applyQuaternion(rotation).add(translation).toArray()
-      expect(connectorHitsBody(connector, body, 3)).toBe(true)
+      expect(connectorHitsBody(connector, body, 3, false)).toBe(false)
+      connector.position = V(-3.01, 0, 0).applyQuaternion(rotation).add(translation).toArray()
+      expect(connectorHitsBody(connector, body, 3, false)).toBe(true)
+    }
+  })
+
+  it('keeps cached body hits specific to clearance, material mode and every body pose', () => {
+    const plate = part('flat-plate'), block = makeOBB(V(35, 2, 0), V(2, 2, 2), Q)
+    for (const tolerance of [0, 5, 0, 5]) {
+      expect(connectorHitsBody(plate, block, tolerance, false)).toBe(tolerance === 0)
+    }
+    const c: ConnectorData = { ...part('inside-corner'), position: [-.6, -.6, 0] }
+    const host = makeOBB(V(50, -10, 0), V(10, 10, 50), new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2))
+    for (const metal of [true, false, true, false]) expect(connectorHitsBody(c, host, .15, metal)).toBe(!metal)
+    // Repeated poses can hit the bounded result cache even when callers rebuild OBBs.
+    for (const offset of [0, 1, 0, 1]) {
+      const freshHost = { center: host.center.clone().add(V(0, offset, 0)), half: host.half.clone(), axes: host.axes.map((a) => a.clone()) as typeof host.axes }
+      expect(connectorHitsBody(c, freshHost)).toBe(offset === 1)
     }
   })
 
   it('keeps cached normals independent of replaced member axes', () => {
-    const c = part('inside-corner'), alongX = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2)
-    for (const body of [makeOBB(V(0, -9.8, 0), V(10, 10, 100), alongX), makeOBB(V(3, 3, 0), V(2, 2, 2), Q)]) {
+    const c = part('flat-plate')
+    for (const body of [makeOBB(V(0, 2, 0), V(10, 10, 100), Q), makeOBB(V(30, 2, 0), V(2, 2, 2), Q)]) {
       expect(connectorHitsBody(c, body)).toBe(true)
       const detached = body.axes
       body.axes = detached.map((axis) => axis.clone()) as typeof body.axes
@@ -199,11 +205,13 @@ describe('modeled connector collision bodies', () => {
     }
   })
 
-  it.each(['2020', '3030', '4040'] as const)('seats foot and caster mounting tops at the %s post end', (spec) => {
-    const post = buildProfile(V(0, 0, 0), V(0, 600, 0), spec)!
-    for (const type of ['foot', 'caster-mount']) {
-      const seat = connectorSeatAt(type, V(0, 0, 0), [post])
-      expect(connectorSolidTop({ id: type, type, ...seat })).toBeCloseTo(0, 6)
-    }
+  it('keeps the foot stud insertion and caster plate contact origins distinct', () => {
+    expect(connectorSolidTop({ ...part('foot'), series: 40 })).toBeCloseTo(10, 4)
+    expect(connectorSolidTop(part('caster-mount'))).toBeCloseTo(0, 5)
+    const post = makeOBB(V(0, 100, 0), V(20, 20, 100), new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), -Math.PI / 2))
+    const foot: ConnectorData = { ...part('foot'), series: 40 }
+    expect(connectorHitsBody(foot, post)).toBe(false)
+    expect(connectorHitsBody({ ...foot, position: [6, 0, 0] }, post)).toBe(true)
+    expect(connectorHitsBody(foot, post, .15, false)).toBe(true)
   })
 })

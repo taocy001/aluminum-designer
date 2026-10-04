@@ -1,13 +1,15 @@
 import * as THREE from 'three'
-import type { ConnectorData, ProfileData } from '../store/useStore'
+import type { ConnectorData, ProfileData, ProfileSpec } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong } from './geometryCore'
-import { flushFaces, sharedEdge } from './specCompat'
-import { slotOffsets } from './specUtils'
-import { connectorEntry, connectorExtent, connectorMounts, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
-import { fitConnector, jointPairsAt, membersAt } from './connectorFit'
+import { flushFaces } from './specCompat'
+import { slotOffsets, profileSlotDimensions } from './specUtils'
+import { connectorEntry, connectorMounts, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
+import { fitConnector, jointPairsAt } from './connectorFit'
 import { computeAllTrims, type ProfileTrims } from './jointUtils'
 import { trimmedOBB } from './analysis'
 import type { OBB } from './obb'
+import { hardwareReference, insideCornerDimensions } from './connectorHardware'
+import { endCornerSeats, surfaceSeats, mountingEnds, nonCornerMounted, nonCornerSupports } from './connectorMounting'
 
 /**
  * Connector seats aligned to the members' mounting faces and slot lines.
@@ -30,10 +32,11 @@ export function sharedSlotLine(
 /** All bolt lines shared by the two mounting faces, nearest the origin first. */
 export function sharedSlotLines(
   aCentre: number, aFaceWidth: number, bCentre: number, bFaceWidth: number, tol = 1,
+  aSeries: ConnectorSeries = 20, bSeries: ConnectorSeries = 20,
 ): number[] {
   const lines: number[] = []
-  for (const sa of slotOffsets(aFaceWidth)) {
-    for (const sb of slotOffsets(bFaceWidth)) {
+  for (const sa of slotOffsets(aFaceWidth, aSeries)) {
+    for (const sb of slotOffsets(bFaceWidth, bSeries)) {
       const d = Math.abs((aCentre + sa) - (bCentre + sb))
       if (d > tol) continue
       const at = (aCentre + sa + bCentre + sb) / 2
@@ -44,6 +47,8 @@ export function sharedSlotLines(
 }
 
 export interface BracketSeat {
+  profileSpec?: ProfileSpec
+  mountSeries?: [ConnectorSeries, ConnectorSeries]
   position: [number, number, number]
   quaternion: [number, number, number, number]
   series: ConnectorSeries
@@ -85,7 +90,7 @@ function angleSeats(a: ProfileData, b: ProfileData, at: THREE.Vector3, intoA: TH
   const bAxis = closestOnSegment(at, ...(({ start, end }) => [start, end] as const)(getProfileEndpoints(b))).point
   const lines = sharedSlotLines(
     aAxis.dot(n), crossExtentAlong(a, n) * 2,
-    bAxis.dot(n), crossExtentAlong(b, n) * 2,
+    bAxis.dot(n), crossExtentAlong(b, n) * 2, 1, seriesOf(a.spec), seriesOf(b.spec),
   )
   const basis = new THREE.Matrix4().makeBasis(intoA, intoB, n)
   const quat = new THREE.Quaternion().setFromRotationMatrix(basis)
@@ -120,8 +125,8 @@ function plateSeats(a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketS
           .addScaledVector(y, new THREE.Vector3(...memberX.position).dot(y))
           .addScaledVector(n, planePoint.dot(n))
         const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, n))
-        for (const acrossX of slotOffsets(crossExtentAlong(memberX, y) * 2)) {
-          for (const acrossY of slotOffsets(crossExtentAlong(memberY, x) * 2)) {
+        for (const acrossX of slotOffsets(crossExtentAlong(memberX, y) * 2, seriesOf(memberX.spec))) {
+          for (const acrossY of slotOffsets(crossExtentAlong(memberY, x) * 2, seriesOf(memberY.spec))) {
             const position = origin.clone().addScaledVector(y, acrossX).addScaledVector(x, acrossY)
             seats.push({ position: position.toArray().map(round1) as BracketSeat['position'],
               quaternion: q.toArray(), series: Math.min(seriesOf(a.spec), seriesOf(b.spec)) as ConnectorSeries,
@@ -153,14 +158,22 @@ export function endCapSeat(profile: ProfileData, side: -1 | 1, trims: ProfileTri
     side === -1 ? trims.start.trim : profile.length - trims.end.trim)
   if (side === -1) quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI))
   return { position: at.toArray() as [number, number, number],
-    quaternion: quaternion.toArray() as [number, number, number, number], series: seriesOf(profile.spec), seated: true }
+    quaternion: quaternion.toArray() as [number, number, number, number], series: seriesOf(profile.spec), profileSpec: profile.spec, seated: true }
 }
 
 /** Compute the connector seat shared by placement previews and committed placement. */
 export function connectorSeatAt(
   type: string, point: THREE.Vector3, profiles: ProfileData[], surfaceNormal?: THREE.Vector3 | null,
-): { position: [number, number, number]; quaternion: [number, number, number, number]; series: ConnectorSeries; seated: boolean } {
+): { position: [number, number, number]; quaternion: [number, number, number, number]; series: ConnectorSeries; profileSpec?: ProfileSpec; mountSeries?: [ConnectorSeries, ConnectorSeries]; seated: boolean } {
   const entry = connectorEntry(type)
+  if (type === 'corner-3way') {
+    const seat = endCornerSeats(point, profiles)[0]
+    if (seat) return seat
+  }
+  if (entry?.fit === 'face') {
+    const seat = surfaceSeats(type, point, profiles, surfaceNormal)[0]
+    if (seat) return seat
+  }
   if (type === 'end-cap') {
     const trims = computeAllTrims(profiles)
     const ends = profiles.flatMap((profile) => {
@@ -182,31 +195,14 @@ export function connectorSeatAt(
     const seat = connectorSeatsAt(type, point, profiles, surfaceNormal)[0]
     if (seat) return { ...seat, seated: true }
   }
-  // Seat inward-facing inline parts beyond the selected member end.
   if (entry?.fit === 'inline' && entry.axes.towards === 'in') {
-    // Prefer a downward-facing member end for a foot; fall back to the nearest end.
-    const ends = membersAt(point, profiles, REACH)
-      .map((c) => {
-        const { start, end } = getProfileEndpoints(c.profile)
-        const atStart = point.distanceTo(start) <= point.distanceTo(end)
-        const at = atStart ? start : end
-        const outward = getProfileDir(c.profile)
-        if (atStart) outward.negate()
-        return { c, at, atStart, outward, d: point.distanceTo(at) }
-      })
-      .sort((x, y) => x.d - y.d)
-    const near = ends.find((e) => e.outward.y < -0.9) ?? ends[0]
-    if (near) {
-      const fit = fitConnector(type, near.at, profiles, surfaceNormal)
-      const bounds = connectorExtent(type), axis = AXIS_INDEX[entry.axes.primary]
-      const reach = (bounds.centre[axis] + bounds.half[axis]) * connectorScale(fit.series)
-      const at = near.at.clone().addScaledVector(near.outward, reach)
-      return {
-        position: [round1(at.x), round1(at.y), round1(at.z)],
-        quaternion: fit.quaternion,
-        series: fit.series,
-        seated: true,
-      }
+    const ends = mountingEnds(profiles).filter((e) => e.square && e.outward.y < -0.999 && e.at.distanceTo(point) <= REACH)
+      .sort((a, b) => a.at.distanceToSquared(point) - b.at.distanceToSquared(point))
+    for (const end of ends) {
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.outward.clone().negate())
+      const seat = { position: end.at.toArray() as [number, number, number], quaternion: q.toArray(),
+        series: seriesOf(end.p.spec), profileSpec: end.p.spec, seated: true }
+      if (nonCornerMounted({ id: 'candidate', type, ...seat }, profiles)) return seat
     }
   }
 
@@ -219,31 +215,39 @@ export function connectorSeatAt(
   }
 }
 
-/** which component of a part's own half-extent runs along its primary axis */
-const AXIS_INDEX: Record<string, 0 | 1 | 2> = { x: 0, y: 1, z: 2 }
-
 /** Dispatch seating by connector type: cast brackets use inner perpendicular faces; plates use an outer face. */
 export function seatFor(type: string, a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {
-  // Reject end-to-face pairs whose section dimensions share no edge.
-  if (!sharedEdge(a.spec, b.spec)) return null
   const kind = connectorEntry(type)?.seat
-  if (kind === 'angle') return seatAngle(a, b, at)
-  if (kind === 'plate') return seatBracket(a, b, at)
+  if (kind === 'angle') return seatsFor(type, a, b, at)[0] ?? null
+  if (kind === 'plate') return seatsFor(type, a, b, at)[0] ?? null
   return null
 }
 
 /** Try either side of each member; bolt auditing decides which have actual metal beneath. */
 export function seatsFor(type: string, a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat[] {
-  if (!sharedEdge(a.spec, b.spec)) return []
+  if (type === 'corner-3way' || a.spec === '3040' || b.spec === '3040') return []
+  if (type !== 'inside-corner' && seriesOf(a.spec) !== seriesOf(b.spec)) return []
+  if (type === 'inside-corner' && (seriesOf(a.spec) === 20) !== (seriesOf(b.spec) === 20)) return []
   if (connectorEntry(type)?.seat === 'plate') return plateSeats(a, b, at)
   if (connectorEntry(type)?.seat !== 'angle') return []
   const aDir = into(a, at), bDir = into(b, at)
   const out: BracketSeat[] = []
   for (const sa of [1, -1]) for (const sb of [1, -1]) {
     out.push(...angleSeats(a, b, at, aDir.clone().multiplyScalar(sa), bDir.clone().multiplyScalar(sb)))
-    // Reversing the arm assignment reverses local Z. The third mounting face is
-    // checked by the same hole definition as the rendered three-way connector.
-    if (type === 'corner-3way') out.push(...angleSeats(b, a, at, bDir.clone().multiplyScalar(sb), aDir.clone().multiplyScalar(sa)))
+    // The inner casting has asymmetric arms and shoulder relief. Reversing the
+    // assignment also reverses local Z and can change whether the real body fits.
+    if (type === 'inside-corner') out.push(...angleSeats(b, a, at, bDir.clone().multiplyScalar(sb), aDir.clone().multiplyScalar(sa)))
+  }
+  if (type === 'inside-corner') {
+    for (const seat of out) {
+      const q = new THREE.Quaternion(...seat.quaternion)
+      const xMember = seat.legs[0] === a.id ? a : b, yMember = seat.legs[1] === b.id ? b : a
+      seat.mountSeries = [seriesOf(xMember.spec), seriesOf(yMember.spec)]
+      const dx = innerInset(seriesOf(yMember.spec), 'x'), dy = innerInset(seriesOf(xMember.spec), 'y')
+      const position = new THREE.Vector3(...seat.position)
+        .add(new THREE.Vector3(-dx, -dy, 0).applyQuaternion(q))
+      seat.position = position.toArray()
+    }
   }
   return out
 }
@@ -253,11 +257,13 @@ export function connectorSeatsAt(
   type: string, point: THREE.Vector3, profiles: ProfileData[], surfaceNormal?: THREE.Vector3 | null,
   searchPoint = point,
 ): BracketSeat[] {
+  if (type === 'corner-3way') return endCornerSeats(point, profiles)
+  if (connectorEntry(type)?.fit === 'face') return surfaceSeats(type, point, profiles, surfaceNormal)
   const kind = connectorEntry(type)?.seat
   if (kind !== 'angle' && kind !== 'plate') return []
   const trims = computeAllTrims(profiles)
   const candidates = jointPairsAt(searchPoint, profiles, REACH).flatMap(({ a, b, at }) => seatsFor(type, a, b, at))
-    .filter((seat) => auditBrackets(profiles, [{ id: 'candidate', type, ...seat }], trims).length === 0)
+    .filter((seat) => hardwareReference(type, seat.series)?.verified && auditBrackets(profiles, [{ id: 'candidate', type, ...seat }], trims).length === 0)
   const normal = surfaceNormal?.clone().normalize()
   const alignment = (seat: BracketSeat) => {
     if (!normal) return 0
@@ -304,6 +310,11 @@ const mountGeometryCache = new WeakMap<ConnectorData, {
   type: string; series: number; pose: number[]; mounts: MountGeometry[]
 }>()
 
+export function innerInset(series: ConnectorSeries, normal: 'x' | 'y' = 'y'): number {
+  const dims = insideCornerDimensions(series)
+  return Math.max(0, profileSlotDimensions(series).lipDepth - (normal === 'x' ? dims.verticalNeckProjection : dims.neckProjection))
+}
+
 function worldMounts(c: ConnectorData): MountGeometry[] {
   const series = c.series ?? 20, cached = mountGeometryCache.get(c)
   if (cached && cached.type === c.type && cached.series === series
@@ -313,7 +324,7 @@ function worldMounts(c: ConnectorData): MountGeometry[] {
   const axes = { x: new THREE.Vector3(1, 0, 0).applyQuaternion(quat),
     y: new THREE.Vector3(0, 1, 0).applyQuaternion(quat), z: new THREE.Vector3(0, 0, 1).applyQuaternion(quat) }
   const k = connectorScale(series)
-  const mounts = connectorMounts(c.type).map((mount) => ({ axis: axes[mount.axis], normal: axes[mount.normal],
+  const mounts = connectorMounts(c.type, c.series ?? 20).map((mount) => ({ axis: axes[mount.axis], normal: axes[mount.normal],
     bolts: mount.bolts.map((v) => new THREE.Vector3(...v).multiplyScalar(k).applyQuaternion(quat).add(here)) }))
   mountGeometryCache.set(c, { type: c.type, series, pose: [...c.position, ...c.quaternion], mounts })
   return mounts
@@ -364,20 +375,41 @@ export function auditBrackets(
     }
     // Enclose the face, length and slot tolerances before checking exact contact.
     const bounds = new THREE.Box3(body.center.clone().sub(radius), body.center.clone().add(radius)).expandByScalar(2)
-    return { p, body, bounds, slots: [slotOffsets(body.half.x * 2), slotOffsets(body.half.y * 2)] }
+    return { p, body, bounds, slots: [slotOffsets(body.half.x * 2, seriesOf(p.spec)), slotOffsets(body.half.y * 2, seriesOf(p.spec))] }
   })
   const nearby = supportIndex(members)
   for (const c of connectors) {
     const kind = connectorEntry(c.type)?.seat
+    if (!['inside-corner', 'bracket', 'gusset'].includes(c.type)) {
+      const supported = nonCornerSupports(c, profiles, trims)
+      if (!supported) faults.push({ id: c.id, off: Infinity, reason: 'no-joint', at: new THREE.Vector3(...c.position) })
+      else supportedMembers?.set(c.id, supported)
+      continue
+    }
     if (kind !== 'angle' && kind !== 'plate') continue
     const here = new THREE.Vector3(...c.position)
+    const series = c.series ?? 20, reference = hardwareReference(c.type, series)
+    if (!reference?.verified || !reference.supportedSeries.includes(series)) {
+      faults.push({ id: c.id, off: 0, reason: 'wrong-series', at: here })
+      continue
+    }
+    // Geometry uses the instance series for both screw positions when this field
+    // is absent. Auditing must use exactly the same default, including old imports.
+    const mountSeries = c.mountSeries ?? [series, series]
     const supportGroups: ProfileData[][] = []
-    for (const mount of worldMounts(c)) {
+    for (const [mountIndex, mount] of worldMounts(c).entries()) {
       const supports: ProfileData[] = []
-      nearby(mount.bolts[0], ({ p, body, slots }) => {
+      const findSupports = ({ p, body, slots }: typeof members[number]) => {
+        if (p.spec === '3040' || (c.type !== 'inside-corner' && seriesOf(p.spec) !== (c.series ?? 20))) return
+        if (c.type === 'inside-corner' && mountSeries[mountIndex] !== seriesOf(p.spec)) return
+        if (c.type === 'inside-corner' && (seriesOf(p.spec) === 20) !== ((c.series ?? 20) === 20)) return
+        const bolts = c.type === 'inside-corner'
+          ? mount.bolts.map((point) => point.clone().addScaledVector(mount.normal, innerInset(seriesOf(p.spec), mountIndex === 0 ? 'y' : 'x'))) : mount.bolts
         if (Math.abs(body.axes[2].dot(mount.axis)) > 0.999
-          && mount.bolts.every((bolt) => boltOnFace(bolt, mount.normal, body, slots))) supports.push(p)
-      })
+          && bolts.every((bolt) => boltOnFace(bolt, mount.normal, body, slots))) supports.push(p)
+      }
+      if (c.type === 'inside-corner') members.forEach(findSupports)
+      else nearby(mount.bolts[0], findSupports)
       supportGroups.push(supports)
       if (!supports.length) break
     }
@@ -386,12 +418,12 @@ export function auditBrackets(
     const match = (i: number, series: number): boolean => {
       if (i === supportGroups.length) {
         joint = true
-        if (series !== (c.series ?? 20)) return false
+        if (c.type === 'inside-corner' ? (series === 20) !== ((c.series ?? 20) === 20) : series !== (c.series ?? 20)) return false
         supportedMembers?.set(c.id, chosen.map((p) => p.id))
         return true
       }
       for (const p of supportGroups[i]) {
-        if (chosen.some((other) => other.id === p.id || !sharedEdge(other.spec, p.spec))) continue
+        if (chosen.some((other) => other.id === p.id || (c.type !== 'inside-corner' && seriesOf(other.spec) !== seriesOf(p.spec)))) continue
         chosen.push(p)
         const found = match(i + 1, Math.min(series, seriesOf(p.spec)))
         chosen.pop()

@@ -3,7 +3,8 @@ import { findConflicts } from '../utils/analysis'
 import * as THREE from 'three'
 import { computeAllTrims, trimmedBox } from '../utils/jointUtils'
 import { getProfileEndpoints } from '../utils/geometryCore'
-import { countUnflush } from '../utils/faceAlign'
+import { unflushPairs } from '../utils/faceAlign'
+import hardwareChecks from '../../examples/checks/hardware.json'
 import { auditBrackets } from '../utils/bracketSeat'
 import { migrateFittings } from '../utils/migrate'
 import { parseProjectDocument } from '../utils/document'
@@ -88,9 +89,11 @@ describe('bundled example geometry', () => {
       expect(named).toEqual([])
     })
 
-    it('finds a supported connector seat for every checked joint', () => {
+    it('reports exactly the documented corner pairs without a supported connector', () => {
       const { profiles } = load(name)
-      expect(countUnflush(profiles)).toBe(0)
+      const known = hardwareChecks.find((entry) => entry.file.endsWith(`/${name}`))!
+      expect(known).toBeDefined()
+      expect(unflushPairs(profiles).map(({ a, b }) => [a, b].sort().join('|')).sort()).toEqual(known.unsupportedCornerPairs)
     })
 
     it('passes connector seating checks', () => {

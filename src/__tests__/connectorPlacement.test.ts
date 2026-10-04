@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useStore, type ConnectorData, type ProfileData } from '../store/useStore'
 import { buildProfile, placeConnector } from '../utils/profileFactory'
 import { auditBrackets, connectorSeatAt, seatsFor } from '../utils/bracketSeat'
-import { resolveConnectorPlacement } from '../utils/connectorPlacement'
+import { resolveConnectorPlacement, validateConnectorPlacement } from '../utils/connectorPlacement'
 import { setThroughRule } from '../utils/jointUtils'
 import { modelPointFromHit } from '../utils/pickUtils'
 import { getProfileShape } from '../utils/profileShapes'
@@ -20,6 +20,39 @@ beforeEach(() => {
 })
 
 describe('manual connector placement', () => {
+  it('preserves both mounting series when committing a mixed B8/I8 inner bracket', () => {
+    const profiles = [
+      buildProfile(V(0, 0, 0), V(0, 300, 0), '3030', 'post')!,
+      buildProfile(V(0, 100, 0), V(300, 100, 0), '4040', 'rail')!,
+    ]
+    const point = V(0, 100, 0)
+    const preview = resolveConnectorPlacement('inside-corner', point, profiles, [])
+    expect(preview.allowed).toBe(true)
+    expect([...preview.seat.mountSeries!].sort()).toEqual([30, 40])
+    useStore.setState({ profiles })
+    placeConnector(point, 'inside-corner', undefined, preview.key!)
+    const part = useStore.getState().connectors[0]
+    expect(part).toMatchObject({ mountSeries: preview.seat.mountSeries,
+      position: preview.seat.position, quaternion: preview.seat.quaternion })
+    expect(validateConnectorPlacement(part, profiles, [])).toEqual({ occupied: false, allowed: true })
+    expect(useStore.getState().past).toHaveLength(1)
+    useStore.getState().undo()
+    expect(useStore.getState().connectors).toEqual([])
+  })
+
+  it('retains the rectangular profile section when committing an end cap', () => {
+    const profiles = [buildProfile(V(0, 0, 0), V(0, 0, 300), '2040', 'rail')!]
+    const point = V(0, 0, 0), normal = V(0, 0, -1)
+    const preview = resolveConnectorPlacement('end-cap', point, profiles, [], normal)
+    expect(preview).toMatchObject({ allowed: true, seat: { profileSpec: '2040', series: 20 } })
+    useStore.setState({ profiles })
+    placeConnector(point, 'end-cap', normal)
+    expect(useStore.getState().connectors).toHaveLength(1)
+    const part = useStore.getState().connectors[0]
+    expect(part).toMatchObject({ profileSpec: '2040', position: preview.seat.position, quaternion: preview.seat.quaternion })
+    expect(validateConnectorPlacement(part, profiles, [])).toEqual({ occupied: false, allowed: true })
+  })
+
   it.each(['2020', '4040'] as const)('uses the sight-line model point for the reach of a %s surface hit', (spec) => {
     const profiles = [
       buildProfile(V(0, 10, 0), V(600, 10, 0), spec, 'rail')!,
@@ -72,8 +105,8 @@ describe('manual connector placement', () => {
     ]
     for (const z of [-10, 10]) {
       const result = resolveConnectorPlacement('inside-corner', V(10, 30, z), profiles, [], V(1, 0, 0), 0, V(0, 30, 0))
-      expect(result).toMatchObject({ count: 2, allowed: true })
-      expect(result.seat.position).toEqual([10, 30, z])
+      expect(result).toMatchObject({ count: 4, allowed: true })
+      expect(result.seat.position).toEqual([9.5, 29.4, z])
     }
   })
 
@@ -97,7 +130,7 @@ describe('manual connector placement', () => {
     for (const choice of [0, 1]) {
       const point = V(10, 30, -10), normal = V(1, 0, 0)
       const ghost = resolveConnectorPlacement('inside-corner', point, profiles, useStore.getState().connectors, normal, choice)
-      expect(ghost).toMatchObject({ count: 2, index: choice, occupied: false, allowed: true })
+      expect(ghost).toMatchObject({ count: 4, index: choice, occupied: false, allowed: true })
       placeConnector(point, 'inside-corner', normal, choice)
       expect(useStore.getState().connectors.at(-1)).toMatchObject({
         position: ghost.seat.position, quaternion: ghost.seat.quaternion, series: ghost.seat.series,

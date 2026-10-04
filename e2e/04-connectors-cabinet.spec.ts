@@ -4,7 +4,7 @@ import { openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, stor
 const CONNECTORS = [
   ['直连板', 'flat-plate'], ['十字连接板', 'cross-bracket'], ['对接板', 'joining-plate'],
   ['端盖', 'end-cap'], ['滑块螺母', 't-nut'], ['合页', 'hinge'], ['轴承座', 'pivot'],
-  ['脚轮座', 'caster-mount'], ['调节脚', 'foot'],
+  ['脚轮', 'caster-mount'], ['调节脚', 'foot'],
 ] as const
 const CORNER_CONNECTORS = ['L型角码', '内角码', '加强筋', 'T型角码', '三维角码']
 

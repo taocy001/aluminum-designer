@@ -1,5 +1,9 @@
-import type { ProfileSpec } from '../store/useStore'
-import { profileSlotDimensions, specDims } from './specUtils'
+import type { ConnectorData, ProfileSpec } from '../store/useStore'
+import { specDims } from './specUtils'
+import { insideCornerDimensions, bracketDimensions } from './connectorHardware'
+import { connectorMeshes } from './connectorGeometry'
+import * as THREE from 'three'
+import { accessoryMountPoints } from './connectorAccessoryReferences'
 
 /** Extrusion series a connector is made for: 20, 30 or 40 */
 export type ConnectorSeries = 20 | 30 | 40
@@ -43,13 +47,6 @@ export interface FitAxes {
   towards?: 'out' | 'in'
 }
 
-export interface FastenerRecipe {
-  /** bolts per connector, with the thread that matches the series */
-  bolts: number
-  /** T-slot nuts per connector */
-  nuts: number
-}
-
 export interface ConnectorSpecEntry {
   type: string
   labelZh: string
@@ -57,7 +54,6 @@ export interface ConnectorSpecEntry {
   fit: ConnectorFit
   /** Model axes defined in connectorGeometry.ts. */
   axes: FitAxes
-  fasteners: FastenerRecipe
   /** a bracket in the sense of "what a butt joint needs" */
   isCornerBracket?: boolean
   /** how it meets the metal, which is what decides where it goes */
@@ -66,24 +62,24 @@ export interface ConnectorSpecEntry {
 
 export const CONNECTOR_CATALOG: ConnectorSpecEntry[] = [
   // arms along +X and +Y
-  { type: 'bracket',       labelZh: 'L型角码',   labelEn: 'L-Bracket',     fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 }, isCornerBracket: true },
-  { type: 'inside-corner', labelZh: '内角码',     labelEn: 'Inside Corner', fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 }, isCornerBracket: true },
-  { type: 'gusset',        labelZh: '加强筋',     labelEn: 'Gusset',        fit: 'corner', seat: 'plate', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 2, nuts: 2 } },
+  { type: 'bracket',       labelZh: 'L型角码',   labelEn: 'L-Bracket',     fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, isCornerBracket: true },
+  { type: 'inside-corner', labelZh: '内角码',     labelEn: 'Inside Corner', fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, isCornerBracket: true },
+  { type: 'gusset',        labelZh: '加强角码',   labelEn: 'Gusset Bracket', fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' } },
   // the T's crossbar lies along X on the through member, the stem along Y on the branch
-  { type: 't-bracket',     labelZh: 'T型角码',    labelEn: 'T-Bracket',     fit: 'corner', seat: 'plate', axes: { primary: 'y', secondary: 'x' }, fasteners: { bolts: 3, nuts: 3 }, isCornerBracket: true },
-  { type: 'corner-3way',   labelZh: '三维角码',   labelEn: '3-Way Corner',  fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, fasteners: { bolts: 3, nuts: 3 }, isCornerBracket: true },
+  { type: 't-bracket',     labelZh: 'T型角码',    labelEn: 'T-Bracket',     fit: 'corner', seat: 'plate', axes: { primary: 'y', secondary: 'x' }, isCornerBracket: true },
+  { type: 'corner-3way',   labelZh: '三维角码',   labelEn: '3-Way Corner',  fit: 'corner', seat: 'angle', axes: { primary: 'x', secondary: 'y' }, isCornerBracket: true },
   // plates that bridge two members end to end: the long side runs along the member
-  { type: 'flat-plate',    labelZh: '直连板',     labelEn: 'Flat Plate',    fit: 'inline', seat: 'inline', axes: { primary: 'x' }, fasteners: { bolts: 4, nuts: 4 } },
-  { type: 'joining-plate', labelZh: '对接板',     labelEn: 'Joining Plate', fit: 'inline', seat: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 2, nuts: 2 } },
-  { type: 'end-cap',       labelZh: '端盖',       labelEn: 'End Cap',       fit: 'inline', seat: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 0, nuts: 0 } },
+  { type: 'flat-plate',    labelZh: '直连板',     labelEn: 'Flat Plate',    fit: 'face', seat: 'surface', axes: { primary: 'y', secondary: 'x' } },
+  { type: 'joining-plate', labelZh: '对接板',     labelEn: 'Joining Plate', fit: 'face', seat: 'surface', axes: { primary: 'x', secondary: 'z' } },
+  { type: 'end-cap',       labelZh: '端盖',       labelEn: 'End Cap',       fit: 'inline', seat: 'inline', axes: { primary: 'z' } },
   // Parts under a post: local +Y points toward the post's bottom mounting face.
-  { type: 'caster-mount',  labelZh: '脚轮座',     labelEn: 'Caster Mount',  fit: 'inline', seat: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 4, nuts: 4 } },
-  { type: 'foot',          labelZh: '调节脚',     labelEn: 'Leveling Foot', fit: 'inline', seat: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 1, nuts: 1 } },
+  { type: 'caster-mount',  labelZh: '脚轮',       labelEn: 'Caster',        fit: 'inline', seat: 'inline', axes: { primary: 'y', towards: 'in' } },
+  { type: 'foot',          labelZh: '调节脚',     labelEn: 'Leveling Foot', fit: 'inline', seat: 'inline', axes: { primary: 'y', towards: 'in' } },
   // plates lying against a face: `primary` is the plate normal
-  { type: 'cross-bracket', labelZh: '十字连接板', labelEn: 'Cross Plate',   fit: 'face',   seat: 'surface', axes: { primary: 'z' }, fasteners: { bolts: 4, nuts: 4 } },
-  { type: 't-nut',         labelZh: '滑块螺母',   labelEn: 'T-Nut',         fit: 'face',   seat: 'surface', axes: { primary: 'y' }, fasteners: { bolts: 1, nuts: 0 } },
-  { type: 'hinge',         labelZh: '合页',       labelEn: 'Hinge',         fit: 'face',   seat: 'surface', axes: { primary: 'x', secondary: 'z' }, fasteners: { bolts: 4, nuts: 4 } },
-  { type: 'pivot',         labelZh: '轴承座',     labelEn: 'Pivot',         fit: 'face',   seat: 'surface', axes: { primary: 'y' }, fasteners: { bolts: 2, nuts: 2 } },
+  { type: 'cross-bracket', labelZh: '十字连接板', labelEn: 'Cross Plate',   fit: 'face',   seat: 'surface', axes: { primary: 'z' } },
+  { type: 't-nut',         labelZh: '滑块螺母',   labelEn: 'T-Nut',         fit: 'face',   seat: 'surface', axes: { primary: 'y', secondary: 'z' } },
+  { type: 'hinge',         labelZh: '合页',       labelEn: 'Hinge',         fit: 'face',   seat: 'surface', axes: { primary: 'x', secondary: 'z' } },
+  { type: 'pivot',         labelZh: '轴承座',     labelEn: 'Pivot',         fit: 'face',   seat: 'surface', axes: { primary: 'y' } },
 ]
 
 const BY_TYPE = new Map(CONNECTOR_CATALOG.map((c) => [c.type, c]))
@@ -112,8 +108,8 @@ export function connectorScale(series: ConnectorSeries): number {
 
 /** Local insert section before instance scaling; its physical size matches the series slot cavity. */
 export function insideCornerSection(series: ConnectorSeries = 20): { depth: number; width: number } {
-  const slot = profileSlotDimensions(series), scale = connectorScale(series)
-  return { depth: slot.depth / scale, width: slot.width / scale }
+  const part = insideCornerDimensions(series), scale = connectorScale(series)
+  return { depth: part.depth / scale, width: part.shoulderWidth / scale }
 }
 
 /** Thread that goes with a series, the way suppliers pair them */
@@ -142,61 +138,48 @@ export interface ConnectorMount {
   bolts: [number, number, number][]
 }
 
-export function connectorMounts(type: string): ConnectorMount[] {
-  if (type === 't-bracket') return [
-    { axis: 'x', normal: 'z', bolts: [[-22, 0, 0], [22, 0, 0]] },
-    { axis: 'y', normal: 'z', bolts: [[0, 28, 0]] },
-  ]
-  if (type === 'gusset') return [
-    { axis: 'x', normal: 'z', bolts: [[18, 0, 0]] },
-    { axis: 'y', normal: 'z', bolts: [[0, 18, 0]] },
-  ]
-  if (connectorEntry(type)?.seat === 'angle') return [
-    { axis: 'x', normal: 'y', bolts: [[16, 0, 0]] },
-    { axis: 'y', normal: 'x', bolts: [[0, 16, 0]] },
-    ...(type === 'corner-3way' ? [{ axis: 'z', normal: 'y', bolts: [[0, 0, 16]] } as ConnectorMount] : []),
-  ]
+export function connectorMounts(type: string, series: ConnectorSeries = 20): ConnectorMount[] {
+  const k = connectorScale(series)
+  const normalized = (mounts: ConnectorMount[]) => mounts.map((m) => ({ ...m,
+    bolts: m.bolts.map((v) => v.map((n) => n / k) as [number, number, number]) }))
+  if (type === 'inside-corner') {
+    const d = insideCornerDimensions(series)
+    return normalized([
+      { axis: 'x', normal: 'y', bolts: [[d.xScrew, 0, 0]] },
+      { axis: 'y', normal: 'x', bolts: [[0, d.yScrew, 0]] },
+    ])
+  }
+  if (type === 'bracket' || type === 'gusset') {
+    const hole = type === 'gusset' ? 20 : bracketDimensions(series)?.slotCentre ?? 16
+    return normalized([
+      { axis: 'x', normal: 'y', bolts: [[hole, 0, 0]] },
+      { axis: 'y', normal: 'x', bolts: [[0, hole, 0]] },
+    ])
+  }
+  if (type === 'corner-3way') return normalized([
+    { axis: 'x', normal: 'x', bolts: [[-20, 0, 0]] },
+    { axis: 'y', normal: 'y', bolts: [[0, -20, 0]] },
+    { axis: 'z', normal: 'z', bolts: [[0, 0, -20]] },
+  ])
+  const accessory = accessoryMountPoints(type, series)
+  if (accessory) return normalized(accessory)
   return []
 }
 
-/**
- * Approximate connector collision boxes in local coordinates.
- * Angle brackets originate at the inner flange vertex; plates at the intersection of their bolt lines.
- */
-export function connectorExtent(type: string, series: ConnectorSeries = 20): { centre: [number, number, number]; half: [number, number, number] } {
-  // The cap's plate is 20×20×3, with a 10×10×6 plug centred at local Z=4.
-  if (type === 'end-cap') return { centre: [0, 0, 2.75], half: [10, 10, 4.25] }
-  // The broad-phase envelope includes both inserts and their exposed connecting heel.
-  if (type === 'inside-corner') {
-    const { depth, width } = insideCornerSection(series)
-    return { centre: [(20 - depth) / 2, (20 - depth) / 2, 0], half: [(20 + depth) / 2, (20 + depth) / 2, width / 2] }
-  }
-  if (type === 'gusset') return { centre: [11, 11, 2], half: [19, 19, 2] }
-  if (type === 't-bracket') return { centre: [0, 15, 2], half: [35, 25, 2] }
-  if (type === 'corner-3way') return { centre: [8, 9, 8], half: [12, 11, 12] }
-  if (type === 'flat-plate') return { centre: [0, 1.75, 0], half: [30, 3.75, 9] }
-  if (type === 'joining-plate') return { centre: [0, 0, 0], half: [3, 8, 25] }
-  if (type === 'cross-bracket') return { centre: [0, 0, 0], half: [24, 24, 2] }
-  if (type === 'hinge') return { centre: [0, 0, 0], half: [3, 15, 16] }
-  if (type === 'pivot') return { centre: [0, 2, 0], half: [15, 8, 10] }
-  if (type === 'caster-mount') return { centre: [0, -12, 0], half: [20, 14, 20] }
-  if (type === 'foot') return { centre: [0, 12.5, 0], half: [18, 15.5, 18] }
-  if (type === 't-nut') return { centre: [0, 1, 0], half: [9, 9, 3.5] }
-  switch (connectorEntry(type)?.seat) {
-    case 'angle':
-      // two flanges reaching 30 out of the vertex, 18 across
-      return { centre: [15, 15, 0], half: [15, 15, 9] }
-    case 'plate':
-      return { centre: [10, 10, 2], half: [20, 20, 2] }
-    case 'inline':
-      return { centre: [0, 0, 0], half: [30, 10, 10] }
-    default: {
-      // Offset face-mounted envelopes along the primary axis; T-nuts stay slot-centered.
-      const entry = connectorEntry(type)
-      const axis = entry?.axes.primary ?? 'z'
-      const centre: [number, number, number] = [0, 0, 0]
-      if (type !== 't-nut') centre[axis === 'x' ? 0 : axis === 'y' ? 1 : 2] = 12
-      return { centre, half: [12, 12, 12] }
+/** Envelope of the same meshes used for rendering and export, in local units. */
+const extentCache = new Map<string, { centre: [number, number, number]; half: [number, number, number] }>()
+export function connectorExtent(type: string, series: ConnectorSeries = 20, profileSpec?: ProfileSpec, mountSeries?: ConnectorData['mountSeries']) {
+  const key = `${type}-${series}-${profileSpec ?? ''}-${mountSeries ?? ''}`
+  let bounds = extentCache.get(key)
+  if (!bounds) {
+    const box = new THREE.Box3()
+    for (const { geometry } of connectorMeshes(type, series, profileSpec, mountSeries)) {
+      geometry.computeBoundingBox()
+      if (geometry.boundingBox) box.union(geometry.boundingBox)
     }
+    bounds = { centre: box.getCenter(new THREE.Vector3()).toArray(),
+      half: box.getSize(new THREE.Vector3()).multiplyScalar(0.5).toArray() }
+    extentCache.set(key, bounds)
   }
+  return bounds
 }

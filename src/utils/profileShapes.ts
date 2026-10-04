@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import { profileSlotDimensions } from './specUtils'
+import { profileSlotDimensions, slotOffsets } from './specUtils'
+import profileSections from '../assets/profileSections.json'
 
 export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
 
@@ -23,13 +24,40 @@ function profileOutline(spec: ProfileSpec): OutlineSegment[] {
   const hw = w / 2
   const hh = h / 2
 
-  // T-Slot dimensions
+  const section = spec === '3040' ? undefined : profileSections[spec]
+  if (section) {
+    const outerFaces = section.outer.map((from, i): ProfileSide | undefined => {
+      const to = section.outer[(i + 1) % section.outer.length]
+      for (const axis of [0, 1] as const) for (const side of [-1, 1] as const) {
+        const boundary = side * (axis === 0 ? hw : hh)
+        if (Math.abs(from[axis] - boundary) < 1e-4 && Math.abs(to[axis] - boundary) < 1e-4) return { axis, side }
+      }
+    })
+    const segments = section.outer.map((from, i): OutlineSegment => {
+      const to = section.outer[(i + 1) % section.outer.length]
+      let before = i, after = i
+      while (!outerFaces[before]) before = (before + section.outer.length - 1) % section.outer.length
+      while (!outerFaces[after]) after = (after + 1) % section.outer.length
+      const previous = outerFaces[before]!, next = outerFaces[after]!
+      // Every retaining lip, undercut and floor between two flats on one side
+      // belongs to that side, even when its wall lies closer to a neighbouring side.
+      const slotFace = previous.axis === next.axis && previous.side === next.side ? previous : undefined
+      const x = (from[0] + to[0]) / 2, y = (from[1] + to[1]) / 2
+      const axis = hw - Math.abs(x) < hh - Math.abs(y) ? 0 : 1
+      return { from: [from[0], from[1]], to: [to[0], to[1]],
+        face: slotFace ?? { axis, side: (axis === 0 ? x : y) < 0 ? -1 : 1 } }
+    })
+    outlines.set(spec, segments)
+    return segments
+  }
+
+  // The legacy 3040 section is schematic; no manufacturer drawing is assigned.
   const slot = profileSlotDimensions(w)
   const sw = slot.width / 2
   const sd = slot.depth
 
-  const nx = Math.floor(w / 20)
-  const ny = Math.floor(h / 20)
+  const nx = slotOffsets(w, 30).length
+  const ny = slotOffsets(h, 30).length
 
   // BUILD OUTER PATH (Counter-Clockwise — required by Three.js ExtrudeGeometry)
   // CCW traversal: top-left → down left side → bottom-left → right along bottom
@@ -95,7 +123,13 @@ export const getProfileShape = (spec: ProfileSpec): THREE.Shape => {
   const shape = new THREE.Shape()
   shape.moveTo(...segments[0].from)
   for (const segment of segments) shape.lineTo(...segment.to)
-
+  if (spec !== '3040') for (const points of profileSections[spec].holes) {
+    const path = new THREE.Path()
+    path.moveTo(points[0][0], points[0][1])
+    for (const point of points.slice(1)) path.lineTo(point[0], point[1])
+    path.closePath()
+    shape.holes.push(path)
+  }
   return shape
 }
 

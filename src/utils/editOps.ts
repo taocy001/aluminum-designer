@@ -250,8 +250,7 @@ function reflectedQuaternion(
 
 /** Symmetries of the connector solids; handed three-way parts are reseated separately. */
 function connectorSymmetry(type: string): RotAxis | 'swapXY' {
-  if (type === 'gusset') return 'swapXY'
-  if (type === 'bracket' || type === 'inside-corner') return 'z'
+  if (type === 'gusset' || type === 'bracket' || type === 'inside-corner') return 'z'
   if (type === 'hinge') return 'y'
   return 'x'
 }

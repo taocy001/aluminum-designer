@@ -1,230 +1,195 @@
 {
- "version": 3,
+ "version": 9,
+ "throughRule": "rails",
  "profiles": [
   {
-   "id": "p0",
+   "id": "bracket-profile-1",
    "spec": "2020",
-   "length": 300,
+   "length": 200,
    "position": [
     0,
-    0,
-    0
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p1",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    0,
-    300,
+    150,
     0
    ],
    "quaternion": [
     0,
     0.7071067811865475,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p2",
+   "id": "bracket-profile-2",
    "spec": "2020",
-   "length": 300,
+   "length": 200,
    "position": [
-    800,
     0,
+    150,
     0
    ],
    "quaternion": [
     -0.7071067811865475,
     0,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p3",
+   "id": "inside-corner-profile-1",
    "spec": "2020",
-   "length": 300,
+   "length": 200,
    "position": [
-    800,
-    300,
+    600,
+    150,
     0
    ],
    "quaternion": [
     0,
     0.7071067811865475,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p4",
+   "id": "inside-corner-profile-2",
    "spec": "2020",
-   "length": 300,
+   "length": 200,
    "position": [
-    1600,
-    0,
+    600,
+    150,
     0
    ],
    "quaternion": [
     -0.7071067811865475,
     0,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p5",
-   "spec": "2020",
-   "length": 300,
+   "id": "gusset-profile-1",
+   "spec": "4040",
+   "length": 200,
    "position": [
-    1600,
-    300,
+    1200,
+    150,
     0
    ],
    "quaternion": [
     0,
     0.7071067811865475,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p6",
+   "id": "gusset-profile-2",
+   "spec": "4040",
+   "length": 200,
+   "position": [
+    1200,
+    150,
+    0
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "t-bracket-profile-1",
    "spec": "2020",
-   "length": 500,
+   "length": 300,
+   "position": [
+    1650,
+    150,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "t-bracket-profile-2",
+   "spec": "2020",
+   "length": 180,
+   "position": [
+    1800,
+    150,
+    0
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "corner-3way-profile-1",
+   "spec": "4040",
+   "length": 160,
+   "position": [
+    2220,
+    150,
+    0
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "corner-3way-profile-2",
+   "spec": "4040",
+   "length": 100,
    "position": [
     2400,
-    0,
+    30,
     0
    ],
    "quaternion": [
     -0.7071067811865475,
     0,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p7",
-   "spec": "2020",
-   "length": 300,
+   "id": "corner-3way-profile-3",
+   "spec": "4040",
+   "length": 160,
    "position": [
     2400,
-    250,
-    0
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p8",
-   "spec": "2020",
-   "length": 500,
-   "position": [
-    3200,
-    0,
-    0
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p9",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    3200,
-    250,
-    0
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p10",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    0,
-    0,
-    800
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p11",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    0,
-    300,
-    800
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p12",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    0,
-    290,
-    800
+    150,
+    -180
    ],
    "quaternion": [
     0,
@@ -236,217 +201,235 @@
    "holes": []
   },
   {
-   "id": "p13",
+   "id": "flat-plate-profile-1",
    "spec": "2020",
-   "length": 500,
+   "length": 150,
    "position": [
-    800,
+    -150,
+    140,
+    600
+   ],
+   "quaternion": [
     0,
-    800
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "flat-plate-profile-2",
+   "spec": "2020",
+   "length": 150,
+   "position": [
+    0,
+    140,
+    600
+   ],
+   "quaternion": [
+    0,
+    0.7071067811865475,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "joining-plate-profile-1",
+   "spec": "2020",
+   "length": 150,
+   "position": [
+    590,
+    150,
+    450
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "joining-plate-profile-2",
+   "spec": "2020",
+   "length": 150,
+   "position": [
+    590,
+    150,
+    600
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "end-cap-profile-1",
+   "spec": "2040",
+   "length": 150,
+   "position": [
+    1200,
+    150,
+    450
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "foot-profile-1",
+   "spec": "4040",
+   "length": 180,
+   "position": [
+    1800,
+    150,
+    600
    ],
    "quaternion": [
     -0.7071067811865475,
     0,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p14",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    650,
-    250,
-    776
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p15",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    1300,
-    100,
-    800
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p16",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    1600,
-    100,
-    800
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p17",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    2100,
-    100,
-    800
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p18",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    2400,
-    100,
-    800
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p19",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    3200,
-    100,
-    800
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p20",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    0,
-    30,
-    1600
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p21",
+   "id": "cross-bracket-profile-1",
    "spec": "4040",
    "length": 300,
    "position": [
-    800,
-    40,
-    1600
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p22",
-   "spec": "2020",
-   "length": 300,
-   "position": [
-    1600,
-    100,
-    1600
+    2250,
+    150,
+    580
    ],
    "quaternion": [
     0,
     0.7071067811865475,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p23",
-   "spec": "2020",
-   "length": 400,
+   "id": "cross-bracket-profile-2",
+   "spec": "4040",
+   "length": 150,
+   "position": [
+    2400,
+    150,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0,
+    0,
+    0.7071067811865475
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "cross-bracket-profile-3",
+   "spec": "4040",
+   "length": 150,
    "position": [
     2400,
     0,
-    1600
+    580
    ],
    "quaternion": [
     -0.7071067811865475,
     0,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
   },
   {
-   "id": "p24",
-   "spec": "2020",
-   "length": 300,
+   "id": "t-nut-profile-1",
+   "spec": "4040",
+   "length": 260,
    "position": [
-    3200,
-    100,
-    1600
+    0,
+    130,
+    1070
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "hinge-profile-1",
+   "spec": "2020",
+   "length": 260,
+   "position": [
+    590,
+    139.5,
+    1070
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "hinge-profile-2",
+   "spec": "2020",
+   "length": 260,
+   "position": [
+    590,
+    160.5,
+    1070
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "miterCuts": [],
+   "holes": []
+  },
+  {
+   "id": "pivot-profile-1",
+   "spec": "2020",
+   "length": 260,
+   "position": [
+    1070,
+    140,
+    1200
    ],
    "quaternion": [
     0,
     0.7071067811865475,
     0,
-    0.7071067811865476
+    0.7071067811865475
    ],
    "miterCuts": [],
    "holes": []
@@ -454,246 +437,339 @@
  ],
  "connectors": [
   {
-   "id": "c0",
+   "id": "bracket",
    "type": "bracket",
-   "series": 20,
    "position": [
     10,
-    290,
+    160,
     0
    ],
    "quaternion": [
-    1.570092458683775e-16,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
     0,
-    -0.7071067811865475,
-    0.7071067811865476
-   ]
+    1
+   ],
+   "series": 20
   },
   {
-   "id": "c1",
+   "id": "inside-corner",
    "type": "inside-corner",
-   "series": 20,
    "position": [
-    810,
-    290,
-    0
+    609.4,
+    159.5,
+    2.442490654175344e-16
    ],
    "quaternion": [
-    1.570092458683775e-16,
-    0,
-    -0.7071067811865475,
-    0.7071067811865476
+    0.7071067811865477,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    1.7431527984210492e-32
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
    ]
   },
   {
-   "id": "c2",
+   "id": "gusset",
    "type": "gusset",
-   "series": 20,
    "position": [
-    1600,
-    300,
+    1220,
+    170,
+    0
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 40
+  },
+  {
+   "id": "t-bracket",
+   "type": "t-bracket",
+   "position": [
+    1800,
+    150,
     -10
    ],
    "quaternion": [
-    1,
     0,
-    1.1102230246251565e-16,
-    -1.1102230246251565e-16
-   ]
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20
   },
   {
-   "id": "c3",
-   "type": "t-bracket",
-   "series": 20,
+   "id": "corner-3way",
+   "type": "corner-3way",
    "position": [
     2400,
-    250,
-    10
+    150,
+    -3.9968028886505635e-14
    ],
    "quaternion": [
-    0,
-    0,
-    -0.7071067811865476,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "c4",
-   "type": "bracket",
-   "series": 20,
-   "position": [
-    3210,
-    260,
-    0
-   ],
-   "quaternion": [
-    1.1102230246251565e-16,
     -1.1102230246251565e-16,
-    0,
-    1
-   ]
-  },
-  {
-   "id": "c5",
-   "type": "corner-3way",
-   "series": 20,
-   "position": [
-    10,
-    290,
-    800
-   ],
-   "quaternion": [
-    1.570092458683775e-16,
-    0,
-    -0.7071067811865475,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "c6",
-   "type": "cross-bracket",
-   "series": 20,
-   "position": [
-    800,
-    250,
-    788
-   ],
-   "quaternion": [
     1.1102230246251565e-16,
     0,
-    0,
     1
-   ]
+   ],
+   "series": 40
   },
   {
-   "id": "c7",
+   "id": "flat-plate",
    "type": "flat-plate",
    "series": 20,
    "position": [
-    1600,
-    112,
-    800
+    0,
+    150,
+    600
    ],
    "quaternion": [
     0,
-    -1.1102230246251565e-16,
+    0,
     0,
     1
    ]
   },
   {
-   "id": "c8",
+   "id": "joining-plate",
    "type": "joining-plate",
    "series": 20,
    "position": [
-    2400,
-    100,
-    790
+    600,
+    150,
+    600
    ],
    "quaternion": [
     0,
-    0.7071067811865475,
     0,
-    0.7071067811865476
+    0,
+    1
    ]
   },
   {
-   "id": "c9",
+   "id": "end-cap",
    "type": "end-cap",
    "series": 20,
    "position": [
-    3500,
-    100,
-    800
+    1200,
+    150,
+    600
    ],
    "quaternion": [
     0,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ]
-  },
-  {
-   "id": "c10",
-   "type": "foot",
-   "series": 20,
-   "position": [
-    0,
-    2,
-    1600
-   ],
-   "quaternion": [
-    1.1102230246251565e-16,
     0,
     0,
     1
-   ]
+   ],
+   "profileSpec": "2040"
   },
   {
-   "id": "c11",
-   "type": "caster-mount",
+   "id": "foot",
+   "type": "foot",
    "series": 40,
    "position": [
-    800,
-    36,
-    1600
+    1800,
+    150,
+    600
    ],
    "quaternion": [
-    1.1102230246251565e-16,
+    0,
     0,
     0,
     1
    ]
   },
   {
-   "id": "c12",
-   "type": "t-nut",
-   "series": 20,
+   "id": "cross-bracket",
+   "type": "cross-bracket",
+   "series": 40,
    "position": [
-    1750,
-    110,
-    1600
+    2400,
+    150,
+    600
    ],
    "quaternion": [
     0,
-    0.7071067811865475,
     0,
-    0.7071067811865476
+    0,
+    1
    ]
   },
   {
-   "id": "c13",
+   "id": "t-nut",
+   "type": "t-nut",
+   "series": 40,
+   "position": [
+    0,
+    150,
+    1200
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "hinge",
    "type": "hinge",
    "series": 20,
    "position": [
-    2413,
-    200,
-    1600
+    600,
+    150,
+    1200
    ],
    "quaternion": [
-    -0.7071067811865475,
     0,
     0,
-    0.7071067811865476
+    0,
+    1
    ]
   },
   {
-   "id": "c14",
+   "id": "pivot",
    "type": "pivot",
    "series": 20,
    "position": [
-    3350,
-    116,
-    1600
+    1200,
+    150,
+    1200
    ],
    "quaternion": [
     0,
-    0.7071067811865475,
     0,
-    0.7071067811865476
+    0,
+    1
+   ]
+  },
+  {
+   "id": "caster-mount",
+   "type": "caster-mount",
+   "series": 40,
+   "position": [
+    1800,
+    150,
+    1200
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
    ]
   }
  ],
  "panels": [],
- "fittings": []
+ "fittings": [],
+ "equipment": [],
+ "showcaseFixtures": [
+  {
+   "connectorId": "bracket",
+   "profileIds": [
+    "bracket-profile-1",
+    "bracket-profile-2"
+   ]
+  },
+  {
+   "connectorId": "inside-corner",
+   "profileIds": [
+    "inside-corner-profile-1",
+    "inside-corner-profile-2"
+   ]
+  },
+  {
+   "connectorId": "gusset",
+   "profileIds": [
+    "gusset-profile-1",
+    "gusset-profile-2"
+   ]
+  },
+  {
+   "connectorId": "t-bracket",
+   "profileIds": [
+    "t-bracket-profile-1",
+    "t-bracket-profile-2"
+   ]
+  },
+  {
+   "connectorId": "corner-3way",
+   "profileIds": [
+    "corner-3way-profile-1",
+    "corner-3way-profile-2",
+    "corner-3way-profile-3"
+   ]
+  },
+  {
+   "connectorId": "flat-plate",
+   "profileIds": [
+    "flat-plate-profile-1",
+    "flat-plate-profile-2"
+   ]
+  },
+  {
+   "connectorId": "joining-plate",
+   "profileIds": [
+    "joining-plate-profile-1",
+    "joining-plate-profile-2"
+   ]
+  },
+  {
+   "connectorId": "end-cap",
+   "profileIds": [
+    "end-cap-profile-1"
+   ]
+  },
+  {
+   "connectorId": "foot",
+   "profileIds": [
+    "foot-profile-1"
+   ]
+  },
+  {
+   "connectorId": "cross-bracket",
+   "profileIds": [
+    "cross-bracket-profile-1",
+    "cross-bracket-profile-2",
+    "cross-bracket-profile-3"
+   ]
+  },
+  {
+   "connectorId": "t-nut",
+   "profileIds": [
+    "t-nut-profile-1"
+   ]
+  },
+  {
+   "connectorId": "hinge",
+   "profileIds": [
+    "hinge-profile-1",
+    "hinge-profile-2"
+   ]
+  },
+  {
+   "connectorId": "pivot",
+   "profileIds": [
+    "pivot-profile-1"
+   ]
+  },
+  {
+   "connectorId": "caster-mount",
+   "profileIds": []
+  }
+ ],
+ "showcaseSamples": [
+  {
+   "connectorId": "caster-mount",
+   "type": "caster-mount",
+   "reason": "独立厂家样品，未安装。Motedis 963 官方 STEP/图纸为安装孔 Ø11、总高 74.2 mm；产品页另标 Ø6.5、71 mm，转接件及紧固方案尚未核定。",
+   "sourceUrl": "https://www.motedis.com/en/Roller-50-single-bolt-hole-without-brake"
+  }
+ ]
 }

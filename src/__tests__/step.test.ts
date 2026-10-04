@@ -119,7 +119,7 @@ describe('STEP export', () => {
     const bracket = { id: 'c1', type: 'bracket', position: [20, 20, 0], quaternion: [0, 0, 0, 1] } as never
     const out = buildStep({ profiles: [...frame(), P(0, 0, 400, 0, 800, 400, '4040')], panels: [board], connectors: [bracket] })
     const solids = solidsOf(out)
-    expect(solids.length).toBe(9)
+    expect(solids.length).toBe(7)
     for (const sol of solids) {
       expect(sol.uses.size, sol.name).toBeGreaterThan(0)
       for (const [edge, senses] of sol.uses) expect(senses.sort(), `${sol.name} edge #${edge}`).toEqual(['F', 'T'])
@@ -152,7 +152,7 @@ describe('STEP export', () => {
     expect(box.max.toArray().map(Math.round)).toEqual([580, 780, -11])
   })
 
-  it('keeps inserted arms, the gusset outline and all three corner arms in the exported assembly', () => {
+  it('exports the manufacturer envelopes and the inner casting as one closed body', () => {
     const at: [number, number, number] = [100, 200, 300]
     const exportOne = (type: string, series: 20 | 40 = 20) => {
       const connector: ConnectorData = { id: 'corner', type, series, position: at, quaternion: [0, 0, 0, 1] }
@@ -162,41 +162,63 @@ describe('STEP export', () => {
       return { solids, bounds: new THREE.Box3().setFromPoints(solids.flatMap((solid) => solid.points)) }
     }
     const bracket = exportOne('bracket', 40)
-    expect(bracket.bounds.max.toArray().map(Math.round)).toEqual([160, 260, 318])
+    expect(bracket.solids).toHaveLength(1)
+    expect(bracket.bounds.max.toArray().map(Math.round)).toEqual([136, 236, 319])
+    expect(bracket.bounds.min.z).toBeCloseTo(281)
     const inside = exportOne('inside-corner')
-    expect(inside.bounds.min.toArray().map(Math.round)).toEqual([94, 194, 297])
-    expect(inside.bounds.max.toArray().map(Math.round)).toEqual([120, 220, 303])
-    expect(inside.solids).toHaveLength(1)
-    // Both sides of the heel belong to the same closed L-shaped body.
-    for (const z of [297, 303]) expect(inside.solids[0].points.some((p) =>
-      p.distanceTo(V(106, 206, z)) < 1e-6)).toBe(true)
-    const gusset = exportOne('gusset')
+    // One continuous casting plus the two DIN 913 M5×6 set screws.
+    expect(inside.solids).toHaveLength(3)
+    const casting = new THREE.Box3().setFromPoints(inside.solids[0].points)
+    expect(casting.min.x).toBeCloseTo(95.8)
+    expect(casting.min.y).toBeCloseTo(195.6)
+    expect(casting.max.x).toBeCloseTo(121.3)
+    expect(casting.max.y).toBeCloseTo(220.45)
+    expect(casting.max.z - casting.min.z).toBeCloseTo(9.5)
+    expect(inside.bounds.min.x).toBeCloseTo(95)
+    expect(inside.bounds.min.y).toBeCloseTo(195.1)
+    const gusset = exportOne('gusset', 40)
     expect(gusset.solids).toHaveLength(1)
-    expect(gusset.bounds.min.toArray().map(Math.round)).toEqual([92, 192, 300])
-    expect(gusset.bounds.max.toArray().map(Math.round)).toEqual([130, 230, 304])
-    expect(gusset.solids[0].points.every((point) => (point.x - at[0]) + (point.y - at[1]) <= 22.000001)).toBe(true)
-    const threeWay = exportOne('corner-3way')
-    expect(threeWay.solids).toHaveLength(5)
-    expect(threeWay.bounds.min.toArray().map(Math.round)).toEqual([96, 198, 296])
+    expect(gusset.bounds.min.toArray().map(Math.round)).toEqual([100, 200, 282])
+    expect(gusset.bounds.max.toArray().map(Math.round)).toEqual([140, 240, 318])
+    expect(gusset.solids[0].points.every((point) => (point.x - at[0]) + (point.y - at[1]) <= 40.00001)).toBe(true)
+    const threeWay = exportOne('corner-3way', 40)
+    expect(threeWay.solids).toHaveLength(1)
+    expect(threeWay.bounds.min.toArray().map(Math.round)).toEqual([80, 180, 280])
     expect(threeWay.bounds.max.toArray().map(Math.round)).toEqual([120, 220, 320])
   })
 
-  it('exports every connector body as a closed shell after rotation, without exporting hole markers', () => {
+  it.each(CONNECTOR_CATALOG)('exports every $type body as a closed shell after rotation, without exporting visual-only markers', (entry) => {
     const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(.28, -.7, .43))
-    for (const entry of CONNECTOR_CATALOG) {
-      const connector: ConnectorData = { id: entry.type, type: entry.type, series: 40,
-        position: [35, -17, 130], quaternion: rotation.toArray() }
-      const output = buildStep({ profiles: [], connectors: [connector] })
-      const { defined, used } = ids(output)
-      for (const id of used) expect(defined.has(id), `${entry.type}: missing #${id}`).toBe(true)
-      const solids = solidsOf(output)
-      expect(solids.length, entry.type).toBeGreaterThan(0)
-      for (const solid of solids) for (const [edge, directions] of solid.uses) {
-        expect(directions.sort(), `${entry.type}, ${solid.name}, edge ${edge}`).toEqual(['F', 'T'])
-      }
-      if (entry.type === 't-bracket') expect(solids).toHaveLength(2)
-    }
-  })
+    const connector: ConnectorData = { id: entry.type, type: entry.type, series: 40,
+      position: [35, -17, 130], quaternion: rotation.toArray() }
+    const output = buildStep({ profiles: [], connectors: [connector] })
+    const { defined, used } = ids(output)
+    // Check all references/edges, but collect defects before asserting. Original
+    // CAD meshes contain hundreds of thousands of entities; one matcher per
+    // healthy entity made this linear topology check spend most time in Vitest.
+    expect([...used].filter((id) => !defined.has(id)), `${entry.type}: unresolved references`).toEqual([])
+    const solids = solidsOf(output)
+    expect(solids.length, entry.type).toBeGreaterThan(0)
+    const badEdges = solids.flatMap((solid) => [...solid.uses]
+      .filter(([, directions]) => directions.length !== 2 || directions[0] === directions[1])
+      .map(([edge, directions]) => ({ solid: solid.name, edge, directions })))
+    expect(badEdges, `${entry.type}: every edge must be used twice in opposite directions`).toEqual([])
+    expect(solids.every((solid) => solid.uses.size > 0)).toBe(true)
+    if (['t-bracket', 'cross-bracket', 'flat-plate', 'joining-plate', 'bracket', 'gusset', 'corner-3way'].includes(entry.type)) expect(solids).toHaveLength(1)
+  }, 30_000)
+
+  it.each([['2020', 1], ['2040', 3], ['3030', 5], ['4040', 5]] as const)(
+    'preserves the %s core and internal cavities in both end faces', (spec, holeCount) => {
+      const profile = P(0, 0, 0, 0, 0, 80, spec)
+      const out = buildStep({ profiles: [profile] })
+      const solids = solidsOf(out)
+      expect(solids).toHaveLength(1)
+      expect((out.match(/= FACE_BOUND\(/g) ?? []).length).toBe(holeCount * 2)
+      for (const [edge, senses] of solids[0].uses) expect(senses.sort(), `${spec} edge #${edge}`).toEqual(['F', 'T'])
+      const size = new THREE.Box3().setFromPoints(solids[0].points).getSize(new THREE.Vector3())
+      expect(size.toArray().map(Math.round)).toEqual([Number(spec.slice(0, 2)), Number(spec.slice(2)), 80])
+    },
+  )
 
   it('an empty drawing is still a valid file', () => {
     const out = buildStep({ profiles: [] })

@@ -13,12 +13,8 @@ import { auditBrackets } from './bracketSeat'
 
 /** members closer than this are considered touching, not interfering (mm) */
 const TOUCH_TOL = 1
-/**
- * A connector is meant to be in contact with the metal — that is what bolting is — so the
- * line between "lying on it" and "sunk into it" sits further out than it does for two
- * members, which have no business touching at all.
- */
-const CONNECTOR_TOUCH_TOL = 3
+/** Numerical contact tolerance after checking connector solids against profile metal. */
+const CONNECTOR_TOUCH_TOL = 0.15
 /** Tolerance for contact between profiles and boards or fittings. */
 const BOARD_TOUCH_TOL = 3
 
@@ -73,7 +69,7 @@ export function panelOBB(b: PanelData): OBB {
 export function connectorOBB(c: ConnectorData): OBB {
   const quat = new THREE.Quaternion(...c.quaternion).normalize()
   const scale = connectorScale(c.series ?? 20)
-  const { centre, half } = connectorExtent(c.type, c.series)
+  const { centre, half } = connectorExtent(c.type, c.series, c.profileSpec, c.mountSeries)
   const offset = new THREE.Vector3(...centre).multiplyScalar(scale).applyQuaternion(quat)
   return makeOBB(
     new THREE.Vector3(...c.position).add(offset),
@@ -82,42 +78,149 @@ export function connectorOBB(c: ConnectorData): OBB {
   )
 }
 
+interface CollisionSpan { x0: number; x1: number; y0: number; y1: number; z0: number; z1: number }
+interface CollisionGeometry { obb: OBB; span: CollisionSpan }
+interface ConflictGeometrySource {
+  profile: (p: ProfileData, t: ProfileTrims) => CollisionGeometry
+  connector: (c: ConnectorData) => CollisionGeometry
+  panel: (b: PanelData) => CollisionGeometry
+  fitting: (f: FittingData) => CollisionGeometry[]
+}
+
+function collisionGeometry(obb: OBB): CollisionGeometry {
+  let rx = 0, ry = 0, rz = 0
+  for (let k = 0; k < 3; k++) {
+    const half = obb.half.getComponent(k)
+    rx += Math.abs(obb.axes[k].x) * half
+    ry += Math.abs(obb.axes[k].y) * half
+    rz += Math.abs(obb.axes[k].z) * half
+  }
+  const c = obb.center
+  return { obb, span: { x0: c.x - rx - 2, x1: c.x + rx + 2,
+    y0: c.y - ry - 2, y1: c.y + ry + 2, z0: c.z - rz - 2, z1: c.z + rz + 2 } }
+}
+
+type Pose = Pick<ProfileData, 'position' | 'quaternion'>
+const copyPose = (p: Pose): Pose => ({ position: [...p.position], quaternion: [...p.quaternion] })
+function samePose(a: Pose, b: Pose): boolean {
+  for (let i = 0; i < 3; i++) if (a.position[i] !== b.position[i]) return false
+  for (let i = 0; i < 4; i++) if (a.quaternion[i] !== b.quaternion[i]) return false
+  return true
+}
+
+/** Reuse baseline geometry inside one search. Numeric snapshots keep even an
+ * explicitly reused finder correct after in-place edits; new proposal IDs are not stored. */
+export function createConflictFinder(
+  profiles: ProfileData[], connectors: ConnectorData[] = [], panels: PanelData[] = [], fittings: FittingData[] = [],
+): typeof findConflicts {
+  const profileIds = new Set(profiles.map((p) => p.id)), connectorIds = new Set(connectors.map((c) => c.id))
+  const panelIds = new Set(panels.map((b) => b.id)), fittingIds = new Set(fittings.map((f) => f.id))
+  const profileGeometry = new Map<string, Pose & { spec: string; start: number; length: number; geometry: CollisionGeometry }>()
+  const connectorGeometry = new Map<string, Pose & { type: string; series: number; profileSpec?: string;
+    mount0?: number; mount1?: number; geometry: CollisionGeometry }>()
+  const panelGeometry = new Map<string, Pose & { width: number; height: number; thickness: number; geometry: CollisionGeometry }>()
+  const fittingGeometry = new Map<string, Map<number, { snapshot: string; geometry: CollisionGeometry[] }>>()
+  const source: ConflictGeometrySource = {
+    profile: (p, t) => {
+      const old = profileGeometry.get(p.id)
+      if (old && old.spec === p.spec && old.start === t.start.trim && old.length === t.cutLength && samePose(old, p)) return old.geometry
+      const geometry = collisionGeometry(trimmedOBB(p, t))
+      if (profileIds.has(p.id)) profileGeometry.set(p.id, { ...copyPose(p), spec: p.spec, start: t.start.trim, length: t.cutLength, geometry })
+      return geometry
+    },
+    connector: (c) => {
+      const old = connectorGeometry.get(c.id), series = c.series ?? 20
+      if (old && old.type === c.type && old.series === series && old.profileSpec === c.profileSpec
+        && old.mount0 === c.mountSeries?.[0] && old.mount1 === c.mountSeries?.[1] && samePose(old, c)) return old.geometry
+      const geometry = collisionGeometry(connectorOBB(c))
+      if (connectorIds.has(c.id)) connectorGeometry.set(c.id, { ...copyPose(c), type: c.type, series, profileSpec: c.profileSpec,
+        mount0: c.mountSeries?.[0], mount1: c.mountSeries?.[1], geometry })
+      return geometry
+    },
+    panel: (b) => {
+      const old = panelGeometry.get(b.id)
+      if (old && old.width === b.width && old.height === b.height && old.thickness === b.thickness && samePose(old, b)) return old.geometry
+      const geometry = collisionGeometry(panelOBB(b))
+      if (panelIds.has(b.id)) panelGeometry.set(b.id, { ...copyPose(b), width: b.width, height: b.height, thickness: b.thickness, geometry })
+      return geometry
+    },
+    fitting: (f) => {
+      const snapshot = JSON.stringify(f), state = f.open ?? 0
+      let states = fittingGeometry.get(f.id)
+      const old = states?.get(state)
+      if (old?.snapshot === snapshot) return old.geometry
+      const geometry = fittingSolids(f).map(collisionGeometry)
+      if (fittingIds.has(f.id)) {
+        if (!states) { states = new Map(); fittingGeometry.set(f.id, states) }
+        // A search checks the current position and fully open position. Keep
+        // explicit reuse with arbitrary opening values bounded too.
+        if (!states.has(state) && states.size >= 2) states.delete(states.keys().next().value!)
+        states.set(state, { snapshot, geometry })
+      }
+      return geometry
+    },
+  }
+  return (ps, trims, cs = [], bs = [], fs = [], affected) => findConflictsWithGeometry(ps, trims, cs, bs, fs, affected, source)
+}
+
 export function findConflicts(
   profiles: ProfileData[], trims: Map<string, ProfileTrims>, connectors: ConnectorData[] = [],
   panels: PanelData[] = [], fittings: FittingData[] = [],
   affectedIds?: ReadonlySet<string>,
 ): Conflict[] {
-  /** `fit` is the index into `fittings` of the drawer or door a board belongs to */
-  const boxes: Array<{ id: string; obb: OBB; fit?: number }> = profiles.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) }))
+  return findConflictsWithGeometry(profiles, trims, connectors, panels, fittings, affectedIds)
+}
+
+function findConflictsWithGeometry(
+  profiles: ProfileData[], trims: Map<string, ProfileTrims>, connectors: ConnectorData[],
+  panels: PanelData[], fittings: FittingData[], affectedIds?: ReadonlySet<string>, source?: ConflictGeometrySource,
+): Conflict[] {
+  // Keep cached geometry by reference. IDs and fitting ownership belong to this
+  // call's ordering, so rebinding them needs no wrapper object for every box.
+  const boxes: CollisionGeometry[] = profiles.map((p) =>
+    source?.profile(p, trims.get(p.id)!) ?? collisionGeometry(trimmedOBB(p, trims.get(p.id)!)))
+  const ids = profiles.map((p) => p.id)
   // Include connector, board and fitting boxes with contact tolerances.
   const members = boxes.length
-  for (const c of connectors) boxes.push({ id: c.id, obb: connectorOBB(c) })
+  for (const c of connectors) { boxes.push(source?.connector(c) ?? collisionGeometry(connectorOBB(c))); ids.push(c.id) }
   const parts = boxes.length
-  for (const b of panels) boxes.push({ id: b.id, obb: panelOBB(b) })
+  for (const b of panels) { boxes.push(source?.panel(b) ?? collisionGeometry(panelOBB(b))); ids.push(b.id) }
   // A drawer or a door is judged by its boards — the box, the front, the leaf — where they
   // are at its current opening, not by the block round its opening. See `fittingSolids`.
-  fittings.forEach((f, k) => { for (const obb of fittingSolids(f)) boxes.push({ id: f.id, obb, fit: k }) })
-
-  // Use sweep-and-prune along X to select candidate pairs, preserving pair order.
-  const spans = boxes.map((b, i) => {
-    let r = 0
-    for (let k = 0; k < 3; k++) r += Math.abs(b.obb.axes[k].x) * b.obb.half.getComponent(k)
-    let ry = 0, rz = 0
-    for (let k = 0; k < 3; k++) {
-      ry += Math.abs(b.obb.axes[k].y) * b.obb.half.getComponent(k)
-      rz += Math.abs(b.obb.axes[k].z) * b.obb.half.getComponent(k)
+  const fittingStart = boxes.length, fittingOwners: number[] = []
+  fittings.forEach((f, k) => {
+    for (const geometry of source?.fitting(f) ?? fittingSolids(f).map(collisionGeometry)) {
+      boxes.push(geometry); ids.push(f.id); fittingOwners.push(k)
     }
-    const c = b.obb.center
-    return { i, x0: c.x - r - 2, x1: c.x + r + 2, y0: c.y - ry - 2, y1: c.y + ry + 2, z0: c.z - rz - 2, z1: c.z + rz + 2 }
-  }).sort((a, b) => a.x0 - b.x0)
+  })
+
+  // Changed parts only need pairs involving their own boxes. A full analysis uses
+  // sweep-and-prune along X; both paths preserve the original pair order below.
   const pairs: Array<[number, number]> = []
-  for (let a = 0; a < spans.length; a++) {
-    const A = spans[a]
-    for (let b = a + 1; b < spans.length && spans[b].x0 <= A.x1; b++) {
-      const B = spans[b]
-      if (affectedIds && !affectedIds.has(boxes[A.i].id) && !affectedIds.has(boxes[B.i].id)) continue
-      if (B.y0 > A.y1 || A.y0 > B.y1 || B.z0 > A.z1 || A.z0 > B.z1) continue
-      pairs.push(A.i < B.i ? [A.i, B.i] : [B.i, A.i])
+  if (affectedIds) {
+    const affected = ids.map((id) => affectedIds.has(id))
+    for (let a = 0; a < boxes.length; a++) {
+      if (!affected[a]) continue
+      const A = boxes[a].span
+      for (let b = 0; b < boxes.length; b++) {
+        // Multiple boards of one fitting remain distinct boxes. Only discard
+        // the second visit to a pair whose two boxes are both affected.
+        if (a === b || (affected[b] && b < a)) continue
+        const B = boxes[b].span
+        if (B.x0 > A.x1 || A.x0 > B.x1
+          || B.y0 > A.y1 || A.y0 > B.y1 || B.z0 > A.z1 || A.z0 > B.z1) continue
+        pairs.push(a < b ? [a, b] : [b, a])
+      }
+    }
+  } else {
+    const order = boxes.map((_, i) => i).sort((a, b) => boxes[a].span.x0 - boxes[b].span.x0)
+    for (let a = 0; a < order.length; a++) {
+      const i = order[a], A = boxes[i].span
+      for (let b = a + 1; b < order.length && boxes[order[b]].span.x0 <= A.x1; b++) {
+        const j = order[b], B = boxes[j].span
+        if (B.y0 > A.y1 || A.y0 > B.y1 || B.z0 > A.z1 || A.z0 > B.z1) continue
+        pairs.push(i < j ? [i, j] : [j, i])
+      }
     }
   }
   pairs.sort((p, q) => p[0] - q[0] || p[1] - q[1])
@@ -127,9 +230,8 @@ export function findConflicts(
   // drawers red for being inside a wardrobe. A door swinging into its neighbour is still
   // reported: the neighbour is beside it, not in front of it.
   const behindShutDoor = (i: number, j: number): boolean => {
-    const fi = boxes[i].fit, fj = boxes[j].fit
-    if (fi === undefined || fj === undefined) return false
-    const a = fittings[fi], b = fittings[fj]
+    if (i < fittingStart || j < fittingStart) return false
+    const a = fittings[fittingOwners[i - fittingStart]], b = fittings[fittingOwners[j - fittingStart]]
     const [moving, door] = (a.open ?? 0) > 0 && b.kind === 'door' && !(b.open ?? 0) ? [a, b]
       : (b.open ?? 0) > 0 && a.kind === 'door' && !(a.open ?? 0) ? [b, a] : [null, null]
     if (!moving || !door) return false
@@ -146,20 +248,20 @@ export function findConflicts(
   const out: Conflict[] = []
   const seen = new Map<string, number>()
   for (const [i, j] of pairs) {
-    if (boxes[i].id === boxes[j].id) continue           // a drawer's own boards meet each other
+    if (ids[i] === ids[j]) continue           // a drawer's own boards meet each other
     if (behindShutDoor(i, j)) continue
     const connectorA = i >= members && i < parts ? connectors[i - members] : undefined
     const connectorB = j >= members && j < parts ? connectors[j - members] : undefined
     if (connectorA && connectorB && !connectorsCollide(connectorA, connectorB)) continue
-    if (connectorA && !connectorB && !connectorHitsBody(connectorA, boxes[j].obb, j < members ? 3 : 1, j < members)) continue
-    if (connectorB && !connectorA && !connectorHitsBody(connectorB, boxes[i].obb, i < members ? 3 : 1, i < members)) continue
+    if (connectorA && !connectorB && !connectorHitsBody(connectorA, boxes[j].obb, j < members ? 0.15 : 1, j < members)) continue
+    if (connectorB && !connectorA && !connectorHitsBody(connectorB, boxes[i].obb, i < members ? 0.15 : 1, i < members)) continue
     const tol = connectorA || connectorB ? (i < members || j < members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL)
       : i >= parts || j >= parts ? BOARD_TOUCH_TOL
       : i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL
     const depth = obbPenetration(boxes[i].obb, boxes[j].obb, tol)
     if (depth <= 0) continue
     const c: Conflict = {
-      a: boxes[i].id, b: boxes[j].id,
+      a: ids[i], b: ids[j],
       depth: Math.round(depth * 100) / 100,
       region: regionOf(boxes[i].obb, boxes[j].obb),
     }

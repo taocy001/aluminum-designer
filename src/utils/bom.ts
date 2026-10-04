@@ -5,9 +5,12 @@ import { fittingParts, hingeCount } from './fittingGeometry'
 import { materialLabel } from './panelOps'
 import type { ProfileTrims } from './jointUtils'
 import {
-  CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel, seriesOf,
+  CONNECTOR_CATALOG, connectorEntry, connectorLabel,
   type ConnectorSeries,
 } from './connectorCatalog'
+import { hardwareReference } from './connectorHardware'
+import { hardwareFastenerKey, hardwareFastenerLabel } from './connectorFasteners'
+import { accessoryCapReference } from './connectorAccessoryReferences'
 
 export interface BomRow {
   kind: 'profile' | 'connector' | 'fastener' | 'suggested' | 'panel'
@@ -57,52 +60,50 @@ export function buildBom(
   }
 
   const connectorRows = new Map<string, BomRow>()
-  const boltsBySeries = new Map<ConnectorSeries, number>()
-  const nutsBySeries = new Map<ConnectorSeries, number>()
+  const fastenerRows = new Map<string, BomRow>()
   for (const c of connectors) {
     const series = (c.series ?? 20) as ConnectorSeries
-    const key = `${c.type}-${series}`
+    const capSpec = c.type === 'end-cap' ? (c.profileSpec ?? `${series}${series}`) : undefined
+    const reference = c.type === 'end-cap' ? accessoryCapReference((c.profileSpec ?? `${series}${series}`) as ProfileData['spec']) : hardwareReference(c.type, series)
+    const key = `${c.type}-${capSpec ?? series}`
     const row = connectorRows.get(key) ?? {
       kind: 'connector' as const, key,
-      label: connectorLabel(c.type, language), spec: `${series}${language === 'zh' ? ' 系列' : ' series'}`, qty: 0, partNumbers: [],
+      label: connectorLabel(c.type, language), spec: capSpec ?? `${reference?.sku ?? `${series}${language === 'zh' ? ' 系列' : ' series'}`}${reference?.verified ? '' : language === 'zh' ? '（安装适配未核定）' : ' (installation unverified)'}`, qty: 0, partNumbers: [],
     }
     row.qty++
     row.partNumbers.push(partNumber('connector', c.id))
     connectorRows.set(key, row)
 
-    const recipe = connectorEntry(c.type)?.fasteners
-    if (recipe) {
-      if (recipe.bolts) boltsBySeries.set(series, (boltsBySeries.get(series) ?? 0) + recipe.bolts)
-      if (recipe.nuts) nutsBySeries.set(series, (nutsBySeries.get(series) ?? 0) + recipe.nuts)
+    if (reference?.verified) for (const fastener of reference.fasteners) {
+      const key = hardwareFastenerKey(fastener, series)
+      const item = fastenerRows.get(key) ?? {
+        kind: 'fastener' as const, key, label: hardwareFastenerLabel(fastener, language),
+        spec: fastener.kind === 't-nut' ? `${series}${language === 'zh' ? ' 系列槽用' : ' series slot'}` : '', qty: 0, partNumbers: [],
+      }
+      item.qty += fastener.count
+      fastenerRows.set(key, item)
     }
   }
-
-  const fasteners: BomRow[] = []
-  for (const [series, qty] of [...boltsBySeries].sort((a, b) => a[0] - b[0])) {
-    fasteners.push({ kind: 'fastener', key: `bolt-${series}`, label: boltLabel(series, language), spec: `${series}`, qty, partNumbers: [] })
-  }
-  for (const [series, qty] of [...nutsBySeries].sort((a, b) => a[0] - b[0])) {
-    fasteners.push({ kind: 'fastener', key: `nut-${series}`, label: nutLabel(series, language), spec: `${series}`, qty, partNumbers: [] })
-  }
+  const fasteners = [...fastenerRows.values()].sort((a, b) => a.key.localeCompare(b.key))
 
   // Suggested hardware for inferred connections without placed parts.
   let buttEnds = 0
-  const freeEndsBySeries = new Map<ConnectorSeries, number>()
+  const freeEndsBySpec = new Map<string, number>()
   for (const p of profiles) {
     const t = trims.get(p.id)
     if (!t) continue
-    const series = seriesOf(p.spec)
+    const spec = p.spec
     for (const end of [t.start, t.end]) {
       if (end.butt) buttEnds++
-      else if (end.partners === 0) freeEndsBySeries.set(series, (freeEndsBySeries.get(series) ?? 0) + 1)
+      else if (end.partners === 0) freeEndsBySpec.set(spec, (freeEndsBySpec.get(spec) ?? 0) + 1)
     }
   }
   // only the parts a butt joint actually needs count against the bracket suggestion
   const placedBrackets = connectors.filter((c) => connectorEntry(c.type)?.isCornerBracket).length
-  const placedCaps = new Map<ConnectorSeries, number>()
+  const placedCaps = new Map<string, number>()
   for (const c of connectors.filter((c) => c.type === 'end-cap')) {
-    const series = c.series ?? 20
-    placedCaps.set(series, (placedCaps.get(series) ?? 0) + 1)
+    const spec = c.profileSpec ?? `${c.series ?? 20}${c.series ?? 20}`
+    placedCaps.set(spec, (placedCaps.get(spec) ?? 0) + 1)
   }
 
   const suggested: BomRow[] = []
@@ -116,14 +117,14 @@ export function buildBom(
     })
   }
   let freeEnds = 0
-  for (const qty of freeEndsBySeries.values()) freeEnds += qty
-  // caps are suggested per series, because a 20 cap does not fit a 40 post
-  for (const [series, qty] of [...freeEndsBySeries].sort((a, b) => a[0] - b[0])) {
-    const missing = Math.max(0, qty - (placedCaps.get(series) ?? 0))
+  for (const qty of freeEndsBySpec.values()) freeEnds += qty
+  // A rectangular profile needs its own cap, even when its slot series matches.
+  for (const [spec, qty] of [...freeEndsBySpec].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const missing = Math.max(0, qty - (placedCaps.get(spec) ?? 0))
     if (missing === 0) continue
     suggested.push({
-      kind: 'suggested', key: `suggest-cap-${series}`, spec: `${series}`,
-      label: language === 'zh' ? `端盖 ${series} 系列（按自由端推算）` : `End cap, ${series} series (from free ends)`,
+      kind: 'suggested', key: `suggest-cap-${spec}`, spec,
+      label: language === 'zh' ? `端盖 ${spec}（按自由端推算）` : `End cap ${spec} (from free ends)`,
       qty: missing, partNumbers: [],
     })
   }
@@ -208,10 +209,10 @@ export function bomToCsv(bom: BomResult, overall: string): string {
   const quoted = (value: string) => `"${value.replace(/"/g, '""')}"`
   const numbers = (row: BomRow) => quoted(row.partNumbers.join('; '))
   for (const r of bom.profiles) lines.push(`Profile,${r.label},${r.spec},${r.length ?? ''},${r.qty},${numbers(r)}`)
-  for (const r of bom.connectors) lines.push(`Connector,${quoted(r.label)},${r.spec},,${r.qty},${numbers(r)}`)
-  for (const r of bom.fasteners) lines.push(`Fastener,${quoted(r.label)},${r.spec},,${r.qty},${numbers(r)}`)
+  for (const r of bom.connectors) lines.push(`Connector,${quoted(r.label)},${quoted(r.spec)},,${r.qty},${numbers(r)}`)
+  for (const r of bom.fasteners) lines.push(`Fastener,${quoted(r.label)},${quoted(r.spec)},,${r.qty},${numbers(r)}`)
   for (const r of bom.panels) lines.push(`Board,${quoted(r.label)},${quoted(r.spec)},,${r.qty},${numbers(r)}`)
-  for (const r of bom.suggested) lines.push(`Suggested,${quoted(r.label)},${r.spec},,${r.qty},${numbers(r)}`)
+  for (const r of bom.suggested) lines.push(`Suggested,${quoted(r.label)},${quoted(r.spec)},,${r.qty},${numbers(r)}`)
   lines.push(`Summary,Overall WxDxH,${overall},,,`)
   lines.push(`Summary,Total cut length (mm),,${cutDimension(bom.totalCutLength)},,`)
   lines.push(`Summary,Board area (m2),,${bom.totalBoardArea.toFixed(2)},,`)

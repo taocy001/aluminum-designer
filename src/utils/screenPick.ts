@@ -70,30 +70,40 @@ function insideQuad(q: THREE.Vector2[], p: THREE.Vector2): boolean {
   return sign !== 0
 }
 
-const connectorVertices = new WeakMap<THREE.BufferGeometry, readonly THREE.Vector3[]>()
+interface SolidProjection {
+  vertices: readonly THREE.Vector3[]
+  triangles: Uint32Array
+}
+const connectorVertices = new WeakMap<THREE.BufferGeometry, SolidProjection>()
 const connectorBounds = new Map<string, readonly THREE.Vector3[]>()
 
-/** Unique vertices of a shared solid, including the outline of triangular plates. */
-function solidVertices(geometry: THREE.BufferGeometry): readonly THREE.Vector3[] {
-  let vertices = connectorVertices.get(geometry)
-  if (!vertices) {
-    const unique = new Map<string, THREE.Vector3>()
-    const positions = geometry.getAttribute('position')
+/** Shared geometry is immutable; weld its vertices once while preserving every triangle. */
+function solidProjection(geometry: THREE.BufferGeometry): SolidProjection {
+  let solid = connectorVertices.get(geometry)
+  if (!solid) {
+    const unique = new Map<string, number>(), vertices: THREE.Vector3[] = []
+    const positions = geometry.getAttribute('position'), index = geometry.getIndex()
+    const remap = new Uint32Array(positions.count)
     for (let i = 0; i < positions.count; i++) {
       const point = new THREE.Vector3().fromBufferAttribute(positions, i)
-      unique.set(`${point.x},${point.y},${point.z}`, point)
+      const key = `${point.x},${point.y},${point.z}`
+      let at = unique.get(key)
+      if (at === undefined) { at = vertices.length; unique.set(key, at); vertices.push(point) }
+      remap[i] = at
     }
-    vertices = [...unique.values()]
-    connectorVertices.set(geometry, vertices)
+    const triangles = new Uint32Array(index?.count ?? positions.count)
+    for (let i = 0; i < triangles.length; i++) triangles[i] = remap[index ? index.getX(i) : i]
+    solid = { vertices, triangles }
+    connectorVertices.set(geometry, solid)
   }
-  return vertices
+  return solid
 }
 
-function connectorBoundCorners(type: string, series: ConnectorData['series']): readonly THREE.Vector3[] {
-  const key = `${type}:${series ?? 20}`
+function connectorBoundCorners(type: string, series: ConnectorData['series'], profileSpec?: ConnectorData['profileSpec'], mountSeries?: ConnectorData['mountSeries']): readonly THREE.Vector3[] {
+  const key = `${type}:${series ?? 20}:${profileSpec ?? ''}:${mountSeries ?? ''}`
   let corners = connectorBounds.get(key)
   if (!corners) {
-    const box = new THREE.Box3().setFromPoints(connectorMeshes(type, series).flatMap(({ geometry }) => [...solidVertices(geometry)]))
+    const box = new THREE.Box3().setFromPoints(connectorMeshes(type, series, profileSpec, mountSeries).flatMap(({ geometry }) => [...solidProjection(geometry).vertices]))
     const points: THREE.Vector3[] = []
     for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
       points.push(new THREE.Vector3(x, y, z))
@@ -104,7 +114,24 @@ function connectorBoundCorners(type: string, series: ConnectorData['series']): r
   return corners
 }
 
-/** Distance to the projected solids, retaining gaps between a connector's separate arms. */
+/** Squared screen distance to a triangle, including edge-on faces. */
+function triangleDistanceSq(a: THREE.Vector2, b: THREE.Vector2, c: THREE.Vector2, p: THREE.Vector2): number {
+  const ab = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
+  const bc = (c.x - b.x) * (p.y - b.y) - (c.y - b.y) * (p.x - b.x)
+  const ca = (a.x - c.x) * (p.y - c.y) - (a.y - c.y) * (p.x - c.x)
+  const area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+  if (Math.abs(area) > 1e-9 && ((ab >= -1e-9 && bc >= -1e-9 && ca >= -1e-9)
+    || (ab <= 1e-9 && bc <= 1e-9 && ca <= 1e-9))) return 0
+  const segment = (u: THREE.Vector2, v: THREE.Vector2) => {
+    const dx = v.x - u.x, dy = v.y - u.y, lengthSq = dx * dx + dy * dy
+    const t = lengthSq < 1e-9 ? 0 : Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / lengthSq))
+    const x = u.x + dx * t - p.x, y = u.y + dy * t - p.y
+    return x * x + y * y
+  }
+  return Math.min(segment(a, b), segment(b, c), segment(c, a))
+}
+
+/** Distance to actual mesh faces, retaining concave outlines, bores and open cavities. */
 function connectorDistancePx(
   connector: ConnectorData, cursor: THREE.Vector2, camera: THREE.Camera, size: ScreenSize,
   camPos: THREE.Vector3, fwd: THREE.Vector3,
@@ -114,33 +141,27 @@ function connectorDistancePx(
   const scale = connectorScale(connector.series ?? 20)
   const transform = (v: THREE.Vector3) => v.clone().multiplyScalar(scale).applyQuaternion(quaternion).add(position)
   // Reject distant parts before projecting every vertex of their plates and fasteners.
-  const bounds = connectorBoundCorners(connector.type, connector.series).map(transform)
+  const bounds = connectorBoundCorners(connector.type, connector.series, connector.profileSpec, connector.mountSeries).map(transform)
   if (bounds.every(v => v.clone().sub(camPos).dot(fwd) > NEAR_EPS)) {
     const rect = new THREE.Box2().setFromPoints(bounds.map(v => toScreen(v, camera, size))).expandByScalar(CONNECTOR_SLACK_PX)
     if (!rect.containsPoint(cursor)) return Infinity
   }
   let distance = Infinity
-  for (const { geometry } of connectorMeshes(connector.type, connector.series)) {
-    // A single L body is concave: picking its convex hull would fill its open quadrant.
-    if (connector.type === 'inside-corner') {
-      const attr = geometry.getAttribute('position'), indices = geometry.getIndex()
-      for (let i = 0; i < (indices?.count ?? attr.count); i += 3) {
-        const vertices = [0, 1, 2].map((offset) => transform(new THREE.Vector3()
-          .fromBufferAttribute(attr, indices ? indices.getX(i + offset) : i + offset)))
-        if (vertices.some(v => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
-        const outline = vertices.map(v => toScreen(v, camera, size))
-        if (insideQuad(outline, cursor)) return 0
-        distance = Math.min(distance, distanceToOutline(outline, cursor))
-      }
-      continue
+  for (const { geometry } of connectorMeshes(connector.type, connector.series, connector.profileSpec, connector.mountSeries)) {
+    const solid = solidProjection(geometry)
+    const points = solid.vertices.map((vertex) => {
+      const world = transform(vertex)
+      return world.clone().sub(camPos).dot(fwd) > NEAR_EPS ? toScreen(world, camera, size) : null
+    })
+    for (let i = 0; i < solid.triangles.length; i += 3) {
+      const a = points[solid.triangles[i]], b = points[solid.triangles[i + 1]], c = points[solid.triangles[i + 2]]
+      if (!a || !b || !c) continue
+      const here = triangleDistanceSq(a, b, c, cursor)
+      if (here === 0) return 0
+      distance = Math.min(distance, here)
     }
-    const vertices = solidVertices(geometry).map(transform)
-    if (vertices.some(v => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
-    const outline = hull2d(vertices.map(v => toScreen(v, camera, size)))
-    if (insideQuad(outline, cursor)) return 0
-    distance = Math.min(distance, distanceToOutline(outline, cursor))
   }
-  return distance
+  return Math.sqrt(distance)
 }
 
 function segmentDistancePx(a: THREE.Vector2, b: THREE.Vector2, p: THREE.Vector2): { dist: number; t: number } {

@@ -68,15 +68,6 @@ class Step {
   get count(): number { return this.n }
 }
 
-/** the section outline, in millimetres, closed, as the screen draws it */
-function sectionPoints(spec: string): THREE.Vector2[] {
-  const pts = getProfileShape(spec as never).getPoints(1)
-  // three closes the shape by repeating the first point; STEP wants that too, but only once
-  const out = pts.slice()
-  while (out.length > 1 && out[0].distanceTo(out[out.length - 1]) < 1e-6) out.pop()
-  return out
-}
-
 /** a right-handed frame whose +Z is `dir` */
 function frameFor(quat: THREE.Quaternion): { z: THREE.Vector3; x: THREE.Vector3 } {
   return {
@@ -109,9 +100,16 @@ function tidy(pts: THREE.Vector2[]): THREE.Vector2[] {
  * of the section. Every edge is written once and used by exactly the two faces either side of
  * it, once each way round, which is what makes the shell closed.
  */
-function prism(s: Step, section: THREE.Vector2[], label: string, at: THREE.Vector3, z: THREE.Vector3, x: THREE.Vector3, depth: number): number {
-  const pts = tidy(section)
+function prism(s: Step, section: THREE.Vector2[], label: string, at: THREE.Vector3, z: THREE.Vector3, x: THREE.Vector3, depth: number, holes: THREE.Vector2[][] = []): number {
+  const rings = [tidy(section), ...holes.map((hole) => tidy(hole).reverse())]
+  const pts = rings.flat()
   const y = new THREE.Vector3().crossVectors(z, x).normalize()
+  const next: number[] = []
+  let start = 0
+  for (const ring of rings) {
+    ring.forEach((_, i) => next.push(start + (i + 1) % ring.length))
+    start += ring.length
+  }
   const n = pts.length
   const world = (p: THREE.Vector2, h: number) => at.clone().addScaledVector(x, p.x).addScaledVector(y, p.y).addScaledVector(z, h)
   const lo = pts.map((p) => world(p, 0))
@@ -125,25 +123,35 @@ function prism(s: Step, section: THREE.Vector2[], label: string, at: THREE.Vecto
     const line = s.addUnique(`LINE('',#${s.point(a)},#${s.add(`VECTOR('',#${s.direction(d.normalize())},${num(len)})`)})`)
     return s.addUnique(`EDGE_CURVE('',#${va},#${vb},#${line},.T.)`)
   }
-  const eLo = lo.map((a, i) => edge(a, vLo[i], lo[(i + 1) % n], vLo[(i + 1) % n]))
-  const eHi = hi.map((a, i) => edge(a, vHi[i], hi[(i + 1) % n], vHi[(i + 1) % n]))
+  const eLo = lo.map((a, i) => edge(a, vLo[i], lo[next[i]], vLo[next[i]]))
+  const eHi = hi.map((a, i) => edge(a, vHi[i], hi[next[i]], vHi[next[i]]))
   const eUp = lo.map((a, i) => edge(a, vLo[i], hi[i], vHi[i]))
   const use = (e: number, forward: boolean) => `#${s.addUnique(`ORIENTED_EDGE('',*,*,#${e},${forward ? '.T.' : '.F.'})`)}`
-  const face = (edges: string[], point: THREE.Vector3, normal: THREE.Vector3, ref: THREE.Vector3) => {
-    const loop = s.addUnique(`EDGE_LOOP('',(${edges.join(',')}))`)
-    const bound = s.addUnique(`FACE_OUTER_BOUND('',#${loop},.T.)`)
+  const face = (loops: string[][], point: THREE.Vector3, normal: THREE.Vector3, ref: THREE.Vector3) => {
+    const bounds = loops.map((edges, index) => {
+      const loop = s.addUnique(`EDGE_LOOP('',(${edges.join(',')}))`)
+      return s.addUnique(`${index === 0 ? 'FACE_OUTER_BOUND' : 'FACE_BOUND'}('',#${loop},.T.)`)
+    })
     const plane = s.addUnique(`PLANE('',#${s.placement(point, normal, ref)})`)
-    return s.addUnique(`ADVANCED_FACE('',(#${bound}),#${plane},.T.)`)
+    return s.addUnique(`ADVANCED_FACE('',(${bounds.map((id) => `#${id}`).join(',')}),#${plane},.T.)`)
   }
   const faces: number[] = []
   // the far cap looks along +z and runs anticlockwise; the near one looks back and runs the other way
-  faces.push(face(eHi.map((e) => use(e, true)), hi[0], z, x))
-  faces.push(face(eLo.map((e) => use(e, false)).reverse(), lo[0], z.clone().negate(), x))
+  const capLoops = (edges: number[], forward: boolean) => {
+    let offset = 0
+    return rings.map((ring) => {
+      const loop = edges.slice(offset, offset + ring.length).map((e) => use(e, forward))
+      offset += ring.length
+      return forward ? loop : loop.reverse()
+    })
+  }
+  faces.push(face(capLoops(eHi, true), hi[0], z, x))
+  faces.push(face(capLoops(eLo, false), lo[0], z.clone().negate(), x))
   for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n
+    const j = next[i]
     const along = lo[j].clone().sub(lo[i]).normalize()
     const out = new THREE.Vector3().crossVectors(along, z).normalize()
-    faces.push(face([use(eLo[i], true), use(eUp[j], true), use(eHi[i], false), use(eUp[i], false)], lo[i], out, along))
+    faces.push(face([[use(eLo[i], true), use(eUp[j], true), use(eHi[i], false), use(eUp[i], false)]], lo[i], out, along))
   }
   const shell = s.addUnique(`CLOSED_SHELL('',(${faces.map((f) => `#${f}`).join(',')}))`)
   return s.addUnique(`MANIFOLD_SOLID_BREP('${str(label)}',#${shell})`)
@@ -262,7 +270,8 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const depth = t?.cutLength ?? p.length
     if (depth <= 0) continue
     const label = partNumber('profile', p.id)
-    part(label, `${p.spec} L${mm(depth)}`, prism(s, sectionPoints(p.spec), label, start, z, x, depth))
+    const section = getProfileShape(p.spec).extractPoints(6)
+    part(label, `${p.spec} L${mm(depth)}`, prism(s, section.shape, label, start, z, x, depth, section.holes))
   }
 
   for (const b of panels) {
@@ -300,7 +309,7 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const label = partNumber('connector', c.id)
     const description = `${c.type} ${series}`
     const transform = new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
-    const bodies = connectorMeshes(c.type, series).filter((mesh) => !mesh.dark)
+    const bodies = connectorMeshes(c.type, series, c.profileSpec, c.mountSeries).filter((mesh) => !mesh.visualOnly)
       .map(({ geometry }, index) => meshSolid(s, geometry, `${label}-${index + 1}`, transform))
     part(label, description, bodies)
   }

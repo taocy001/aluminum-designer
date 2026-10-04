@@ -1,31 +1,31 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import * as THREE from 'three'
-import desk from '../../examples/desk-with-pedestal.json'
 import connectorDemo from '../../examples/connector-demo.json'
 import { useStore, type ConnectorData, type FittingData, type ProfileData } from '../store/useStore'
 import { autoConnect } from '../utils/autoConnect'
 import { auditBrackets, seatsFor } from '../utils/bracketSeat'
-import { connectorMounts } from '../utils/connectorCatalog'
+import { CONNECTOR_CATALOG, connectorMounts } from '../utils/connectorCatalog'
 import { connectorHitsBody, connectorsCollide } from '../utils/connectorCollision'
-import { connectorMeshes } from '../utils/connectorGeometry'
 import { connectorPlacementCandidates, sameConnectorInstallation, validateConnectorPlacement } from '../utils/connectorPlacement'
 import { fittingSolids } from '../utils/fittingGeometry'
 import { analyzeFrame } from '../utils/analysis'
-import { setThroughRule } from '../utils/jointUtils'
+import { computeAllTrims, setThroughRule } from '../utils/jointUtils'
 import { makeOBB } from '../utils/obb'
 import { buildProfile } from '../utils/profileFactory'
 import { noClearance } from './fixtures/equipment'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
-const profiles = desk.profiles as unknown as ProfileData[]
-const corner = V(40, 700, 560)
-const fivePositions = [[10, 700, 560], [30, 700, 560], [40, 700, 570], [40, 700, 590], [40, 710, 560]]
-const sortedPositions = (parts: { position: number[] }[]) => parts.map((p) => p.position).sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
-const existing: ConnectorData[] = [
-  { id: 'locked-post-x', type: 'inside-corner', series: 20, locked: true, position: [40, 700, 570],
-    quaternion: [0, 0, -Math.SQRT1_2, Math.SQRT1_2] },
-  { id: 'horizontal-swapped-arms', type: 'inside-corner', series: 20, position: [40, 710, 560],
-    quaternion: [-0.5, -0.5, 0.5, -0.5] },
+const corner = V(0, 100, 0)
+const profiles: ProfileData[] = [
+  { ...buildProfile(corner, V(300, 100, 0), '2040')!, id: 'rail', quaternion: [.5, .5, .5, .5] },
+  { ...buildProfile(corner, V(0, 400, 0), '2040')!, id: 'post', quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] },
+]
+const atCorner = (parts: ConnectorData[] = []) => connectorPlacementCandidates('inside-corner', corner, profiles, parts)
+const installed = (): ConnectorData => ({ id: 'existing', type: 'inside-corner', locked: true, ...atCorner().find((seat) => seat.allowed)!.seat })
+const endFrame = (): ProfileData[] => [
+  { ...buildProfile(V(-300, 100, 0), V(-20, 100, 0), '4040')!, id: 'rail' },
+  { ...buildProfile(V(0, -200, 0), V(0, 80, 0), '4040')!, id: 'post' },
+  { ...buildProfile(V(0, 100, -300), V(0, 100, -20), '4040')!, id: 'cross' },
 ]
 
 beforeEach(() => {
@@ -33,56 +33,66 @@ beforeEach(() => {
   useStore.setState({ profiles: [], connectors: [], panels: [], fittings: [], equipment: [], past: [], future: [], selectedIds: [] })
 })
 
-describe('desk rear upper corner', () => {
-  it('exposes two post-X slots, two post-Z slots and one X-Z seat', () => {
-    const seats = connectorPlacementCandidates('inside-corner', corner, profiles, [])
-    expect(sortedPositions(seats.map((c) => c.seat))).toEqual(fivePositions)
-    expect(seats.every((c) => c.allowed && !c.occupied)).toBe(true)
-    const pairs = new Map<string, number>()
-    for (const seat of seats) pairs.set(seat.legs.join('/'), (pairs.get(seat.legs.join('/')) ?? 0) + 1)
-    expect([...pairs.values()].sort()).toEqual([1, 2, 2])
-    expect(connectorPlacementCandidates('inside-corner', corner, [...profiles].reverse(), []).map((c) => c.key))
-      .toEqual(seats.map((c) => c.key))
+describe('two-slot 2040 corner', () => {
+  it('exposes both slots and both arm assignments while blocking the colliding assignment', () => {
+    const seats = atCorner()
+    expect(seats).toHaveLength(4)
+    expect(seats.filter((seat) => seat.allowed)).toHaveLength(2)
+    expect(seats.filter((seat) => !seat.allowed).every((seat) => seat.reason === 'collision')).toBe(true)
+    expect(seats.filter((seat) => seat.allowed).map((seat) => seat.seat.position[2]).sort((a, b) => a - b)).toEqual([-10, 10])
+    expect(new Set(seats.map((seat) => seat.legs.join('/')))).toEqual(new Set(['rail/post', 'post/rail']))
+    expect(connectorPlacementCandidates('inside-corner', corner, [...profiles].reverse(), []).map((seat) => seat.key))
+      .toEqual(seats.map((seat) => seat.key))
   })
 
-  it('recognizes swapped symmetric arms and excludes a connector when reinstalling itself', () => {
-    const seats = connectorPlacementCandidates('inside-corner', corner, profiles, existing)
-    expect(seats.filter((s) => s.occupied)).toHaveLength(2)
-    expect(seats.filter((s) => s.allowed)).toHaveLength(3)
-    const horizontal = seats.find((s) => s.seat.position.join() === '40,710,560')!
-    expect(sameConnectorInstallation({ id: 'new', type: 'inside-corner', ...horizontal.seat }, existing[1])).toBe(true)
-    expect(validateConnectorPlacement(existing[1], profiles, existing, { excludeConnectorId: existing[1].id }))
+  it('recognizes equivalent quaternion signs and excludes itself when reinstalling', () => {
+    const existing = installed(), seats = atCorner([existing])
+    expect(seats.filter((seat) => seat.occupied)).toHaveLength(1)
+    expect(seats.filter((seat) => seat.allowed)).toHaveLength(1)
+    const equivalent = { ...existing, id: 'new', quaternion: existing.quaternion.map((n) => -n) as ConnectorData['quaternion'] }
+    expect(sameConnectorInstallation(equivalent, existing)).toBe(true)
+    const alternate = atCorner().find((seat) => seat.seat.position[2] === existing.position[2] && !seat.allowed)!
+    expect(sameConnectorInstallation({ id: 'opposite-arm', type: 'inside-corner', ...alternate.seat }, existing)).toBe(false)
+    expect(validateConnectorPlacement(existing, profiles, [existing], { excludeConnectorId: existing.id }))
       .toEqual({ allowed: true, occupied: false })
   })
 
-  it('fills all five without replacing existing parts or adding history on retry', () => {
-    useStore.getState().loadDocument({ profiles, connectors: existing, panels: [], fittings: [], equipment: [], throughRule: 'rails' })
+  it('fills the second slot without replacing a locked part or adding history on retry', () => {
+    const existing = installed()
+    useStore.getState().loadDocument({ profiles, connectors: [existing], panels: [], fittings: [], equipment: [], throughRule: 'rails' })
     const before = useStore.getState()
-    const result = autoConnect('inside-corner')
-    expect(result.placed).toBeGreaterThan(0)
-    expect(result.removed).toBe(0)
+    expect(autoConnect('inside-corner')).toMatchObject({ placed: 1, removed: 0 })
     const after = useStore.getState()
-    expect(after.connectors.slice(0, 2)).toEqual(existing)
+    expect(after.connectors[0]).toEqual(existing)
     expect(after.past.length).toBe(before.past.length + 1)
-    const parts = after.connectors.filter((c) => new THREE.Vector3(...c.position).distanceTo(corner) < 60)
-    expect(sortedPositions(parts)).toEqual(fivePositions)
-    expect(auditBrackets(profiles, parts)).toEqual([])
-    expect(analyzeFrame(profiles, parts).conflicts).toEqual([])
+    expect(after.connectors).toHaveLength(2)
+    expect(after.connectors.map((part) => part.position[2]).sort((a, b) => a - b)).toEqual([-10, 10])
+    expect(auditBrackets(profiles, after.connectors)).toEqual([])
+    expect(analyzeFrame(profiles, after.connectors).conflicts).toEqual([])
     expect(autoConnect('inside-corner')).toMatchObject({ placed: 0, removed: 0 })
     expect(useStore.getState()).toBe(after)
   })
 
-  it('offers the T plate with both through-member bolts and reports its obstructed opposite face', () => {
-    const seats = connectorPlacementCandidates('t-bracket', corner, profiles, [])
-    const top = seats.find((s) => s.seat.position.join() === '30,720,570')!
-    expect(top.allowed).toBe(true)
-    expect(top.legs).toEqual(['p-mufs7f0j6g', 'p-mufs7fi56h'])
+  it('places every T-plate hole on the through member or branch and checks the opposite face separately', () => {
+    const frame = [
+      { ...buildProfile(V(-200, 100, 0), V(200, 100, 0), '2020')!, id: 'rail' },
+      { ...buildProfile(V(0, 100, 0), V(0, 400, 0), '2020')!, id: 'post' },
+    ]
+    const seats = connectorPlacementCandidates('t-bracket', corner, frame, [])
+    expect(seats).toHaveLength(2)
+    expect(seats.every((seat) => seat.allowed)).toBe(true)
+    const top = seats.find((seat) => seat.seat.position[2] > 0)!
+    expect(top.legs).toEqual(['rail', 'post'])
     const q = new THREE.Quaternion(...top.seat.quaternion)
-    const bolts = connectorMounts('t-bracket').flatMap((m) => m.bolts)
+    const bolts = connectorMounts('t-bracket').flatMap((mount) => mount.bolts)
       .map((v) => new THREE.Vector3(...v).applyQuaternion(q).add(new THREE.Vector3(...top.seat.position)))
-    expect(bolts.map((b) => b.toArray().map((v) => Math.round(v)))).toEqual([[8, 720, 570], [52, 720, 570], [30, 720, 542]])
-    expect(seats.find((s) => s.seat.position.join() === '30,700,570')).toMatchObject({ allowed: false, reason: 'collision' })
-    expect(connectorPlacementCandidates('gusset', corner, profiles, []).some((s) => s.allowed)).toBe(true)
+    expect(bolts.map((v) => v.toArray().map((n) => Math.round(n) || 0)))
+      .toEqual([[-20, 100, 10], [0, 100, 10], [20, 100, 10], [0, 120, 10], [0, 140, 10]])
+    const blocker = { id: 'blocker', position: [0, 120, -14] as [number, number, number], quaternion: [0, 0, 0, 1] as [number, number, number, number],
+      width: 100, height: 100, thickness: 4, material: 'ply' as const }
+    const blocked = connectorPlacementCandidates('t-bracket', corner, frame, [], undefined, undefined, { panels: [blocker] })
+    expect(blocked.find((seat) => seat.seat.position[2] > 0)?.allowed).toBe(true)
+    expect(blocked.find((seat) => seat.seat.position[2] < 0)).toMatchObject({ allowed: false, reason: 'collision' })
   })
 })
 
@@ -91,60 +101,77 @@ describe('plate and connector geometry', () => {
     const door: FittingData = { id: 'door', kind: 'door', position: [0, 100, 0], quaternion: [0, 0, 0, 1],
       width: 200, height: 200, depth: 100, material: 'ply', open, hinge: 'left', hingeType: 'cup', swing: 90 }
     const remote: FittingData = { ...door, id: 'remote', position: [1000, 100, 0] }
-    const part: ConnectorData = { id: 'nut', type: 't-nut', position: fittingSolids(door)[0].center.toArray(),
-      quaternion: [0, 0, 0, 1], series: 20 }
-    const closedPosition = fittingSolids(door, 0)[0].center.toArray()
+    const center = fittingSolids(door)[0].center
+    const frame = [
+      { ...buildProfile(V(0, 100, 0), V(300, 100, 0), '2020')!, id: 'rail' },
+      { ...buildProfile(V(0, 100, 0), V(0, 400, 0), '2020')!, id: 'post' },
+    ]
+    const seat = connectorPlacementCandidates('bracket', corner, frame, []).find((candidate) => candidate.allowed)!.seat
+    const shift = center.clone().sub(new THREE.Vector3(...seat.position)).sub(V(10, 2, 0))
+    frame.forEach((profile) => { profile.position = new THREE.Vector3(...profile.position).add(shift).toArray() })
+    const part: ConnectorData = { id: 'bracket', type: 'bracket', ...seat,
+      position: new THREE.Vector3(...seat.position).add(shift).toArray() }
+    expect(validateConnectorPlacement(part, frame, [])).toEqual({ allowed: true, occupied: false })
     for (const fittings of [[door], [door, remote], [remote, door]]) {
-      expect(validateConnectorPlacement(part, [], [], { fittings }))
+      expect(validateConnectorPlacement(part, frame, [], { fittings }))
         .toEqual({ allowed: false, occupied: false, reason: 'collision' })
-      if (open > 0) expect(validateConnectorPlacement({ ...part, position: closedPosition }, [], [], { fittings }))
-        .toEqual({ allowed: true, occupied: false })
     }
+    if (open > 0) expect(validateConnectorPlacement(part, frame, [], { fittings: [{ ...door, open: 0 }] }))
+      .toEqual({ allowed: true, occupied: false })
   })
 
-  it('keeps the third arm outside the adjacent post while all three mounting holes reach slots', () => {
-    const frame = [
-      buildProfile(V(0, 10, 0), V(600, 10, 0), '2020', 'rail')!,
-      buildProfile(V(0, 0, 0), V(0, 800, 0), '2020', 'post')!,
-      buildProfile(V(10, 10, 0), V(10, 10, 600), '2020', 'third')!,
-    ]
-    const candidates = connectorPlacementCandidates('corner-3way', V(0, 10, 0), frame, [])
-    expect(candidates.some((candidate) => candidate.allowed)).toBe(true)
-    const part = { id: 'three-way', type: 'corner-3way', ...candidates.find((candidate) => candidate.allowed)!.seat }
+  it('fits a three-way cube between three square-cut 4040 ends and requires the third support', () => {
+    const frame = endFrame()
+    const candidate = connectorPlacementCandidates('corner-3way', corner, frame, []).find((seat) => seat.allowed)!
+    expect(candidate).toBeDefined()
+    const part: ConnectorData = { id: 'three-way', type: 'corner-3way', ...candidate.seat }
     expect(auditBrackets(frame, [part])).toEqual([])
     expect(analyzeFrame(frame, [part]).conflicts).toEqual([])
-    const blocker = makeOBB(V(0, 2, 16), V(3, 2, 3), new THREE.Quaternion())
-    expect(connectorHitsBody({ id: 'local', type: 'corner-3way', position: [0, 0, 0], quaternion: [0, 0, 0, 1] }, blocker, 1, false)).toBe(true)
+    expect(validateConnectorPlacement(part, frame.slice(0, 2), [])).toMatchObject({ allowed: false, reason: 'no-joint' })
+    const blocker = makeOBB(corner.clone(), V(3, 3, 3), new THREE.Quaternion())
+    expect(connectorHitsBody(part, blocker, 1, false)).toBe(true)
   })
 
-  it('seats the connector showcase without profile or connector collisions', () => {
+  it('installs every verified showcase part and explicitly identifies its one unmounted sample', () => {
     const frame = connectorDemo.profiles as unknown as ProfileData[]
-    const parts = connectorDemo.connectors as ConnectorData[]
-    expect(auditBrackets(frame, parts)).toEqual([])
+    const parts = connectorDemo.connectors as unknown as ConnectorData[]
+    expect(new Set(parts.map((part) => part.type))).toEqual(new Set(CONNECTOR_CATALOG.map((part) => part.type)))
+    expect(connectorDemo.showcaseSamples.map((sample) => sample.type)).toEqual(['caster-mount'])
+    const sampleIds = new Set(connectorDemo.showcaseSamples.map((sample) => sample.connectorId))
+    expect(auditBrackets(frame, parts).map(({ id, reason }) => ({ id, reason })))
+      .toEqual([{ id: 'caster-mount', reason: 'no-joint' }])
     expect(analyzeFrame(frame, parts).conflicts).toEqual([])
     expect(analyzeFrame(frame, parts).mismatches.filter((m) => m.kind === 'face')).toEqual([])
-    for (const id of ['c3', 'c5']) {
-      expect(validateConnectorPlacement(parts.find((part) => part.id === id)!, frame, parts, { excludeConnectorId: id }))
-        .toEqual({ allowed: true, occupied: false })
+    for (const part of parts) {
+      const status = validateConnectorPlacement(part, frame, parts, { excludeConnectorId: part.id })
+      expect(status, part.type).toEqual(sampleIds.has(part.id)
+        ? { allowed: false, occupied: false, reason: 'unverified' }
+        : { allowed: true, occupied: false })
     }
+    expect(connectorDemo.showcaseSamples[0].reason).toContain('未安装')
+    expect(connectorDemo.showcaseSamples[0].sourceUrl).toMatch(/^https:\/\/www\.motedis\.com\//)
   })
 
-  it('overrides a planar face warning only for an installed, supported and unobstructed three-way connector', () => {
-    const frame = (connectorDemo.profiles as unknown as ProfileData[]).filter((p) => ['p10', 'p11', 'p12'].includes(p.id))
-    const part = connectorDemo.connectors.find((c) => c.id === 'c5') as ConnectorData
-    const faces = (profiles: ProfileData[], connectors: ConnectorData[]) => analyzeFrame(profiles, connectors).mismatches.filter((m) => m.kind === 'face')
-    expect(faces(frame, [])).not.toHaveLength(0)
-    expect(faces(frame, [part])).toEqual([])
-    expect(faces(frame, [{ ...part, position: [part.position[0] + 5, part.position[1], part.position[2]] }])).not.toHaveLength(0)
-    expect(faces(frame, [{ ...part, series: 30 }])).not.toHaveLength(0)
-    expect(faces(frame.filter((p) => p.id !== 'p10'), [part])).not.toHaveLength(0)
-    const obstructed = analyzeFrame(frame, [part], [{ id: 'blocker', position: [...part.position], quaternion: [0, 0, 0, 1],
-      width: 100, height: 100, thickness: 100, material: 'ply' }])
-    expect(obstructed.conflictIds.has(part.id)).toBe(true)
-    expect(obstructed.mismatches.filter((m) => m.kind === 'face')).not.toHaveLength(0)
+  it('does not accept a displaced, incompatible or obstructed three-way installation', () => {
+    const frame = endFrame()
+    const seat = connectorPlacementCandidates('corner-3way', corner, frame, []).find((candidate) => candidate.allowed)!.seat
+    const part: ConnectorData = { id: 'cube', type: 'corner-3way', ...seat }
+    expect(validateConnectorPlacement({ ...part, position: [5, 100, 0] }, frame, [])).toMatchObject({ allowed: false, reason: 'no-joint' })
+    expect(validateConnectorPlacement({ ...part, series: 30 }, frame, [])).toMatchObject({ allowed: false, reason: 'unverified' })
+    const panel = { id: 'blocker', position: [...part.position] as ConnectorData['position'], quaternion: [0, 0, 0, 1] as ConnectorData['quaternion'],
+      width: 100, height: 100, thickness: 100, material: 'ply' as const }
+    expect(validateConnectorPlacement(part, frame, [], { panels: [panel] })).toMatchObject({ allowed: false, reason: 'collision' })
+    expect(analyzeFrame(frame, [part], [panel]).conflictIds.has(part.id)).toBe(true)
   })
 
   it('keeps showcase connector contact checks invariant under rigid transforms', () => {
+    const original = connectorDemo.profiles as unknown as ProfileData[]
+    const trims = computeAllTrims(original)
+    // Freeze physical cut ends before rotating; the world-axis through-member rule
+    // otherwise recalculates a different assembly instead of rigidly moving this one.
+    const fixed = original.map((p) => ({ ...p, fixedTrims: {
+      start: trims.get(p.id)!.start.trim, end: trims.get(p.id)!.end.trim,
+    } }))
     for (let i = 0; i < 9; i++) {
       const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(i * 0.19, i * 0.31, i * 0.43))
       const shift = V(17 * i, -31 * i, 10.2 * i)
@@ -152,15 +179,18 @@ describe('plate and connector geometry', () => {
         position: new THREE.Vector3(...part.position).applyQuaternion(rotation).add(shift).toArray(),
         quaternion: rotation.clone().multiply(new THREE.Quaternion(...part.quaternion)).toArray(),
       })
-      const frame = (connectorDemo.profiles as unknown as ProfileData[]).map(pose)
-      const parts = (connectorDemo.connectors as ConnectorData[]).map(pose)
+      const frame = fixed.map(pose)
+      const parts = (connectorDemo.connectors as unknown as ConnectorData[]).map(pose)
       const ids = new Set(parts.map((p) => p.id))
       expect(analyzeFrame(frame, parts).conflicts.filter((c) => ids.has(c.a) || ids.has(c.b))).toEqual([])
-      expect(auditBrackets(frame, parts)).toEqual([])
+      // A floor foot intentionally requires a downward-facing host; its supported
+      // orientation is checked above. The unmounted caster remains a catalogue sample.
+      expect(auditBrackets(frame, parts.filter((part) => !['foot', 'caster-mount'].includes(part.type)))).toEqual([])
     }
   })
 
-  it.each(['gusset', 't-bracket'])('offers both faces, every slot and either through-member role for %s', (type) => {
+  it('offers both faces, every slot and either through-member role for a T plate', () => {
+    const type = 't-bracket'
     const cross: ProfileData[] = [
       { ...buildProfile(V(-200, 0, 0), V(200, 0, 0), '2040', 'x')!, quaternion: [0.5, 0.5, 0.5, 0.5] },
       { ...buildProfile(V(0, 0, -200), V(0, 0, 200), '2040', 'z')!, quaternion: [0, 0, Math.SQRT1_2, Math.SQRT1_2] },
@@ -172,19 +202,6 @@ describe('plate and connector geometry', () => {
       [-10, 10].flatMap((x) => [-10, 10].flatMap((y) => [-10, 10].map((z) => [x, y, z].join()))),
     ))
     expect(new Set(seats.map((s) => s.legs.join('/')))).toEqual(new Set(['x/z', 'z/x']))
-  })
-
-  it.each(['bracket', 'gusset', 't-bracket', 'corner-3way'])('uses the audited mounting positions for visible %s holes', (type) => {
-    const holes = connectorMeshes(type).filter((m) => m.dark)
-    const mounts = connectorMounts(type).flatMap((m) => m.bolts.map((bolt) => ({ bolt, normal: m.normal })))
-    expect(holes).toHaveLength(mounts.length)
-    holes.forEach((mesh, i) => {
-      mesh.geometry.computeBoundingBox()
-      const center = mesh.geometry.boundingBox!.getCenter(new THREE.Vector3())
-      const expected = new THREE.Vector3(...mounts[i].bolt)
-      expected[mounts[i].normal] += 2
-      expect(center.distanceTo(expected)).toBeLessThan(1e-5)
-    })
   })
 
   it.each(['gusset', 't-bracket'])('leaves the empty part of the %s envelope available', (type) => {
@@ -199,13 +216,13 @@ describe('plate and connector geometry', () => {
   })
 
   it('detects colliding inserted arms and checks each member against its own slot', () => {
-    const part: ConnectorData = { id: 'inside', type: 'inside-corner', position: [0, 0, 0], quaternion: [0, 0, 0, 1] }
+    const part: ConnectorData = { id: 'inside', type: 'inside-corner', position: [-.5, -.6, 0], quaternion: [0, 0, 0, 1] }
     const moved = { ...part, id: 'other', position: [10, 0, 0] as [number, number, number] }
     expect(connectorsCollide(part, moved)).toBe(true)
     expect(analyzeFrame([], [part, moved]).conflicts.map((c) => [c.a, c.b])).toEqual([['inside', 'other']])
     expect(connectorHitsBody(part, makeOBB(V(1, 1, 0), V(10, 10, 10), new THREE.Quaternion()))).toBe(true)
     const alongX = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2)
-    expect(connectorHitsBody(part, makeOBB(V(10, -10, 0), V(10, 10, 10), alongX))).toBe(false)
+    expect(connectorHitsBody(part, makeOBB(V(50, -10, 0), V(10, 10, 50), alongX))).toBe(false)
     // A crossing member cannot inherit the exemption of the arm's mounting member.
     expect(connectorHitsBody(part, makeOBB(V(10, -10, 0), V(10, 10, 10), new THREE.Quaternion()))).toBe(true)
   })

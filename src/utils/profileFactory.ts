@@ -154,7 +154,7 @@ export function placeConnector(
   const t = translations[language]
   if (occupied) { showToast(t.connectorOccupied, 'info'); return }
   if (!allowed) {
-    showToast(reason === 'collision' ? t.connectorReasonCollision : reason === 'equipment' ? t.connectorReasonEquipment : t.connectorNoSeat, 'info')
+    showToast(reason === 'collision' ? t.connectorReasonCollision : reason === 'equipment' ? t.connectorReasonEquipment : reason === 'unverified' ? t.connectorReasonUnverified : t.connectorNoSeat, 'info')
     return
   }
   reportEditResult(addConnector({
@@ -163,5 +163,7 @@ export function placeConnector(
     series: seat.series,
     position: seat.position,
     quaternion: seat.quaternion,
+    profileSpec: seat.profileSpec,
+    mountSeries: seat.mountSeries,
   }))
 }

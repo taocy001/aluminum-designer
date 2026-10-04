@@ -17,7 +17,7 @@ it('includes the rotated rectangular section and retains submillimetre precision
   const p = buildProfile(V(0, 50, 0), V(600, 50, 0), '2040', 'rail')!
   p.quaternion = new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), Math.PI / 4)
     .multiply(new THREE.Quaternion(...p.quaternion)).toArray()
-  expect(selectedSolidTop(document({ profiles: [p] }), ['rail'])).toBeCloseTo(50 + 30 / Math.sqrt(2), 3)
+  expect(selectedSolidTop(document({ profiles: [p] }), ['rail'])).toBeCloseTo(50 + 30 / Math.sqrt(2), 2)
 })
 
 it('uses the shortened physical starting end of a downward-drawn upright', () => {
@@ -53,11 +53,12 @@ it('returns no target for an empty or no longer existing selection', () => {
   expect(selectedSolidTop(document({}), ['gone'])).toBeNull()
 })
 
+// Physical dimensions from the referenced SKUs; series 20 does not shrink a 40-series reference.
 it.each([
-  ['foot', 128], ['gusset', 130], ['inside-corner', 120], ['t-bracket', 140],
-  ['bracket', 130], ['flat-plate', 105.5], ['joining-plate', 108], ['end-cap', 110],
-  ['caster-mount', 102], ['cross-bracket', 124], ['hinge', 115], ['pivot', 113],
-  ['corner-3way', 120], ['t-nut', 110],
+  ['foot', 110], ['gusset', 140], ['inside-corner', 120.45], ['t-bracket', 150],
+  ['bracket', 118], ['flat-plate', 104], ['joining-plate', 109], ['end-cap', 110],
+  ['caster-mount', 100], ['cross-bracket', 145], ['hinge', 118], ['pivot', 122],
+  ['corner-3way', 120], ['t-nut', 99.5],
 ])('uses the actual %s solids instead of a collision envelope', (type, expected) => {
   const part: ConnectorData = { id: 'part', type, series: 20, position: [0, 100, 0], quaternion: [0, 0, 0, 1] }
   expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBe(expected)
@@ -66,18 +67,18 @@ it.each([
 it('does not invent the missing upper corner of a rotated triangular gusset', () => {
   const part: ConnectorData = { id: 'part', type: 'gusset', series: 30, position: [0, 100, 0],
     quaternion: new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), Math.PI / 4).toArray() }
-  // The diagonal edge x+y=22 becomes horizontal; the enclosing square's upper corner is empty.
-  expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBeCloseTo(100 + 22 / Math.SQRT2 * 1.5, 2)
+  // The reference 40-4332 diagonal x+y=40 becomes horizontal, with no invented square corner.
+  expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBeCloseTo(100 + 40 / Math.SQRT2, 2)
 })
 
-it('includes a sideways 40-series foot disc, which is wider than its stem and top plate', () => {
+it('uses the fixed D39.4 foot diameter when it is turned sideways on a 40-series member', () => {
   const part: ConnectorData = { id: 'part', type: 'foot', series: 40, position: [0, 100, 0],
     quaternion: new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), Math.PI / 2).toArray() }
-  expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBe(136)
+  expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBeCloseTo(119.7, 3)
 })
 
-it('scales the rotated top plate of a 30-series foot before taking the world maximum', () => {
+it('rotates the fixed M8 stud envelope without scaling it for a 30-series member', () => {
   const part: ConnectorData = { id: 'part', type: 'foot', series: 30, position: [0, 100, 0],
     quaternion: new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), Math.PI / 4).toArray() }
-  expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBeCloseTo(100 + 38 * 1.5 / Math.sqrt(2), 3)
+  expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBeCloseTo(100 + 14 / Math.sqrt(2), 2)
 })

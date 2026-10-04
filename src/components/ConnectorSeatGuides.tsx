@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { Line } from '@react-three/drei'
 import * as THREE from 'three'
 import type { ConnectorData, ProfileData } from '../store/useStore'
-import { connectorMounts, connectorScale } from '../utils/connectorCatalog'
+import { connectorMounts, connectorScale, seriesOf } from '../utils/connectorCatalog'
 import { computeAllTrims } from '../utils/jointUtils'
 import { profileBodyEndpoints, profileFace } from '../utils/profileFaces'
+import { innerInset } from '../utils/bracketSeat'
 import { specDims } from '../utils/specUtils'
 
 /** Mark each bolt's actual mounting face and slot, including the two slots of a wide face. */
@@ -17,12 +18,14 @@ export default function ConnectorSeatGuides({ connector, legs, profiles }: {
     const q = new THREE.Quaternion(...connector.quaternion).normalize()
     const origin = new THREE.Vector3(...connector.position), scale = connectorScale(connector.series ?? 20)
     const trims = computeAllTrims(profiles)
-    return connectorMounts(connector.type).flatMap((mount) => {
+    return connectorMounts(connector.type, connector.series ?? 20).flatMap((mount) => {
       const along = new THREE.Vector3().setComponent(mount.axis === 'x' ? 0 : mount.axis === 'y' ? 1 : 2, 1).applyQuaternion(q)
       const normal = new THREE.Vector3().setComponent(mount.normal === 'x' ? 0 : mount.normal === 'y' ? 1 : 2, 1).applyQuaternion(q)
       return mount.bolts.flatMap((bolt) => {
-        const point = new THREE.Vector3(...bolt).multiplyScalar(scale).applyQuaternion(q).add(origin)
+        const mountingPoint = new THREE.Vector3(...bolt).multiplyScalar(scale).applyQuaternion(q).add(origin)
         return profiles.filter((profile) => legs.includes(profile.id)).flatMap((profile) => {
+          const point = mountingPoint.clone()
+          if (connector.type === 'inside-corner') point.addScaledVector(normal, innerInset(seriesOf(profile.spec), mount.normal === 'x' ? 'x' : 'y'))
           const pq = new THREE.Quaternion(...profile.quaternion).normalize(), inverse = pq.clone().invert()
           if (Math.abs(new THREE.Vector3(0, 0, 1).applyQuaternion(pq).dot(along)) < 0.999) return []
           const local = point.clone().sub(new THREE.Vector3(...profile.position)).applyQuaternion(inverse)

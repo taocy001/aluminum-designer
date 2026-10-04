@@ -1,15 +1,20 @@
 import { expect, it } from 'vitest'
-import desk from '../../examples/desk-with-pedestal.json'
-import type { ConnectorData, ProfileData } from '../store/useStore'
+import * as THREE from 'three'
+import { buildProfile } from '../utils/profileFactory'
+import { seatFor } from '../utils/bracketSeat'
+import type { ConnectorData } from '../store/useStore'
 import { auditBrackets } from '../utils/bracketSeat'
 import { computeAllTrims } from '../utils/jointUtils'
 
+const fixture = () => {
+  const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
+  const profiles = [buildProfile(v(0, 100, 0), v(600, 100, 0), '2020')!, buildProfile(v(0, 100, 0), v(0, 600, 0), '2020')!]
+  const connector: ConnectorData = { id: 'angle', type: 'bracket', ...seatFor('bracket', profiles[0], profiles[1], v(0, 100, 0))! }
+  return { profiles, connector }
+}
+
 it('refreshes cached mounting points after an in-place pose, type or series edit', () => {
-  const profiles = desk.profiles as unknown as ProfileData[]
-  const connector: ConnectorData = {
-    id: 'angle', type: 'inside-corner', series: 20,
-    position: [40, 700, 570], quaternion: [0, 0, -Math.SQRT1_2, Math.SQRT1_2],
-  }
+  const { profiles, connector } = fixture()
   const original = structuredClone(connector)
   expect(auditBrackets(profiles, [connector])).toEqual([])
   const check = () => expect(auditBrackets(profiles, [connector]))
@@ -30,8 +35,8 @@ it('refreshes cached mounting points after an in-place pose, type or series edit
 })
 
 it('rechecks supporting profiles after pose, section, length and trim changes', () => {
-  const profiles = structuredClone(desk.profiles) as unknown as ProfileData[]
-  const connectors = structuredClone(desk.connectors) as unknown as ConnectorData[]
+  const { profiles, connector } = fixture()
+  const connectors = [connector]
   expect(auditBrackets(profiles, connectors)).toEqual([])
   const original = structuredClone(profiles[0])
   const check = () => expect(auditBrackets(profiles, connectors))

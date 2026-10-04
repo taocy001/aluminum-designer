@@ -105,6 +105,9 @@ describe('drawer configuration transaction', () => {
 })
 
 describe('connected drawer supports', () => {
+  const supportedDrawer = (extra: Partial<FittingData> = {}) => drawer({ frame: 20, ...extra })
+  beforeEach(() => useStore.setState({ fittings: [supportedDrawer()] }))
+
   it('adds two rails and four legal brackets without changing existing cuts, then is idempotent', () => {
     const frame = posts()
     useStore.setState({ profiles: frame })
@@ -128,8 +131,8 @@ describe('connected drawer supports', () => {
   })
 
   it('fills just the missing side and leaves other drawers untouched', () => {
-    const f = drawer(), rail = buildDrawerSupport(f, 'left', '2020', { back: -250, front: 250 }, 'existing')!
-    useStore.setState({ profiles: [...posts(), rail], fittings: [f, drawer({ id: 'other', position: [1000, 200, 0] })] })
+    const f = supportedDrawer(), rail = buildDrawerSupport(f, 'left', '2020', { back: -250, front: 250 }, 'existing')!
+    useStore.setState({ profiles: [...posts(), rail], fittings: [f, supportedDrawer({ id: 'other', position: [1000, 200, 0] })] })
     const result = addDrawerSupports(['drawer'])
     expect(result.failed).toEqual([])
     expect(result.generated.map((r) => [r.fittingId, r.side])).toEqual([['drawer', 'right']])
@@ -146,11 +149,11 @@ describe('connected drawer supports', () => {
   })
 
   it('does not change locked drawers or generate floating rails', () => {
-    useStore.setState({ fittings: [drawer({ locked: true })], profiles: posts() })
+    useStore.setState({ fittings: [supportedDrawer({ locked: true })], profiles: posts() })
     const before = useStore.getState()
     expect(addDrawerSupports(['drawer']).failed.every((v) => v.reason === 'locked')).toBe(true)
     expect(useStore.getState()).toBe(before)
-    useStore.setState({ fittings: [drawer()], profiles: [] })
+    useStore.setState({ fittings: [supportedDrawer()], profiles: [] })
     expect(addDrawerSupports(['drawer']).generated).toEqual([])
     expect(useStore.getState().profiles).toEqual([])
   })
@@ -163,6 +166,15 @@ describe('connected drawer supports', () => {
     expect(useStore.getState()).toBe(before)
   })
 
+  it('rejects a front placed inside the post thickness without leaving a half-built support', () => {
+    // The front posts run from Z=250 to Z=270; frame=0 embeds the overlay front in them.
+    useStore.setState({ profiles: posts(), fittings: [drawer({ frame: 0 })] })
+    const before = useStore.getState()
+    expect(addDrawerSupports(['drawer'])).toEqual({ generated: [],
+      failed: [{ fittingId: 'drawer', side: 'left', reason: 'no-connection' }] })
+    expect(useStore.getState()).toBe(before)
+  })
+
   it('rejects a mixed-series joint without shared mounting slots', () => {
     const frame = [-315, 315].flatMap((x) => [-265, 265].map((z) => buildProfile(V(x, 0, z), V(x, 600, z), '3030')!))
     useStore.setState({ profiles: frame })
@@ -172,7 +184,7 @@ describe('connected drawer supports', () => {
   })
 
   it('automatically chooses a compatible rail for 4040 posts', () => {
-    useStore.setState({ profiles: [-320, 320].flatMap((x) => [-270, 270].map((z) =>
+    useStore.setState({ fittings: [supportedDrawer({ frame: 40 })], profiles: [-320, 320].flatMap((x) => [-270, 270].map((z) =>
       buildProfile(V(x, 0, z), V(x, 600, z), '4040')!)) })
     const result = addDrawerSupports(['drawer'])
     expect(result.failed).toEqual([])
@@ -187,7 +199,7 @@ describe('connected drawer supports', () => {
     const rotate = (p: ProfileData): ProfileData => ({ ...p,
       position: V(...p.position).applyQuaternion(q).toArray() as ProfileData['position'],
       quaternion: q.clone().multiply(new THREE.Quaternion(...p.quaternion)).toArray() as ProfileData['quaternion'] })
-    const f = drawer()
+    const f = supportedDrawer()
     useStore.setState({ profiles: posts().map(rotate), fittings: [{ ...f,
       position: V(...f.position).applyQuaternion(q).toArray() as FittingData['position'],
       quaternion: q.toArray() as FittingData['quaternion'] }] })

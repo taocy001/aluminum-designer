@@ -41,6 +41,10 @@ export interface ConnectorData {
   type: string
   /** extrusion series the part is made for; older files default to the 20 series */
   series?: 20 | 30 | 40
+  /** Full mating section for end caps and section-specific hardware. */
+  profileSpec?: ProfileSpec
+  /** Slot family of the host of each inner-bracket arm, ordered local X then Y. */
+  mountSeries?: [20 | 30 | 40, 20 | 30 | 40]
   position: [number, number, number]
   quaternion: [number, number, number, number]
   locked?: boolean

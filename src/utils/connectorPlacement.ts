@@ -7,6 +7,8 @@ import { panelOBB, trimmedOBB } from './analysis'
 import { equipmentClearance } from './equipmentGeometry'
 import { fittingSolids } from './fittingGeometry'
 import { connectorHitsBody, connectorsCollide } from './connectorCollision'
+import { hardwareReference } from './connectorHardware'
+import { nonCornerMounted } from './connectorMounting'
 
 export interface ConnectorPlacementOptions {
   excludeConnectorId?: string
@@ -14,7 +16,7 @@ export interface ConnectorPlacementOptions {
   panels?: PanelData[]
   fittings?: FittingData[]
 }
-export type ConnectorPlacementReason = 'occupied' | 'collision' | 'equipment' | 'no-joint'
+export type ConnectorPlacementReason = 'occupied' | 'collision' | 'equipment' | 'no-joint' | 'unverified'
 export interface ConnectorPlacementStatus {
   occupied: boolean
   allowed: boolean
@@ -26,22 +28,22 @@ export interface ConnectorPlacementCandidate extends ConnectorPlacementStatus {
   legs: BracketSeat['legs']
 }
 
-function contacts(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 'series'>) {
+function contacts(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 'series' | 'profileSpec' | 'mountSeries'>) {
   const q = new THREE.Quaternion(...c.quaternion).normalize(), k = connectorScale(c.series ?? 20)
-  return connectorMounts(c.type).flatMap((mount) => mount.bolts.map((bolt) => ({
+  return connectorMounts(c.type, c.series ?? 20).flatMap((mount) => mount.bolts.map((bolt) => ({
     point: new THREE.Vector3(...bolt).multiplyScalar(k).applyQuaternion(q).add(new THREE.Vector3(...c.position)),
     normal: new THREE.Vector3(...(mount.normal === 'x' ? [1, 0, 0] : mount.normal === 'y' ? [0, 1, 0] : [0, 0, 1]) as [number, number, number]).applyQuaternion(q),
   })))
 }
 
 /** Stable identity from physical mounting holes, including symmetric arm permutations. */
-export function connectorInstallationKey(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 'series'>): string {
+export function connectorInstallationKey(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 'series' | 'profileSpec' | 'mountSeries'>): string {
   const rounded = (n: number) => Number(n.toFixed(4))
   const mounts = contacts(c).map(({ point, normal }) => [...point.toArray(), ...normal.toArray()].map(rounded))
-  if (mounts.length) return JSON.stringify([c.type, c.series ?? 20, mounts.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))])
+  if (mounts.length) return JSON.stringify([c.type, c.series ?? 20, c.profileSpec, mounts.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))])
   const q = new THREE.Quaternion(...c.quaternion).normalize().toArray()
   const sign = (q.find((n) => Math.abs(n) > 1e-12) ?? 1) < 0 ? -1 : 1
-  return JSON.stringify([c.type, c.series ?? 20, c.position.map(rounded), q.map((n) => rounded(n * sign))])
+  return JSON.stringify([c.type, c.series ?? 20, c.profileSpec, c.position.map(rounded), q.map((n) => rounded(n * sign))])
 }
 
 export function sameConnectorInstallation(a: ConnectorData, b: ConnectorData): boolean {
@@ -51,10 +53,13 @@ export function sameConnectorInstallation(a: ConnectorData, b: ConnectorData): b
   if (ca.length) return ca.length === cb.length && ca.every((x) => cb.some((y) => x.point.distanceTo(y.point) <= 1 && x.normal.dot(y.normal) > 0.999))
   const qa = new THREE.Quaternion(...a.quaternion).normalize(), qb = new THREE.Quaternion(...b.quaternion).normalize()
   if (a.type === 'end-cap') {
+    if (a.profileSpec !== b.profileSpec) return false
     const axis = (v: [number, number, number], q: THREE.Quaternion) => new THREE.Vector3(...v).applyQuaternion(q)
     if (axis([0, 0, 1], qa).dot(axis([0, 0, 1], qb)) < 0.999) return false
     const x = axis([1, 0, 0], qa)
-    return Math.max(Math.abs(x.dot(axis([1, 0, 0], qb))), Math.abs(x.dot(axis([0, 1, 0], qb)))) > 0.999
+    return (a.profileSpec === '2040' || a.profileSpec === '3040'
+      ? Math.abs(x.dot(axis([1, 0, 0], qb)))
+      : Math.max(Math.abs(x.dot(axis([1, 0, 0], qb))), Math.abs(x.dot(axis([0, 1, 0], qb))))) > 0.999
   }
   return Math.abs(qa.dot(qb)) > 0.999
 }
@@ -75,12 +80,14 @@ export function createConnectorPlacementValidator(profiles: ProfileData[], optio
   return (part: ConnectorData, connectors: ConnectorData[]): ConnectorPlacementStatus => {
     const others = connectors.filter((c) => c.id !== options.excludeConnectorId)
     if (others.some((c) => sameConnectorInstallation(part, c))) return { occupied: true, allowed: false, reason: 'occupied' }
-    const corner = connectorEntry(part.type)?.fit === 'corner'
+    if (!hardwareReference(part.type, part.series ?? 20)?.verified) return { occupied: false, allowed: false, reason: 'unverified' }
+    const corner = connectorEntry(part.type)?.fit === 'corner' && part.type !== 'corner-3way'
+    if (!corner && !nonCornerMounted(part, profiles, trims)) return { occupied: false, allowed: false, reason: 'no-joint' }
     if (corner && auditBrackets(profiles, [part], trims).length) return { occupied: false, allowed: false, reason: 'no-joint' }
     if (equipment.some((body) => connectorHitsBody(part, body, 1, false)))
       return { occupied: false, allowed: false, reason: 'equipment' }
     if (others.some((c) => connectorsCollide(part, c))
-      || (corner && members.some((body) => connectorHitsBody(part, body)))
+      || members.some((body) => connectorHitsBody(part, body))
       || boards.some((body) => connectorHitsBody(part, body, 1, false)))
       return { occupied: false, allowed: false, reason: 'collision' }
     return { occupied: false, allowed: true }
@@ -99,7 +106,7 @@ export function connectorPlacementCandidates(
     seen.add(key)
     return [{ seat: { ...candidate, seated: true as const }, legs: candidate.legs, key,
       ...validate(part, connectors) }]
-  })
+  }).sort((a, b) => Number(b.allowed || b.occupied) - Number(a.allowed || a.occupied))
 }
 
 /** Resolve one explicit placement choice, without advancing past occupied or blocked seats. */
@@ -109,13 +116,14 @@ export function resolveConnectorPlacement(
   searchPoint = point, options: ConnectorPlacementOptions = {},
 ) {
   const corner = connectorEntry(type)?.fit === 'corner'
-  const candidates = corner ? connectorPlacementCandidates(type, point, profiles, connectors, normal, searchPoint, options) : []
+  const candidates = connectorPlacementCandidates(type, point, profiles, connectors, normal, searchPoint, options)
   const keys = candidates.map((c) => c.key)
   const index = typeof choice === 'string' ? Math.max(0, keys.indexOf(choice))
     : candidates.length ? ((choice % candidates.length) + candidates.length) % candidates.length : 0
   const candidate = candidates[index]
   const seat = candidate?.seat ?? connectorSeatAt(type, point, profiles, normal)
-  const status = candidate ?? (corner ? { occupied: false, allowed: false, reason: 'no-joint' as const }
+  const status = candidate ?? (!hardwareReference(type, seat.series)?.verified
+    ? { occupied: false, allowed: false, reason: 'unverified' as const } : corner ? { occupied: false, allowed: false, reason: 'no-joint' as const }
     : validateConnectorPlacement({ id: 'candidate', type, ...seat }, profiles, connectors, options))
   return { seat, index, keys, key: keys[index] ?? null, count: candidates.length, legs: candidate?.legs,
     occupied: status.occupied, allowed: status.allowed, reason: status.reason, candidates }

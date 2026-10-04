@@ -6,7 +6,10 @@ import { connectorSeatsAt, auditBrackets, sharedSlotLines } from '../utils/brack
 import { autoConnect } from '../utils/autoConnect'
 import { computeAllTrims, setThroughRule } from '../utils/jointUtils'
 import { findConflicts } from '../utils/analysis'
+import { connectorPlacementCandidates, sameConnectorInstallation } from '../utils/connectorPlacement'
 import { fitConnector } from '../utils/connectorFit'
+import { connectorHitsBody } from '../utils/connectorCollision'
+import { trimmedOBB } from '../utils/analysis'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 const wideCorner = (): ProfileData[] => [
@@ -34,7 +37,7 @@ describe('all physical corner seats', () => {
     expect(sharedSlotLines(0, 20, 0, 40)).toEqual([])
     const profiles = wideCorner()
     const seats = connectorSeatsAt('inside-corner', V(10, 30, 0), profiles)
-    expect(seats.map((s) => s.position).sort()).toEqual([[10, 30, -10], [10, 30, 10]])
+    expect(seats.map((s) => s.position).sort()).toEqual([[9.4, 29.5, -10], [9.4, 29.5, 10], [9.5, 29.4, -10], [9.5, 29.4, 10]])
     expect(auditBrackets(profiles, seats.map((s, i) => ({ id: `c${i}`, type: 'inside-corner', ...s })))).toEqual([])
   })
 
@@ -42,8 +45,9 @@ describe('all physical corner seats', () => {
     for (const z of [-10, 10]) {
       const profiles = wideCorner()
       const seats = connectorSeatsAt('inside-corner', V(10, 30, z), profiles, V(1, 0, 0))
-      expect(seats[0].position).toEqual([10, 30, z])
-      expect(seats).toHaveLength(2)
+      expect(seats[0].position[2]).toBe(z)
+      expect(seats).toHaveLength(4)
+      expect(seats.filter((seat) => seat.position[2] === z)).toHaveLength(2)
       expect(connectorSeatsAt('inside-corner', V(10, 30, z), [...profiles].reverse(), V(1, 0, 0))).toEqual(seats)
     }
   })
@@ -51,7 +55,7 @@ describe('all physical corner seats', () => {
   it('offers each perpendicular member pair at a three-direction joint', () => {
     const profiles = threeWay()
     const seats = connectorSeatsAt('inside-corner', V(0, 400, 0), profiles)
-    expect(new Set(seats.map((s) => s.legs.join('/')))).toEqual(new Set(['post/rail-x', 'post/rail-z', 'rail-x/rail-z']))
+    expect(new Set(seats.map((s) => [...s.legs].sort().join('/')))).toEqual(new Set(['post/rail-x', 'post/rail-z', 'rail-x/rail-z']))
     expect(auditBrackets(profiles, seats.map((s, i) => ({ id: `c${i}`, type: 'inside-corner', ...s })))).toEqual([])
     expect(connectorSeatsAt('inside-corner', V(0, 400, 0), [...profiles].reverse())).toEqual(seats)
   })
@@ -82,7 +86,7 @@ describe('automatic corner mounting', () => {
     const before = useStore.getState().past.length
     expect(autoConnect('inside-corner').placed).toBe(2)
     const state = useStore.getState()
-    expect(state.connectors.map((c) => c.position).sort()).toEqual([[10, 30, -10], [10, 30, 10]])
+    expect(state.connectors.map((c) => c.position).sort()).toEqual([[9.5, 29.4, -10], [9.5, 29.4, 10]])
     expect(state.past).toHaveLength(before + 1)
     expect(findConflicts(profiles, computeAllTrims(profiles), state.connectors)).toEqual([])
     expect(autoConnect('inside-corner').placed).toBe(0)
@@ -95,7 +99,7 @@ describe('automatic corner mounting', () => {
   it.each([1, -2])('fills the second slot beside a locked bracket with quaternion scale %s', (scale) => {
     const profiles = wideCorner()
     load(profiles)
-    const seat = connectorSeatsAt('inside-corner', V(10, 30, -10), profiles)[0]
+    const seat = connectorPlacementCandidates('inside-corner', V(10, 30, -10), profiles, []).find((candidate) => candidate.allowed)!.seat
     useStore.setState({ connectors: [{ id: 'existing', type: 'inside-corner', locked: true, ...seat,
       quaternion: seat.quaternion.map((v) => v * scale) as [number, number, number, number] }] })
     expect(autoConnect('inside-corner')).toMatchObject({ placed: 1, skipped: 1, unbolted: 0 })
@@ -103,15 +107,27 @@ describe('automatic corner mounting', () => {
     expect(useStore.getState().connectors[0].id).toBe('existing')
   })
 
-  it('joins all three member pairs and remains independent of source array order', () => {
+  it('fills four clear seats while the through post blocks the horizontal pair, independent of source array order', () => {
     const profiles = threeWay()
     load(profiles)
-    expect(autoConnect('inside-corner').placed).toBe(5)
+    expect(autoConnect('inside-corner').placed).toBe(4)
     const first = useStore.getState().connectors
     expect(auditBrackets(profiles, first)).toEqual([])
+    const candidates = connectorPlacementCandidates('inside-corner', V(0, 400, 0), profiles, [])
+    const joinedPairs = first.map((part) => candidates.find((candidate) => sameConnectorInstallation(part, { id: 'candidate', type: 'inside-corner', ...candidate.seat }))!.legs.slice().sort().join('/'))
+    expect(new Set(joinedPairs)).toEqual(new Set(['post/rail-x', 'post/rail-z']))
+    const horizontal = candidates.filter((candidate) => !candidate.legs.includes('post'))
+    expect(horizontal).toHaveLength(2)
+    const trims = computeAllTrims(profiles)
+    for (const candidate of horizontal) {
+      expect(candidate).toMatchObject({ allowed: false, reason: 'collision' })
+      const part = { id: 'horizontal', type: 'inside-corner', ...candidate.seat }
+      expect(profiles.filter((profile) => connectorHitsBody(part, trimmedOBB(profile, trims.get(profile.id)!))))
+        .toEqual([profiles[0]])
+    }
     expect(findConflicts(profiles, computeAllTrims(profiles), first)).toEqual([])
     load([...profiles].reverse())
-    expect(autoConnect('inside-corner').placed).toBe(5)
+    expect(autoConnect('inside-corner').placed).toBe(4)
     expect(useStore.getState().connectors.map(({ position, quaternion }) => ({ position, quaternion })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
       .toEqual(first.map(({ position, quaternion }) => ({ position, quaternion })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
   })

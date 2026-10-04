@@ -14,10 +14,6 @@ const fromTemplate = (id: string): ShareDoc => {
 
 const payloadOf = (link: string) => /#d=(.+)$/.exec(link)![1]
 
-/**
- * A link is the drawing: no account, no upload, nothing to trust. That only holds if what
- * comes out the far end is the same drawing, down to the millimetre.
- */
 describe('a drawing in a link', () => {
   it('survives the round trip unchanged', async () => {
     const doc = fromTemplate('bench')
@@ -46,6 +42,15 @@ describe('a drawing in a link', () => {
     expect(back.fittings[0].hingeType).toBe('slot')
     expect(back.fittings[0].overlay).toBe('half')
     expect(back.fittings[0].swing).toBe(165)
+  })
+
+  it('preserves rectangular caps and per-host inner bracket screw depths', async () => {
+    const doc: ShareDoc = { ...empty, connectors: [
+      { id: 'cap', type: 'end-cap', series: 20, profileSpec: '2040', position: [0, 0, 0], quaternion: [0, 0, 0, 1] },
+      { id: 'inner', type: 'inside-corner', series: 30, mountSeries: [30, 40], position: [50, 0, 0], quaternion: [0, 0, 0, 1] },
+    ] }
+    const back = await decodeShare(payloadOf(await encodeShareLink(doc, 'https://example.com/')))
+    expect(back.connectors).toEqual(doc.connectors)
   })
 
   it('a door arrives shut, however it was sent', async () => {

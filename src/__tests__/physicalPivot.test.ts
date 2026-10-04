@@ -6,6 +6,7 @@ import { rotateSelected, selectionPivot, type PivotMode } from '../utils/editOps
 import { buildProfile, lowestPointY } from '../utils/profileFactory'
 import { computeTrims, setThroughRule, withFixedProfileCuts } from '../utils/jointUtils'
 import { profileBodyEndpoints } from '../utils/profileFaces'
+import { getProfileDir } from '../utils/geometryCore'
 import { TEMPLATES } from '../utils/templates'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
@@ -63,7 +64,8 @@ describe('physical rotation pivots', () => {
     it(`pins the workbench ${mode} with ${stored ? 'stored' : 'automatic'} cuts in one undo step`, () => {
       const built = TEMPLATES.find((t) => t.id === 'bench')!.build({ w: 1500, d: 700, h: 900 })
       const all = stored ? withFixedProfileCuts(built) : built
-      const selected = all.find((p) => p.position[0] === 0 && p.position[1] === 900 && p.position[2] === 710)!
+      const selected = all.find((p) => p.position[1] === 900 && p.position[2] === 700
+        && getProfileDir(p).dot(V(1, 0, 0)) > 0.999)!
       const originalPivot = point(selected, all, mode)
       const before = all.map((p) => ({ id: p.id, length: computeTrims(p, all).cutLength, ...body(p, all) }))
       expect(computeTrims(selected, all).start.trim).toBe(-20)
