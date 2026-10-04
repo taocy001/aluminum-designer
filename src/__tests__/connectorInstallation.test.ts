@@ -198,13 +198,15 @@ describe('plate and connector geometry', () => {
     expect(analyzeFrame([], [part], [], [], [equipment]).equipmentConflicts).toEqual([])
   })
 
-  it('detects colliding inserted arms and a blocked exposed corner', () => {
+  it('detects colliding inserted arms and checks each member against its own slot', () => {
     const part: ConnectorData = { id: 'inside', type: 'inside-corner', position: [0, 0, 0], quaternion: [0, 0, 0, 1] }
     const moved = { ...part, id: 'other', position: [10, 0, 0] as [number, number, number] }
     expect(connectorsCollide(part, moved)).toBe(true)
     expect(analyzeFrame([], [part, moved]).conflicts.map((c) => [c.a, c.b])).toEqual([['inside', 'other']])
     expect(connectorHitsBody(part, makeOBB(V(1, 1, 0), V(10, 10, 10), new THREE.Quaternion()))).toBe(true)
-    // Only the deliberately inserted part of an arm overlaps this solid section envelope.
-    expect(connectorHitsBody(part, makeOBB(V(10, -8, 0), V(10, 8, 10), new THREE.Quaternion()))).toBe(false)
+    const alongX = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2)
+    expect(connectorHitsBody(part, makeOBB(V(10, -10, 0), V(10, 10, 10), alongX))).toBe(false)
+    // A crossing member cannot inherit the exemption of the arm's mounting member.
+    expect(connectorHitsBody(part, makeOBB(V(10, -10, 0), V(10, 10, 10), new THREE.Quaternion()))).toBe(true)
   })
 })

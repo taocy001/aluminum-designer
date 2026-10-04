@@ -89,16 +89,17 @@ function solidVertices(geometry: THREE.BufferGeometry): readonly THREE.Vector3[]
   return vertices
 }
 
-function connectorBoundCorners(type: string): readonly THREE.Vector3[] {
-  let corners = connectorBounds.get(type)
+function connectorBoundCorners(type: string, series: ConnectorData['series']): readonly THREE.Vector3[] {
+  const key = `${type}:${series ?? 20}`
+  let corners = connectorBounds.get(key)
   if (!corners) {
-    const box = new THREE.Box3().setFromPoints(connectorMeshes(type).flatMap(({ geometry }) => [...solidVertices(geometry)]))
+    const box = new THREE.Box3().setFromPoints(connectorMeshes(type, series).flatMap(({ geometry }) => [...solidVertices(geometry)]))
     const points: THREE.Vector3[] = []
     for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
       points.push(new THREE.Vector3(x, y, z))
     }
     corners = points
-    connectorBounds.set(type, corners)
+    connectorBounds.set(key, corners)
   }
   return corners
 }
@@ -113,13 +114,26 @@ function connectorDistancePx(
   const scale = connectorScale(connector.series ?? 20)
   const transform = (v: THREE.Vector3) => v.clone().multiplyScalar(scale).applyQuaternion(quaternion).add(position)
   // Reject distant parts before projecting every vertex of their plates and fasteners.
-  const bounds = connectorBoundCorners(connector.type).map(transform)
+  const bounds = connectorBoundCorners(connector.type, connector.series).map(transform)
   if (bounds.every(v => v.clone().sub(camPos).dot(fwd) > NEAR_EPS)) {
     const rect = new THREE.Box2().setFromPoints(bounds.map(v => toScreen(v, camera, size))).expandByScalar(CONNECTOR_SLACK_PX)
     if (!rect.containsPoint(cursor)) return Infinity
   }
   let distance = Infinity
-  for (const { geometry } of connectorMeshes(connector.type)) {
+  for (const { geometry } of connectorMeshes(connector.type, connector.series)) {
+    // A single L body is concave: picking its convex hull would fill its open quadrant.
+    if (connector.type === 'inside-corner') {
+      const attr = geometry.getAttribute('position'), indices = geometry.getIndex()
+      for (let i = 0; i < (indices?.count ?? attr.count); i += 3) {
+        const vertices = [0, 1, 2].map((offset) => transform(new THREE.Vector3()
+          .fromBufferAttribute(attr, indices ? indices.getX(i + offset) : i + offset)))
+        if (vertices.some(v => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
+        const outline = vertices.map(v => toScreen(v, camera, size))
+        if (insideQuad(outline, cursor)) return 0
+        distance = Math.min(distance, distanceToOutline(outline, cursor))
+      }
+      continue
+    }
     const vertices = solidVertices(geometry).map(transform)
     if (vertices.some(v => v.clone().sub(camPos).dot(fwd) <= NEAR_EPS)) continue
     const outline = hull2d(vertices.map(v => toScreen(v, camera, size)))

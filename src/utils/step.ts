@@ -300,7 +300,7 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const label = partNumber('connector', c.id)
     const description = `${c.type} ${series}`
     const transform = new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
-    const bodies = connectorMeshes(c.type).filter((mesh) => !mesh.dark)
+    const bodies = connectorMeshes(c.type, series).filter((mesh) => !mesh.dark)
       .map(({ geometry }, index) => meshSolid(s, geometry, `${label}-${index + 1}`, transform))
     part(label, description, bodies)
   }

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { profileSlotDimensions } from './specUtils'
 
 export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
 
@@ -23,8 +24,9 @@ function profileOutline(spec: ProfileSpec): OutlineSegment[] {
   const hh = h / 2
 
   // T-Slot dimensions
-  const sw = w >= 30 ? 4.0 : 3.0 // half-width of opening
-  const sd = w >= 30 ? 9.0 : 6.0 // depth of slot
+  const slot = profileSlotDimensions(w)
+  const sw = slot.width / 2
+  const sd = slot.depth
 
   const nx = Math.floor(w / 20)
   const ny = Math.floor(h / 20)

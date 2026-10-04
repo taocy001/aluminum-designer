@@ -166,7 +166,10 @@ describe('STEP export', () => {
     const inside = exportOne('inside-corner')
     expect(inside.bounds.min.toArray().map(Math.round)).toEqual([94, 194, 297])
     expect(inside.bounds.max.toArray().map(Math.round)).toEqual([120, 220, 303])
-    expect(inside.solids).toHaveLength(2)
+    expect(inside.solids).toHaveLength(1)
+    // Both sides of the heel belong to the same closed L-shaped body.
+    for (const z of [297, 303]) expect(inside.solids[0].points.some((p) =>
+      p.distanceTo(V(106, 206, z)) < 1e-6)).toBe(true)
     const gusset = exportOne('gusset')
     expect(gusset.solids).toHaveLength(1)
     expect(gusset.bounds.min.toArray().map(Math.round)).toEqual([92, 192, 300])

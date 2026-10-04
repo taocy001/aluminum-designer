@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { ConnectorData } from '../store/useStore'
-import { connectorMounts, connectorScale } from './connectorCatalog'
+import { connectorMounts, connectorScale, insideCornerSection, type ConnectorSeries } from './connectorCatalog'
 
 type V3 = [number, number, number]
 export interface ConnectorMesh {
@@ -12,7 +12,7 @@ export interface ConnectorMesh {
 }
 
 /** Rendered solids also define physical bounds; collision boxes are approximate. */
-function buildMeshes(type: string): ConnectorMesh[] {
+function buildMeshes(type: string, series: ConnectorSeries): ConnectorMesh[] {
   const parts: ConnectorMesh[] = []
   const add = (geometry: THREE.BufferGeometry, position: V3 = [0, 0, 0], rotation: V3 = [0, 0, 0],
     style: Omit<ConnectorMesh, 'geometry'> = {}) => {
@@ -38,9 +38,16 @@ function buildMeshes(type: string): ConnectorMesh[] {
         { polished: true, previewDepthWrite: true })
       break
     }
-    case 'inside-corner':
-      box([20, 6, 6], [10, -3, 0]); box([6, 20, 6], [-3, 10, 0])
+    case 'inside-corner': {
+      // The heel bridges both slot inserts in the open inside corner, away from the frame ends.
+      const { depth, width } = insideCornerSection(series)
+      const shape = new THREE.Shape()
+      shape.moveTo(0, 0); shape.lineTo(0, -depth); shape.lineTo(20, -depth); shape.lineTo(20, 0)
+      shape.lineTo(depth, 0); shape.lineTo(depth, depth); shape.lineTo(0, depth)
+      shape.lineTo(0, 20); shape.lineTo(-depth, 20); shape.lineTo(-depth, 0); shape.closePath()
+      add(new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false }), [0, 0, -width / 2])
       break
+    }
     case 'flat-plate':
       box([60, 4, 18])
       cylinder([2.5, 2.5, 5, 12], [-20, 3, 0], sideways)
@@ -98,9 +105,10 @@ function buildMeshes(type: string): ConnectorMesh[] {
 }
 
 const meshCache = new Map<string, readonly ConnectorMesh[]>()
-export function connectorMeshes(type: string): readonly ConnectorMesh[] {
-  if (!meshCache.has(type)) meshCache.set(type, buildMeshes(type))
-  return meshCache.get(type)!
+export function connectorMeshes(type: string, series: ConnectorSeries = 20): readonly ConnectorMesh[] {
+  const key = type === 'inside-corner' ? `${type}:${series}` : type
+  if (!meshCache.has(key)) meshCache.set(key, buildMeshes(type, series))
+  return meshCache.get(key)!
 }
 
 /** Maximum world Y of rendered vertices, including curved parts, rotation and series. */
@@ -109,7 +117,7 @@ export function connectorSolidTop(connector: ConnectorData): number {
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(quat.invert())
   const scale = connectorScale(connector.series ?? 20)
   let top = -Infinity
-  for (const { geometry } of connectorMeshes(connector.type)) {
+  for (const { geometry } of connectorMeshes(connector.type, connector.series)) {
     const positions = geometry.getAttribute('position')
     for (let i = 0; i < positions.count; i++) {
       const y = positions.getX(i) * up.x + positions.getY(i) * up.y + positions.getZ(i) * up.z

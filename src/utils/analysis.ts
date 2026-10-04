@@ -73,7 +73,7 @@ export function panelOBB(b: PanelData): OBB {
 export function connectorOBB(c: ConnectorData): OBB {
   const quat = new THREE.Quaternion(...c.quaternion).normalize()
   const scale = connectorScale(c.series ?? 20)
-  const { centre, half } = connectorExtent(c.type)
+  const { centre, half } = connectorExtent(c.type, c.series)
   const offset = new THREE.Vector3(...centre).multiplyScalar(scale).applyQuaternion(quat)
   return makeOBB(
     new THREE.Vector3(...c.position).add(offset),

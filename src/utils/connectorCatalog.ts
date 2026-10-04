@@ -1,5 +1,5 @@
 import type { ProfileSpec } from '../store/useStore'
-import { specDims } from './specUtils'
+import { profileSlotDimensions, specDims } from './specUtils'
 
 /** Extrusion series a connector is made for: 20, 30 or 40 */
 export type ConnectorSeries = 20 | 30 | 40
@@ -105,9 +105,15 @@ export function seriesOf(spec: ProfileSpec): ConnectorSeries {
   return base >= 40 ? 40 : base >= 30 ? 30 : 20
 }
 
-/** Connector geometry is drawn for the 20 series and scaled from there */
+/** Instance scale relative to the 20 series; slot insert sections compensate for this scale. */
 export function connectorScale(series: ConnectorSeries): number {
   return series / 20
+}
+
+/** Local insert section before instance scaling; its physical size matches the series slot cavity. */
+export function insideCornerSection(series: ConnectorSeries = 20): { depth: number; width: number } {
+  const slot = profileSlotDimensions(series), scale = connectorScale(series)
+  return { depth: slot.depth / scale, width: slot.width / scale }
 }
 
 /** Thread that goes with a series, the way suppliers pair them */
@@ -157,11 +163,14 @@ export function connectorMounts(type: string): ConnectorMount[] {
  * Approximate connector collision boxes in local coordinates.
  * Angle brackets originate at the inner flange vertex; plates at the intersection of their bolt lines.
  */
-export function connectorExtent(type: string): { centre: [number, number, number]; half: [number, number, number] } {
+export function connectorExtent(type: string, series: ConnectorSeries = 20): { centre: [number, number, number]; half: [number, number, number] } {
   // The cap's plate is 20×20×3, with a 10×10×6 plug centred at local Z=4.
   if (type === 'end-cap') return { centre: [0, 0, 2.75], half: [10, 10, 4.25] }
-  // Both inserted arms are included here; the metal collision check excludes slot inserts.
-  if (type === 'inside-corner') return { centre: [7, 7, 0], half: [13, 13, 3] }
+  // The broad-phase envelope includes both inserts and their exposed connecting heel.
+  if (type === 'inside-corner') {
+    const { depth, width } = insideCornerSection(series)
+    return { centre: [(20 - depth) / 2, (20 - depth) / 2, 0], half: [(20 + depth) / 2, (20 + depth) / 2, width / 2] }
+  }
   if (type === 'gusset') return { centre: [11, 11, 2], half: [19, 19, 2] }
   if (type === 't-bracket') return { centre: [0, 15, 2], half: [35, 25, 2] }
   if (type === 'corner-3way') return { centre: [8, 9, 8], half: [12, 11, 12] }

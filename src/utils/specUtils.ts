@@ -9,6 +9,11 @@ export function specDims(spec: string): { w: number; h: number; hw: number; hh: 
   return { w, h, hw: w / 2, hh: h / 2 }
 }
 
+/** Slot cavity dimensions shared by the displayed section and inserted connectors (mm). */
+export function profileSlotDimensions(sectionWidth: number): { width: number; depth: number } {
+  return sectionWidth >= 30 ? { width: 8, depth: 9 } : { width: 6, depth: 6 }
+}
+
 /**
  * Slot offsets from the face centre for the simplified section model.
  * Use one slot per 20 mm, including one central slot on a 20 mm face and two on a 40 mm face.

@@ -26,7 +26,7 @@ const Connector: React.FC<ConnectorProps> = ({
   return (
     <group position={new THREE.Vector3(...position)} quaternion={new THREE.Quaternion(...quaternion).normalize()}
       scale={connectorScale(series)} userData={{ connectorId: id }} raycast={preview ? () => null : undefined}>
-      {connectorMeshes(type).map((part, index) => <mesh key={`${type}-${index}`}>
+      {connectorMeshes(type, series).map((part, index) => <mesh key={`${type}-${series}-${index}`}>
         {/* Primitives keep cached geometry alive when a preview or instance unmounts. */}
         <primitive object={part.geometry} attach="geometry" />
         <meshStandardMaterial color={part.dark ? '#1e293b' : color}

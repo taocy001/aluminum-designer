@@ -159,7 +159,7 @@ describe('mirroring installed connectors', () => {
       expect(mirrorSelected(axis)).toBe(true)
       const state = useStore.getState(), copy = state.connectors[1]
       expect(auditBrackets(state.profiles.slice(2), [copy])).toEqual([])
-      const vertices = (part: ConnectorData) => connectorMeshes(part.type).filter((mesh) => !mesh.dark).flatMap((mesh) => {
+      const vertices = (part: ConnectorData) => connectorMeshes(part.type, part.series).filter((mesh) => !mesh.dark).flatMap((mesh) => {
         const attr = mesh.geometry.getAttribute('position')
         return Array.from({ length: attr.count }, (_, i) => V(0, 0, 0).fromBufferAttribute(attr, i)
           .applyQuaternion(new THREE.Quaternion(...part.quaternion)))

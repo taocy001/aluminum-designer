@@ -87,7 +87,7 @@ function connectorScene(parts: ConnectorData[]) {
     group.position.set(...part.position)
     group.quaternion.set(...part.quaternion).normalize()
     group.scale.setScalar(connectorScale(part.series ?? 20))
-    for (const { geometry } of connectorMeshes(part.type)) group.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()))
+    for (const { geometry } of connectorMeshes(part.type, part.series)) group.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()))
     scene.add(group)
   }
   scene.updateMatrixWorld(true)
