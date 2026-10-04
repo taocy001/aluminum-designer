@@ -152,12 +152,14 @@ describe('manual connector placement', () => {
     expect(useStore.getState().past).toHaveLength(0)
   })
 
-  it.each([[0.8, 1], [1.2, 2]])('uses the automatic-placement seat distance tolerance at %s mm', (offset, count) => {
+  it.each([[0.8, 'occupied'], [1.2, 'collision']] as const)('distinguishes occupancy from an overlapping seat at %s mm', (offset, reason) => {
     const seat = connectorSeatAt('bracket', V(0, 20, 0), useStore.getState().profiles)
     useStore.setState({ connectors: [{ id: 'existing', type: 'bracket', ...seat,
       position: [seat.position[0] + offset, seat.position[1], seat.position[2]] }] })
+    const state = useStore.getState()
+    expect(resolveConnectorPlacement('bracket', V(0, 20, 0), state.profiles, state.connectors).reason).toBe(reason)
     placeConnector(V(0, 20, 0), 'bracket')
-    expect(useStore.getState().connectors).toHaveLength(count)
+    expect(useStore.getState().connectors).toHaveLength(1)
   })
 
   it('allows both ends of a rail to receive their own valid brackets', () => {
@@ -187,9 +189,11 @@ describe('manual connector placement', () => {
     'does not mistake another connector type or series for the held part: %j', (different) => {
       const seat = connectorSeatAt('bracket', V(0, 20, 0), useStore.getState().profiles)
       useStore.setState({ connectors: [{ id: 'different-part', ...seat, ...different }] })
+      const state = useStore.getState()
+      expect(resolveConnectorPlacement('bracket', V(0, 20, 0), state.profiles, state.connectors))
+        .toMatchObject({ occupied: false, allowed: false, reason: 'collision' })
       placeConnector(V(0, 20, 0), 'bracket')
-      expect(useStore.getState().connectors).toHaveLength(2)
-      expect(useStore.getState().connectors[1]).toMatchObject({ type: 'bracket', series: 20 })
+      expect(useStore.getState().connectors).toHaveLength(1)
     },
   )
 })

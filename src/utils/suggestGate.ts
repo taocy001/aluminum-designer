@@ -184,8 +184,10 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
   }
 
   // (a) nothing new passes through anything, shut and open
+  // Inserting a member can change profile trims, but does not move connectors or boards.
+  // Pairs between those unchanged parts cancel out of the before/after comparison.
   const clashes = (ps: ProfileData[], t: Map<string, ProfileTrims>, fs: FittingData[]) =>
-    new Set(findConflicts(ps, t, near.connectors, near.panels, fs).map((c) => pairKey(c.a, c.b)))
+    new Set(findConflicts(ps, t, near.connectors, near.panels, fs, new Set(ps.map((p) => p.id))).map((c) => pairKey(c.a, c.b)))
   let g = grew(once('closed-clashes', () => clashes(near.profiles, tb, near.fittings)), clashes(after, ta, near.fittings))
   if (g) return { ok: false, why: `clash ${g}` }
   const opened = near.fittings.map((f) => ({ ...f, open: 1 }))
@@ -222,7 +224,14 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
   if (mismatches.length) return { ok: false, why: `mismatch ${mismatches[0].key}` }
   if (near.connectors.length) {
     const before = once('brackets', () => cachedCheck(cache, 'brackets', [near.profiles, near.connectors], () => new Set(auditBrackets(near.profiles, near.connectors, tb).map((f) => f.id))))
-    const now = new Set(auditBrackets(after, near.connectors, ta).map((f) => f.id))
+    // Adding support cannot invalidate an existing mounting face unless its profile
+    // is shortened. Otherwise only the bracket claimed to be restored needs a check.
+    const shortened = near.profiles.some((p) => {
+      const b = tb.get(p.id)!, a = ta.get(p.id)!
+      return a.start.trim > b.start.trim || a.start.trim + a.cutLength < b.start.trim + b.cutLength
+    })
+    const check = shortened ? near.connectors : near.connectors.filter((c) => claim.kind === 'close' && c.id === claim.hardwareId)
+    const now = new Set(auditBrackets(after, check, ta).map((f) => f.id))
     g = grew(before, now)
     if (g) return { ok: false, why: `bracket ${g}` }
     if (claim.kind === 'close' && claim.hardwareId

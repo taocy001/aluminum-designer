@@ -1,9 +1,9 @@
 import * as THREE from 'three'
 import type { ConnectorData, ProfileData } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong } from './geometryCore'
-import { flushFace, sharedEdge } from './specCompat'
-import { nearestSlot, slotOffsets } from './specUtils'
-import { connectorEntry, connectorExtent, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
+import { flushFaces, sharedEdge } from './specCompat'
+import { slotOffsets } from './specUtils'
+import { connectorEntry, connectorExtent, connectorMounts, connectorScale, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { fitConnector, jointPairsAt, membersAt } from './connectorFit'
 import { computeAllTrims, type ProfileTrims } from './jointUtils'
 import { trimmedOBB } from './analysis'
@@ -19,8 +19,6 @@ import type { OBB } from './obb'
 const JOINT_TOL = 30
 /** how near a corner the pointer has to be for a bracket in hand to settle onto it (mm) */
 const REACH = 70
-/** the plate lies on the face, not in it: its back is at zero, so nothing to offset by */
-const HALF_THICK = 0
 
 /** First shared slot line, or null when the mounting faces have no matching slots. */
 export function sharedSlotLine(
@@ -106,62 +104,39 @@ function angleSeats(a: ProfileData, b: ProfileData, at: THREE.Vector3, intoA: TH
   })
 }
 
-/** Seat a flat plate across the outside face the two members share */
+/** All outside faces, slot combinations, arm directions and through/branch assignments. */
+function plateSeats(a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat[] {
+  const seats: BracketSeat[] = []
+  for (const face of flushFaces(a, b, at)) {
+    const n = face.normal
+    const planePoint = at.clone().addScaledVector(n, face.offset)
+    for (const sx of [1, -1]) for (const sy of [1, -1]) {
+      for (const [memberX, memberY] of [[a, b], [b, a]]) {
+        const x = into(memberX, at).multiplyScalar(sx), y = into(memberY, at).multiplyScalar(sy)
+        if (new THREE.Vector3().crossVectors(x, y).dot(n) < 0.999) continue
+        // The intersection is determined by both actual axes, including their offsets.
+        const origin = new THREE.Vector3()
+          .addScaledVector(x, new THREE.Vector3(...memberY.position).dot(x))
+          .addScaledVector(y, new THREE.Vector3(...memberX.position).dot(y))
+          .addScaledVector(n, planePoint.dot(n))
+        const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, n))
+        for (const acrossX of slotOffsets(crossExtentAlong(memberX, y) * 2)) {
+          for (const acrossY of slotOffsets(crossExtentAlong(memberY, x) * 2)) {
+            const position = origin.clone().addScaledVector(y, acrossX).addScaledVector(x, acrossY)
+            seats.push({ position: position.toArray().map(round1) as BracketSeat['position'],
+              quaternion: q.toArray(), series: Math.min(seriesOf(a.spec), seriesOf(b.spec)) as ConnectorSeries,
+              legs: [memberX.id, memberY.id], slotOffsets: [acrossX, acrossY] })
+          }
+        }
+      }
+    }
+  }
+  return seats
+}
+
+/** First plate seat; installation callers enumerate and audit every candidate. */
 export function seatBracket(a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat | null {
-  const face = flushFace(a, b, at)
-  if (!face) return null
-
-  // `flushFace` reports the shared plane as a signed distance along its normal, so the side
-  // the metal is on — and therefore the way the bracket's back must face — is the sign of
-  // that distance, not the normal itself. Taking the normal on trust seats every bracket on
-  // a negative-side face two millimetres inside the profile, back to front.
-  const n = face.normal.clone().multiplyScalar(face.offset < 0 ? -1 : 1)
-  let legA = into(a, at)
-  let legB = into(b, at)
-  if (Math.abs(legA.dot(legB)) > 0.9) return null        // parallel: a plate's job, not a bracket's
-
-  // The part's back is its local +Z, and the basis built from the two legs sends +Z to
-  // legA × legB. If that points into the frame, the legs are the other way round.
-  let flipped = false
-  if (new THREE.Vector3().crossVectors(legA, legB).dot(n) < 0) {
-    ;[legA, legB] = [legB, legA]
-    flipped = true
-  }
-  const [memberX, memberY] = flipped ? [b, a] : [a, b]
-
-  // The plane the legs lie in, and the two centrelines projected onto it
-  const planePoint = at.clone().addScaledVector(n, Math.abs(face.offset))
-  const onPlane = (v: THREE.Vector3) => v.clone().addScaledVector(n, planePoint.clone().sub(v).dot(n))
-  const axisB = closestOnSegment(at, ...(({ start, end }) => [start, end] as const)(getProfileEndpoints(b))).point
-  const Pa = onPlane(at)          // a's centreline, at the joint
-  const Pb = onPlane(axisB)       // b's centreline, nearest the joint
-
-  // Where the two projected centrelines cross: slide Pa along a until it is level with Pb
-  const dirA = legA.clone()
-  const dirB = legB.clone()
-  const corner = Pa.clone().addScaledVector(dirA, Pb.clone().sub(Pa).dot(dirA))
-
-  // Sliding along B moves the X-leg's bolt across X's face, and the other way round.
-  const faceWidthX = crossExtentAlong(memberX, dirB) * 2
-  const faceWidthY = crossExtentAlong(memberY, dirA) * 2
-  const offAcrossX = nearestSlot(faceWidthX, 0)     // measured along dirB
-  const offAcrossY = nearestSlot(faceWidthY, 0)     // measured along dirA
-
-  const position = corner.clone()
-    .addScaledVector(dirB, offAcrossX)
-    .addScaledVector(dirA, offAcrossY)
-    .addScaledVector(n, HALF_THICK * connectorScale(Math.min(seriesOf(a.spec), seriesOf(b.spec)) as ConnectorSeries))
-
-  const basis = new THREE.Matrix4().makeBasis(dirA, dirB, new THREE.Vector3().crossVectors(dirA, dirB).normalize())
-  const quat = new THREE.Quaternion().setFromRotationMatrix(basis)
-
-  return {
-    position: [round1(position.x), round1(position.y), round1(position.z)],
-    quaternion: [quat.x, quat.y, quat.z, quat.w],
-    series: Math.min(seriesOf(a.spec), seriesOf(b.spec)) as ConnectorSeries,
-    legs: [memberX.id, memberY.id],
-    slotOffsets: [offAcrossY, offAcrossX],
-  }
+  return plateSeats(a, b, at)[0] ?? null
 }
 
 /** rounded to a tenth, and never negative zero: a coordinate of −0 is noise that compares unequal to 0 */
@@ -223,7 +198,8 @@ export function connectorSeatAt(
     const near = ends.find((e) => e.outward.y < -0.9) ?? ends[0]
     if (near) {
       const fit = fitConnector(type, near.at, profiles, surfaceNormal)
-      const reach = connectorExtent(type).half[AXIS_INDEX[entry.axes.primary]] * connectorScale(fit.series)
+      const bounds = connectorExtent(type), axis = AXIS_INDEX[entry.axes.primary]
+      const reach = (bounds.centre[axis] + bounds.half[axis]) * connectorScale(fit.series)
       const at = near.at.clone().addScaledVector(near.outward, reach)
       return {
         position: [round1(at.x), round1(at.y), round1(at.z)],
@@ -259,14 +235,15 @@ export function seatFor(type: string, a: ProfileData, b: ProfileData, at: THREE.
 /** Try either side of each member; bolt auditing decides which have actual metal beneath. */
 export function seatsFor(type: string, a: ProfileData, b: ProfileData, at: THREE.Vector3): BracketSeat[] {
   if (!sharedEdge(a.spec, b.spec)) return []
-  if (connectorEntry(type)?.seat !== 'angle') {
-    const seat = seatFor(type, a, b, at)
-    return seat ? [seat] : []
-  }
+  if (connectorEntry(type)?.seat === 'plate') return plateSeats(a, b, at)
+  if (connectorEntry(type)?.seat !== 'angle') return []
   const aDir = into(a, at), bDir = into(b, at)
   const out: BracketSeat[] = []
   for (const sa of [1, -1]) for (const sb of [1, -1]) {
     out.push(...angleSeats(a, b, at, aDir.clone().multiplyScalar(sa), bDir.clone().multiplyScalar(sb)))
+    // Reversing the arm assignment reverses local Z. The third mounting face is
+    // checked by the same hole definition as the rendered three-way connector.
+    if (type === 'corner-3way') out.push(...angleSeats(b, a, at, bDir.clone().multiplyScalar(sb), aDir.clone().multiplyScalar(sa)))
   }
   return out
 }
@@ -306,7 +283,7 @@ export interface BracketFault {
 /** A bolt has to meet the face and its slot, not just lie near the joint. */
 const FACE_TOL = 0.5
 
-function boltOnFace(point: THREE.Vector3, normal: THREE.Vector3, body: OBB): boolean {
+function boltOnFace(point: THREE.Vector3, normal: THREE.Vector3, body: OBB, slots: number[][]): boolean {
   const dx = point.x - body.center.x, dy = point.y - body.center.y, dz = point.z - body.center.z
   for (const i of [0, 1] as const) {
     const face = body.axes[i], length = body.axes[2]
@@ -317,50 +294,114 @@ function boltOnFace(point: THREE.Vector3, normal: THREE.Vector3, body: OBB): boo
     const across = i === 0 ? 1 : 0
     const side = body.axes[across]
     const offset = dx * side.x + dy * side.y + dz * side.z
-    if (slotOffsets(body.half.getComponent(across) * 2).some((slot) => Math.abs(offset - slot) <= 1)) return true
+    if (slots[across].some((slot) => Math.abs(offset - slot) <= 1)) return true
   }
   return false
 }
 
-/**
- * Brackets that are not where they could be bolted.
- *
- * Worth checking because nothing else will: a bracket floating beside a joint renders
- * exactly like one bolted to it, and the cut list counts it either way. Check its actual
- * bolt contact points independently of the seating calculation: both must lie on a slot
- * of their own member, on the correct face and within that member's cut length.
- */
-export function auditBrackets(profiles: ProfileData[], connectors: ConnectorData[], trims = computeAllTrims(profiles)): BracketFault[] {
+type MountGeometry = { axis: THREE.Vector3; normal: THREE.Vector3; bolts: THREE.Vector3[] }
+const mountGeometryCache = new WeakMap<ConnectorData, {
+  type: string; series: number; pose: number[]; mounts: MountGeometry[]
+}>()
+
+function worldMounts(c: ConnectorData): MountGeometry[] {
+  const series = c.series ?? 20, cached = mountGeometryCache.get(c)
+  if (cached && cached.type === c.type && cached.series === series
+    && c.position.every((value, i) => value === cached.pose[i])
+    && c.quaternion.every((value, i) => value === cached.pose[i + 3])) return cached.mounts
+  const here = new THREE.Vector3(...c.position), quat = new THREE.Quaternion(...c.quaternion).normalize()
+  const axes = { x: new THREE.Vector3(1, 0, 0).applyQuaternion(quat),
+    y: new THREE.Vector3(0, 1, 0).applyQuaternion(quat), z: new THREE.Vector3(0, 0, 1).applyQuaternion(quat) }
+  const k = connectorScale(series)
+  const mounts = connectorMounts(c.type).map((mount) => ({ axis: axes[mount.axis], normal: axes[mount.normal],
+    bolts: mount.bolts.map((v) => new THREE.Vector3(...v).multiplyScalar(k).applyQuaternion(quat).add(here)) }))
+  mountGeometryCache.set(c, { type: c.type, series, pose: [...c.position, ...c.quaternion], mounts })
+  return mounts
+}
+
+/** A point query only visits nearby profile bounds, even in a large cabinet. */
+function supportIndex<T extends { bounds: THREE.Box3 }>(items: T[]): (point: THREE.Vector3, visit: (item: T) => void) => void {
+  type Node = { bounds: THREE.Box3; items?: T[]; children?: Node[] }
+  const build = (group: T[]): Node => {
+    const bounds = new THREE.Box3(), centres = new THREE.Box3()
+    for (const item of group) {
+      bounds.union(item.bounds)
+      centres.expandByPoint(item.bounds.getCenter(new THREE.Vector3()))
+    }
+    if (group.length <= 4) return { bounds, items: group }
+    const size = centres.getSize(new THREE.Vector3())
+    const axis = size.x >= size.y && size.x >= size.z ? 'x' : size.y >= size.z ? 'y' : 'z'
+    const sorted = [...group].sort((a, b) => a.bounds.min[axis] + a.bounds.max[axis] - b.bounds.min[axis] - b.bounds.max[axis])
+    const middle = Math.floor(sorted.length / 2)
+    return { bounds, children: [build(sorted.slice(0, middle)), build(sorted.slice(middle))] }
+  }
+  const root = build(items)
+  return (point, visit) => {
+    const search = (node: Node) => {
+      if (!node.bounds.containsPoint(point)) return
+      if (node.items) {
+        for (const item of node.items) if (item.bounds.containsPoint(point)) visit(item)
+      } else for (const child of node.children!) search(child)
+    }
+    search(root)
+  }
+}
+
+/** Check bolt contact points against distinct members' faces, slots and cut lengths. */
+export function auditBrackets(
+  profiles: ProfileData[], connectors: ConnectorData[], trims = computeAllTrims(profiles),
+  supportedMembers?: Map<string, string[]>,
+): BracketFault[] {
   const faults: BracketFault[] = []
-  const members = profiles.map((p) => ({ p, body: trimmedOBB(p, trims.get(p.id)!) }))
+  const members = profiles.map((p) => {
+    const body = trimmedOBB(p, trims.get(p.id)!)
+    const radius = new THREE.Vector3()
+    for (let i = 0; i < 3; i++) {
+      const axis = body.axes[i], half = body.half.getComponent(i)
+      radius.x += Math.abs(axis.x) * half
+      radius.y += Math.abs(axis.y) * half
+      radius.z += Math.abs(axis.z) * half
+    }
+    // Enclose the face, length and slot tolerances before checking exact contact.
+    const bounds = new THREE.Box3(body.center.clone().sub(radius), body.center.clone().add(radius)).expandByScalar(2)
+    return { p, body, bounds, slots: [slotOffsets(body.half.x * 2), slotOffsets(body.half.y * 2)] }
+  })
+  const nearby = supportIndex(members)
   for (const c of connectors) {
     const kind = connectorEntry(c.type)?.seat
     if (kind !== 'angle' && kind !== 'plate') continue
     const here = new THREE.Vector3(...c.position)
-    const quat = new THREE.Quaternion(...c.quaternion).normalize()
-    const x = new THREE.Vector3(1, 0, 0).applyQuaternion(quat)
-    const y = new THREE.Vector3(0, 1, 0).applyQuaternion(quat)
-    const z = new THREE.Vector3(0, 0, 1).applyQuaternion(quat)
-    const k = connectorScale(c.series ?? 20)
-    const alongX = c.type === 't-bracket' ? [-22, 22] : [kind === 'angle' ? 16 : 18]
-    const alongY = c.type === 't-bracket' ? [28] : [kind === 'angle' ? 16 : 18]
-    const supports = (dir: THREE.Vector3, normal: THREE.Vector3, offsets: number[]) => {
-      const bolts = offsets.map((offset) => here.clone().addScaledVector(dir, offset * k))
-      return members.filter(({ body }) => Math.abs(body.axes[2].dot(dir)) > 0.999
-        && bolts.every((bolt) => boltOnFace(bolt, normal, body)))
+    const supportGroups: ProfileData[][] = []
+    for (const mount of worldMounts(c)) {
+      const supports: ProfileData[] = []
+      nearby(mount.bolts[0], ({ p, body, slots }) => {
+        if (Math.abs(body.axes[2].dot(mount.axis)) > 0.999
+          && mount.bolts.every((bolt) => boltOnFace(bolt, mount.normal, body, slots))) supports.push(p)
+      })
+      supportGroups.push(supports)
+      if (!supports.length) break
     }
-    const a = supports(x, kind === 'angle' ? y : z, alongX)
-    const b = supports(y, kind === 'angle' ? x : z, alongY)
-    let pairs = a.flatMap((u) => b.filter((v) => v.p.id !== u.p.id && sharedEdge(u.p.spec, v.p.spec)).map((v) => [u.p, v.p]))
-    if (c.type === 'corner-3way') {
-      // The third arm follows local +Z. Its bolt may enter either adjacent slot face,
-      // but it must land on a third actual member, with the arm's own direction and pitch.
-      const third = [...supports(z, x, [16]), ...supports(z, y, [16])]
-      pairs = pairs.flatMap(([u, v]) => third.filter(({ p }) => p.id !== u.id && p.id !== v.id
-        && sharedEdge(u.spec, p.spec) && sharedEdge(v.spec, p.spec)).map(({ p }) => [u, v, p]))
+    let joint = false
+    const chosen: ProfileData[] = []
+    const match = (i: number, series: number): boolean => {
+      if (i === supportGroups.length) {
+        joint = true
+        if (series !== (c.series ?? 20)) return false
+        supportedMembers?.set(c.id, chosen.map((p) => p.id))
+        return true
+      }
+      for (const p of supportGroups[i]) {
+        if (chosen.some((other) => other.id === p.id || !sharedEdge(other.spec, p.spec))) continue
+        chosen.push(p)
+        const found = match(i + 1, Math.min(series, seriesOf(p.spec)))
+        chosen.pop()
+        if (found) return true
+      }
+      return false
     }
-    if (!pairs.length) faults.push({ id: c.id, off: Infinity, reason: 'no-joint', at: here })
-    else if (!pairs.some((parts) => Math.min(...parts.map((p) => seriesOf(p.spec))) === (c.series ?? 20))) {
+    const supported = match(0, Infinity)
+    if (!joint) faults.push({ id: c.id, off: Infinity, reason: 'no-joint', at: here })
+    else if (!supported) {
       faults.push({ id: c.id, off: 0, reason: 'wrong-series', at: here })
     }
   }

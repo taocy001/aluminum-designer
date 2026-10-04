@@ -46,29 +46,24 @@ const FLUSH_TOL = 0.5
  * rail centred on a wider post does not work while the same rail pushed flush to one of the
  * post's faces does.
  */
-export function flushFace(a: ProfileData, b: ProfileData, at: THREE.Vector3): { normal: THREE.Vector3; offset: number } | null {
-  const n0 = bracketNormal(a, b)
-  if (!n0) return null
-  const ea = crossExtentAlong(a, n0)
-  const eb = crossExtentAlong(b, n0)
-  // both centrelines pass through the joint, so measure each from its own axis
-  const aAxis = new THREE.Vector3(...a.position).sub(at)
-  const bAxis = new THREE.Vector3(...b.position).sub(at)
-  const aBase = aAxis.clone().projectOnVector(n0).dot(n0)
-  const bBase = bAxis.clone().projectOnVector(n0).dot(n0)
-
-  // the plate lies on the shared plane, measured along n0 from the joint point; when both
-  // sides are flush, take the one furthest out, which is the face a tool can actually reach
-  let best: { normal: THREE.Vector3; offset: number } | null = null
-  for (const sa of [1, -1]) {
-    for (const sb of [1, -1]) {
-      const fa = aBase + sa * ea
-      const fb = bBase + sb * eb
-      if (Math.abs(fa - fb) > FLUSH_TOL) continue
-      if (!best || Math.abs(fa) > Math.abs(best.offset)) best = { normal: n0.clone(), offset: fa }
-    }
+export function flushFaces(a: ProfileData, b: ProfileData, at: THREE.Vector3): { normal: THREE.Vector3; offset: number }[] {
+  const axis = bracketNormal(a, b)
+  if (!axis) return []
+  const aBase = new THREE.Vector3(...a.position).sub(at).dot(axis)
+  const bBase = new THREE.Vector3(...b.position).sub(at).dot(axis)
+  const ea = crossExtentAlong(a, axis), eb = crossExtentAlong(b, axis)
+  const faces = []
+  for (const sign of [1, -1]) {
+    const fa = aBase + sign * ea, fb = bBase + sign * eb
+    // Both mounting surfaces must face outward on the same side of the plate.
+    if (Math.abs(fa - fb) <= FLUSH_TOL) faces.push({ normal: axis.clone().multiplyScalar(sign), offset: fa * sign })
   }
-  return best
+  return faces.sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset))
+}
+
+/** First common outside face; use flushFaces when offering installation choices. */
+export function flushFace(a: ProfileData, b: ProfileData, at: THREE.Vector3): { normal: THREE.Vector3; offset: number } | null {
+  return flushFaces(a, b, at)[0] ?? null
 }
 
 export type MismatchKind = 'face' | 'series'

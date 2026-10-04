@@ -747,7 +747,7 @@
    "series": 40,
    "position": [
     0,
-    -20,
+    -56,
     0
    ],
    "quaternion": [
@@ -763,7 +763,7 @@
    "series": 40,
    "position": [
     0,
-    -20,
+    -56,
     600
    ],
    "quaternion": [
@@ -779,7 +779,7 @@
    "series": 40,
    "position": [
     600,
-    -20,
+    -56,
     0
    ],
    "quaternion": [
@@ -795,7 +795,7 @@
    "series": 40,
    "position": [
     600,
-    -20,
+    -56,
     600
    ],
    "quaternion": [
@@ -811,7 +811,7 @@
    "series": 40,
    "position": [
     1200,
-    -20,
+    -56,
     0
    ],
    "quaternion": [
@@ -827,7 +827,7 @@
    "series": 40,
    "position": [
     1200,
-    -20,
+    -56,
     600
    ],
    "quaternion": [
@@ -1366,38 +1366,6 @@
    ]
   },
   {
-   "id": "c-mufvmsz246",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    610,
-    2160,
-    580
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    -0.5,
-    0.5,
-    -0.5000000000000001
-   ]
-  },
-  {
-   "id": "c-mufvmsz248",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1210,
-    2160,
-    580
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    -0.5,
-    0.5,
-    -0.5000000000000001
-   ]
-  },
-  {
    "id": "c-mueqr38hfv",
    "type": "inside-corner",
    "position": [
@@ -1812,6 +1780,2094 @@
     0.7071067811865476
    ],
    "series": 20
+  },
+  {
+   "id": "c-seat-78b54d3da3eb",
+   "type": "inside-corner",
+   "position": [
+    610,
+    120,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "f-mueqq7ul2p-runner-left",
+    "p-mueqg8rf6u"
+   ],
+   "slotOffsets": [
+    0,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-555d1e5474c0",
+   "type": "inside-corner",
+   "position": [
+    610,
+    120,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "f-mueqq7ul2p-runner-left",
+    "p-mueqg95s6v"
+   ],
+   "slotOffsets": [
+    0,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-a72ca6d7f1e5",
+   "type": "inside-corner",
+   "position": [
+    1190,
+    120,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "f-mueqq7ul2p-runner-right",
+    "p-mueqg9gr6w"
+   ],
+   "slotOffsets": [
+    0,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-581eb1ace378",
+   "type": "inside-corner",
+   "position": [
+    1190,
+    120,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "f-mueqq7ul2p-runner-right",
+    "p-mueqg9wq6x"
+   ],
+   "slotOffsets": [
+    0,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-9141b957ecda",
+   "type": "inside-corner",
+   "position": [
+    610,
+    320,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "f-mueqq7ul2q-runner-left",
+    "p-mueqg8rf6u"
+   ],
+   "slotOffsets": [
+    0,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-1e8a4835bce8",
+   "type": "inside-corner",
+   "position": [
+    610,
+    320,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "f-mueqq7ul2q-runner-left",
+    "p-mueqg95s6v"
+   ],
+   "slotOffsets": [
+    0,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-d48cd867749d",
+   "type": "inside-corner",
+   "position": [
+    1190,
+    320,
+    20
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "f-mueqq7ul2q-runner-right",
+    "p-mueqg9gr6w"
+   ],
+   "slotOffsets": [
+    0,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-4c4d1aee714f",
+   "type": "inside-corner",
+   "position": [
+    1190,
+    320,
+    580
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "f-mueqq7ul2q-runner-right",
+    "p-mueqg9wq6x"
+   ],
+   "slotOffsets": [
+    0,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-ad7811241b22",
+   "type": "inside-corner",
+   "position": [
+    620,
+    40,
+    -10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mueqgad66y"
+   ],
+   "slotOffsets": [
+    10.000000000000066,
+    -6.394884621840902e-14
+   ]
+  },
+  {
+   "id": "c-seat-cf9834a67ae6",
+   "type": "inside-corner",
+   "position": [
+    620,
+    40,
+    610
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mueqgars6z"
+   ],
+   "slotOffsets": [
+    -9.999999999999886,
+    0
+   ]
+  },
+  {
+   "id": "c-seat-4ca6dbc83076",
+   "type": "inside-corner",
+   "position": [
+    620,
+    2160,
+    610
+   ],
+   "quaternion": [
+    -1.5700924586837747e-16,
+    1.7431527984210492e-32,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mueqgdgy76"
+   ],
+   "slotOffsets": [
+    10.000000000000114,
+    -2.2737367544323206e-13
+   ]
+  },
+  {
+   "id": "c-seat-1bbddaef596a",
+   "type": "inside-corner",
+   "position": [
+    600,
+    2170,
+    0
+   ],
+   "quaternion": [
+    1.3401577416544657e-16,
+    0.7071067811865475,
+    0.7071067811865476,
+    5.551115123125783e-17
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgd4975",
+    "p-mueqgezj7a"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-fe849eeed620",
+   "type": "inside-corner",
+   "position": [
+    600,
+    2190,
+    0
+   ],
+   "quaternion": [
+    1.3401577416544657e-16,
+    0.7071067811865475,
+    0.7071067811865476,
+    5.551115123125783e-17
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgd4975",
+    "p-mueqgezj7a"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-d931e6707e0a",
+   "type": "inside-corner",
+   "position": [
+    620,
+    2170,
+    0
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    2.299347170293092e-17,
+    -5.551115123125783e-17,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgd4975",
+    "p-mueqgezj7a"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-70e9e1f8a1e3",
+   "type": "inside-corner",
+   "position": [
+    620,
+    2190,
+    0
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    2.299347170293092e-17,
+    -5.551115123125783e-17,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgd4975",
+    "p-mueqgezj7a"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-4256607e45ed",
+   "type": "inside-corner",
+   "position": [
+    600,
+    2170,
+    600
+   ],
+   "quaternion": [
+    2.2993471702930922e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    5.551115123125783e-17
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgdgy76",
+    "p-mueqgezj7a"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-13aa9e9f9302",
+   "type": "inside-corner",
+   "position": [
+    600,
+    2190,
+    600
+   ],
+   "quaternion": [
+    2.2993471702930922e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    5.551115123125783e-17
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgdgy76",
+    "p-mueqgezj7a"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-b49e9aca5b16",
+   "type": "inside-corner",
+   "position": [
+    620,
+    2170,
+    600
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    1.3401577416544657e-16,
+    -5.551115123125783e-17,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgdgy76",
+    "p-mueqgezj7a"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-477794a33a5a",
+   "type": "inside-corner",
+   "position": [
+    620,
+    2190,
+    600
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    1.3401577416544657e-16,
+    -5.551115123125783e-17,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgdgy76",
+    "p-mueqgezj7a"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-96d1b7610ac2",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    2170,
+    0
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgdvj77",
+    "p-mueqgfg17b"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-d0450eb963c4",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    2190,
+    0
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqgdvj77",
+    "p-mueqgfg17b"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-b41ebc87b8c1",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    2170,
+    600
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqge7878",
+    "p-mueqgfg17b"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-aa1f597c0fe0",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    2190,
+    600
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqge7878",
+    "p-mueqgfg17b"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-3eb81972a433",
+   "type": "inside-corner",
+   "position": [
+    10,
+    1740,
+    20
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8276s",
+    "p-mueqplwn1x"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-0e215c7c5374",
+   "type": "inside-corner",
+   "position": [
+    -10,
+    1760,
+    20
+   ],
+   "quaternion": [
+    0.4999999999999999,
+    0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8276s",
+    "p-mueqplwn1x"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-38a2dc6a5e6c",
+   "type": "inside-corner",
+   "position": [
+    10,
+    1760,
+    20
+   ],
+   "quaternion": [
+    0.4999999999999999,
+    0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8276s",
+    "p-mueqplwn1x"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-1bb28b590b88",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1750,
+    20
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.4999999999999999,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqplwn1x",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "c-seat-b240062d608b",
+   "type": "inside-corner",
+   "position": [
+    -10,
+    1740,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8ex6t",
+    "p-mueqplwn1x"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-3c1291097d77",
+   "type": "inside-corner",
+   "position": [
+    10,
+    1760,
+    580
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8ex6t",
+    "p-mueqplwn1x"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-6b996bedba5f",
+   "type": "inside-corner",
+   "position": [
+    -10,
+    1760,
+    580
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8ex6t",
+    "p-mueqplwn1x"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-587cd243d85c",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1750,
+    580
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqplwn1x",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "c-seat-9bd835b52434",
+   "type": "inside-corner",
+   "position": [
+    610,
+    1740,
+    20
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mueqpmay1y"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-59066cb6d49e",
+   "type": "inside-corner",
+   "position": [
+    590,
+    1760,
+    20
+   ],
+   "quaternion": [
+    0.4999999999999999,
+    0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mueqpmay1y"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-31a0548547a3",
+   "type": "inside-corner",
+   "position": [
+    610,
+    1760,
+    20
+   ],
+   "quaternion": [
+    0.4999999999999999,
+    0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mueqpmay1y"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-52b8aca62950",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1750,
+    20
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqpmay1y",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    2.2737367544323206e-13,
+    0
+   ]
+  },
+  {
+   "id": "c-seat-9dd0f78810d8",
+   "type": "inside-corner",
+   "position": [
+    610,
+    1740,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mueqpmay1y"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-5ab1b053ee01",
+   "type": "inside-corner",
+   "position": [
+    590,
+    1760,
+    580
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mueqpmay1y"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-0add4727cf4c",
+   "type": "inside-corner",
+   "position": [
+    610,
+    1760,
+    580
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mueqpmay1y"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-1efaae906299",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1750,
+    580
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqpmay1y",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    -2.2737367544323206e-13,
+    0
+   ]
+  },
+  {
+   "id": "c-seat-2ed5e52a3d7a",
+   "type": "inside-corner",
+   "position": [
+    610,
+    1010,
+    20
+   ],
+   "quaternion": [
+    0.4999999999999999,
+    0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mueqpn8420"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-cdc8ff6e08c3",
+   "type": "inside-corner",
+   "position": [
+    590,
+    990,
+    20
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mueqpn8420"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-d3f159ae8d77",
+   "type": "inside-corner",
+   "position": [
+    610,
+    990,
+    20
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mueqpn8420"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-93e1c0ae7db9",
+   "type": "inside-corner",
+   "position": [
+    620,
+    1000,
+    20
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.4999999999999999,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqpn8420",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "c-seat-48226f7a53f9",
+   "type": "inside-corner",
+   "position": [
+    610,
+    1010,
+    580
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mueqpn8420"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-43f310b86584",
+   "type": "inside-corner",
+   "position": [
+    590,
+    990,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mueqpn8420"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-d6e37d1da788",
+   "type": "inside-corner",
+   "position": [
+    610,
+    990,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mueqpn8420"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-671fbf5c2031",
+   "type": "inside-corner",
+   "position": [
+    620,
+    1000,
+    580
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqpn8420",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "c-seat-e7d1751b3db3",
+   "type": "inside-corner",
+   "position": [
+    1210,
+    1010,
+    20
+   ],
+   "quaternion": [
+    0.4999999999999999,
+    0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9gr6w",
+    "p-mueqpno121"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-0b2323e7bc5e",
+   "type": "inside-corner",
+   "position": [
+    1190,
+    990,
+    20
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9gr6w",
+    "p-mueqpno121"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-0f1841afe471",
+   "type": "inside-corner",
+   "position": [
+    1210,
+    990,
+    20
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9gr6w",
+    "p-mueqpno121"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-1c9daa55fb61",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    1000,
+    20
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqpno121",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    0,
+    -1.1368683772161603e-13
+   ]
+  },
+  {
+   "id": "c-seat-0e4b5c4788fb",
+   "type": "inside-corner",
+   "position": [
+    1210,
+    1010,
+    580
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9wq6x",
+    "p-mueqpno121"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-70e8ce0a1284",
+   "type": "inside-corner",
+   "position": [
+    1190,
+    990,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9wq6x",
+    "p-mueqpno121"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ]
+  },
+  {
+   "id": "c-seat-dedd96b336ab",
+   "type": "inside-corner",
+   "position": [
+    1210,
+    990,
+    580
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9wq6x",
+    "p-mueqpno121"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ]
+  },
+  {
+   "id": "c-seat-bfac4b10a31d",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    1000,
+    580
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqpno121",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    0,
+    1.1368683772161603e-13
+   ]
+  },
+  {
+   "id": "c-seat-5b7227d40ae3",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1740,
+    -10
+   ],
+   "quaternion": [
+    -1.570092458683775e-16,
+    1.7431527984210495e-32,
+    -0.7071067811865476,
+    0.7071067811865475
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8276s",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    -9.999999999999805,
+    -10.000000000000194
+   ]
+  },
+  {
+   "id": "c-seat-68612594652a",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1740,
+    10
+   ],
+   "quaternion": [
+    -1.570092458683775e-16,
+    1.7431527984210495e-32,
+    -0.7071067811865476,
+    0.7071067811865475
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8276s",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    10.000000000000195,
+    9.999999999999806
+   ]
+  },
+  {
+   "id": "c-seat-1185fa820bb1",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1760,
+    -10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8276s",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    9.999999999999805,
+    10.000000000000194
+   ]
+  },
+  {
+   "id": "c-seat-79b3ebbc0414",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1760,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8276s",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    -10.000000000000195,
+    -9.999999999999806
+   ]
+  },
+  {
+   "id": "c-seat-7f43c600be96",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1740,
+    -10
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.570092458683775e-16
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    9.999999999999872,
+    10.000000000000128
+   ]
+  },
+  {
+   "id": "c-seat-1f29ca41b39e",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1740,
+    10
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.570092458683775e-16
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    -10.000000000000128,
+    -9.999999999999872
+   ]
+  },
+  {
+   "id": "c-seat-0605f661fa80",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1760,
+    -10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    -9.999999999999872,
+    -10.000000000000128
+   ]
+  },
+  {
+   "id": "c-seat-79e9feac694d",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1760,
+    10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mufvmsyz3y"
+   ],
+   "slotOffsets": [
+    10.000000000000128,
+    9.999999999999872
+   ]
+  },
+  {
+   "id": "c-seat-bcba0b95e01d",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1740,
+    590
+   ],
+   "quaternion": [
+    -1.570092458683775e-16,
+    1.7431527984210495e-32,
+    -0.7071067811865476,
+    0.7071067811865475
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8ex6t",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    -9.999999999999773,
+    -10.000000000000114
+   ]
+  },
+  {
+   "id": "c-seat-d0a5155d7462",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1740,
+    610
+   ],
+   "quaternion": [
+    -1.570092458683775e-16,
+    1.7431527984210495e-32,
+    -0.7071067811865476,
+    0.7071067811865475
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8ex6t",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    10.000000000000227,
+    9.999999999999886
+   ]
+  },
+  {
+   "id": "c-seat-ece44fa5cdf2",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1760,
+    590
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8ex6t",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    9.999999999999773,
+    10.000000000000114
+   ]
+  },
+  {
+   "id": "c-seat-3eacaf7e254c",
+   "type": "inside-corner",
+   "position": [
+    20,
+    1760,
+    610
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8ex6t",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    -10.000000000000227,
+    -9.999999999999886
+   ]
+  },
+  {
+   "id": "c-seat-cc08ec79d00c",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1740,
+    590
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.570092458683775e-16
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    9.999999999999886,
+    10.000000000000114
+   ]
+  },
+  {
+   "id": "c-seat-59d762ada54a",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1740,
+    610
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.570092458683775e-16
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    -10.000000000000114,
+    -9.999999999999886
+   ]
+  },
+  {
+   "id": "c-seat-15c3dbedfc83",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1760,
+    590
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    -9.999999999999886,
+    -10.000000000000114
+   ]
+  },
+  {
+   "id": "c-seat-e2e7a63c9512",
+   "type": "inside-corner",
+   "position": [
+    580,
+    1760,
+    610
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mufvmsyz3z"
+   ],
+   "slotOffsets": [
+    10.000000000000114,
+    9.999999999999886
+   ]
+  },
+  {
+   "id": "c-seat-4a424ce80017",
+   "type": "inside-corner",
+   "position": [
+    620,
+    1010,
+    -10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    9.999999999999888,
+    10.00000000000011
+   ]
+  },
+  {
+   "id": "c-seat-63e87cacaf4a",
+   "type": "inside-corner",
+   "position": [
+    620,
+    1010,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    -10.000000000000112,
+    -9.99999999999989
+   ]
+  },
+  {
+   "id": "c-seat-c3c6d38a94aa",
+   "type": "inside-corner",
+   "position": [
+    620,
+    990,
+    -10
+   ],
+   "quaternion": [
+    -1.570092458683775e-16,
+    1.7431527984210495e-32,
+    -0.7071067811865476,
+    0.7071067811865475
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    -9.999999999999888,
+    -10.00000000000011
+   ]
+  },
+  {
+   "id": "c-seat-1bdfc211ff70",
+   "type": "inside-corner",
+   "position": [
+    620,
+    990,
+    10
+   ],
+   "quaternion": [
+    -1.570092458683775e-16,
+    1.7431527984210495e-32,
+    -0.7071067811865476,
+    0.7071067811865475
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg8rf6u",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    10.000000000000112,
+    9.99999999999989
+   ]
+  },
+  {
+   "id": "c-seat-a1ba52533b72",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    1010,
+    -10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9gr6w",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    -9.999999999999956,
+    -10.000000000000044
+   ]
+  },
+  {
+   "id": "c-seat-92853a1e0239",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    1010,
+    10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9gr6w",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    10.000000000000044,
+    9.999999999999956
+   ]
+  },
+  {
+   "id": "c-seat-914746cbf975",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    990,
+    -10
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.570092458683775e-16
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9gr6w",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    9.999999999999956,
+    10.000000000000044
+   ]
+  },
+  {
+   "id": "c-seat-cc460a3acfb4",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    990,
+    10
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.570092458683775e-16
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9gr6w",
+    "p-mufvmsz041"
+   ],
+   "slotOffsets": [
+    -10.000000000000044,
+    -9.999999999999956
+   ]
+  },
+  {
+   "id": "c-seat-664303656ab8",
+   "type": "inside-corner",
+   "position": [
+    620,
+    1010,
+    590
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    9.999999999999886,
+    10.000000000000114
+   ]
+  },
+  {
+   "id": "c-seat-b41558fecb81",
+   "type": "inside-corner",
+   "position": [
+    620,
+    1010,
+    610
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    -10.000000000000114,
+    -9.999999999999886
+   ]
+  },
+  {
+   "id": "c-seat-a3ff7ffaa14d",
+   "type": "inside-corner",
+   "position": [
+    620,
+    990,
+    590
+   ],
+   "quaternion": [
+    -1.570092458683775e-16,
+    1.7431527984210495e-32,
+    -0.7071067811865476,
+    0.7071067811865475
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    -9.999999999999886,
+    -10.000000000000114
+   ]
+  },
+  {
+   "id": "c-seat-4de153e61589",
+   "type": "inside-corner",
+   "position": [
+    620,
+    990,
+    610
+   ],
+   "quaternion": [
+    -1.570092458683775e-16,
+    1.7431527984210495e-32,
+    -0.7071067811865476,
+    0.7071067811865475
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg95s6v",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    10.000000000000114,
+    9.999999999999886
+   ]
+  },
+  {
+   "id": "c-seat-12a01c8839ca",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    1010,
+    590
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9wq6x",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    -10,
+    -10.000000000000114
+   ]
+  },
+  {
+   "id": "c-seat-899665cf49ed",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    1010,
+    610
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9wq6x",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    10,
+    9.999999999999886
+   ]
+  },
+  {
+   "id": "c-seat-38951d22a988",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    990,
+    590
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.570092458683775e-16
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9wq6x",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    10,
+    10.000000000000114
+   ]
+  },
+  {
+   "id": "c-seat-0212bbed4e52",
+   "type": "inside-corner",
+   "position": [
+    1180,
+    990,
+    610
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    1.7431527984210492e-32,
+    -1.570092458683775e-16
+   ],
+   "series": 20,
+   "legs": [
+    "p-mueqg9wq6x",
+    "p-mufvmsz042"
+   ],
+   "slotOffsets": [
+    -10,
+    -9.999999999999886
+   ]
   }
  ],
  "panels": [

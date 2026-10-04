@@ -54,7 +54,7 @@ it('returns no target for an empty or no longer existing selection', () => {
 })
 
 it.each([
-  ['foot', 128], ['gusset', 112], ['inside-corner', 120], ['t-bracket', 140],
+  ['foot', 128], ['gusset', 130], ['inside-corner', 120], ['t-bracket', 140],
   ['bracket', 130], ['flat-plate', 105.5], ['joining-plate', 108], ['end-cap', 110],
   ['caster-mount', 102], ['cross-bracket', 124], ['hinge', 115], ['pivot', 113],
   ['corner-3way', 120], ['t-nut', 110],
@@ -66,8 +66,8 @@ it.each([
 it('does not invent the missing upper corner of a rotated triangular gusset', () => {
   const part: ConnectorData = { id: 'part', type: 'gusset', series: 30, position: [0, 100, 0],
     quaternion: new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), Math.PI / 4).toArray() }
-  // Its diagonal edge x+y=0 becomes horizontal after rotation; no solid reaches above it.
-  expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBe(100)
+  // The diagonal edge x+y=22 becomes horizontal; the enclosing square's upper corner is empty.
+  expect(selectedSolidTop(document({ connectors: [part] }), ['part'])).toBeCloseTo(100 + 22 / Math.SQRT2 * 1.5, 2)
 })
 
 it('includes a sideways 40-series foot disc, which is wider than its stem and top plate', () => {

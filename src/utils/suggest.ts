@@ -170,18 +170,22 @@ function generateHardware(doc: SuggestDoc, all: Seg[], scope: Seg[], cache: VetC
     const faults = cachedCheck(cache, 'brackets', [doc.profiles, doc.connectors], () => new Set(auditBrackets(doc.profiles, doc.connectors, trims).map((f) => f.id)))
     if (faults.size) {
       const bodies = all.map((s) => ({ s, box: trimmedBox(s.p, trims.get(s.p.id)!).expandByScalar(0.1) }))
-      const templates = doc.connectors.filter((c) => !faults.has(c.id)).map((c) => {
-        const point = new THREE.Vector3(...c.position)
-        return { c, pose: new THREE.Quaternion(...c.quaternion).normalize(),
-          members: bodies.filter(({ box }) => box.containsPoint(point)).map(({ s }) => s) }
-      })
+      const templates = doc.connectors.filter((c) => !faults.has(c.id)).map((c) => ({
+        c, pose: new THREE.Quaternion(...c.quaternion).normalize(), members: undefined as Seg[] | undefined,
+      }))
       for (const hardware of doc.connectors.filter((c) => faults.has(c.id))) {
         const pose = new THREE.Quaternion(...hardware.quaternion).normalize()
-        for (const { c, pose: templatePose, members } of templates) {
+        for (const template of templates) {
+          const { c } = template
           if (c.type !== hardware.type || (c.series ?? 20) !== (hardware.series ?? 20)
-            || Math.abs(pose.dot(templatePose)) < 0.999999) continue
+            || Math.abs(pose.dot(template.pose)) < 0.999999) continue
+          // Locate supports only for templates that can restore this hardware pose.
+          if (!template.members) {
+            const point = new THREE.Vector3(...c.position)
+            template.members = bodies.filter(({ box }) => box.containsPoint(point)).map(({ s }) => s)
+          }
           const delta = new THREE.Vector3(...hardware.position).sub(new THREE.Vector3(...c.position))
-          for (const m of members) if (scopeIds.has(m.p.id)) out.push({
+          for (const m of template.members) if (scopeIds.has(m.p.id)) out.push({
             s: m.a.clone().add(delta), e: m.b.clone().add(delta), spec: m.p.spec, twin: m.p,
             rule: 'copy', reason: 'copyClosed', src: [m.p.id], base: 3, claim: { kind: 'close', hardwareId: hardware.id }, hardware,
           })
@@ -351,8 +355,18 @@ export function* suggestNext(doc: SuggestDoc, focus: string[], skipped: Set<stri
   // Every hardware copy scores at least 3; ordinary rules score at most 2.5 including
   // focus and ring bonuses. Check this leading group before generating or preparing
   // the lower-ranked rules. A subsequent next() still visits those other routes.
+  const rejectedHardwarePoses = new Set<string>()
   for (const c of hardwareCandidates.sort(order)) {
-    if (yielded.has(c.key) || !vet(c.member, c.claim, doc, frame, baselineChecks).ok) continue
+    if (yielded.has(c.key)) continue
+    const pose = JSON.stringify([c.member.spec, c.member.length, c.member.position, c.member.quaternion])
+    if (rejectedHardwarePoses.has(pose)) continue
+    const result = vet(c.member, c.claim, doc, frame, baselineChecks)
+    if (!result.ok) {
+      // Several brackets can require the same member. A geometry failure applies
+      // to all of them; restoring one specific bracket is checked separately.
+      if (result.why !== 'hardware-not-restored') rejectedHardwarePoses.add(pose)
+      continue
+    }
     yielded.add(c.key); yieldedRoutes.add(routeOf(c)); yield c
   }
   for (const r of generate(doc, all, scope, baselineChecks)) addRaw(r)

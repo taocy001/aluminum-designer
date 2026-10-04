@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
-import { connectorEntry, connectorExtent, connectorScale } from './connectorCatalog'
+import { connectorScale } from './connectorCatalog'
+import { connectorMeshes } from './connectorGeometry'
 import { getProfileShape } from './profileShapes'
 import { computeAllTrims, type ProfileTrims, type ThroughRule } from './jointUtils'
 import { getProfileDir } from './geometryCore'
@@ -10,14 +11,14 @@ import { fittingBoardNumber, partNumber } from './partNumbers'
 /**
  * ISO 10303-21 AP214 export. Each part is a PRODUCT containing a closed BREP shell
  * of planar faces. Profiles use the display section outline at cut length;
- * connectors are simplified solids.
+ * connectors use their display bodies, with curved surfaces faceted and hole markers omitted.
  */
 
 export interface StepInput {
   profiles: ProfileData[]
   panels?: PanelData[]
   fittings?: FittingData[]
-  /** Simplified connector solids. */
+  /** Display bodies, without decorative hole markers. */
   connectors?: ConnectorData[]
   rule?: ThroughRule
   trims?: Map<string, ProfileTrims>
@@ -156,10 +157,55 @@ function slab(w: number, h: number): THREE.Vector2[] {
   ]
 }
 
-/** a cast corner bracket, as the screen draws it: two flanges at a right angle meeting at the origin */
-const ANGLE_T = 4
-const ANGLE_W = 18
-const ANGLE_REACH = 30
+/** Export a display body as a closed, faceted BREP. Weld face-normal seams before creating edges. */
+function meshSolid(s: Step, geometry: THREE.BufferGeometry, label: string, transform: THREE.Matrix4): number {
+  const positions = geometry.getAttribute('position')
+  const indices = geometry.getIndex()
+  const points: THREE.Vector3[] = []
+  const vertices: number[] = []
+  const byPosition = new Map<string, number>()
+  const pointIndex = (source: number) => {
+    const point = new THREE.Vector3().fromBufferAttribute(positions, source).applyMatrix4(transform)
+    const key = [point.x, point.y, point.z].map(num).join(',')
+    let index = byPosition.get(key)
+    if (index === undefined) {
+      index = points.length
+      byPosition.set(key, index)
+      points.push(point)
+      vertices.push(s.addUnique(`VERTEX_POINT('',#${s.point(point)})`))
+    }
+    return index
+  }
+  const edges = new Map<string, { id: number; from: number }>()
+  const use = (a: number, b: number) => {
+    const key = a < b ? `${a}/${b}` : `${b}/${a}`
+    let edge = edges.get(key)
+    if (!edge) {
+      const direction = points[b].clone().sub(points[a])
+      const length = direction.length()
+      const vector = s.add(`VECTOR('',#${s.direction(direction.normalize())},${num(length)})`)
+      const line = s.addUnique(`LINE('',#${s.point(points[a])},#${vector})`)
+      edge = { id: s.addUnique(`EDGE_CURVE('',#${vertices[a]},#${vertices[b]},#${line},.T.)`), from: a }
+      edges.set(key, edge)
+    }
+    return s.addUnique(`ORIENTED_EDGE('',*,*,#${edge.id},.${edge.from === a ? 'T' : 'F'}.)`)
+  }
+  const faces: number[] = []
+  for (let i = 0; i < (indices?.count ?? positions.count); i += 3) {
+    const triangle = [0, 1, 2].map((offset) => pointIndex(indices ? indices.getX(i + offset) : i + offset))
+    if (new Set(triangle).size < 3) continue
+    const [a, b, c] = triangle.map((index) => points[index])
+    const along = b.clone().sub(a).normalize()
+    const normal = along.clone().cross(c.clone().sub(a)).normalize()
+    if (normal.lengthSq() < 1e-12) continue
+    const loop = s.addUnique(`EDGE_LOOP('',(${triangle.map((index, j) => `#${use(index, triangle[(j + 1) % 3])}`).join(',')}))`)
+    const bound = s.addUnique(`FACE_OUTER_BOUND('',#${loop},.T.)`)
+    const plane = s.addUnique(`PLANE('',#${s.placement(a, normal, along)})`)
+    faces.push(s.addUnique(`ADVANCED_FACE('',(#${bound}),#${plane},.T.)`))
+  }
+  const shell = s.addUnique(`CLOSED_SHELL('',(${faces.map((face) => `#${face}`).join(',')}))`)
+  return s.addUnique(`MANIFOLD_SOLID_BREP('${str(label)}',#${shell})`)
+}
 
 const mm = (v: number) => Math.round(v * 10) / 10
 
@@ -194,9 +240,10 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
   const asm = product(name, asmRep)
 
   // World-space geometry uses an identity assembly placement.
-  const part = (label: string, description: string, solid: number) => {
+  const part = (label: string, description: string, solid: number | number[]) => {
     const own = origin()
-    const rep = s.addUnique(`ADVANCED_BREP_SHAPE_REPRESENTATION('${str(label)}',(#${solid},#${own}),#${ctx})`)
+    const bodies = (Array.isArray(solid) ? solid : [solid]).map((body) => `#${body}`).join(',')
+    const rep = s.addUnique(`ADVANCED_BREP_SHAPE_REPRESENTATION('${str(label)}',(${bodies},#${own}),#${ctx})`)
     const pd = product(label, rep, description)
     const nauo = s.addUnique(`NEXT_ASSEMBLY_USAGE_OCCURRENCE('${str(label)}','${str(label)}','${str(description)}',#${asm},#${pd},$)`)
     const pds = s.addUnique(`PRODUCT_DEFINITION_SHAPE('','',#${nauo})`)
@@ -244,25 +291,18 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     }
   }
 
-  // Export angle brackets as two flanges and other connectors as their envelopes.
+  // Keep each connector as one assembly part containing its modeled bodies.
   for (const c of connectors) {
     const series = c.series ?? 20
     const k = connectorScale(series)
     const quat = new THREE.Quaternion(...c.quaternion).normalize()
-    const { z, x } = frameFor(quat)
     const at = new THREE.Vector3(...c.position)
     const label = partNumber('connector', c.id)
     const description = `${c.type} ${series}`
-    if (c.type !== 'inside-corner' && connectorEntry(c.type)?.seat === 'angle') {
-      const r = ANGLE_REACH * k, t = ANGLE_T * k
-      const L = [[0, 0], [r, 0], [r, t], [t, t], [t, r], [0, r]].map(([u, v]) => new THREE.Vector2(u, v))
-      part(label, description, prism(s, L, label, at.addScaledVector(z, -ANGLE_W * k / 2), z, x, ANGLE_W * k))
-    } else {
-      const { centre, half } = connectorExtent(c.type)
-      const mid = at.add(new THREE.Vector3(...centre).multiplyScalar(k).applyQuaternion(quat))
-      const [hx, hy, hz] = half.map((h) => h * k)
-      part(label, description, prism(s, slab(2 * hx, 2 * hy), label, mid.addScaledVector(z, -hz), z, x, 2 * hz))
-    }
+    const transform = new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
+    const bodies = connectorMeshes(c.type).filter((mesh) => !mesh.dark)
+      .map(({ geometry }, index) => meshSolid(s, geometry, `${label}-${index + 1}`, transform))
+    part(label, description, bodies)
   }
 
   const stamp = new Date().toISOString().replace(/\.\d+Z$/, '')

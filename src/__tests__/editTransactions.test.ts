@@ -124,10 +124,22 @@ describe('mirroring reflects geometry and door motion', () => {
 })
 
 describe('movement treats explicitly selected assemblies together', () => {
-  it('keeps a connector fixed on its own but moves and rotates it with a group', () => {
-    load(mixed(), ['c'])
-    expect(nudgeSelected([100, 0, 0])).toBe(false)
-    expect(rotateSelected('y', 90)).toBe(false)
+  it('moves and rotates a single connector without changing the other parts', () => {
+    const doc = mixed()
+    load(doc, ['c'])
+    expect(nudgeSelected([100, 0, 0])).toBe(true)
+    expect(useStore.getState().connectors[0].position).toEqual([130, 60, 40])
+    expect(rotateSelected('y', 90)).toBe(true)
+    expect(useStore.getState().connectors[0].quaternion).not.toEqual(doc.connectors[0].quaternion)
+    for (const kind of ['profiles', 'panels', 'fittings'] as const) expect(useStore.getState()[kind]).toEqual(doc[kind])
+    expect(useStore.getState().past).toHaveLength(2)
+    useStore.getState().undo()
+    useStore.getState().undo()
+    expect(useStore.getState().connectors).toEqual(doc.connectors)
+  })
+
+  it('keeps connector spacing when moving and rotating it with a group', () => {
+    load(mixed())
     useStore.getState().selectItems(['p', 'c', 'b', 'f'])
     expect(nudgeSelected([100, 0, 0])).toBe(true)
     expect(useStore.getState().connectors[0].position).toEqual([130, 60, 40])
@@ -139,7 +151,7 @@ describe('movement treats explicitly selected assemblies together', () => {
     expect(afterDistance).toBeCloseTo(beforeDistance, 2)
   })
 
-  for (const kind of ['panels', 'fittings'] as const) {
+  for (const kind of ['connectors', 'panels', 'fittings'] as const) {
     it(`commits exact movement with ${kind} as the grabbed part`, () => {
       const doc = mixed(), lead = doc[kind][0]
       load(doc, [lead.id])

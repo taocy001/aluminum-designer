@@ -15,6 +15,7 @@ import { movingPartsConflict } from '../utils/analysis'
 import { lowestPointY } from '../utils/profileFactory'
 import { roundToGrid } from '../utils/specUtils'
 import { equipmentBody } from '../utils/equipmentGeometry'
+import { connectorTransformUpdates } from '../utils/connectorEdits'
 
 /** An axis arrow makes measured adjustments, so its snap window stays tight. */
 const AXIS_SNAP_MAX_MM = 12
@@ -278,7 +279,8 @@ const DragHandler: React.FC = () => {
         if (!c || c.locked) continue
         const origin = new THREE.Vector3(...(dragGroupOrigins[cid] ?? c.position))
         const np = origin.clone().add(groupDelta)
-        connectorUpdates.push({ id: cid, updates: { position: [np.x, np.y, np.z] } })
+        connectorUpdates.push({ id: cid,
+          updates: connectorTransformUpdates(c, { position: [np.x, np.y, np.z] }, new Set(dragged.map((p) => p.id))) })
       }
       const panelUpdates: Array<{ id: string; updates: Partial<PanelData> }> = []
       for (const bid of dragIds) {

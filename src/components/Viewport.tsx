@@ -28,6 +28,7 @@ import Equipment from './Equipment'
 import Gestures from './Gestures'
 import FrameDimensions from './FrameDimensions'
 import DrawingHandler from './DrawingHandler'
+import ConnectorEditPreview from './ConnectorEditPreview'
 import SuggestionGhost from './SuggestionGhost'
 import DragHandler from './DragHandler'
 import PointerRouter from './PointerRouter'
@@ -578,6 +579,7 @@ const Viewport: React.FC = () => {
       <EditAlignmentGuides trims={trims} />
 
       <DrawingHandler />
+      <ConnectorEditPreview />
       <SuggestionGhost />
       <DragHandler />
       <PointerRouter />

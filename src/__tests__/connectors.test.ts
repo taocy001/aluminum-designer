@@ -381,7 +381,7 @@ describe('fitting the feet first does not cost you the brackets', () => {
     const manual = connectorSeatAt('foot', V(0, 0, 0), [post])
     expect(c.position).toEqual(manual.position)
     expect(c.quaternion).toEqual(manual.quaternion)
-    expect(c.position).toEqual([0, -10, 0])
+    expect(c.position).toEqual([0, -28, 0])
     expect(findConflicts([post], computeAllTrims([post]), [c])).toEqual([])
   })
 

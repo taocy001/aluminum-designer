@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, settle, store } from './helpers'
+import { openApp, settle, setView, store } from './helpers'
 
 /** a rail and an upright meeting at the origin: the smallest thing with a real joint */
 async function loadCorner(page: import('@playwright/test').Page) {
@@ -74,12 +74,7 @@ test.describe('Every control says what it does', () => {
   })
 })
 
-/**
- * Between two aligned members there is one bracket that fits and one way it goes on. So a
- * connector is placed and deleted, and nothing else — a bracket nudged off its joint still
- * looks fitted, which is worse than a missing one.
- */
-test.describe('A connector goes on one way and stays there', () => {
+test.describe('A connector can be positioned independently', () => {
   test.beforeEach(async ({ page }) => {
     await openApp(page)
     await loadCorner(page)
@@ -99,28 +94,34 @@ test.describe('A connector goes on one way and stays there', () => {
     expect((await store(page)).selectedIds.length).toBe(1)
   })
 
-  test('the move and turn widget stays away', async ({ page }) => {
-    expect(await page.evaluate(() => (window as any).__aluframe.gizmoHandles().length)).toBe(0)
+  test('the move and turn widget is available', async ({ page }) => {
+    expect(await page.evaluate(() => (window as any).__aluframe.gizmoHandles().length)).toBe(6)
   })
 
-  test('its position is shown but not editable', async ({ page }) => {
+  test('its position and orientation are editable', async ({ page }) => {
     await expect(page.getByTestId('connector-position')).toBeVisible()
-    await expect(page.getByTestId('connector-position').locator('input')).toHaveCount(0)
+    await expect(page.getByTestId('connector-position').locator('input')).toHaveCount(3)
+    await expect(page.getByTestId('connector-orientation').locator('input')).toHaveCount(3)
   })
 
-  test('an arrow key does not move it', async ({ page }) => {
+  test('arrow keys move it and undo restores the seat', async ({ page }) => {
     const before = (await store(page)).connectors[0].position
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowRight')
     await settle(page)
+    expect((await store(page)).connectors[0].position).not.toEqual(before)
+    await page.keyboard.press('Control+z')
+    await page.keyboard.press('Control+z')
     expect((await store(page)).connectors[0].position).toEqual(before)
   })
 
-  test('R does not turn it', async ({ page }) => {
+  test('R turns it and undo restores the angle', async ({ page }) => {
     const before = (await store(page)).connectors[0].quaternion
     await page.keyboard.press('r')
     await page.keyboard.press('y')
     await settle(page)
+    expect((await store(page)).connectors[0].quaternion).not.toEqual(before)
+    await page.keyboard.press('Control+z')
     expect((await store(page)).connectors[0].quaternion).toEqual(before)
   })
 
@@ -131,44 +132,84 @@ test.describe('A connector goes on one way and stays there', () => {
     expect((await store(page)).connectors.length).toBe(before - 1)
   })
 
-  test('one click fits them all, and clears the ones a move stranded', async ({ page }) => {
-    await page.keyboard.press('Escape')
-    const fitted = (await store(page)).connectors.length
-    // take the upright right away: the brackets at its foot now hold nothing
-    await page.evaluate(() => {
-      const s = (window as any).__aluframe.store.getState()
-      const up = s.profiles.find((p: any) => p.length > 500 && p.position[1] < 100 && p.quaternion[0] !== 0)
-        ?? s.profiles[1]
-      s.commitTransform({ profiles: [{ id: up.id, updates: { position: [3000, 10, 3000] } }] })
-      s.clearSelection()
-    })
+  test('automatic placement preserves moved connectors and fills only vacant seats', async ({ page }) => {
+    const installed = (await store(page)).connectors[0]
+    const positionX = page.getByTestId('connector-position').locator('input').nth(0)
+    await positionX.fill('3000')
+    await positionX.press('Enter')
     await settle(page)
+    await page.keyboard.press('Escape')
+    const moved = await store(page)
+    expect(moved.connectors.find((c) => c.id === installed.id)?.position[0]).toBe(3000)
+
     await page.getByTestId('connector-bracket').click()
     await page.getByTestId('auto-connect').click()
     await settle(page)
-    await page.waitForTimeout(300)
-    const after = (await store(page)).connectors.length
-    // whatever the new count is, no bracket may be left sitting at no joint at all
-    expect(after).toBeLessThanOrEqual(fitted)
-    const stranded = await page.evaluate(() => {
-      const s = (window as any).__aluframe.store.getState()
-      return s.connectors.filter((c: any) => {
-        const [cx, cy, cz] = c.position
-        return !s.profiles.some((p: any) => {
-          const [x, y, z, w] = p.quaternion
-          const d = [2 * (x * z + w * y), 2 * (y * z - w * x), 1 - 2 * (x * x + y * y)]
-          const a = p.position, b = a.map((v: number, i: number) => v + d[i] * p.length)
-          const ab = b.map((v: number, i: number) => v - a[i])
-          const t = Math.max(0, Math.min(1,
-            ((cx - a[0]) * ab[0] + (cy - a[1]) * ab[1] + (cz - a[2]) * ab[2]) /
-            (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2)))
-          const q = a.map((v: number, i: number) => v + ab[i] * t)
-          return Math.hypot(q[0] - cx, q[1] - cy, q[2] - cz) < 60
-        })
-      }).length
-    })
-    expect(stranded).toBe(0)
+    const filled = await store(page)
+    expect(filled.connectors.length).toBe(moved.connectors.length + 1)
+    expect(filled.past).toBe(moved.past + 1)
+    for (const existing of moved.connectors) {
+      expect(filled.connectors.find((c) => c.id === existing.id)).toEqual(existing)
+    }
+    const added = filled.connectors.find((c) => !moved.connectors.some((existing) => existing.id === c.id))
+    expect(added).toMatchObject({ type: installed.type, series: installed.series,
+      position: installed.position, quaternion: installed.quaternion })
+
+    await page.getByTestId('auto-connect').click()
+    await settle(page)
+    expect((await store(page)).connectors).toEqual(filled.connectors)
+    expect((await store(page)).past).toBe(filled.past)
+
+    await page.keyboard.press('Escape')
+    await page.getByTestId('viewport').focus()
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).connectors).toEqual(moved.connectors)
   })
+})
+
+test('an installed bracket previews and switches mounting faces in one undo step', async ({ page }) => {
+  await openApp(page)
+  await loadCorner(page)
+  await page.getByTestId('connector-gusset').click()
+  await page.getByTestId('auto-connect').click()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  const before = await page.evaluate(() => {
+    const app = (window as any).__aluframe, c = app.store.getState().connectors.find((part: any) => part.type === 'gusset')
+    if (!c) throw new Error('Gusset not installed')
+    app.store.setState({ connectors: [c], selectedIds: [c.id], past: [], future: [] })
+    return c
+  })
+  await settle(page)
+  await page.getByTestId('connector-reseat').click()
+  const choices = page.getByTestId('connector-seat-option')
+  await expect.poll(() => choices.count()).toBeGreaterThanOrEqual(2)
+  const current = page.locator('[data-testid="connector-seat-option"][aria-pressed="true"]')
+  await expect(current).toHaveAttribute('data-allowed', 'true')
+  const other = page.locator('[data-testid="connector-seat-option"][aria-pressed="false"][data-allowed="true"]').first()
+  await other.click()
+  const picked = await current.textContent()
+  await settle(page)
+  const preview = await page.evaluate(() => {
+    let legs: string[] | null = null
+    const slots: string[] = []
+    ;(window as any).__aluframe.sceneRoot.traverse((object: any) => {
+      if (object.userData.connectorEditPreview) legs = object.userData.seatLegs
+      if (object.userData.connectorSlotGuide) slots.push(object.userData.profileId)
+    })
+    return { legs, slots }
+  })
+  expect(preview.legs?.sort()).toEqual(['post', 'rail'])
+  expect(preview.slots.sort()).toEqual(['post', 'rail'])
+  await setView(page, [-1300, 1000, -1600], [0, 100, 0])
+  await expect(current).toHaveText(picked!)
+  await page.getByTestId('connector-seat-apply').click()
+  await expect(page.getByTestId('connector-reseat')).toHaveAttribute('aria-expanded', 'false')
+  expect((await store(page)).connectors[0].position).not.toEqual(before.position)
+  expect((await store(page)).past).toBe(1)
+  await page.getByTestId('viewport').focus()
+  await page.keyboard.press('Control+z')
+  expect((await store(page)).connectors[0]).toEqual(before)
 })
 
 /** A turn needs an axis, and F frames what you are looking at rather than everything */

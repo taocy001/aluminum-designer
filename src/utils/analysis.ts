@@ -8,6 +8,8 @@ import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
 import { findSpecMismatches, type SpecMismatch } from './specCompat'
 import { fittingObb, fittingSolids } from './fittingGeometry'
 import { findEquipmentConflicts, type EquipmentConflict } from './equipmentChecks'
+import { connectorHitsBody, connectorsCollide } from './connectorCollision'
+import { auditBrackets } from './bracketSeat'
 
 /** members closer than this are considered touching, not interfering (mm) */
 const TOUCH_TOL = 1
@@ -83,6 +85,7 @@ export function connectorOBB(c: ConnectorData): OBB {
 export function findConflicts(
   profiles: ProfileData[], trims: Map<string, ProfileTrims>, connectors: ConnectorData[] = [],
   panels: PanelData[] = [], fittings: FittingData[] = [],
+  affectedIds?: ReadonlySet<string>,
 ): Conflict[] {
   /** `fit` is the index into `fittings` of the drawer or door a board belongs to */
   const boxes: Array<{ id: string; obb: OBB; fit?: number }> = profiles.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) }))
@@ -112,6 +115,7 @@ export function findConflicts(
     const A = spans[a]
     for (let b = a + 1; b < spans.length && spans[b].x0 <= A.x1; b++) {
       const B = spans[b]
+      if (affectedIds && !affectedIds.has(boxes[A.i].id) && !affectedIds.has(boxes[B.i].id)) continue
       if (B.y0 > A.y1 || A.y0 > B.y1 || B.z0 > A.z1 || A.z0 > B.z1) continue
       pairs.push(A.i < B.i ? [A.i, B.i] : [B.i, A.i])
     }
@@ -144,7 +148,13 @@ export function findConflicts(
   for (const [i, j] of pairs) {
     if (boxes[i].id === boxes[j].id) continue           // a drawer's own boards meet each other
     if (behindShutDoor(i, j)) continue
-    const tol = i >= parts || j >= parts ? BOARD_TOUCH_TOL
+    const connectorA = i >= members && i < parts ? connectors[i - members] : undefined
+    const connectorB = j >= members && j < parts ? connectors[j - members] : undefined
+    if (connectorA && connectorB && !connectorsCollide(connectorA, connectorB)) continue
+    if (connectorA && !connectorB && !connectorHitsBody(connectorA, boxes[j].obb, j < members ? 3 : 1, j < members)) continue
+    if (connectorB && !connectorA && !connectorHitsBody(connectorB, boxes[i].obb, i < members ? 3 : 1, i < members)) continue
+    const tol = connectorA || connectorB ? (i < members || j < members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL)
+      : i >= parts || j >= parts ? BOARD_TOUCH_TOL
       : i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL
     const depth = obbPenetration(boxes[i].obb, boxes[j].obb, tol)
     if (depth <= 0) continue
@@ -207,13 +217,23 @@ export function analyzeFrame(
   for (const c of conflicts) { conflictIds.add(c.a); conflictIds.add(c.b) }
   const equipmentConflicts = equipment.length ? findEquipmentConflicts(equipment, [
     ...profiles.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) })),
-    ...connectors.map((c) => ({ id: c.id, obb: connectorOBB(c) })),
+    ...connectors.map((c) => ({ id: c.id, obb: connectorOBB(c), connector: c })),
     ...panels.map((b) => ({ id: b.id, obb: panelOBB(b) })),
     ...fittings.flatMap((f) => fittingSolids(f).map((obb) => ({ id: f.id, obb }))),
   ]) : []
   const equipmentConflictIds = new Set<string>()
   for (const c of equipmentConflicts) { equipmentConflictIds.add(c.a); equipmentConflictIds.add(c.b) }
-  const mismatches = findSpecMismatches(profiles)
+  let mismatches = findSpecMismatches(profiles)
+  // An installed three-way connector can join faces that no flat plate spans.
+  // Only its audited, unobstructed mounting members override that planar inference.
+  const threeWay = mismatches.length ? connectors.filter((c) => c.type === 'corner-3way'
+    && !conflictIds.has(c.id) && !equipmentConflictIds.has(c.id)) : []
+  if (threeWay.length) {
+    const supported = new Map<string, string[]>()
+    auditBrackets(profiles, threeWay, trims, supported)
+    mismatches = mismatches.filter((m) => m.kind !== 'face'
+      || ![...supported.values()].some((members) => members.includes(m.a) && members.includes(m.b)))
+  }
   const mismatchIds = new Set<string>()
   for (const m of mismatches) { mismatchIds.add(m.a); mismatchIds.add(m.b) }
   cacheKey = profiles

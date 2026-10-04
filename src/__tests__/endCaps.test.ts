@@ -93,21 +93,19 @@ it.each([0, Math.PI / 2])('does not duplicate correctly seated caps saved with t
   expect(useStore.getState().connectors).toEqual(before)
 })
 
-it('replaces a same-normal cap whose arbitrary roll does not fit the host section', () => {
+it('preserves an existing cap whose arbitrary roll does not fit the host section', () => {
   const p = profile('post', V(0, 0, 0), V(0, 800, 0), '4040')
   p.quaternion = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), 0.37)
     .multiply(new THREE.Quaternion(...p.quaternion)).toArray()
   const caps = [0, 800].map((y) => ({ id: `old-${y}`, type: 'end-cap', position: [0, y, 0] as [number, number, number],
     ...fitConnector('end-cap', V(0, y, 0), [p]) }))
   useStore.getState().loadDocument({ profiles: [p], connectors: caps, panels: [], fittings: [], throughRule: 'rails' })
-  expect(autoConnect('end-cap')).toMatchObject({ placed: 2, removed: 2 })
-  const section = V(1, 0, 0).applyQuaternion(new THREE.Quaternion(...p.quaternion))
-  for (const cap of useStore.getState().connectors)
-    expect(Math.abs(V(1, 0, 0).applyQuaternion(new THREE.Quaternion(...cap.quaternion)).dot(section))).toBeCloseTo(1)
-  expect(autoConnect('end-cap').placed).toBe(0)
+  const before = useStore.getState()
+  expect(autoConnect('end-cap')).toMatchObject({ placed: 0, removed: 0, unbolted: 2 })
+  expect(useStore.getState()).toBe(before)
 })
 
-it('replaces the old sideways and wrong-series caps while preserving other parts and locked caps', () => {
+it('preserves sideways, wrong-series and locked caps without overlapping them', () => {
   const p = profile('post', V(0, 0, 0), V(0, 800, 0), '4040')
   const old = [0, 800].map((y) => ({ id: `old-${y}`, type: 'end-cap', series: 20 as const,
     position: [0, y, y === 0 ? -20 : 0] as [number, number, number],
@@ -117,15 +115,13 @@ it('replaces the old sideways and wrong-series caps while preserving other parts
   useStore.getState().loadDocument({ profiles: [p], connectors: [...old, locked, other], panels: [], fittings: [], throughRule: 'rails' })
   const previous = useStore.getState().connectors
   const before = useStore.getState().past.length
-  expect(autoConnect('end-cap')).toMatchObject({ placed: 2, removed: 2 })
+  expect(autoConnect('end-cap')).toMatchObject({ placed: 0, removed: 0, unbolted: 2 })
   const after = useStore.getState().connectors
   expect(after).toHaveLength(4)
   expect(after.find((c) => c.id === locked.id)).toEqual(locked)
   expect(after.find((c) => c.id === other.id)).toEqual(other)
-  expect(after.filter((c) => c.type === 'end-cap' && !c.locked).every((c) => c.series === 40 && Math.abs(c.position[2]) < 1e-5)).toBe(true)
-  expect(useStore.getState().past).toHaveLength(before + 1)
+  expect(after).toBe(previous)
+  expect(useStore.getState().past).toHaveLength(before)
   expect(autoConnect('end-cap').placed).toBe(0)
   expect(useStore.getState().connectors).toEqual(after)
-  useStore.getState().undo()
-  expect(useStore.getState().connectors).toEqual(previous)
 })

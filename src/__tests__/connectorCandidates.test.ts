@@ -106,12 +106,12 @@ describe('automatic corner mounting', () => {
   it('joins all three member pairs and remains independent of source array order', () => {
     const profiles = threeWay()
     load(profiles)
-    expect(autoConnect('inside-corner').placed).toBe(3)
+    expect(autoConnect('inside-corner').placed).toBe(5)
     const first = useStore.getState().connectors
     expect(auditBrackets(profiles, first)).toEqual([])
     expect(findConflicts(profiles, computeAllTrims(profiles), first)).toEqual([])
     load([...profiles].reverse())
-    expect(autoConnect('inside-corner').placed).toBe(3)
+    expect(autoConnect('inside-corner').placed).toBe(5)
     expect(useStore.getState().connectors.map(({ position, quaternion }) => ({ position, quaternion })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
       .toEqual(first.map(({ position, quaternion }) => ({ position, quaternion })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
   })

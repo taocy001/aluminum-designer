@@ -40,7 +40,8 @@ test('selection work planes coincide with the rendered connector solids, includi
       return { top: Math.round(top * 1000) / 1000, count }
     }, id)
     expect(actualTop.count).toBeGreaterThan(20)
-    expect(actualTop.top).toBeCloseTo([128, 112, 136, 100, 140.305][index], 3)
+    // The gusset reaches Y=30; its diagonal x+y=22 is horizontal after the 45° turn.
+    expect(actualTop.top).toBeCloseTo([128, 130, 136, 123.335, 140.305][index], 3)
     await page.getByTestId('work-plane-from-selection').click()
     await expect(page.getByTestId('work-plane')).toHaveValue(String(actualTop.top))
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().workPlaneY)).toBe(actualTop.top)

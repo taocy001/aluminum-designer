@@ -11,15 +11,18 @@ import SnapMarker from './SnapMarker'
 import { floorY, tryAddProfile, placeConnector } from '../utils/profileFactory'
 import { specDims } from '../utils/specUtils'
 import { resolveConnectorPlacement } from '../utils/connectorPlacement'
+import { connectorSeatsAt } from '../utils/bracketSeat'
 import { connectorEntry } from '../utils/connectorCatalog'
 import { profileBodyEndpoints, profileFace } from '../utils/profileFaces'
 import Connector from './Connector'
+import ConnectorSeatGuides from './ConnectorSeatGuides'
 import { translations } from '../utils/translations'
 import { drawingInput, drawingStartAnchor, prepareDrawingPreview } from '../utils/drawPreview'
 import { computeTrims } from '../utils/jointUtils'
 import { FacePatch } from './SnapFaces'
 import { DrawContactGuides } from './DrawContactGuides'
 import { gizmoState } from './TransformGizmo'
+import { partNumber } from '../utils/partNumbers'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 /** a left press that travels this far orbits the camera instead of placing a point */
@@ -30,6 +33,9 @@ const DrawingHandler: React.FC = () => {
   const profiles = useStore((s) => s.profiles)
   const connectors = useStore((s) => s.connectors)
   const throughRule = useStore((s) => s.throughRule)
+  const equipment = useStore((s) => s.equipment)
+  const panels = useStore((s) => s.panels)
+  const fittings = useStore((s) => s.fittings)
   const { camera, size, scene, gl } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
 
@@ -53,38 +59,48 @@ const DrawingHandler: React.FC = () => {
   const hoverNormal = useRef<THREE.Vector3 | null>(null)
   const hoverJointPoint = useRef<THREE.Vector3 | null>(null)
   const [connectorSelection, setConnectorSelection] = useState<number | string>(0)
-  const connectorChoice = useRef<{ choice: number | string; cursor: THREE.Vector2; type: string }>({
-    choice: 0, cursor: new THREE.Vector2(Infinity, Infinity), type: '',
-  })
-  const choiceAt = useCallback((cursor: THREE.Vector2, type: string) => {
-    const previous = connectorChoice.current
-    if (previous.type !== type || previous.cursor.distanceTo(cursor) > 3) {
-      connectorChoice.current = { choice: 0, cursor: cursor.clone(), type }
-      setConnectorSelection(0)
-      return 0
-    }
-    return previous.choice
+  const connectorChoice = useRef<number | string>(0)
+  const pinnedJoint = useRef(false)
+  const [jointPinned, setJointPinned] = useState(false)
+  const [pairFilter, setPairFilter] = useState('')
+  const selectConnector = useCallback((key: string) => {
+    connectorChoice.current = key
+    setConnectorSelection(key)
+    pinnedJoint.current = true
+    setJointPinned(true)
+  }, [])
+  const pinJoint = useCallback(() => {
+    pinnedJoint.current = true
+    setJointPinned(true)
+  }, [])
+  const releaseJoint = useCallback(() => {
+    pinnedJoint.current = false
+    setJointPinned(false)
+    setPairFilter('')
+    connectorChoice.current = 0
+    setConnectorSelection(0)
+    useToolStore.getState().setHover(null, null)
   }, [])
   const cycleConnector = useCallback((step: number) => {
     const ts = useToolStore.getState(), store = useStore.getState()
     if (ts.held !== 'connector' || !ts.activeConnectorType || !ts.currentPoint) return
     const current = resolveConnectorPlacement(ts.activeConnectorType, ts.currentPoint,
-      store.profiles, store.connectors, hoverNormal.current, connectorChoice.current.choice, hoverJointPoint.current ?? undefined)
-    if (current.count < 2) return
-    const index = (current.index + step + current.count) % current.count
-    const key = current.keys[index]
-    connectorChoice.current.choice = key
-    const pointer = lastCanvasPointer.current
-    if (pointer) {
-      const rect = gl.domElement.getBoundingClientRect()
-      connectorChoice.current.cursor.set(pointer.x - rect.left, pointer.y - rect.top)
-    }
-    setConnectorSelection(key)
-  }, [gl])
+      store.profiles, store.connectors, hoverNormal.current, connectorChoice.current, hoverJointPoint.current ?? undefined,
+      { equipment: store.equipment, panels: store.panels, fittings: store.fittings })
+    const choices = current.candidates.filter((candidate) => !pairFilter || candidate.seat.legs?.slice().sort().join('|') === pairFilter)
+    if (choices.length < 2) return
+    const selected = choices.findIndex((candidate) => candidate.key === current.key)
+    const index = (Math.max(0, selected) + step + choices.length) % choices.length
+    const key = choices[index].key
+    selectConnector(key)
+  }, [selectConnector, pairFilter])
 
   useEffect(() => {
-    connectorChoice.current = { choice: 0, cursor: new THREE.Vector2(Infinity, Infinity), type: activeConnectorType ?? '' }
+    connectorChoice.current = 0
     setConnectorSelection(0)
+    pinnedJoint.current = false
+    setJointPinned(false)
+    setPairFilter('')
   }, [held, activeConnectorType])
 
   useEffect(() => {
@@ -260,6 +276,7 @@ const DrawingHandler: React.FC = () => {
 
   const updateHover = useCallback((ray: THREE.Ray, cursor: THREE.Vector2) => {
     const ts = useToolStore.getState()
+    if (ts.held === 'connector' && pinnedJoint.current) return
     const profiles = useStore.getState().profiles
     const hit = hitMember(ray)
     const cornerHit = hit && ts.held === 'connector' && connectorEntry(ts.activeConnectorType ?? '')?.fit === 'corner'
@@ -267,14 +284,24 @@ const DrawingHandler: React.FC = () => {
       ? pickDrawingStart(ray, cursor, camera, size, profiles, hit, ts.workPlaneY, ts.drawSnapFace)
       : cornerHit ? { ...hit, kind: 'segment' }
       : pickPoint(ray, cursor, camera, size, profiles, hit, ts.workPlaneY, ts.drawSnapFace)
-    if (ts.held === 'connector') choiceAt(cursor, ts.activeConnectorType ?? '')
+    // Keep the last joint while crossing empty space to reach the candidate controls.
+    // Hovering another valid joint still changes the target until it is explicitly pinned.
+    if (ts.held === 'connector' && ts.activeConnectorType && connectorEntry(ts.activeConnectorType)?.fit === 'corner') {
+      const jointPoint = cornerHit ? modelPointFromHit(hit, profiles, ray)?.point : undefined
+      const next = connectorSeatsAt(ts.activeConnectorType, pick.point, profiles, pick.normal, jointPoint)
+      if (!next.length && ts.currentPoint) {
+        const previous = connectorSeatsAt(ts.activeConnectorType, ts.currentPoint, profiles,
+          hoverNormal.current, hoverJointPoint.current ?? undefined)
+        if (previous.length) return
+      }
+    }
     hoverNormal.current = pick.normal ?? null
     hoverJointPoint.current = cornerHit ? modelPointFromHit(hit, profiles, ray)?.point ?? null : null
     if (pick.kind === 'none') { ts.setHover(null, null); ts.updateDraw({ alignGuides: [] }); return }
     const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
     ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null, pick.face ?? null, pick.alignmentFace ?? null)
     ts.updateDraw({ alignGuides: (pick.guides ?? []).map((g) => ({ from: g.from.toArray() as any, to: g.to.toArray() as any })) })
-  }, [camera, size, hitMember, choiceAt])
+  }, [camera, size, hitMember])
 
   const refreshPointer = useCallback(() => {
     const client = lastCanvasPointer.current
@@ -362,6 +389,10 @@ const DrawingHandler: React.FC = () => {
 
     if (ts.held === 'connector') {
       if (!ts.activeConnectorType) return
+      if (pinnedJoint.current && ts.currentPoint) {
+        placeConnector(ts.currentPoint, ts.activeConnectorType, hoverNormal.current, connectorChoice.current, hoverJointPoint.current ?? undefined)
+        return
+      }
       const profiles = useStore.getState().profiles
       const hit = hitMember(ray)
       const cornerHit = hit && connectorEntry(ts.activeConnectorType)?.fit === 'corner'
@@ -369,7 +400,16 @@ const DrawingHandler: React.FC = () => {
         : pickPoint(ray, cursor, camera, size, profiles, hit, ts.workPlaneY)
       if (pick.kind === 'none') return
       const jointPoint = cornerHit ? modelPointFromHit(hit, profiles, ray)?.point : undefined
-      placeConnector(pick.point, ts.activeConnectorType, pick.normal ?? null, choiceAt(cursor, ts.activeConnectorType), jointPoint)
+      // Keep the selected joint stable while the pointer moves to the candidate controls.
+      const placement = resolveConnectorPlacement(ts.activeConnectorType, pick.point, profiles, useStore.getState().connectors,
+        pick.normal, connectorChoice.current, jointPoint)
+      if (placement.count) {
+        hoverNormal.current = pick.normal ?? null
+        hoverJointPoint.current = jointPoint ?? null
+        ts.setHover(pick.point, pick.point, 'segment', pick.profileId ?? null)
+        pinJoint()
+      }
+      placeConnector(pick.point, ts.activeConnectorType, pick.normal ?? null, connectorChoice.current, jointPoint)
       return
     }
 
@@ -387,7 +427,7 @@ const DrawingHandler: React.FC = () => {
     const input = drawingInput(s, c, { startFace: drawStartFace, endFace: drawSnapFace, startAlignmentFace: drawStartAlignmentFace }, drawLengthInput)
     if (!input) return
     if (tryAddProfile(s, input.end, activeSpec, input.faces)) ts.cancelDraw()
-  }, [camera, size, updateEnd, hitMember, choiceAt])
+  }, [camera, size, updateEnd, hitMember, pinJoint])
 
   // Release decides between drawing and orbiting
   useEffect(() => {
@@ -413,9 +453,20 @@ const DrawingHandler: React.FC = () => {
   const connectorPlacement = useMemo(() => {
     if (held !== 'connector' || !activeConnectorType || !currentPoint) return null
     return resolveConnectorPlacement(activeConnectorType, currentPoint, profiles, connectors, hoverNormal.current,
-      connectorSelection, hoverJointPoint.current ?? undefined)
-  }, [held, activeConnectorType, currentPoint, profiles, connectors, throughRule, connectorSelection])
+      connectorSelection, hoverJointPoint.current ?? undefined, { equipment, panels, fittings })
+  }, [held, activeConnectorType, currentPoint, profiles, connectors, equipment, panels, fittings, throughRule, connectorSelection])
   const connectorPreview = connectorPlacement?.seat
+  const pairKeys = [...new Set((connectorPlacement?.candidates ?? []).map((candidate) => candidate.seat.legs?.slice().sort().join('|') ?? ''))]
+  const activePair = pairKeys.includes(pairFilter) ? pairFilter : ''
+  const visibleCandidates = (connectorPlacement?.candidates ?? []).filter((candidate) => !activePair || candidate.seat.legs?.slice().sort().join('|') === activePair)
+  const t = translations[language]
+  const pairLabel = (key: string) => key.split('|').map((id) => {
+    const profile = profiles.find((p) => p.id === id)
+    return `${profile?.spec ?? ''} ${partNumber('profile', id)}`
+  }).join(' ↔ ')
+  const reasonLabel = (reason?: string) => reason === 'occupied' ? t.connectorOccupied
+    : reason === 'equipment' ? t.connectorReasonEquipment
+    : reason === 'collision' ? t.connectorReasonCollision : t.connectorNoSeat
 
   return (
     <>
@@ -487,7 +538,7 @@ const DrawingHandler: React.FC = () => {
       {held === 'connector' && activeConnectorType && currentPoint && connectorPreview && connectorPlacement && (
         <>
           <group userData={{ connectorPreview: true, seatLegs: connectorPlacement.legs }}>
-            {connectorPlacement.allowed && <Connector
+            {(connectorPlacement.allowed || connectorPreview.seated) && <Connector
               type={activeConnectorType}
               series={connectorPreview.series}
               position={connectorPreview.position}
@@ -496,6 +547,9 @@ const DrawingHandler: React.FC = () => {
             />}
           </group>
           <SnapMarker position={connectorPreview.position} kind={connectorPreview.seated ? 'seat' : 'loose'} size={0.055} />
+          {connectorPreview.seated && <ConnectorSeatGuides
+            connector={{ type: activeConnectorType, ...connectorPreview }}
+            legs={connectorPlacement.legs ?? []} profiles={profiles} />}
           {connectorPlacement.legs?.map((id) => {
             const profile = profiles.find((p) => p.id === id)
             if (!profile) return null
@@ -508,12 +562,55 @@ const DrawingHandler: React.FC = () => {
             // This screen overlay stays visible even when the world origin is behind the camera.
             onOcclude={() => {}} style={{ pointerEvents: 'none' }}>
             <div data-testid="connector-seat-hud" data-seat-index={connectorPlacement.index} data-seat-count={connectorPlacement.count}
-              className="absolute bottom-24 md:bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2 w-max max-w-[calc(100%-2rem)] rounded-lg border border-cyan-400/40 bg-slate-900/95 px-3 py-2 text-center text-xs text-slate-200">
-              <span role="status">
-                {!connectorPlacement.allowed ? translations[language].connectorNoSeat
-                  : translations[language].connectorSeatChoice(connectorPlacement.index + 1, connectorPlacement.count)}
-                {connectorPlacement.occupied && <span className="block text-amber-300">{translations[language].connectorOccupied}</span>}
-              </span>
+              style={{ pointerEvents: 'auto' }} onPointerDown={(event) => event.stopPropagation()}
+              className="absolute bottom-24 md:bottom-14 left-1/2 -translate-x-1/2 w-[min(540px,calc(100%-2rem))] rounded-lg border border-cyan-400/40 bg-slate-900/95 px-3 py-2 text-xs text-slate-200">
+              <div className="flex items-center justify-between gap-2">
+                <span role="status">
+                  {connectorPlacement.count ? t.connectorSeatChoice(connectorPlacement.index + 1, connectorPlacement.count) : t.connectorNoSeat}
+                  {(connectorPlacement.occupied || !connectorPlacement.allowed) && connectorPlacement.count > 0 &&
+                    <span className="block text-amber-300">{reasonLabel(connectorPlacement.reason)}</span>}
+                </span>
+                {(jointPinned || connectorPlacement.count > 0) && <button type="button" data-testid="connector-joint-lock"
+                  onClick={jointPinned ? releaseJoint : pinJoint}
+                  className="shrink-0 rounded border border-slate-600 px-2 py-1 hover:bg-slate-700">
+                  {jointPinned ? t.connectorNextJoint : t.connectorPinJoint}
+                </button>}
+              </div>
+              {connectorPlacement.count > 0 && <>
+                {jointPinned && <p className="mt-1 text-slate-400">{t.connectorJointPinned}</p>}
+                <label className="mt-2 flex items-center gap-2">
+                  <span className="shrink-0">{t.connectorSeatPair}</span>
+                  <select data-testid="connector-pair-filter" value={activePair}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      setPairFilter(value)
+                      const first = connectorPlacement.candidates.find((candidate) => !value || candidate.seat.legs?.slice().sort().join('|') === value)
+                      if (first) selectConnector(first.key)
+                    }} className="min-w-0 flex-1 rounded bg-slate-800 p-1">
+                    <option value="">{t.connectorAllPairs}</option>
+                    {pairKeys.map((key) => <option key={key} value={key}>{pairLabel(key)}</option>)}
+                  </select>
+                </label>
+                <div className="mt-2 flex max-h-32 flex-wrap gap-1 overflow-y-auto" aria-label={t.connectorSeatChoose}>
+                  {visibleCandidates.map((candidate) => {
+                    const index = connectorPlacement.keys.indexOf(candidate.key)
+                    const active = candidate.key === connectorPlacement.key
+                    return <button key={candidate.key} type="button" data-testid="connector-seat-option"
+                      data-seat-key={candidate.key} data-position={candidate.seat.position.join(',')}
+                      aria-pressed={active} title={`${pairLabel(candidate.seat.legs?.slice().sort().join('|') ?? '')} · ${candidate.seat.position.map((v) => Number(v.toFixed(1))).join(', ')} mm${candidate.reason ? ` · ${reasonLabel(candidate.reason)}` : ''}`}
+                      onClick={() => selectConnector(candidate.key)}
+                      className={`rounded border px-2 py-1 ${active ? 'border-cyan-300 bg-cyan-950' : 'border-slate-600 hover:bg-slate-700'} ${candidate.occupied || !candidate.allowed ? 'text-amber-300' : ''}`}>
+                      {index + 1}{candidate.occupied ? ' ✓' : !candidate.allowed ? ' !' : ''}
+                    </button>
+                  })}
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="font-mono text-slate-400">{connectorPreview.position.map((v) => Number(v.toFixed(1))).join(', ')} mm</span>
+                  <button type="button" data-testid="connector-seat-place" disabled={!connectorPlacement.allowed || connectorPlacement.occupied}
+                    onClick={() => { pinJoint(); placeConnector(currentPoint, activeConnectorType, hoverNormal.current, connectorPlacement.key ?? connectorSelection, hoverJointPoint.current ?? undefined) }}
+                    className="rounded bg-cyan-700 px-3 py-1 hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40">{t.connectorSeatPlace}</button>
+                </div>
+              </>}
             </div>
           </Html>}
           {connectorPreview.seated

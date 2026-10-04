@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { openApp, setView, settle, store, w2c, type V3 } from './helpers'
 
 const JOINT: V3 = [0, 100, 0]
@@ -61,6 +62,66 @@ async function assertNoConnectorConflicts(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => { await openApp(page) })
+
+test('the actual desk corner offers five seats grouped by its three member pairs', async ({ page }) => {
+  const source = JSON.parse(readFileSync('examples/desk-with-pedestal.json', 'utf8'))
+  // Retain the two original installations, including the symmetric rail-to-rail orientation.
+  source.connectors = source.connectors.filter((part: any) => {
+    const [x, y, z] = part.position
+    return Math.hypot(x - 20, y - 700, z - 580) > 80
+      || (Math.abs(x - 40) < 0.01 && ((Math.abs(y - 700) < 0.01 && Math.abs(z - 570) < 0.01)
+        || (Math.abs(y - 710) < 0.01 && Math.abs(z - 560) < 0.01)))
+  })
+  await page.evaluate(async (source) => {
+    const { parseProjectDocument } = await import('/src/utils/document.ts')
+    ;(window as any).__aluframe.store.getState().loadDocument(parseProjectDocument(source))
+  }, source)
+  await setView(page, [-200, 870, 840], [25, 700, 575])
+  await page.getByTestId('connector-inside-corner').click()
+  const pointer = await w2c(page, [20, 700, 580])
+  await page.mouse.move(pointer.x, pointer.y)
+  await settle(page)
+  const hud = page.getByTestId('connector-seat-hud')
+  await expect(hud).toHaveAttribute('data-seat-count', '5')
+  const lock = page.getByTestId('connector-joint-lock')
+  const lockBox = (await lock.boundingBox())!
+  await page.mouse.move(lockBox.x + lockBox.width / 2, lockBox.y + lockBox.height / 2, { steps: 25 })
+  await expect(hud).toHaveAttribute('data-seat-count', '5')
+  await lock.click()
+  const initial = await store(page)
+  const filter = page.getByTestId('connector-pair-filter')
+  const pairs = await filter.locator('option').evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value).filter(Boolean))
+  expect(pairs).toHaveLength(3)
+  const groupCounts: number[] = []
+  for (const pair of pairs) {
+    await filter.selectOption(pair)
+    groupCounts.push(await page.getByTestId('connector-seat-option').count())
+  }
+  expect(groupCounts.sort()).toEqual([1, 2, 2])
+  await filter.selectOption('')
+  const options = page.getByTestId('connector-seat-option')
+  for (let index = 0; index < 5; index++) {
+    await options.nth(index).click()
+    await expect(options.nth(index)).toHaveAttribute('aria-pressed', 'true')
+    const position = (await options.nth(index).getAttribute('data-position'))!.split(',').map(Number)
+    await expect.poll(async () => (await preview(page))?.position).toEqual(position)
+    const ghost = await preview(page)
+    expect(ghost).not.toBeNull()
+    await page.mouse.move(pointer.x + 100, pointer.y + 80)
+    await setView(page, [-100, 840, 800], [25, 700, 575])
+    expect(await preview(page)).toEqual(ghost)
+    const place = page.getByTestId('connector-seat-place')
+    if (await place.isEnabled()) await place.click()
+  }
+  const result = await store(page)
+  expect(result.connectors).toHaveLength(initial.connectors.length + 3)
+  expect(result.past).toBe(initial.past + 3)
+  const seats = result.connectors.filter((part) => Math.hypot(part.position[0] - 20, part.position[1] - 700, part.position[2] - 580) < 80)
+    .map((part) => part.position.map((n: number) => Math.round(n)).join(',')).sort()
+  expect(seats).toEqual(['10,700,560', '30,700,560', '40,700,570', '40,700,590', '40,710,560'].sort())
+  await assertNoConnectorConflicts(page)
+  await page.screenshot({ path: test.info().outputPath('desk-five-inner-brackets.png') })
+})
 
 test('both slots on a 2040 joint can be chosen and placed without duplicate parts', async ({ page }) => {
   const pointer = await loadJoint(page, true)

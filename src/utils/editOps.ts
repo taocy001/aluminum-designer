@@ -16,6 +16,8 @@ import { connectorEntry } from './connectorCatalog'
 import { MIN_FITTING_OPENING, validFitting } from './fittingValidation'
 import { validEquipment } from './equipmentValidation'
 import { equipmentBody } from './equipmentGeometry'
+import { connectorTransformUpdates } from './connectorEdits'
+import { connectorPlacementCandidates } from './connectorPlacement'
 
 export type RotAxis = 'x' | 'y' | 'z'
 const AXES: Record<RotAxis, THREE.Vector3> = {
@@ -43,10 +45,8 @@ function fixedSelectedProfiles(): ProfileData[] {
   return withFixedProfileCuts(profiles).filter((p) => ids.has(p.id))
 }
 
-/** A connector stays fixed on its own, and travels with an explicitly selected assembly. */
-function selectedConnectors(includeLocked = false, includeStandalone = false): ConnectorData[] {
+function selectedConnectors(includeLocked = false): ConnectorData[] {
   const { connectors, selectedIds } = useStore.getState()
-  if (!includeStandalone && selectedIds.length < 2) return []
   const ids = new Set(selectedIds)
   return connectors.filter((c) => ids.has(c.id) && (includeLocked || !c.locked))
 }
@@ -164,7 +164,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
     })),
     connectors: connectors.map((c) => ({
       id: c.id,
-      updates: { position: [round3(c.position[0] + d[0]), round3(c.position[1] + d[1]), round3(c.position[2] + d[2])] as [number, number, number] },
+      updates: connectorTransformUpdates(c, { position: shifted(c.position, new THREE.Vector3(...d)) }, new Set(profiles.map((p) => p.id))),
     })),
     panels: panels.map((p) => ({
       id: p.id,
@@ -184,7 +184,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
 /** Duplicate all selected parts, including locked references, and select the unlocked copies. */
 export function duplicateSelected(): boolean {
   const profiles = fixedSelectedProfiles()
-  const connectors = selectedConnectors(true, true)
+  const connectors = selectedConnectors(true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
   const equipment = selectedEquipment(true)
@@ -248,10 +248,10 @@ function reflectedQuaternion(
   return [reflected.x, reflected.y, reflected.z, reflected.w]
 }
 
-/** Each connector uses a symmetry of its actual model, so its arms and mounting face survive. */
+/** Symmetries of the connector solids; handed three-way parts are reseated separately. */
 function connectorSymmetry(type: string): RotAxis | 'swapXY' {
-  if (type === 'corner-3way') return 'swapXY'
-  if (type === 'bracket' || type === 'inside-corner' || type === 'gusset') return 'z'
+  if (type === 'gusset') return 'swapXY'
+  if (type === 'bracket' || type === 'inside-corner') return 'z'
   if (type === 'hinge') return 'y'
   return 'x'
 }
@@ -264,12 +264,11 @@ function connectorSymmetry(type: string): RotAxis | 'swapXY' {
  */
 export function mirrorSelected(axis: RotAxis = 'x'): boolean {
   const profiles = fixedSelectedProfiles()
-  const connectors = selectedConnectors(true, true)
+  const connectors = selectedConnectors(true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
   const equipment = selectedEquipment(true)
   if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
-  noteNext(`mirror ${axis.toUpperCase()}`)
 
   const centre = documentCentre()
   const k = { x: 0, y: 1, z: 2 }[axis] as 0 | 1 | 2
@@ -311,9 +310,29 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
   const equipmentCopies: EquipmentData[] = equipment.map((e) => ({ ...e, id: nextId('e'), locked: false,
     position: positionAt(e.position), quaternion: reflectedQuaternion(e.quaternion, axis),
     clearance: { ...e.clearance, left: e.clearance.right, right: e.clearance.left } }))
+  // A three-way bracket has a handed mounting pattern. Refit it to the mirrored
+  // supports; a rotated copy alone cannot reflect all three contact faces.
+  const state = useStore.getState()
+  const allProfiles = [...withFixedProfileCuts(state.profiles), ...copies]
+  const installed = [...state.connectors, ...connectorCopies.filter((part) => part.type !== 'corner-3way')]
+  for (const connector of connectorCopies.filter((part) => part.type === 'corner-3way')) {
+    const point = new THREE.Vector3(...connector.position)
+    const candidates = connectorPlacementCandidates(connector.type, point, allProfiles, installed, undefined, point, {
+      equipment: [...state.equipment, ...equipmentCopies], panels: [...state.panels, ...panelCopies],
+      fittings: [...state.fittings, ...fittingCopies],
+    }).filter((candidate) => candidate.allowed)
+    candidates.sort((a, b) => new THREE.Vector3(...a.seat.position).distanceToSquared(point)
+      - new THREE.Vector3(...b.seat.position).distanceToSquared(point))
+    const target = candidates[0]
+    if (!target) { toast(t().connectorMirrorNoSeat); return false }
+    Object.assign(connector, { position: target.seat.position, quaternion: target.seat.quaternion, series: target.seat.series })
+    installed.push(connector)
+  }
+  noteNext(`mirror ${axis.toUpperCase()}`)
   if (!addCopies(remapCopiedBindings({ profiles, connectors, panels, fittings, equipment },
     { profiles: copies, connectors: connectorCopies, panels: panelCopies, fittings: fittingCopies, equipment: equipmentCopies }, { mirror: true }))) return false
   toast(t().toastMirrored(copies.length + connectorCopies.length + panelCopies.length + fittingCopies.length + equipmentCopies.length), 'success')
+  if (connectorCopies.some((part) => part.type === 'corner-3way')) toast(t().connectorMirrorReseated, 'info')
   warnIfNewConflicts(before)
   return true
 }
@@ -321,7 +340,7 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
 /** Repeat the selection along a world axis with the specified count and spacing in millimetres. */
 export function arraySelected(axis: RotAxis, count: number, spacing: number): boolean {
   const profiles = fixedSelectedProfiles()
-  const connectors = selectedConnectors(true, true)
+  const connectors = selectedConnectors(true)
   const panels = selectedPanels(true)
   const fittings = selectedFittings(true)
   const equipment = selectedEquipment(true)
@@ -474,7 +493,11 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
   }
 
   const before = conflictPairsNow()
-  if (!reportEditResult(useStore.getState().commitTransform({ profiles: spunProfiles, connectors: spunConnectors, panels: spunPanels, fittings: spunFittings, equipment: spunEquipment }))) return false
+  const movingProfiles = new Set(profiles.map((p) => p.id))
+  if (!reportEditResult(useStore.getState().commitTransform({ profiles: spunProfiles,
+    connectors: spunConnectors.map((part, index) => ({ ...part,
+      updates: connectorTransformUpdates(connectors[index], part.updates, movingProfiles) })),
+    panels: spunPanels, fittings: spunFittings, equipment: spunEquipment }))) return false
   warnIfNewConflicts(before)
   return true
 }
@@ -504,7 +527,6 @@ export function commitExactMove(distance: number): boolean {
   if (!lead || lead.locked) return false
   const movingIds = new Set(Object.keys(origins))
   movingIds.add(lead.id)
-  if (store.connectors.some((c) => c.id === lead.id) && movingIds.size < 2) return false
 
   const travelled = new THREE.Vector3(...lead.position).sub(new THREE.Vector3(...leadOrigin))
   if (ts.dragAxis) {
@@ -527,7 +549,7 @@ export function commitExactMove(distance: number): boolean {
   const result = store.updateParts({
     profiles: profiles.map((p) => ({ id: p.id, updates: { position: at(p.id, p.position) } })),
     connectors: store.connectors.filter((c) => movingIds.has(c.id) && !c.locked)
-      .map((c) => ({ id: c.id, updates: { position: at(c.id, c.position) } })),
+      .map((c) => ({ id: c.id, updates: connectorTransformUpdates(c, { position: at(c.id, c.position) }, new Set(profiles.map((p) => p.id))) })),
     panels: store.panels.filter((b) => movingIds.has(b.id) && !b.locked)
       .map((b) => ({ id: b.id, updates: { position: at(b.id, b.position) } })),
     fittings: store.fittings.filter((f) => movingIds.has(f.id) && !f.locked)

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, dragWorld, store, tool, conflicts, w2c, r , useDownloadFallback } from './helpers'
+import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, dragWorld, settle, store, tool, conflicts, w2c, r , useDownloadFallback } from './helpers'
 
 async function toNavigate(page: Page) {
   await page.keyboard.press('Escape')
@@ -93,40 +93,103 @@ test.describe('Free rotation about any axis', () => {
     expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual([1, 0, 0])
   })
 
-  /** Standalone connectors do not expose move or rotate gestures. */
-  test('a connector stays where the joint put it, whatever is pressed', async ({ page }) => {
-    await enterDraw(page, '2020')
-    await drawMember(page, [0, 0, 0], [600, 10, 0])
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
-    await clickWorld(page, [600, 10, 0])
-    await toNavigate(page)
-    await clickWorld(page, [600, 10, 0])
+  test('a single connector rotates, drags and nudges with undo', async ({ page }) => {
+    await page.evaluate(() => {
+      const app = (window as any).__aluframe
+      app.store.setState({ profiles: [], connectors: [{ id: 'c', type: 'bracket', series: 40,
+        position: [300, 300, 200], quaternion: [0, 0, 0, 1] }], panels: [], fittings: [], equipment: [],
+        selectedIds: ['c'], past: [], future: [] })
+    })
+    await settle(page)
     const c0 = (await store(page)).connectors[0]
-    expect((await store(page)).selectedIds).toEqual([c0.id])
-
+    await expect.poll(() => page.evaluate(() => (window as any).__aluframe.gizmoHandles().length)).toBe(6)
     await page.getByTestId('rot-x-plus').click()
-    await page.getByTestId('rot-z-plus').click()
-    expect((await store(page)).connectors[0].quaternion).toEqual(c0.quaternion)
+    expect((await store(page)).connectors[0].quaternion).not.toEqual(c0.quaternion)
+    await page.getByTestId('viewport').focus()
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).connectors[0]).toEqual(c0)
 
-    const before = (await store(page)).connectors[0].position.map(r)
-    await dragWorld(page, [600, 10, 0], [600, 10, 200])
-    expect((await store(page)).connectors[0].position.map(r)).toEqual(before)
-    const history = (await store(page)).past
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['c']))
+    await settle(page)
+    const arrow = await page.evaluate(() => (window as any).__aluframe.gizmoHandles()
+      .find((handle: any) => handle.kind === 'move' && handle.axis === 'x').position) as [number, number, number]
+    await dragWorld(page, arrow, [arrow[0] + 100, arrow[1], arrow[2]])
+    expect((await store(page)).connectors[0].position[0]).toBeCloseTo(c0.position[0] + 100, 0)
+    expect((await store(page)).connectors[0].position.slice(1)).toEqual(c0.position.slice(1))
+    expect((await store(page)).past).toBe(1)
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).connectors[0]).toEqual(c0)
+
+    await dragWorld(page, [330, 305, 200], [430, 305, 200])
+    expect((await store(page)).connectors[0].position).not.toEqual(c0.position)
+    expect((await store(page)).past).toBe(1)
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).connectors[0]).toEqual(c0)
+
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['c']))
     await page.getByTestId('viewport').focus()
     await page.keyboard.press('ArrowRight')
-    expect((await store(page)).connectors[0].position.map(r)).toEqual(before)
-    expect((await store(page)).past).toBe(history)
+    expect((await store(page)).connectors[0].position).not.toEqual(c0.position)
+    expect((await store(page)).past).toBe(1)
   })
 
-  test('a connector shows where it is but has no field to move it', async ({ page }) => {
-    await enterDraw(page, '2020')
-    await drawMember(page, [0, 0, 0], [600, 10, 0])
-    await page.getByRole('button', { name: '端盖', exact: true }).click()
-    await clickWorld(page, [600, 10, 0])
-    await toNavigate(page)
-    await clickWorld(page, [600, 10, 0])
-    await expect(page.getByTestId('connector-position')).toBeVisible()
-    await expect(page.getByTestId('connector-position').locator('input')).toHaveCount(0)
+  test('a sub-grid connector drag preserves its host binding and history', async ({ page }) => {
+    await page.evaluate(async () => {
+      const threePath = '/node_modules/three/build/three.module.js'
+      const factoryPath = '/src/utils/profileFactory.ts'
+      const bindingPath = '/src/utils/openingBindings.ts'
+      const [T, { buildProfile }, { deriveSupport }] = await Promise.all([
+        import(threePath), import(factoryPath), import(bindingPath),
+      ])
+      const app = (window as any).__aluframe
+      const p = { ...buildProfile(new T.Vector3(0, 100, 0), new T.Vector3(0, 600, 0), '2020'), id: 'p' }
+      const c = deriveSupport({ id: 'c', type: 'bracket', series: 20, position: [0, 0, 0], quaternion: [0, 0, 0, 1],
+        supportBinding: { profileId: 'p', end: 'start', localPosition: [10, 10, 10], localQuaternion: [0, 0, 0, 1] } }, p)
+      app.tool.getState().putDown()
+      app.store.setState({ profiles: [p], connectors: [c], panels: [], fittings: [], equipment: [],
+        selectedIds: ['c'], past: [], future: [], throughRule: 'rails' })
+      app.setView([150, 350, 350], c.position)
+    })
+    await settle(page)
+    const before = (await store(page)).connectors[0]
+    const target = await page.evaluate(async () => {
+      const threePath = '/node_modules/three/build/three.module.js'
+      const T = await import(threePath)
+      const app = (window as any).__aluframe, c = app.store.getState().connectors[0]
+      const p = new T.Vector3(...c.position)
+      app.tool.getState().startDrag({ id: c.id, kind: 'connector', hit: p, origin: p, groupOrigins: { [c.id]: c.position },
+        plane: new T.Plane(new T.Vector3(0, 1, 0), -p.y), vertical: false, free: false, axis: 'x' })
+      return app.worldToClient(p.x + 1, p.y, p.z)
+    })
+    await page.mouse.move(target.x, target.y)
+    await settle(page)
+    await page.mouse.up()
+    expect((await store(page)).connectors[0]).toEqual(before)
+    expect((await store(page)).past).toBe(0)
+  })
+
+  test('connector position and angles are editable and locked controls cannot change them', async ({ page }) => {
+    await page.evaluate(() => (window as any).__aluframe.store.setState({ profiles: [], connectors: [{ id: 'c', type: 'end-cap', series: 20,
+      position: [300, 300, 200], quaternion: [0, 0, 0, 1] }], panels: [], fittings: [], equipment: [], selectedIds: ['c'], past: [], future: [] }))
+    await settle(page)
+    const position = page.getByTestId('connector-position').locator('input')
+    const angles = page.getByTestId('connector-orientation').locator('input')
+    await expect(position).toHaveCount(3)
+    await position.nth(0).fill('345.125')
+    await position.nth(0).press('Enter')
+    expect((await store(page)).connectors[0].position).toEqual([345.125, 300, 200])
+    await angles.nth(1).fill('35')
+    await angles.nth(1).press('Enter')
+    await expect(angles.nth(1)).toHaveValue('35')
+    expect((await store(page)).past).toBe(2)
+    await page.getByTestId('viewport').focus()
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).connectors[0].quaternion).toEqual([0, 0, 0, 1])
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['c']))
+    await page.keyboard.press('l')
+    await expect(position.nth(0)).toBeDisabled()
+    await expect(angles.nth(1)).toBeDisabled()
+    await expect.poll(() => page.evaluate(() => (window as any).__aluframe.gizmoHandles().length)).toBe(0)
   })
 })
 
@@ -250,11 +313,14 @@ test.describe('Floor and group rules after the rule change', () => {
   test('an explicitly selected connector moves with its member as one undo step', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await page.getByTestId('connector-end-cap').click()
     await clickWorld(page, [600, 10, 0])
     await toNavigate(page)
-    await clickWorld(page, [300, 10, 0])
-    await clickWorld(page, [600, 10, 0], { modifiers: ['Control'] })
+    expect((await store(page)).connectors).toHaveLength(1)
+    await page.evaluate(() => {
+      const s = (window as any).__aluframe.store.getState()
+      s.selectItems([s.profiles[0].id, s.connectors[0].id])
+    })
     expect((await store(page)).selectedIds).toHaveLength(2)
     const before = await store(page)
     const beforeP = before.profiles[0].position.map(r)
@@ -274,9 +340,10 @@ test.describe('Floor and group rules after the rule change', () => {
   test('an unselected connector stays put when its member moves', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await page.getByTestId('connector-end-cap').click()
     await clickWorld(page, [600, 10, 0])
     await toNavigate(page)
+    expect((await store(page)).connectors).toHaveLength(1)
     await clickWorld(page, [300, 10, 0])
     const before = await store(page)
     expect(before.selectedIds).toEqual([before.profiles[0].id])

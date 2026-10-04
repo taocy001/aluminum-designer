@@ -63,9 +63,10 @@ describe('automatic connectors around equipment', () => {
   it('chooses another legal bracket seat when equipment blocks the first', () => {
     const profiles = [buildProfile(V(0, 0), V(0, 700), '2020')!, buildProfile(V(0, 300), V(300, 300), '2020')!]
     useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [], equipment: [] })
-    expect(autoConnect('bracket').placed).toBe(1)
+    expect(autoConnect('bracket').placed).toBe(2)
     const original = useStore.getState().connectors[0]
-    const center = connectorOBB(original).center.toArray() as [number, number, number]
+    const center = V(15, 2, 0).applyQuaternion(new THREE.Quaternion(...original.quaternion))
+      .add(new THREE.Vector3(...original.position)).toArray() as [number, number, number]
     const blocker = equipment({ width: 8, height: 8, depth: 8, position: center })
     useStore.getState().loadDocument({ profiles, connectors: [], panels: [], fittings: [], equipment: [blocker] })
     expect(autoConnect('bracket').placed).toBe(1)

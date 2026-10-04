@@ -1,5 +1,6 @@
 import { reportEditResult } from '../utils/editFeedback'
 import EquipmentEditor, { EquipmentCreator } from './EquipmentEditor'
+import ConnectorEditor from './ConnectorEditor'
 import OpeningBindingEditor, { SupportBindingEditor } from './OpeningBindingEditor'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -9,7 +10,7 @@ import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
 import { computeFrameBounds } from '../utils/jointUtils'
 import { getProfileEndpoints } from '../utils/geometryCore'
-import { CONNECTOR_CATALOG, boltLabel, connectorEntry, connectorLabel, nutLabel } from '../utils/connectorCatalog'
+import { CONNECTOR_CATALOG, connectorEntry } from '../utils/connectorCatalog'
 import { buildBom, bomToCsv } from '../utils/bom'
 import { partNumber, fittingBoardNumber } from '../utils/partNumbers'
 import { fittingParts } from '../utils/fittingGeometry'
@@ -39,7 +40,7 @@ import { deflect, saggingMembers, SLENDER } from '../utils/deflection'
 import { auditBrackets } from '../utils/bracketSeat'
 import { runnerFaults } from '../utils/runnerMount'
 import { shelfEdges } from '../utils/shelfSupport'
-import { arraySelected, directionLabel, duplicateSelected, flipProfile, liveParts, mirrorSelected, orientationDegrees, rotateSelected, selectionLocked as areSelectedLocked, setProfileEnd, setConnectorSeries, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
+import { arraySelected, directionLabel, duplicateSelected, flipProfile, liveParts, mirrorSelected, orientationDegrees, rotateSelected, selectionLocked as areSelectedLocked, setProfileEnd, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
 
 /** "40 side faces ↑" and the like, so the roll is something you can read off the panel */
 function facingLabel(p: ProfileData): string {
@@ -865,53 +866,7 @@ const Sidebar: React.FC = () => {
               </fieldset>
             )}
             {selectedConnector && !selectedProfile && (
-              <fieldset disabled={viewMode || selectedConnector.locked} className="space-y-3">
-                <SupportBindingEditor part={selectedConnector} />
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">{t.connectorProps}</span>
-                  <span className="text-emerald-400 font-mono">{connectorLabel(selectedConnector.type, language)}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">{t.series}</span>
-                  <select
-                    value={selectedConnector.series ?? 20}
-                    data-testid="connector-series"
-                    aria-label={t.series}
-                    onChange={(e) => setConnectorSeries(selectedConnector.id, Number(e.target.value) as 20 | 30 | 40)}
-                    className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-emerald-400 outline-none"
-                  >
-                    {[20, 30, 40].map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-slate-500">{t.fasteners}</span>
-                  <span className="font-mono text-slate-300" data-testid="connector-fasteners">
-                    {(() => {
-                      const r = connectorEntry(selectedConnector.type)?.fasteners
-                      if (!r || (!r.bolts && !r.nuts)) return '—'
-                      const series = (selectedConnector.series ?? 20) as 20 | 30 | 40
-                      return `${r.bolts}× ${boltLabel(series, language)} · ${r.nuts}× ${nutLabel(series, language)}`
-                    })()}
-                  </span>
-                </div>
-                {/** Standalone connector properties are read-only. */}
-                <div className="space-y-1" title={t.hintConnectorFixed}>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold">{t.position}</span>
-                  <div className="grid grid-cols-3 gap-1" data-testid="connector-position">
-                    {(['X', 'Y', 'Z'] as const).map((ax, i) => (
-                      <div key={ax} className="flex items-center gap-1 bg-slate-950/60 border border-white/5 rounded-lg px-2 py-1">
-                        <span className="text-[9px] font-black" style={{ color: AXIS_COLOR[ax] }}>{ax}</span>
-                        <span className="text-xs font-mono text-slate-400">{Math.round(selectedConnector.position[i])}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-[9px] text-slate-600 leading-snug pt-0.5">{t.hintConnectorFixed}</p>
-                </div>
-                <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-slate-500">{t.orientation}</span>
-                  <span className="font-mono text-slate-300" data-testid="connector-orientation">{orientationDegrees(selectedConnector.quaternion).join(' / ')}</span>
-                </div>
-              </fieldset>
+              <ConnectorEditor key={selectedConnector.id} connector={selectedConnector} />
             )}
 
             {/* Fitting dimensions describe the clear opening. */}

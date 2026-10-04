@@ -1,7 +1,8 @@
 import * as THREE from 'three'
-import type { EquipmentData } from '../store/useStore'
+import type { ConnectorData, EquipmentData } from '../store/useStore'
 import { equipmentBody, equipmentClearance } from './equipmentGeometry'
 import { obbCorners, obbPenetration, type OBB } from './obb'
+import { connectorHitsBody } from './connectorCollision'
 
 export interface EquipmentConflict {
   /** Equipment owning the body or clearance being checked. */
@@ -12,7 +13,7 @@ export interface EquipmentConflict {
   region: THREE.Box3
 }
 
-export interface EquipmentObstacle { id: string; obb: OBB }
+export interface EquipmentObstacle { id: string; obb: OBB; connector?: ConnectorData }
 
 const TOUCH_TOL = 1
 
@@ -25,11 +26,11 @@ function collision(a: string, b: string, kind: EquipmentConflict['kind'], own: O
 
 /** Check physical bodies first, then reserved space; overlapping reservations are allowed. */
 export function findEquipmentConflicts(equipment: EquipmentData[], obstacles: EquipmentObstacle[]): EquipmentConflict[] {
-  const groups = new Map<string, OBB[]>()
+  const groups = new Map<string, EquipmentObstacle[]>()
   for (const o of obstacles) {
     const group = groups.get(o.id)
-    if (group) group.push(o.obb)
-    else groups.set(o.id, [o.obb])
+    if (group) group.push(o)
+    else groups.set(o.id, [o])
   }
   const boxes = equipment.map((e) => ({ e, body: equipmentBody(e), clearance: equipmentClearance(e) }))
   const out: EquipmentConflict[] = []
@@ -39,7 +40,8 @@ export function findEquipmentConflicts(equipment: EquipmentData[], obstacles: Eq
       let deepest: EquipmentConflict | null = null
       for (const [kind, own] of [['equipment-body', body], ['equipment-clearance', clearance]] as const) {
         for (const solid of solids) {
-          const hit = collision(e.id, id, kind, own, solid)
+          if (solid.connector && !connectorHitsBody(solid.connector, own, TOUCH_TOL, false)) continue
+          const hit = collision(e.id, id, kind, own, solid.obb)
           if (hit && (!deepest || hit.depth > deepest.depth)) deepest = hit
         }
         if (deepest) break

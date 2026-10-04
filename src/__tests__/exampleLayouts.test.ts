@@ -6,6 +6,7 @@ import { fittingParts, openTransform, swingClashes } from '../utils/fittingGeome
 import type { FittingData } from '../store/useStore'
 import { auditBrackets } from '../utils/bracketSeat'
 import { findConflicts } from '../utils/analysis'
+import { sameConnectorInstallation } from '../utils/connectorPlacement'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 const frontBoard = (f: FittingData) => fittingParts(f).boards.find((b) => b.role === 'front' || b.role === 'panel')!
@@ -28,11 +29,7 @@ describe('example cabinet layouts', () => {
     for (let i = 0; i < connectors.length; i++) {
       const a = connectors[i]
       for (const b of connectors.slice(i + 1)) {
-        if (a.type !== b.type || (a.series ?? 20) !== (b.series ?? 20)) continue
-        if (new THREE.Vector3(...a.position).distanceTo(new THREE.Vector3(...b.position)) > 1e-4) continue
-        const qa = new THREE.Quaternion(...a.quaternion).normalize()
-        const qb = new THREE.Quaternion(...b.quaternion).normalize()
-        if (qa.angleTo(qb) < 1e-6) duplicates.push([a.id, b.id])
+        if (sameConnectorInstallation(a, b)) duplicates.push([a.id, b.id])
       }
     }
     expect(duplicates).toEqual([])

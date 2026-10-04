@@ -1,7 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, store, tool, setView } from './helpers'
+import { openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, store, tool, setView, settle, w2c } from './helpers'
 
-const CONNECTORS = ['直连板', '十字连接板', '对接板', '端盖', '滑块螺母', '合页', '轴承座', '脚轮座', '调节脚']
+const CONNECTORS = [
+  ['直连板', 'flat-plate'], ['十字连接板', 'cross-bracket'], ['对接板', 'joining-plate'],
+  ['端盖', 'end-cap'], ['滑块螺母', 't-nut'], ['合页', 'hinge'], ['轴承座', 'pivot'],
+  ['脚轮座', 'caster-mount'], ['调节脚', 'foot'],
+] as const
 const CORNER_CONNECTORS = ['L型角码', '内角码', '加强筋', 'T型角码', '三维角码']
 
 test.describe('Connectors', () => {
@@ -10,38 +14,57 @@ test.describe('Connectors', () => {
   test('end and surface connectors can be placed, selected and deleted', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
-    for (let i = 0; i < CONNECTORS.length; i++) {
-      await page.getByRole('button', { name: CONNECTORS[i], exact: true }).click()
-      expect((await tool(page)).held).not.toBe(null)
-      // alternate between the two rail ends so we can see they snap
-      const target: [number, number, number] = i % 2 === 0 ? [603, 10, 2] : [-2, 10, 3]
-      await hoverWorld(page, target)
-      await clickWorld(page, target)
-      const cs = (await store(page)).connectors
-      expect(cs).toHaveLength(i + 1)
-      expect(cs[i].type.length).toBeGreaterThan(0)
-      // Each part lands on the end it was dropped near. The two that stand under a member —
-      // a levelling foot and a caster mount — are seated just outside that end face rather
-      // than in the metal, so they sit one half-length further along.
-      const want = i % 2 === 0 ? [600, 10, 0] : [0, 10, 0]
-      const under = CONNECTORS[i] === '调节脚' || CONNECTORS[i] === '脚轮座'
-      for (const axis of [1, 2]) expect(cs[i].position[axis]).toBeCloseTo(want[axis], 5)
-      expect(Math.abs(cs[i].position[0] - want[0])).toBeLessThanOrEqual((under ? 12 : 0) + 1e-5)
+    const profiles = (await store(page)).profiles
+    for (const [i, [name, type]] of CONNECTORS.entries()) {
+      await test.step(name, async () => {
+        await setView(page, [1300, 1000, 1600], [300, 300, 200])
+        await page.getByRole('button', { name, exact: true }).click()
+        expect((await tool(page)).held).toBe('connector')
+        const target: [number, number, number] = i % 2 === 0 ? [603, 10, 2] : [-2, 10, 3]
+        await clickWorld(page, target)
+        const placed = await store(page)
+        expect(placed.connectors).toHaveLength(1)
+        const connector = placed.connectors[0]
+        expect(connector.type).toBe(type)
+        expect(connector.series).toBe(20)
+        // The physical top of an under-post part touches the selected end face.
+        const outside = type === 'foot' ? 28 : type === 'caster-mount' ? 2 : 0
+        const want = i % 2 === 0 ? [600 + outside, 10, 0] : [-outside, 10, 0]
+        for (const axis of [0, 1, 2]) expect(connector.position[axis]).toBeCloseTo(want[axis], 5)
+        await expect(page.getByTestId('bom-table')).toContainText(name)
+
+        await page.keyboard.press('Escape')
+        expect((await tool(page)).held).toBe(null)
+        const at = connector.position as [number, number, number]
+        await setView(page, [at[0] + 120, at[1] + 100, at[2] + 140], at)
+        await page.getByTestId('viewport').focus()
+        await hoverWorld(page, at)
+        const hovered = () => page.evaluate(() => (window as any).__aluframe.tool.getState().hoverPartId)
+        const count = await page.evaluate(() => (window as any).__aluframe.tool.getState().hoverCandidates.count as number)
+        expect(count).toBeGreaterThan(0)
+        for (let n = 0; n < count && await hovered() !== connector.id; n++) {
+          await page.keyboard.press('Tab')
+          await settle(page)
+        }
+        expect(await hovered()).toBe(connector.id)
+        const pointer = await w2c(page, at)
+        await page.mouse.click(pointer.x, pointer.y)
+        await settle(page)
+        expect((await store(page)).selectedIds).toEqual([connector.id])
+        await page.keyboard.press('Delete')
+        await settle(page)
+        expect((await store(page)).connectors).toEqual([])
+        expect((await store(page)).profiles).toEqual(profiles)
+        await page.keyboard.press('Control+z')
+        await settle(page)
+        expect((await store(page)).connectors).toEqual([connector])
+        expect((await store(page)).profiles).toEqual(profiles)
+        // Leave the same empty fixture for the next connector type.
+        await page.keyboard.press('Control+Shift+z')
+        await settle(page)
+        expect((await store(page)).connectors).toEqual([])
+      })
     }
-    await expect(page.getByTestId('bom-table')).toContainText('直连板')
-    // select one connector in navigate mode and delete it
-    await page.keyboard.press('Escape')
-    expect((await tool(page)).held).toBe(null)
-    const c0 = (await store(page)).connectors[0]
-    await clickWorld(page, [600, 22, 0])
-    const sel = (await store(page)).selectedIds
-    expect(sel.length).toBe(1)
-    expect((await store(page)).connectors.map((c) => c.id).concat((await store(page)).profiles.map((p) => p.id))).toContain(sel[0])
-    await page.keyboard.press('Delete')
-    expect((await store(page)).connectors.length + (await store(page)).profiles.length).toBe(CONNECTORS.length)
-    await page.keyboard.press('Control+z')
-    expect((await store(page)).connectors).toHaveLength(CONNECTORS.length)
-    expect((await store(page)).connectors[0].id).toBe(c0.id)
   })
 
   test('corner connectors require a joint and leave no edit at a free end', async ({ page }) => {
@@ -166,7 +189,14 @@ test.describe('Connectors land the right way round', () => {
     await drawMember(page, [0, 10, 0], [600, 10, 0])
     await page.getByRole('button', { name: 'L型角码', exact: true }).click()
     await clickWorld(page, [0, 10, 0])
+    expect((await store(page)).connectors).toHaveLength(1)
+    await page.getByTestId('connector-joint-lock').click()
     await clickWorld(page, [600, 10, 0])
+    const connectors = (await store(page)).connectors
+    expect(connectors).toHaveLength(2)
+    expect(connectors.map((connector) => connector.type)).toEqual(['bracket', 'bracket'])
+    expect(connectors[0].position[0]).toBeLessThan(50)
+    expect(connectors[1].position[0]).toBeGreaterThan(550)
     const table = page.getByTestId('bom-table')
     await expect(table).toContainText('L型角码')
     await expect(page.getByTestId('bom-fasteners')).toBeVisible()

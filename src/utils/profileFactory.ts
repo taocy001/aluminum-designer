@@ -148,11 +148,15 @@ export function placeConnector(
   point: THREE.Vector3, type: string, surfaceNormal?: THREE.Vector3 | null,
   choice: number | string = 0, searchPoint = point,
 ): void {
-  const { profiles, connectors, addConnector } = useStore.getState()
-  const { seat, occupied, allowed } = resolveConnectorPlacement(type, point, profiles, connectors, surfaceNormal, choice, searchPoint)
+  const { profiles, connectors, equipment, panels, fittings, addConnector } = useStore.getState()
+  const { seat, occupied, allowed, reason } = resolveConnectorPlacement(type, point, profiles, connectors, surfaceNormal, choice, searchPoint, { equipment, panels, fittings })
   const { showToast, language } = useToolStore.getState()
-  if (!allowed) { showToast(translations[language].connectorNoSeat, 'info'); return }
-  if (occupied) { showToast(translations[language].connectorOccupied, 'info'); return }
+  const t = translations[language]
+  if (occupied) { showToast(t.connectorOccupied, 'info'); return }
+  if (!allowed) {
+    showToast(reason === 'collision' ? t.connectorReasonCollision : reason === 'equipment' ? t.connectorReasonEquipment : t.connectorNoSeat, 'info')
+    return
+  }
   reportEditResult(addConnector({
     id: nextId('c'),
     type,

@@ -38,7 +38,7 @@ export interface FitAxes {
   secondary?: LocalAxis
   /**
    * inline parts only: does the primary axis point out of the member's end, or back into it?
-   * An end cap faces out; a levelling foot's stem goes up into the post it stands under.
+   * An end cap faces out; a levelling foot's mounting face points up toward its post.
    */
   towards?: 'out' | 'in'
 }
@@ -76,7 +76,7 @@ export const CONNECTOR_CATALOG: ConnectorSpecEntry[] = [
   { type: 'flat-plate',    labelZh: '直连板',     labelEn: 'Flat Plate',    fit: 'inline', seat: 'inline', axes: { primary: 'x' }, fasteners: { bolts: 4, nuts: 4 } },
   { type: 'joining-plate', labelZh: '对接板',     labelEn: 'Joining Plate', fit: 'inline', seat: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 2, nuts: 2 } },
   { type: 'end-cap',       labelZh: '端盖',       labelEn: 'End Cap',       fit: 'inline', seat: 'inline', axes: { primary: 'z' }, fasteners: { bolts: 0, nuts: 0 } },
-  // parts that stand under a post: their own axis is Y, pointing back up into the member
+  // Parts under a post: local +Y points toward the post's bottom mounting face.
   { type: 'caster-mount',  labelZh: '脚轮座',     labelEn: 'Caster Mount',  fit: 'inline', seat: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 4, nuts: 4 } },
   { type: 'foot',          labelZh: '调节脚',     labelEn: 'Leveling Foot', fit: 'inline', seat: 'inline', axes: { primary: 'y', towards: 'in' }, fasteners: { bolts: 1, nuts: 1 } },
   // plates lying against a face: `primary` is the plate normal
@@ -129,6 +129,30 @@ export function nutLabel(series: ConnectorSeries, language: 'zh' | 'en'): string
   return language === 'zh' ? `T型螺母 ${boltThread(series)}` : `T-nut ${boltThread(series)}`
 }
 
+/** Contact points on the mounting surface, in the unscaled connector frame. */
+export interface ConnectorMount {
+  axis: 'x' | 'y' | 'z'
+  normal: 'x' | 'y' | 'z'
+  bolts: [number, number, number][]
+}
+
+export function connectorMounts(type: string): ConnectorMount[] {
+  if (type === 't-bracket') return [
+    { axis: 'x', normal: 'z', bolts: [[-22, 0, 0], [22, 0, 0]] },
+    { axis: 'y', normal: 'z', bolts: [[0, 28, 0]] },
+  ]
+  if (type === 'gusset') return [
+    { axis: 'x', normal: 'z', bolts: [[18, 0, 0]] },
+    { axis: 'y', normal: 'z', bolts: [[0, 18, 0]] },
+  ]
+  if (connectorEntry(type)?.seat === 'angle') return [
+    { axis: 'x', normal: 'y', bolts: [[16, 0, 0]] },
+    { axis: 'y', normal: 'x', bolts: [[0, 16, 0]] },
+    ...(type === 'corner-3way' ? [{ axis: 'z', normal: 'y', bolts: [[0, 0, 16]] } as ConnectorMount] : []),
+  ]
+  return []
+}
+
 /**
  * Approximate connector collision boxes in local coordinates.
  * Angle brackets originate at the inner flange vertex; plates at the intersection of their bolt lines.
@@ -136,8 +160,19 @@ export function nutLabel(series: ConnectorSeries, language: 'zh' | 'en'): string
 export function connectorExtent(type: string): { centre: [number, number, number]; half: [number, number, number] } {
   // The cap's plate is 20×20×3, with a 10×10×6 plug centred at local Z=4.
   if (type === 'end-cap') return { centre: [0, 0, 2.75], half: [10, 10, 4.25] }
-  // Only the exposed vertex participates in collisions; slot-inserted legs are excluded.
-  if (type === 'inside-corner') return { centre: [1, 1, 0], half: [1, 1, 3] }
+  // Both inserted arms are included here; the metal collision check excludes slot inserts.
+  if (type === 'inside-corner') return { centre: [7, 7, 0], half: [13, 13, 3] }
+  if (type === 'gusset') return { centre: [11, 11, 2], half: [19, 19, 2] }
+  if (type === 't-bracket') return { centre: [0, 15, 2], half: [35, 25, 2] }
+  if (type === 'corner-3way') return { centre: [8, 9, 8], half: [12, 11, 12] }
+  if (type === 'flat-plate') return { centre: [0, 1.75, 0], half: [30, 3.75, 9] }
+  if (type === 'joining-plate') return { centre: [0, 0, 0], half: [3, 8, 25] }
+  if (type === 'cross-bracket') return { centre: [0, 0, 0], half: [24, 24, 2] }
+  if (type === 'hinge') return { centre: [0, 0, 0], half: [3, 15, 16] }
+  if (type === 'pivot') return { centre: [0, 2, 0], half: [15, 8, 10] }
+  if (type === 'caster-mount') return { centre: [0, -12, 0], half: [20, 14, 20] }
+  if (type === 'foot') return { centre: [0, 12.5, 0], half: [18, 15.5, 18] }
+  if (type === 't-nut') return { centre: [0, 1, 0], half: [9, 9, 3.5] }
   switch (connectorEntry(type)?.seat) {
     case 'angle':
       // two flanges reaching 30 out of the vertex, 18 across

@@ -316,6 +316,7 @@ const PointerRouter: React.FC = () => {
         if (part?.kind === 'move') {
           const store = useStore.getState()
           const lead = store.profiles.find((p) => store.selectedIds.includes(p.id) && !p.locked)
+            ?? store.connectors.find((c) => store.selectedIds.includes(c.id) && !c.locked)
             ?? store.panels.find((b) => store.selectedIds.includes(b.id) && !b.locked)
             ?? store.fittings.find((f) => store.selectedIds.includes(f.id) && !f.locked)
             ?? store.equipment.find((e) => store.selectedIds.includes(e.id) && !e.locked)
@@ -329,7 +330,7 @@ const PointerRouter: React.FC = () => {
           if (Object.keys(groupOrigins).length === 0) return   // everything selected is locked
           const anchorPoint = new THREE.Vector3(...lead.position)
           beginMove(lead.id, anchorPoint, anchorPoint.clone(), groupOrigins,
-            { shift: e.shiftKey, alt: false }, e, 'profile', part.axis)
+            { shift: e.shiftKey, alt: false }, e, store.profiles.some((p) => p.id === lead.id) ? 'profile' : 'connector', part.axis)
           return
         }
         if (part?.kind === 'rotate') {
@@ -407,12 +408,6 @@ const PointerRouter: React.FC = () => {
           return
         }
       }
-      // A connector is not draggable. Between two aligned members there is one bracket that
-      // fits and one way it goes on, so dragging it can only move it off the joint — and a
-      // bracket sitting next to a joint still looks fitted, which is worse than none at all.
-      // A press still selects it, which is what deleting one needs.
-      if (pick.kind === 'connector' && store.selectedIds.length === 1) return
-
       // dragging any selected part moves the whole selection, members and boards alike.
       // Locked parts drop out of the group instead of blocking the drag: the rest still moves.
       if ('locked' in item && item.locked) { useToolStore.getState().showToast(translations[useToolStore.getState().language].toastLocked, 'info'); return }

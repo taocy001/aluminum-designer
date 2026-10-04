@@ -69,12 +69,12 @@ const TransformGizmo: React.FC = () => {
 
   // The anchor follows exactly the pieces rotateSelected can turn. Locked references
   // remain selected for inspection, but must not pull the visible pivot away from the
-  // actual turn. A standalone connector stays fixed; one in an assembly travels with it.
+  // actual turn.
   const selection = useMemo(() => {
     const ids = new Set(selectedIds)
     return {
       profiles: profiles.filter((p) => ids.has(p.id) && !p.locked),
-      connectors: connectors.filter((c) => ids.has(c.id) && !c.locked && selectedIds.length > 1),
+      connectors: connectors.filter((c) => ids.has(c.id) && !c.locked),
       panels: panels.filter((b) => ids.has(b.id) && !b.locked),
       fittings: fittings.filter((f) => ids.has(f.id) && !f.locked),
       equipment: equipment.filter((e) => ids.has(e.id) && !e.locked),
@@ -86,7 +86,7 @@ const TransformGizmo: React.FC = () => {
     () => selectionPivot(selection.profiles, selection.connectors, pivotMode, selection.panels, selection.fittings, profiles, selection.equipment),
     [selection, pivotMode, profiles, throughRule])
   // a fully locked selection has nothing the gizmo could do
-  const anyMovable = selection.profiles.length + selection.panels.length + selection.fittings.length + selection.equipment.length > 0
+  const anyMovable = selection.profiles.length + selection.connectors.length + selection.panels.length + selection.fittings.length + selection.equipment.length > 0
   const viewMode = useToolStore((s) => s.viewMode)
   // Hide editing handles in view mode.
   const active = showGizmo && !viewMode && !selectMode && !isDragging && selectedIds.length > 0 && anyMovable
