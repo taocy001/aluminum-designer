@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, settle, store, setView, w2c } from './helpers'
+import { chooseConnector, openApp, settle, store, setView, w2c } from './helpers'
 
 /** a rail butting into a post, and nothing else to get in the way */
 async function corner(page: import('@playwright/test').Page, spec = '2020', postSpec = '2020') {
@@ -29,7 +29,7 @@ test.describe('A bracket goes where it can be bolted', () => {
   })
 
   test('one click fits them and every one is on its slots', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)
@@ -38,7 +38,7 @@ test.describe('A bracket goes where it can be bolted', () => {
   })
 
   test('it sits inside the corner, on a slot line of both members', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)
@@ -54,7 +54,7 @@ test.describe('A bracket goes where it can be bolted', () => {
   })
 
   test('dropping one near a corner settles it onto the corner', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     const c = await w2c(page, [70, 10, 0])       // 70 mm along the rail from the joint
     await page.mouse.move(c.x - 30, c.y - 30)
     await page.mouse.move(c.x, c.y, { steps: 4 })
@@ -74,7 +74,7 @@ test.describe('A bracket goes where it can be bolted', () => {
   })
 
   test('the ghost shows the seat, so the part does not jump on the click', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     const c = await w2c(page, [70, 10, 0])
     await page.mouse.move(c.x - 30, c.y - 30)
     await page.mouse.move(c.x, c.y, { steps: 4 })
@@ -105,7 +105,7 @@ test.describe('A bracket goes where it can be bolted', () => {
   })
 
   test('the sidebar says whether they can all be bolted', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)
@@ -115,7 +115,7 @@ test.describe('A bracket goes where it can be bolted', () => {
   })
 
   test('it calls out a bracket that has been left behind', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)

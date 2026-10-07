@@ -1,3 +1,4 @@
+import { panelShape } from './panelDrilling'
 import * as THREE from 'three'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorScale } from './connectorCatalog'
@@ -280,8 +281,9 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const { z, x } = frameFor(quat)
     const back = new THREE.Vector3(...b.position).addScaledVector(z, -b.thickness / 2)
     const label = partNumber('panel', b.id)
+    const section = panelShape(b, connectors).extractPoints(12)
     part(label, `${b.material} ${mm(b.width)}x${mm(b.height)}x${mm(b.thickness)}`,
-      prism(s, slab(b.width, b.height), label, back, z, x, b.thickness))
+      prism(s, section.shape, label, back, z, x, b.thickness, section.holes))
   }
 
   // Export each fitting board in its closed position.
@@ -309,7 +311,7 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const label = partNumber('connector', c.id)
     const description = `${c.type} ${series}${c.profileSpec ? ` ${c.profileSpec}` : ''}`
     const transform = new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
-    const bodies = connectorMeshes(c.type, series, c.profileSpec, c.mountSeries).filter((mesh) => !mesh.visualOnly)
+    const bodies = connectorMeshes(c.type, series, c.profileSpec, c.mountSeries, c.panelMount).filter((mesh) => !mesh.visualOnly)
       .map(({ geometry }, index) => meshSolid(s, geometry, `${label}-${index + 1}`, transform))
     part(label, description, bodies)
   }

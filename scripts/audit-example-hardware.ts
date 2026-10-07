@@ -18,7 +18,7 @@ const report = files.map((file) => {
   setThroughRule(doc.throughRule)
   const trims = computeAllTrims(doc.profiles)
   const supports = new Map<string, string[]>()
-  const invalid = auditBrackets(doc.profiles, doc.connectors, trims, supports)
+  const invalid = auditBrackets(doc.profiles, doc.connectors, trims, supports, doc.panels)
   if (invalid.length) throw new Error(`${file}: ${JSON.stringify(invalid)}`)
   const clashes = findConflicts(doc.profiles, trims, doc.connectors, doc.panels, doc.fittings)
   if (clashes.length) throw new Error(`${file}: ${JSON.stringify(clashes)}`)

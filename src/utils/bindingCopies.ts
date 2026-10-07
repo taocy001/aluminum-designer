@@ -15,7 +15,7 @@ export function remapCopiedBindings(
   }
   const profiles = mapping(source.profiles, copies.profiles)
   const fittings = mapping(source.fittings, copies.fittings)
-  mapping(source.panels, copies.panels)
+  const panels = mapping(source.panels, copies.panels)
   mapping(source.connectors, copies.connectors)
   const mirror = !!options.mirror
   const openingCopy = (opening: OpeningRef): OpeningRef | undefined => {
@@ -62,7 +62,10 @@ export function remapCopiedBindings(
       return { ...copy, openingBinding: { ...binding, opening, margins, mode } }
     }),
     connectors: copies.connectors.map((part, i) => {
-      const { supportBinding: omitted, ...copy } = part
+      const { supportBinding: omitted, panelMount: omittedPanel, ...base } = part
+      const mount = source.connectors[i].panelMount
+      const mountPanel = mount && panels.get(mount.panelId), mountProfile = mount && profiles.get(mount.profileId)
+      const copy = mount ? { ...base, panelMount: { ...mount, panelId: mountPanel ?? mount.panelId, profileId: mountProfile ?? mount.profileId } } : base
       const binding = source.connectors[i].supportBinding
       const profileId = binding && profiles.get(binding.profileId)
       if (!binding || !profileId) return copy

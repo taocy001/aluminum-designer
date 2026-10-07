@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, store, tool, setView, settle, w2c } from './helpers'
+import { chooseConnector, openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, store, tool, setView, settle, w2c } from './helpers'
 
 const CONNECTORS = [
   ['直连板', 'flat-plate'], ['十字连接板', 'cross-bracket'], ['对接板', 'joining-plate'],
   ['端盖', 'end-cap'], ['滑块螺母', 't-nut'], ['合页', 'hinge'], ['轴承座', 'pivot'],
   ['脚轮', 'caster-mount'], ['调节脚', 'foot'],
 ] as const
-const CORNER_CONNECTORS = ['L型角码', '内角码', '加强角码', 'T型角码', '三维角码']
+const CORNER_CONNECTORS = ['bracket', 'inside-corner', 'gusset', 't-bracket', 'corner-3way'] as const
 const DEMO = JSON.parse(readFileSync('examples/connector-demo.json', 'utf8'))
 
 test.describe('Connectors', () => {
@@ -31,7 +31,7 @@ test.describe('Connectors', () => {
         : type === 'joining-plate' || type === 'hinge' ? [380, 60, 80]
         : type === 'end-cap' || type === 'cross-bracket' ? [100, 80, 380] : [100, 380, 100]
       await setView(page, view.map((v, i) => v + at[i]) as [number, number, number], at)
-      await page.getByTestId(`connector-${type}`).click()
+      await chooseConnector(page, type)
       expect((await tool(page)).held).toBe('connector')
       const pointerTarget: [number, number, number] = type === 'hinge' ? [at[0], at[1] - 10.5, at[2]] : at
       await hoverWorld(page, pointerTarget)
@@ -108,17 +108,17 @@ test.describe('Connectors', () => {
     await enterDraw(page, '2020')
     expect(await drawMember(page, [0, 0, 0], [600, 10, 0])).toBe(1)
     const before = await store(page)
-    for (const name of CORNER_CONNECTORS) {
-      await page.getByRole('button', { name, exact: true }).click()
+    for (const type of CORNER_CONNECTORS) {
+      await chooseConnector(page, type)
       await clickWorld(page, [600, 10, 0])
       expect(await store(page)).toEqual(before)
     }
   })
 
   test('clicking the active connector again empties the hand', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     expect((await tool(page)).held).toBe('connector')
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     expect((await tool(page)).held).toBe(null)
   })
 })
@@ -192,7 +192,7 @@ test.describe('Connectors land the right way round', () => {
     await enterDraw(page, '2020')
     await drawExact(page, [0, 0, 0], [0, 300, 0], 600)     // upright
     await drawMember(page, [0, 10, 0], [600, 10, 0])       // rail off its base
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await chooseConnector(page, 'bracket')
     await clickWorld(page, [0, 10, 0])
     const c = (await store(page)).connectors[0]
     expect(c.series).toBe(20)
@@ -204,7 +204,7 @@ test.describe('Connectors land the right way round', () => {
   test('an end cap points out of the end it caps', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
-    await page.getByRole('button', { name: '端盖', exact: true }).click()
+    await chooseConnector(page, 'end-cap')
     await clickWorld(page, [600, 10, 0])
     const c = (await store(page)).connectors[0]
     expect(axisOf(c.quaternion, [0, 0, 1])).toEqual([1, 0, 0])
@@ -214,7 +214,7 @@ test.describe('Connectors land the right way round', () => {
     await enterDraw(page, '4040')
     expect(await drawExact(page, [0, 0, 0], [0, 300, 0], 600)).toBe(1)
     await drawMember(page, [0, 0, 0], [600, 20, 0])
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await chooseConnector(page, 'bracket')
     await clickWorld(page, [0, 20, 0])
     expect((await store(page)).connectors).toHaveLength(1)
     expect((await store(page)).connectors[0].series).toBe(40)
@@ -225,7 +225,7 @@ test.describe('Connectors land the right way round', () => {
     await drawExact(page, [0, 0, 0], [0, 300, 0], 600)
     await drawExact(page, [600, 0, 0], [600, 300, 0], 600)
     await drawMember(page, [0, 10, 0], [600, 10, 0])
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await chooseConnector(page, 'bracket')
     await clickWorld(page, [0, 10, 0])
     expect((await store(page)).connectors).toHaveLength(1)
     await clickWorld(page, [600, 10, 0])
@@ -249,7 +249,7 @@ test.describe('Connectors land the right way round', () => {
     await drawMember(page, [0, 10, 0], [600, 10, 0])
     await expect(page.getByTestId('bom-suggested')).toBeVisible()
     const before = await page.getByTestId('bom-table').textContent()
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await chooseConnector(page, 'bracket')
     await clickWorld(page, [0, 10, 0])
     const after = await page.getByTestId('bom-table').textContent()
     expect(after).not.toEqual(before)

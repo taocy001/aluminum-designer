@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { openApp, setView, settle, store, w2c } from './helpers'
+import { chooseConnector, openApp, setView, settle, store, w2c } from './helpers'
 
 async function preview(page: Page) {
   return page.evaluate(() => {
@@ -24,17 +24,26 @@ async function joint(page: Page) {
     })
   })
   await setView(page, [230, 290, 310], [35, 135, 35])
-  await page.getByTestId('connector-inside-corner').click()
+  await chooseConnector(page, 'inside-corner')
   const point = await w2c(page, [0, 100, 0])
   await page.mouse.move(point.x, point.y)
   await expect(page.getByTestId('connector-seat-hud')).toHaveAttribute('data-seat-count', '4')
+  await expect.poll(() => preview(page)).toMatchObject({ seated: true, allowed: true, pinned: false })
   return point
 }
 
 test.beforeEach(async ({ page }) => openApp(page))
 
 test('the picker shows model silhouettes and explains each type on hover and keyboard focus', async ({ page }) => {
-  const buttons = page.locator('button:has(img[data-connector-model])')
+  await expect(page.getByTestId('connector-chooser')).toBeHidden()
+  await expect(page.getByTestId('connector-current').locator('img')).toBeVisible()
+  const compact = (await page.getByTestId('connector-picker').boundingBox())!
+  expect(compact.height).toBeLessThan(65)
+  const toggle = page.getByTestId('connector-picker-toggle')
+  await toggle.focus()
+  await page.keyboard.press('Enter')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  const buttons = page.getByTestId('connector-chooser').locator('button:has(img[data-connector-model])')
   const count = await buttons.count()
   expect(count).toBeGreaterThanOrEqual(10)
   const shapes = new Set<string>()
@@ -53,10 +62,13 @@ test('the picker shows model silhouettes and explains each type on hover and key
   const name = (await inner.getAttribute('aria-label'))!
   await inner.hover()
   await expect(page.getByTestId('tooltip')).toContainText(name)
-  await expect(page.getByTestId('tooltip')).toContainText('接头')
+  await expect(page.getByTestId('tooltip')).toContainText('B 型槽 6')
+  await expect(page.getByTestId('tooltip')).toContainText('两颗 M5×6 紧定螺钉')
+  await expect(page.getByTestId('tooltip')).toContainText('移动到有效位置后点击安装')
   await page.mouse.move(900, 350)
   await inner.focus()
   await expect(page.getByTestId('tooltip')).toContainText(name)
+  await expect(page.getByTestId('tooltip')).toContainText('两颗 M5×6 紧定螺钉')
   await expect(inner).toHaveAttribute('aria-describedby', 'control-tooltip')
   const tip = (await page.getByTestId('tooltip').boundingBox())!
   expect(tip.x).toBeGreaterThanOrEqual(0)
@@ -64,8 +76,14 @@ test('the picker shows model silhouettes and explains each type on hover and key
   expect(tip.x + tip.width).toBeLessThanOrEqual(1400)
   expect(tip.y + tip.height).toBeLessThanOrEqual(900)
   await page.keyboard.press('Escape')
-  await expect(page.getByTestId('tooltip')).toHaveCount(0)
+  await expect(page.getByTestId('connector-chooser')).toBeHidden()
+  await expect(toggle).toBeFocused()
+  await expect(page.getByTestId('tooltip')).not.toContainText(name)
   await expect(inner).not.toHaveAttribute('aria-describedby')
+  await chooseConnector(page, 'inside-corner')
+  await expect(page.getByTestId('connector-current').locator('img')).toHaveAttribute('data-connector-model', 'inside-corner')
+  await expect(page.getByTestId('connector-current')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('connector-chooser')).toBeHidden()
   await page.screenshot({ path: test.info().outputPath('connector-model-picker.png') })
 })
 
@@ -91,7 +109,7 @@ test('a free ghost follows the cursor and can return to a retained joint through
   expect((await store(page)).past).toEqual(before.past)
   await expect(page.getByTestId('connector-seat-hud')).toHaveAttribute('data-seat-count', '4')
   await page.getByTestId('connector-seat-option').first().click()
-  expect(await preview(page)).toMatchObject({ seated: true, allowed: true, pinned: true })
+  await expect.poll(() => preview(page)).toMatchObject({ seated: true, allowed: true, pinned: true })
   await page.getByTestId('connector-joint-lock').click()
   await page.mouse.move(point.x, point.y)
   await settle(page)

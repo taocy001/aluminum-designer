@@ -99,11 +99,11 @@ function solidProjection(geometry: THREE.BufferGeometry): SolidProjection {
   return solid
 }
 
-function connectorBoundCorners(type: string, series: ConnectorData['series'], profileSpec?: ConnectorData['profileSpec'], mountSeries?: ConnectorData['mountSeries']): readonly THREE.Vector3[] {
-  const key = `${type}:${series ?? 20}:${profileSpec ?? ''}:${mountSeries ?? ''}`
+function connectorBoundCorners(type: string, series: ConnectorData['series'], profileSpec?: ConnectorData['profileSpec'], mountSeries?: ConnectorData['mountSeries'], panelMount?: ConnectorData['panelMount']): readonly THREE.Vector3[] {
+  const key = `${type}:${series ?? 20}:${profileSpec ?? ''}:${mountSeries ?? ''}:${panelMount ? `${panelMount.spacer}:${panelMount.boardThickness}` : ''}`
   let corners = connectorBounds.get(key)
   if (!corners) {
-    const box = new THREE.Box3().setFromPoints(connectorMeshes(type, series, profileSpec, mountSeries).flatMap(({ geometry }) => [...solidProjection(geometry).vertices]))
+    const box = new THREE.Box3().setFromPoints(connectorMeshes(type, series, profileSpec, mountSeries, panelMount).flatMap(({ geometry }) => [...solidProjection(geometry).vertices]))
     const points: THREE.Vector3[] = []
     for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
       points.push(new THREE.Vector3(x, y, z))
@@ -141,13 +141,13 @@ function connectorDistancePx(
   const scale = connectorScale(connector.series ?? 20)
   const transform = (v: THREE.Vector3) => v.clone().multiplyScalar(scale).applyQuaternion(quaternion).add(position)
   // Reject distant parts before projecting every vertex of their plates and fasteners.
-  const bounds = connectorBoundCorners(connector.type, connector.series, connector.profileSpec, connector.mountSeries).map(transform)
+  const bounds = connectorBoundCorners(connector.type, connector.series, connector.profileSpec, connector.mountSeries, connector.panelMount).map(transform)
   if (bounds.every(v => v.clone().sub(camPos).dot(fwd) > NEAR_EPS)) {
     const rect = new THREE.Box2().setFromPoints(bounds.map(v => toScreen(v, camera, size))).expandByScalar(CONNECTOR_SLACK_PX)
     if (!rect.containsPoint(cursor)) return Infinity
   }
   let distance = Infinity
-  for (const { geometry } of connectorMeshes(connector.type, connector.series, connector.profileSpec, connector.mountSeries)) {
+  for (const { geometry } of connectorMeshes(connector.type, connector.series, connector.profileSpec, connector.mountSeries, connector.panelMount)) {
     const solid = solidProjection(geometry)
     const points = solid.vertices.map((vertex) => {
       const world = transform(vertex)

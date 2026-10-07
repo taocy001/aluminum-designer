@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, settle, store, w2c } from './helpers'
+import { chooseConnector, openApp, setView, settle, store, w2c } from './helpers'
 
 const UP = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2]
 const ALONG_X = [0, Math.SQRT1_2, 0, Math.SQRT1_2]
@@ -35,7 +35,7 @@ test('corner picking skips a joint hidden by the assembly step and finds it when
     return ids.sort()
   })).toEqual(['floor-post'])
   await setView(page, [230, 290, 310], [35, 135, 35])
-  await page.getByTestId('connector-inside-corner').click()
+  await chooseConnector(page, 'inside-corner')
   const pointer = await w2c(page, [0, 100, 0])
   await page.mouse.move(pointer.x, pointer.y)
   await settle(page)
@@ -96,7 +96,7 @@ test('sectioned corner picking uses the remaining exit surface and ignores a ful
     api.tool.getState().setSection({ axis: 'x', at: 0, flip: false })
   })
   await setView(page, [200, 150, 70], [0, 100, 70])
-  await page.getByTestId('connector-inside-corner').click()
+  await chooseConnector(page, 'inside-corner')
   const pointer = await w2c(page, [0, 100, 70])
   await page.mouse.move(pointer.x, pointer.y)
   await expect.poll(async () => (await hoverState(page)).target).toBe('sectioned')
@@ -129,7 +129,7 @@ test('a three-way seat disappears when its third supporting member is fully sect
     })
   }, { up: UP, alongX: ALONG_X })
   await setView(page, [250, 220, 280], [0, 80, 0])
-  await page.getByTestId('connector-corner-3way').click()
+  await chooseConnector(page, 'corner-3way')
   const pointer = await w2c(page, [0, 60, 0])
   await page.mouse.move(pointer.x, pointer.y)
   await expect.poll(async () => Number(await page.getByTestId('connector-seat-hud').getAttribute('data-seat-count'))).toBeGreaterThan(0)

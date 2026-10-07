@@ -11,7 +11,7 @@ import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { drawingInput, prepareDrawingPreview } from './utils/drawPreview'
-import { duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
+import { copySelected, pasteCopied, duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
 import { nextSuggestion, dismissSuggestion } from './utils/suggestOps'
 import { computeTrims } from './utils/jointUtils'
@@ -113,6 +113,15 @@ function App() {
         || e.code === 'Space'
       )
       if (isInInput || nativeButtonKey) return
+      // Part copies use an in-app snapshot. Inputs retain their native text clipboard.
+      if (mod && ['c', 'v'].includes(e.key.toLowerCase())) {
+        e.preventDefault()
+        const tool = useToolStore.getState()
+        if (tool.isDrawing || tool.isDragging || tool.resize || tool.pendingRotate) return
+        if (e.key.toLowerCase() === 'c') copySelected()
+        else if (!tool.viewMode) pasteCopied()
+        return
+      }
       if (viewMode && mod && ['z', 'y'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
 
       if (mod && e.key.toLowerCase() === 'a') {
@@ -126,7 +135,7 @@ function App() {
 
       // Looking, not building: the view keys still work, the ones that change things do not.
       if (viewMode && !['Escape', 'f', 'F', 'F11', ' '].includes(e.key) && e.code !== 'Space') {
-        if (e.key.toLowerCase() === 'v') { setViewMode(false); return }
+        if (e.key.toLowerCase() === 'v' && !mod) { setViewMode(false); return }
         return
       }
       if (e.key.toLowerCase() === 'v' && !mod) { setViewMode(!viewMode); return }

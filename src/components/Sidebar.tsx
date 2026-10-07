@@ -4,6 +4,7 @@ import ConnectorEditor from './ConnectorEditor'
 import ConnectorThumbnail from './ConnectorThumbnail'
 import { hardwareReference } from '../utils/connectorHardware'
 import OpeningBindingEditor, { SupportBindingEditor } from './OpeningBindingEditor'
+import PanelMountControls from './PanelMountControls'
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode, Link2, Wrench } from 'lucide-react'
@@ -178,6 +179,8 @@ const Sidebar: React.FC = () => {
     section, setSection, buildStep, setBuildStep } = useToolStore()
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
+  const [hardwareOpen, setHardwareOpen] = useState(false)
+  const hardwareToggle = useRef<HTMLButtonElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -280,11 +283,11 @@ const Sidebar: React.FC = () => {
   const selectedDrawerLayout = selectedFitting?.kind === 'drawer' ? drawerLayout(selectedFitting) : null
   const pickedPanelIds = () => pickedPanels.map((b) => b.id)
   const pickedFittingIds = () => pickedFittings.map((f) => f.id)
-  const bracketFaults = useMemo(() => cachedHardwareSupports({ profiles, connectors }, trims).faultDetails,
-    [profiles, connectors, trims])
+  const bracketFaults = useMemo(() => cachedHardwareSupports({ profiles, connectors, panels }, trims).faultDetails,
+    [profiles, connectors, panels, trims])
   const runnerProblems = useMemo(() => runnerFaults(profiles, trims, fittings, panels), [profiles, trims, fittings, panels])
-  const supports = useMemo(() => shelfEdges(panels, profiles, trims), [panels, profiles, trims])
-  const unconfirmedEdges = supports.filter((edge) => !edge.carried)
+  const supports = useMemo(() => shelfEdges(panels, profiles, trims, connectors, { fittings, equipment }), [panels, profiles, trims, connectors, fittings, equipment])
+  const unconfirmedEdges = supports.filter((edge) => !edge.carried && !edge.fixed)
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
   // Limit the section slider to the frame extent.
@@ -336,6 +339,13 @@ const Sidebar: React.FC = () => {
     if (viewMode) setViewMode(false)
     if (held === 'connector' && activeConnectorType === type) putDown()
     else setActiveConnector(type)
+  }
+  const currentHardware = connectorEntry(activeConnectorType ?? 'bracket')!
+  const hardwareTitle = (type: string) => {
+    const entry = connectorEntry(type)!
+    const label = language === 'zh' ? entry.labelZh : entry.labelEn
+    const description = language === 'zh' ? hardwareReference(type)?.descriptionZh : hardwareReference(type)?.descriptionEn
+    return `${label}\n${description ?? ''}\n${t.hintConnectorPick(label)}`
   }
   const handleClearAll = () => {
     if (!confirmClear) { setConfirmClear(true); return }
@@ -643,24 +653,50 @@ const Sidebar: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.connectors}</label>
-            <div className="grid grid-cols-4 gap-1">
+            <div data-testid="connector-picker" onKeyDown={(event) => {
+              if (event.key === 'Escape' && hardwareOpen) {
+                event.stopPropagation()
+                setHardwareOpen(false)
+                hardwareToggle.current?.focus()
+              }
+            }}>
+              <div className="flex items-center gap-2 py-1">
+                <label className="flex-1 text-[9px] text-slate-500 font-black uppercase tracking-widest">{t.connectors}</label>
+                <button data-testid="connector-current" onClick={() => handleConnectorClick(currentHardware.type)}
+                  aria-label={language === 'zh' ? currentHardware.labelZh : currentHardware.labelEn}
+                  aria-pressed={held === 'connector' && activeConnectorType === currentHardware.type}
+                  title={hardwareTitle(currentHardware.type)}
+                  className={`w-11 h-11 rounded-lg border focus-visible:outline-2 focus-visible:outline-cyan-300 ${held === 'connector'
+                    ? 'border-emerald-400 bg-emerald-900' : 'border-white/5 bg-slate-800/70 hover:bg-slate-700'}`}>
+                  <ConnectorThumbnail type={currentHardware.type} />
+                </button>
+                <button ref={hardwareToggle} data-testid="connector-picker-toggle" onClick={() => setHardwareOpen(!hardwareOpen)}
+                  aria-label={t.hintSection(t.connectors)} title={t.hintSection(t.connectors)}
+                  aria-expanded={hardwareOpen} aria-controls="connector-chooser"
+                  className="h-11 w-9 flex items-center justify-center rounded-lg bg-slate-800/70 hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-cyan-300">
+                  <ChevronRight size={16} className={hardwareOpen ? 'rotate-90' : ''} />
+                </button>
+              </div>
+            <div className={`${hardwareOpen ? 'grid' : 'hidden'} grid-cols-5 gap-1 pb-1`} id="connector-chooser" data-testid="connector-chooser" hidden={!hardwareOpen}>
               {CONNECTOR_LIST.map(({ type, labelZh, labelEn }) => (
-                <button key={type} onClick={() => handleConnectorClick(type)} data-testid={`connector-${type}`}
+                <button key={type} onClick={() => {
+                  handleConnectorClick(type); setHardwareOpen(false); hardwareToggle.current?.focus()
+                }} data-testid={`connector-${type}`}
                   aria-label={language === 'zh' ? labelZh : labelEn}
                   aria-pressed={held === 'connector' && activeConnectorType === type}
-                  title={`${language === 'zh' ? labelZh : labelEn}\n${language === 'zh' ? hardwareReference(type)?.descriptionZh ?? '' : hardwareReference(type)?.descriptionEn ?? ''}\n${t.hintConnectorPick(language === 'zh' ? labelZh : labelEn)}`}
-                  className={`aspect-square min-h-11 rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-cyan-300 ${
+                  title={hardwareTitle(type)}
+                  className={`aspect-square min-h-10 rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-cyan-300 ${
                     held === 'connector' && activeConnectorType === type
                       ? 'border-emerald-400 bg-emerald-900 shadow-lg' : 'border-white/5 bg-slate-800/70 hover:bg-slate-700'}`}>
                   <ConnectorThumbnail type={type} />
                 </button>
               ))}
             </div>
+            </div>
             {/** Drawer and door insertion controls. */}
             {(
               <div className="space-y-1 pt-1 border-t border-white/5" data-testid="fitting-block">
-                <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.fittings}</label>
+                <label className="text-[9px] text-slate-500 font-black block uppercase tracking-widest">{t.fittings}</label>
                 {selectedProfileCount < 2 && (
                   <p className="text-[9px] text-slate-600 leading-snug pb-1">{t.hintFittingNeedsOpening}</p>
                 )}
@@ -994,6 +1030,7 @@ const Sidebar: React.FC = () => {
                     onCommit={(v) => setPanelsSize(pickedPanelIds(), { thickness: v })} />
                 </div>
                 <OpeningBindingEditor key={selectedPanel.id} part={selectedPanel} kind="panel" />
+                <PanelMountControls />
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{t.panelMaterial}</span>
                   <select value={selectedPanel.material} data-testid="panel-material"
@@ -1154,7 +1191,8 @@ const Sidebar: React.FC = () => {
           )}
           {supports.length > 0 && (
             <div data-testid="shelf-support-range" className="text-slate-400">
-              {t.shelfSupport} · {supports.filter((edge) => edge.carried).length}/{supports.length}
+              {t.shelfSupport} · {supports.filter((edge) => edge.carried || edge.fixed).length}/{supports.length}
+              {supports.some((edge) => edge.fixed) && <div>{t.shelfFixedEdges(supports.filter((edge) => edge.fixed).length)}</div>}
               {unconfirmedEdges.length > 0 && <div>{t.shelfUnknownEdges(unconfirmedEdges.length)}</div>}
             </div>
           )}

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, settle, store, setView } from './helpers'
+import { chooseConnector, openApp, settle, store, setView } from './helpers'
 
 const UP = [-0.7071067811865475, 0, 0, 0.7071067811865476]
 const ALONG_X = [0, 0.7071067811865475, 0, 0.7071067811865476]
@@ -32,7 +32,7 @@ test.describe('A connector in the way is reported', () => {
   })
 
   test('one fitted properly is not a conflict', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)
@@ -41,7 +41,7 @@ test.describe('A connector in the way is reported', () => {
   })
 
   test('one sunk into a member is', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)
@@ -58,7 +58,7 @@ test.describe('A connector in the way is reported', () => {
   })
 
   test('two on top of each other are', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)
@@ -73,7 +73,7 @@ test.describe('A connector in the way is reported', () => {
   })
 
   test('the conflict line selects them, so they can be found', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.evaluate(() => {

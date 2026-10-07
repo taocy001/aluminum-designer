@@ -1,5 +1,5 @@
 /** Refresh the example screenshots and BOMs from their current JSON geometry.
- * Start Vite on 5174, then run: node scripts/capture-examples.mjs
+ * Start Vite on 5174, then run: node scripts/capture-examples.mjs [example-name ...]
  */
 import { chromium } from '@playwright/test'
 import { Quaternion, Vector3 } from 'three'
@@ -8,7 +8,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const baseURL = process.env.EXAMPLES_BASE_URL ?? 'http://127.0.0.1:5174'
-const names = ['kitchen-l-shaped', 'wardrobe-2-door', 'desk-with-pedestal', 'bookcase-tall', 'display-shelf-open', 'rolling-cart']
+const allNames = ['kitchen-l-shaped', 'wardrobe-2-door', 'desk-with-pedestal', 'bookcase-tall', 'display-shelf-open', 'rolling-cart']
+const requested = process.argv.slice(2)
+if (requested.some(name => !allNames.includes(name))) throw new Error('Unknown example name')
+const names = requested.length ? requested : allNames
 // Writing watched example files mid-capture reloads Vite. Publish the completed batch
 // only after the browser has closed, so every screenshot captures the intended document.
 const output = mkdtempSync(join(tmpdir(), 'aluframe-examples-'))
@@ -57,6 +60,7 @@ try {
     writeFileSync(join(output, `${name}-bom.csv`), '\ufeff' + csv + '\n')
     console.log(`Refreshed ${name}`)
   }
+  if (!requested.length) {
   const demo = JSON.parse(readFileSync('examples/connector-demo.json', 'utf8'))
   await show(demo)
   // Use fixed close-up views of the current document, then assemble the renders.
@@ -165,8 +169,9 @@ try {
   }, flatImages)
   await overview.screenshot({ path: join(output, 'apartment-12-units-overview.png'), fullPage: true })
   await overview.close()
-  complete = true
   console.log('Refreshed apartment overview')
+  }
+  complete = true
 } finally {
   await browser.close()
   if (complete) for (const name of readdirSync(output)) copyFileSync(join(output, name), join('examples', name))

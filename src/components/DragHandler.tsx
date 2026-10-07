@@ -16,6 +16,7 @@ import { lowestPointY } from '../utils/profileFactory'
 import { roundToGrid } from '../utils/specUtils'
 import { equipmentBody } from '../utils/equipmentGeometry'
 import { connectorTransformUpdates } from '../utils/connectorEdits'
+import { snapDraggedConnector } from '../utils/connectorRecovery'
 
 /** An axis arrow makes measured adjustments, so its snap window stays tight. */
 const AXIS_SNAP_MAX_MM = 12
@@ -47,6 +48,7 @@ const DragHandler: React.FC = () => {
   const dragBaseFree = useRef(false)
   const pointerKind = useRef('mouse')
   const rejectedGesture = useRef('')
+  const connectorSnapKey = useRef<string | null>(null)
 
   useEffect(() => {
     const canvas = gl.domElement
@@ -64,6 +66,7 @@ const DragHandler: React.FC = () => {
       if (!state.resize) resizingGesture.current = null
       if (!state.resize && !state.isDragging) rejectedGesture.current = ''
       if (state.isDragging && !previous.isDragging) {
+        connectorSnapKey.current = null
         // A touch gesture can deliberately start free without a physical Shift key.
         dragBaseFree.current = state.dragFree && (!shiftHeld.current || pointerKind.current === 'touch')
       }
@@ -197,7 +200,8 @@ const DragHandler: React.FC = () => {
       const ids = Object.keys(dragGroupOrigins)
       const dragIds = new Set(ids.length ? ids : [dragProfileId])
 
-      if (!ts.dragMoved && delta.lengthSq() <= 0.25) return
+      const startThreshold = dragKind === 'connector' && dragIds.size === 1 ? 0.05 : 0.5
+      if (!ts.dragMoved && delta.lengthSq() <= startThreshold ** 2) return
       // Snapping uses physical cuts, but the document changes only after validation.
       const all = store.profiles.some((p) => dragIds.has(p.id) && !p.locked)
         ? withFixedProfileCuts(store.profiles, undefined, store.throughRule) : store.profiles
@@ -212,7 +216,7 @@ const DragHandler: React.FC = () => {
       const allowedAxes: Axis3[] = lockedAxis !== null ? [lockedAxis] : dragVertical ? [1] : [0, 2]
       for (const axis of allowedAxes) {
         const key = (['x', 'y', 'z'] as const)[axis]
-        leadNew[key] = roundToGrid(leadNew[key])
+        leadNew[key] = single && dragKind === 'connector' ? Math.round(leadNew[key] * 10) / 10 : roundToGrid(leadNew[key])
       }
       // Centreline joins require a fresh cut. Finished parts align their real faces
       // below instead; coincident perpendicular end centres would make them overlap.
@@ -224,11 +228,27 @@ const DragHandler: React.FC = () => {
       const groupDelta = snapped.clone().sub(leadOrigin)
 
       const dragged = all.filter((p) => dragIds.has(p.id) && !p.locked)
+      let connectorSnap: ReturnType<typeof snapDraggedConnector> = null
+      if (single && dragKind === 'connector' && !ts.dragFree) {
+        const connector = store.connectors.find((part) => part.id === dragProfileId)
+        if (connector) {
+          const distance = leadOrigin.distanceTo(new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld))
+          const threshold = ts.dragAxis ? AXIS_SNAP_MAX_MM
+            : Math.max(6, Math.min(24, pixelsToWorld(ALIGN_PX, distance, camera, size.height)))
+          connectorSnap = snapDraggedConnector(connector, leadNew, leadOrigin, all, store.connectors, allowedAxes, threshold,
+            { equipment: store.equipment, panels: store.panels, fittings: store.fittings }, connectorSnapKey.current)
+          connectorSnapKey.current = connectorSnap?.key ?? null
+          if (connectorSnap) groupDelta.copy(new THREE.Vector3(...connectorSnap.seat.position).sub(leadOrigin))
+        }
+      } else connectorSnapKey.current = null
 
       // Alignment: unless Shift asks for free placement, pull the group onto the faces,
       // edges and centrelines of the surrounding profiles.
       // An endpoint join is the more specific intent, so it is left alone.
-      if (joinedAtEndpoint) {
+      if (connectorSnap) {
+        ts.setSnapRefs(connectorSnap.legs ?? [])
+        ts.setSnapGuides([])
+      } else if (joinedAtEndpoint) {
         ts.setSnapRefs([endpointSnap.refId!])
         ts.setSnapGuides([{ axis: 0, kind: 'endpoint', coord: 0, refId: endpointSnap.refId! }])
       } else if (ts.dragFree) {
@@ -279,8 +299,12 @@ const DragHandler: React.FC = () => {
         if (!c || c.locked) continue
         const origin = new THREE.Vector3(...(dragGroupOrigins[cid] ?? c.position))
         const np = origin.clone().add(groupDelta)
+        const pose = { position: [np.x, np.y, np.z] as ConnectorData['position'],
+          ...(connectorSnap ? { quaternion: connectorSnap.seat.quaternion } : {}) }
         connectorUpdates.push({ id: cid,
-          updates: connectorTransformUpdates(c, { position: [np.x, np.y, np.z] }, new Set(dragged.map((p) => p.id))) })
+          updates: { ...connectorTransformUpdates(c, pose, new Set(dragged.map((p) => p.id))),
+            ...(connectorSnap ? { series: connectorSnap.seat.series, profileSpec: connectorSnap.seat.profileSpec,
+              mountSeries: connectorSnap.seat.mountSeries } : {}) } })
       }
       const panelUpdates: Array<{ id: string; updates: Partial<PanelData> }> = []
       for (const bid of dragIds) {

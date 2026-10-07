@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, dragWorld, dragHold, store, tool, conflicts, cursor, hoverId, w2c, r, type V3 } from './helpers'
+import { chooseConnector, openApp, setView, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, dragWorld, dragHold, store, tool, conflicts, cursor, hoverId, w2c, r, type V3 } from './helpers'
 
 async function toNavigate(page: Page) {
   await page.keyboard.press('Escape')
@@ -239,7 +239,7 @@ test.describe('Regressions caught in review', () => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await setView(page, [860, 150, 240], [600, 10, 0])
-    await page.getByTestId('connector-end-cap').click()
+    await chooseConnector(page, 'end-cap')
     await clickWorld(page, [600, 10, 0])
     const { connectors, profiles } = await store(page)
     expect(connectors).toHaveLength(1)

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, clickWorld, settle, store, tool, w2c } from './helpers'
+import { chooseConnector, openApp, setView, enterDraw, drawMember, clickWorld, settle, store, tool, w2c } from './helpers'
 
 /** Buildability, one-click connectors, overall size, the standard shortcuts, full screen. */
 
@@ -46,7 +46,7 @@ test.describe('Joint compatibility', () => {
     await postAndRail(page, '4040', '2040')
     await expect(page.getByTestId('bom-mismatches')).toContainText('缺少可用连接件')
     await expect(page.getByTestId('bom-cross-series')).toBeVisible()
-    await page.getByTestId('connector-inside-corner').click()
+    await chooseConnector(page, 'inside-corner')
     await page.getByTestId('auto-connect').click()
     expect((await store(page)).connectors).toEqual([])
   })
@@ -55,7 +55,7 @@ test.describe('Joint compatibility', () => {
     await postAndRail(page, '4040', '3030')
     await expect(page.getByTestId('bom-mismatches')).toContainText('全部可接')
     await expect(page.getByTestId('bom-cross-series')).toHaveCount(0)
-    await page.getByTestId('connector-inside-corner').click()
+    await chooseConnector(page, 'inside-corner')
     await page.getByTestId('auto-connect').click()
     const connectors = (await store(page)).connectors
     expect(connectors.length).toBeGreaterThan(0)
@@ -111,12 +111,12 @@ test.describe('One click fits the connector to every joint', () => {
 
   test('the button only appears with a connector in hand', async ({ page }) => {
     await expect(page.getByTestId('auto-connect')).toHaveCount(0)
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await expect(page.getByTestId('auto-connect')).toBeVisible()
   })
 
   test('brackets land on every butt joint in one step', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     const after = await store(page)
     expect(after.connectors.length).toBeGreaterThan(2)
@@ -126,7 +126,7 @@ test.describe('One click fits the connector to every joint', () => {
   })
 
   test('a second run adds nothing and says so', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     const n = (await store(page)).connectors.length
     await page.getByTestId('auto-connect').click()
@@ -135,7 +135,7 @@ test.describe('One click fits the connector to every joint', () => {
   })
 
   test('end caps go on free ends, not on joints', async ({ page }) => {
-    await page.getByTestId('connector-end-cap').click()
+    await chooseConnector(page, 'end-cap')
     await page.getByTestId('auto-connect').click()
     // Rails butt against the fixed posts' sides. All four post caps remain exposed.
     const caps = await page.evaluate(() => {
@@ -161,14 +161,14 @@ test.describe('One click fits the connector to every joint', () => {
   })
 
   test('a part that goes on a face says which face is the user\'s call', async ({ page }) => {
-    await page.getByTestId('connector-hinge').click()
+    await chooseConnector(page, 'hinge')
     await page.getByTestId('auto-connect').click()
     await expect(page.getByTestId('toasts')).toContainText('需要你来指定')
     expect((await store(page)).connectors.length).toBe(0)
   })
 
   test('the series follows the members it lands on', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     expect((await store(page)).connectors.every((c: any) => c.series === 20)).toBe(true)
   })

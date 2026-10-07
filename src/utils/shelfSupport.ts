@@ -1,8 +1,10 @@
 import * as THREE from 'three'
-import type { PanelData, ProfileData } from '../store/useStore'
+import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { computeAllTrims, trimmedBox, type ProfileTrims } from './jointUtils'
 import { panelOBB, trimmedOBB } from './analysis'
 import { bodiesTouch } from './assembly'
+import { panelMountFrame } from './panelMounts'
+import { createConnectorPlacementValidator } from './connectorPlacement'
 
 /** a board thinner than this, measured upright, is lying down: a shelf, a top, a base (mm) */
 const LYING_MAX = 40
@@ -17,6 +19,8 @@ export interface ShelfEdgeState {
   panelId: string
   edge: ShelfEdge
   carried: boolean
+  /** Two valid fasteners near this edge span at least half its length. Not a load rating. */
+  fixed: boolean
   /** the edge's two ends at the underside of the board */
   a: THREE.Vector3
   b: THREE.Vector3
@@ -72,9 +76,13 @@ function clip(points: Point2[], axis: 0 | 1, at: number, keepAbove: boolean): Po
  * its inner 25 mm strip. A world AABB only touching the shelf near a corner carries no edge.
  * Tilted boards are not assigned support by this horizontal-bearing heuristic.
  */
-export function shelfEdges(panels: PanelData[], profiles: ProfileData[], trims?: Map<string, ProfileTrims>): ShelfEdgeState[] {
+export function shelfEdges(panels: PanelData[], profiles: ProfileData[], trims?: Map<string, ProfileTrims>,
+  connectors: ConnectorData[] = [], obstructions: { fittings?: FittingData[]; equipment?: EquipmentData[] } = {}): ShelfEdgeState[] {
   const t = trims ?? computeAllTrims(profiles)
   const metal = profiles.map((p) => ({ id: p.id, box: trimmedBox(p, t.get(p.id)!), body: trimmedOBB(p, t.get(p.id)!) }))
+  const mounts = connectors.filter((c) => c.panelMount)
+  const validate = mounts.length ? createConnectorPlacementValidator(profiles, { panels, ...obstructions }, t) : null
+  const validMounts = mounts.filter((c) => validate!(c, connectors.filter((other) => other.id !== c.id)).allowed)
   const out: ShelfEdgeState[] = []
   for (const b of panels) {
     const box = panelBox(b)
@@ -86,6 +94,10 @@ export function shelfEdges(panels: PanelData[], profiles: ProfileData[], trims?:
     const centre = new THREE.Vector3(...b.position)
     const under = centre.clone().addScaledVector(normal, -Math.sign(normal.y) * b.thickness / 2)
     const half = [b.width / 2, b.height / 2] as const
+    const holes = validMounts.filter((c) => c.panelMount!.panelId === b.id).map((c) => {
+      const delta = panelMountFrame(c).boardHole.sub(centre)
+      return [delta.dot(u), delta.dot(v)] as Point2
+    })
     const world = (x: number, y: number) => under.clone().addScaledVector(u, x).addScaledVector(v, y)
     const uAxis = Math.abs(u.x) >= Math.abs(u.z) ? 'x' : 'z'
     const vAxis = uAxis === 'x' ? 'z' : 'x'
@@ -128,7 +140,10 @@ export function shelfEdges(panels: PanelData[], profiles: ProfileData[], trims?:
       const a = axis === 0 ? world(sign * half[0], -half[1]) : world(-half[0], sign * half[1])
       const bb = axis === 0 ? world(sign * half[0], half[1]) : world(half[0], sign * half[1])
       const by = carrier(axis, sign)
-      out.push({ panelId: b.id, edge, carried: by !== null, a, b: bb, underY: under.y, by })
+      const along = holes.filter((p) => Math.abs(p[axis] - sign * half[axis]) <= EDGE_REACH)
+        .map((p) => p[axis === 0 ? 1 : 0])
+      const fixed = along.length >= 2 && Math.max(...along) - Math.min(...along) >= half[axis === 0 ? 1 : 0] - LEVEL_TOL
+      out.push({ panelId: b.id, edge, carried: by !== null, fixed, a, b: bb, underY: under.y, by })
     }
   }
   return out

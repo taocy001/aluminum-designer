@@ -201,7 +201,7 @@ function generateHardware(doc: SuggestDoc, all: Seg[], scope: Seg[], cache: VetC
   if (!doc.connectors.length) return []
   // Trims are a pure result of the complete profile values and manufacturing rule.
   // Scope controls available templates; focus ranking is applied later for each search.
-  const key = JSON.stringify([doc.profiles, doc.connectors, scope.map((s) => s.p.id), getThroughRule()])
+  const key = JSON.stringify([doc.profiles, doc.connectors, doc.connectors.some((c) => c.panelMount) ? doc.panels : [], scope.map((s) => s.p.id), getThroughRule()])
   const cached = hardwareRecipeCache.get(key)
   if (cached) {
     const members = new Map(doc.profiles.map((p) => [p.id, p]))
@@ -282,7 +282,7 @@ interface StructuralRecipe {
 }
 const structuralRecipeCache = new Map<string, StructuralRecipe[]>()
 const structuralInputKey = (doc: SuggestDoc, scope: Seg[]) =>
-  JSON.stringify([doc.profiles, doc.panels, scope.map((s) => s.p.id), getThroughRule()])
+  JSON.stringify([doc.profiles, doc.panels, doc.connectors.some((c) => c.panelMount) ? [doc.connectors, doc.fittings, doc.equipment] : [], scope.map((s) => s.p.id), getThroughRule()])
 
 function generate(doc: SuggestDoc, all: Seg[], scope: Seg[], cache: VetCache, sourceSnapshot: string, rank: ReadonlyMap<string, number>): Raw[] {
   // Repeating a search changes candidate ranking and eligibility, but not its source
@@ -329,9 +329,9 @@ function buildStructuralRaw(doc: SuggestDoc, all: Seg[], scope: Seg[], cache: Ve
   if (panels.length) {
     const scopeProfiles = scope.map((s) => s.p)
     const trims = cachedCheck(cache, 'trims', [scopeProfiles], () => computeAllTrims(scopeProfiles))
-    const edges = shelfEdges(panels, scopeProfiles, trims)
+    const edges = shelfEdges(panels, scopeProfiles, trims, doc.connectors, doc)
     for (const e of edges) {
-      if (e.carried) continue
+      if (e.carried || e.fixed) continue
       const opp = edges.find((o) => o.panelId === e.panelId && o.edge === oppositeEdge(e.edge))
       if (!opp?.carried || !opp.by) continue
       const twin = scope.find((s) => s.p.id === opp.by)?.p

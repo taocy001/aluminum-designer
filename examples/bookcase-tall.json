@@ -1,3996 +1,5702 @@
 {
- "version": 3,
- "profiles": [
-  {
-   "id": "p-mufrnzzb87",
-   "spec": "2040",
-   "length": 1980,
-   "position": [
-    10,
-    0,
-    20
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro0k288",
-   "spec": "2040",
-   "length": 1980,
-   "position": [
-    10,
-    0,
-    300
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro19189",
-   "spec": "2040",
-   "length": 1980,
-   "position": [
-    890,
-    0,
-    20
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro1pl8a",
-   "spec": "2040",
-   "length": 1980,
-   "position": [
-    890,
-    0,
-    300
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro2k68b",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    0,
-    10,
-    20
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    0.5,
-    0.4999999999999999,
-    0.5
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro2x38c",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    0,
-    10,
-    300
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    0.5,
-    0.4999999999999999,
-    0.5
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro38k8d",
-   "spec": "2040",
-   "length": 240,
-   "position": [
-    20,
-    10,
-    40
-   ],
-   "quaternion": [
-    0,
-    0,
-    0.7071067811865475,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro3iv8e",
-   "spec": "2040",
-   "length": 240,
-   "position": [
-    880,
-    10,
-    40
-   ],
-   "quaternion": [
-    0,
-    0,
-    0.7071067811865475,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro4748f",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    0,
-    1990,
-    20
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    0.5,
-    0.4999999999999999,
-    0.5
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro4j48g",
-   "spec": "2040",
-   "length": 900,
-   "position": [
-    0,
-    1990,
-    300
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    0.5,
-    0.4999999999999999,
-    0.5
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro4v68h",
-   "spec": "2040",
-   "length": 240,
-   "position": [
-    20,
-    1990,
-    40
-   ],
-   "quaternion": [
-    0,
-    0,
-    0.7071067811865475,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufro56l8i",
-   "spec": "2040",
-   "length": 240,
-   "position": [
-    880,
-    1990,
-    40
-   ],
-   "quaternion": [
-    0,
-    0,
-    0.7071067811865475,
-    0.7071067811865476
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufroj7d8r",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    10,
-    350,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufrojkh8s",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    890,
-    350,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufrokrx8u",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    10,
-    700,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufrol338v",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    890,
-    700,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufromdm8x",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    10,
-    1050,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufrompg8y",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    890,
-    1050,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufronzn90",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    10,
-    1400,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufroobm91",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    890,
-    1400,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufropmf93",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    10,
-    1700,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufropyb94",
-   "spec": "2040",
-   "length": 280,
-   "position": [
-    890,
-    1700,
-    20
-   ],
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsvx1",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    350,
-    10
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsvz2",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    350,
-    290
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsw24",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    700,
-    30
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsw35",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    700,
-    310
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsw47",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    1050,
-    30
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsw58",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    1050,
-    310
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsw6a",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    1400,
-    30
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsw7b",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    1400,
-    310
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsw8d",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    1700,
-    30
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "p-mufvmsw9e",
-   "spec": "2040",
-   "length": 880,
-   "position": [
-    10,
-    1700,
-    310
-   ],
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw13-bearing-front",
-   "spec": "2020",
-   "position": [
-    10,
-    360,
-    61
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw13-bearing-back",
-   "spec": "2020",
-   "position": [
-    10,
-    360,
-    259
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw13-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    360,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw13-bearing-right",
-   "spec": "2020",
-   "position": [
-    855,
-    360,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw46-bearing-front",
-   "spec": "2020",
-   "position": [
-    10,
-    710,
-    61
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw46-bearing-back",
-   "spec": "2020",
-   "position": [
-    10,
-    710,
-    259
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw46-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    710,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw46-bearing-right",
-   "spec": "2020",
-   "position": [
-    855,
-    710,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw69-bearing-front",
-   "spec": "2020",
-   "position": [
-    10,
-    1060,
-    61
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw69-bearing-back",
-   "spec": "2020",
-   "position": [
-    10,
-    1060,
-    259
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw69-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    1060,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw69-bearing-right",
-   "spec": "2020",
-   "position": [
-    855,
-    1060,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw8c-bearing-front",
-   "spec": "2020",
-   "position": [
-    10,
-    1410,
-    61
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw8c-bearing-back",
-   "spec": "2020",
-   "position": [
-    10,
-    1410,
-    259
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw8c-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    1410,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw8c-bearing-right",
-   "spec": "2020",
-   "position": [
-    855,
-    1410,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw9f-bearing-front",
-   "spec": "2020",
-   "position": [
-    10,
-    1710,
-    61
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw9f-bearing-back",
-   "spec": "2020",
-   "position": [
-    10,
-    1710,
-    259
-   ],
-   "length": 880,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw9f-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    1710,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsw9f-bearing-right",
-   "spec": "2020",
-   "position": [
-    855,
-    1710,
-    61
-   ],
-   "length": 198,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  }
- ],
- "connectors": [
-  {
-   "id": "c-frame-000",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    360,
-    249.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-001",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    360,
-    249.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-002",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    360,
-    70.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-003",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    360,
-    70.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-004",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    360,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-005",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    360,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-006",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    360,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-007",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    360,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-008",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    710,
-    249.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-009",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    710,
-    249.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-010",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    710,
-    70.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-011",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    710,
-    70.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-012",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    710,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-013",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    710,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-014",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    710,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-015",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    710,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-016",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1060,
-    249.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-017",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1060,
-    249.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-018",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1060,
-    70.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-019",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1060,
-    70.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-020",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1060,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-021",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1060,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-022",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    1060,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-023",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    1060,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-024",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1410,
-    249.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-025",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1410,
-    249.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-026",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1410,
-    70.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-027",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1410,
-    70.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-028",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1410,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-029",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1410,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-030",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    1410,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-031",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    1410,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-032",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1710,
-    249.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-033",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1710,
-    249.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-034",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1710,
-    70.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-035",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1710,
-    70.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-036",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1710,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-037",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1710,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-038",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    1710,
-    70.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-039",
-   "type": "inside-corner",
-   "position": [
-    845.6,
-    1710,
-    249.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9a",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    19.4,
-    10
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-6800700fd0dd",
-   "type": "inside-corner",
-   "position": [
-    10,
-    19.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza96",
-   "type": "inside-corner",
-   "position": [
-    19.4,
-    1980.5,
-    10
-   ],
-   "quaternion": [
-    -1.570092458683775e-16,
-    1.7431527984210495e-32,
-    -0.7071067811865476,
-    0.7071067811865475
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9c",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    19.4,
-    290
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-47c22e47399d",
-   "type": "inside-corner",
-   "position": [
-    10,
-    19.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza97",
-   "type": "inside-corner",
-   "position": [
-    19.4,
-    1980.5,
-    290
-   ],
-   "quaternion": [
-    -1.570092458683775e-16,
-    1.7431527984210495e-32,
-    -0.7071067811865476,
-    0.7071067811865475
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9b",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    19.4,
-    10
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-91ecdd5a2ab4",
-   "type": "inside-corner",
-   "position": [
-    890,
-    19.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza98",
-   "type": "inside-corner",
-   "position": [
-    880.6,
-    1980.5,
-    10
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0.7071067811865476,
-    1.7431527984210492e-32,
-    -1.570092458683775e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9d",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    19.4,
-    290
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-03c5ceb802a9",
-   "type": "inside-corner",
-   "position": [
-    890,
-    19.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza99",
-   "type": "inside-corner",
-   "position": [
-    880.6,
-    1980.5,
-    290
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0.7071067811865476,
-    1.7431527984210492e-32,
-    -1.570092458683775e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9e",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    10,
-    39.5
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    0.4999999999999999,
-    0.5,
-    -0.5
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9g",
-   "type": "inside-corner",
-   "position": [
-    860.6,
-    10,
-    39.5
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    -0.5000000000000001,
-    0.5,
-    0.5
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9f",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    10,
-    280.5
-   ],
-   "quaternion": [
-    -0.5000000000000001,
-    -0.5000000000000001,
-    0.5,
-    -0.5
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9h",
-   "type": "inside-corner",
-   "position": [
-    860.6,
-    10,
-    280.5
-   ],
-   "quaternion": [
-    -0.4999999999999999,
-    0.5000000000000001,
-    0.5,
-    0.5
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9i",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1990,
-    39.5
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    0.4999999999999999,
-    0.5,
-    -0.5
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9k",
-   "type": "inside-corner",
-   "position": [
-    860.6,
-    1990,
-    39.5
-   ],
-   "quaternion": [
-    0.5000000000000001,
-    -0.5000000000000001,
-    0.5,
-    0.5
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9j",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1990,
-    280.5
-   ],
-   "quaternion": [
-    -0.5000000000000001,
-    -0.5000000000000001,
-    0.5,
-    -0.5
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9l",
-   "type": "inside-corner",
-   "position": [
-    860.6,
-    1990,
-    280.5
-   ],
-   "quaternion": [
-    -0.4999999999999999,
-    0.5000000000000001,
-    0.5,
-    0.5
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9m",
-   "type": "inside-corner",
-   "position": [
-    10,
-    369.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9n",
-   "type": "inside-corner",
-   "position": [
-    10,
-    369.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9o",
-   "type": "inside-corner",
-   "position": [
-    890,
-    369.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9p",
-   "type": "inside-corner",
-   "position": [
-    890,
-    369.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9q",
-   "type": "inside-corner",
-   "position": [
-    10,
-    719.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9r",
-   "type": "inside-corner",
-   "position": [
-    10,
-    719.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9s",
-   "type": "inside-corner",
-   "position": [
-    890,
-    719.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9t",
-   "type": "inside-corner",
-   "position": [
-    890,
-    719.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9u",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1030.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9v",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1030.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9w",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1030.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9x",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1030.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9y",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1380.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqza9z",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1380.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqzaa0",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1380.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqzaa1",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1380.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqzaa2",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1680.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqzaa3",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1680.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqzaa4",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1680.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufroqzaa5",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1680.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswbg",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    369.4,
-    10
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswch",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    369.4,
-    10
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw13-bearing-left-end-joint",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    369.4,
-    290
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw13-bearing-right-end-joint",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    369.4,
-    290
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw46-bearing-left-start-joint",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    719.4,
-    30
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw46-bearing-right-start-joint",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    719.4,
-    30
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-2c636795f896",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    719.4,
-    310
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-61df3837a52d",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    719.4,
-    310
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-877d880425d0",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1030.6,
-    30
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-53907b174148",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1030.6,
-    30
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswck",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1030.6,
-    310
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswcl",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1030.6,
-    310
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-e8fb99c5ed50",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1380.6,
-    30
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-e16bc26cc67e",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1380.6,
-    30
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswcm",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1380.6,
-    310
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswcn",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1380.6,
-    310
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-5c27e18218bf",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1680.6,
-    30
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-88122b70a259",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1680.6,
-    30
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswco",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1680.6,
-    310
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswcp",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1680.6,
-    310
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-2b5c25ae3b76",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    19.4,
-    30
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-1104a66f479f",
-   "type": "inside-corner",
-   "position": [
-    19.4,
-    1980.5,
-    30
-   ],
-   "quaternion": [
-    -1.570092458683775e-16,
-    1.7431527984210495e-32,
-    -0.7071067811865476,
-    0.7071067811865475
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-262cfde9459a",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    19.4,
-    310
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-2c438dddd3d5",
-   "type": "inside-corner",
-   "position": [
-    19.4,
-    1980.5,
-    310
-   ],
-   "quaternion": [
-    -1.570092458683775e-16,
-    1.7431527984210495e-32,
-    -0.7071067811865476,
-    0.7071067811865475
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-591480015334",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    19.4,
-    30
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-9b18d3e18edc",
-   "type": "inside-corner",
-   "position": [
-    880.6,
-    1980.5,
-    30
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0.7071067811865476,
-    1.7431527984210492e-32,
-    -1.570092458683775e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-c1c5fe58bc29",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    19.4,
-    310
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-7dab056e8d6e",
-   "type": "inside-corner",
-   "position": [
-    880.6,
-    1980.5,
-    310
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    0.7071067811865476,
-    1.7431527984210492e-32,
-    -1.570092458683775e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw13-bearing-left-start-joint",
-   "type": "inside-corner",
-   "position": [
-    10,
-    330.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-6c0839274b83",
-   "type": "inside-corner",
-   "position": [
-    10,
-    330.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw13-bearing-right-start-joint",
-   "type": "inside-corner",
-   "position": [
-    890,
-    330.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-57e7464cc2c5",
-   "type": "inside-corner",
-   "position": [
-    890,
-    330.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-17e152ffdd8f",
-   "type": "inside-corner",
-   "position": [
-    10,
-    680.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw46-bearing-left-end-joint",
-   "type": "inside-corner",
-   "position": [
-    10,
-    680.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-6d5f4d8d47a7",
-   "type": "inside-corner",
-   "position": [
-    890,
-    680.6,
-    39.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw46-bearing-right-end-joint",
-   "type": "inside-corner",
-   "position": [
-    890,
-    680.6,
-    280.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw69-bearing-left-start-joint",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1069.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw69-bearing-left-end-joint",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1069.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw69-bearing-right-start-joint",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1069.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw69-bearing-right-end-joint",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1069.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw8c-bearing-left-start-joint",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1419.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw8c-bearing-left-end-joint",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1419.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw8c-bearing-right-start-joint",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1419.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw8c-bearing-right-end-joint",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1419.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw9f-bearing-left-start-joint",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1719.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw9f-bearing-left-end-joint",
-   "type": "inside-corner",
-   "position": [
-    10,
-    1719.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw9f-bearing-right-start-joint",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1719.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsw9f-bearing-right-end-joint",
-   "type": "inside-corner",
-   "position": [
-    890,
-    1719.4,
-    280.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-09dbc1184f6d",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    330.6,
-    10
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-f93bf03f0e47",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    330.6,
-    10
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-33baeb85e6cb",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    330.6,
-    290
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-a30077b8955c",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    330.6,
-    290
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-446302050589",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    680.6,
-    30
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-d0538f1c09cc",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    680.6,
-    30
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswci",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    680.6,
-    310
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufvmswcj",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    680.6,
-    310
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-7a07638dc1bb",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1069.4,
-    30
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-a7c1e148dd22",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1069.4,
-    30
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-85fea31ce9bd",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1069.4,
-    310
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-1fca672141ff",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1069.4,
-    310
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-fe0125941d7e",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1419.4,
-    30
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-471657695fcf",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1419.4,
-    30
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-5873de794883",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1419.4,
-    310
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-7615c67a3446",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1419.4,
-    310
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-a524b6f54b16",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1719.4,
-    30
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-ed32df1f6e90",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1719.4,
-    30
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-a342b673f854",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1719.4,
-    310
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-bfd5765d673e",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    1719.4,
-    310
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  }
- ],
- "panels": [
-  {
-   "id": "b-mufvmsw13",
-   "width": 240,
-   "height": 860,
-   "thickness": 18,
-   "position": [
-    450,
-    379,
-    159.99999999999977
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mufvmsw46",
-   "width": 240,
-   "height": 860,
-   "thickness": 18,
-   "position": [
-    450,
-    729,
-    159.99999999999977
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mufvmsw69",
-   "width": 240,
-   "height": 860,
-   "thickness": 18,
-   "position": [
-    450,
-    1079,
-    159.99999999999977
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mufvmsw8c",
-   "width": 240,
-   "height": 860,
-   "thickness": 18,
-   "position": [
-    450,
-    1429,
-    159.99999999999977
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  },
-  {
-   "id": "b-mufvmsw9f",
-   "width": 240,
-   "height": 860,
-   "thickness": 18,
-   "position": [
-    450,
-    1729,
-    159.99999999999977
-   ],
-   "quaternion": [
-    0.5,
-    0.5,
-    0.5,
-    -0.5
-   ],
-   "material": "mdf"
-  }
- ],
- "fittings": []
+  "version": 10,
+  "profiles": [
+    {
+      "id": "bookcase-profile-1",
+      "spec": "2040",
+      "length": 1980,
+      "position": [
+        10,
+        0,
+        20
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0,
+        0,
+        0.7071067811865475
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-2",
+      "spec": "2040",
+      "length": 1980,
+      "position": [
+        10,
+        0,
+        300
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0,
+        0,
+        0.7071067811865475
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-3",
+      "spec": "2040",
+      "length": 1980,
+      "position": [
+        890,
+        0,
+        20
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0,
+        0,
+        0.7071067811865475
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-4",
+      "spec": "2040",
+      "length": 1980,
+      "position": [
+        890,
+        0,
+        300
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0,
+        0,
+        0.7071067811865475
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-5",
+      "spec": "2040",
+      "length": 900,
+      "position": [
+        0,
+        10,
+        20
+      ],
+      "quaternion": [
+        0.5000000000000001,
+        0.5,
+        0.4999999999999999,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-6",
+      "spec": "2040",
+      "length": 900,
+      "position": [
+        0,
+        10,
+        300
+      ],
+      "quaternion": [
+        0.5000000000000001,
+        0.5,
+        0.4999999999999999,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-7",
+      "spec": "2040",
+      "length": 240,
+      "position": [
+        20,
+        10,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        0.7071067811865475,
+        0.7071067811865476
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-8",
+      "spec": "2040",
+      "length": 240,
+      "position": [
+        880,
+        10,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        0.7071067811865475,
+        0.7071067811865476
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-9",
+      "spec": "2040",
+      "length": 900,
+      "position": [
+        0,
+        1990,
+        20
+      ],
+      "quaternion": [
+        0.5000000000000001,
+        0.5,
+        0.4999999999999999,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-10",
+      "spec": "2040",
+      "length": 900,
+      "position": [
+        0,
+        1990,
+        300
+      ],
+      "quaternion": [
+        0.5000000000000001,
+        0.5,
+        0.4999999999999999,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-11",
+      "spec": "2040",
+      "length": 240,
+      "position": [
+        20,
+        1990,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        0.7071067811865475,
+        0.7071067811865476
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-12",
+      "spec": "2040",
+      "length": 240,
+      "position": [
+        880,
+        1990,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        0.7071067811865475,
+        0.7071067811865476
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-13",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        10,
+        350,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-14",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        890,
+        350,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-15",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        10,
+        700,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-16",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        890,
+        700,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-17",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        10,
+        1050,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-18",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        890,
+        1050,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-19",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        10,
+        1400,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-20",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        890,
+        1400,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-21",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        10,
+        1700,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-22",
+      "spec": "2020",
+      "length": 280,
+      "position": [
+        890,
+        1700,
+        20
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-23",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        350,
+        20
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-24",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        350,
+        300
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-25",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        700,
+        20
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-26",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        700,
+        300
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-27",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        1050,
+        20
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-28",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        1050,
+        300
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-29",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        1400,
+        20
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-30",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        1400,
+        300
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-31",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        1700,
+        20
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    },
+    {
+      "id": "bookcase-profile-32",
+      "spec": "2040",
+      "length": 880,
+      "position": [
+        10,
+        1700,
+        300
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "miterCuts": [],
+      "holes": []
+    }
+  ],
+  "panels": [
+    {
+      "id": "bookcase-panel-1",
+      "width": 240,
+      "height": 860,
+      "thickness": 18,
+      "position": [
+        450,
+        355,
+        160
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "material": "mdf"
+    },
+    {
+      "id": "bookcase-panel-2",
+      "width": 240,
+      "height": 860,
+      "thickness": 18,
+      "position": [
+        450,
+        700,
+        160
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "material": "mdf"
+    },
+    {
+      "id": "bookcase-panel-3",
+      "width": 240,
+      "height": 860,
+      "thickness": 18,
+      "position": [
+        450,
+        1050,
+        160
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "material": "mdf"
+    },
+    {
+      "id": "bookcase-panel-4",
+      "width": 240,
+      "height": 860,
+      "thickness": 18,
+      "position": [
+        450,
+        1400,
+        160
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "material": "mdf"
+    },
+    {
+      "id": "bookcase-panel-5",
+      "width": 240,
+      "height": 860,
+      "thickness": 18,
+      "position": [
+        450,
+        1700,
+        160
+      ],
+      "quaternion": [
+        0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "material": "mdf"
+    }
+  ],
+  "connectors": [
+    {
+      "id": "bookcase-corner-1",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        19.4,
+        10
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        1.1102230246251565e-16,
+        -5.551115123125783e-17,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-5",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -9.999999999999998,
+        -10.000000000000002
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-2",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        19.4,
+        30
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        1.1102230246251565e-16,
+        -5.551115123125783e-17,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-5",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        10,
+        9.999999999999996
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-3",
+      "type": "inside-corner",
+      "position": [
+        10,
+        19.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-7",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        10,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-4",
+      "type": "inside-corner",
+      "position": [
+        19.4,
+        1980.5,
+        10
+      ],
+      "quaternion": [
+        -1.570092458683775e-16,
+        1.7431527984210495e-32,
+        -0.7071067811865476,
+        0.7071067811865475
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-1",
+        "bookcase-profile-9"
+      ],
+      "slotOffsets": [
+        -9.99999999999978,
+        -10.00000000000022
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-5",
+      "type": "inside-corner",
+      "position": [
+        19.4,
+        1980.5,
+        30
+      ],
+      "quaternion": [
+        -1.570092458683775e-16,
+        1.7431527984210495e-32,
+        -0.7071067811865476,
+        0.7071067811865475
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-1",
+        "bookcase-profile-9"
+      ],
+      "slotOffsets": [
+        10.00000000000022,
+        9.99999999999978
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-6",
+      "type": "inside-corner",
+      "position": [
+        39.4,
+        1990,
+        280.5
+      ],
+      "quaternion": [
+        -0.5000000000000001,
+        -0.5000000000000001,
+        0.5,
+        -0.5
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-11",
+        "bookcase-profile-10"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-7",
+      "type": "inside-corner",
+      "position": [
+        19.4,
+        1980.5,
+        290
+      ],
+      "quaternion": [
+        -1.570092458683775e-16,
+        1.7431527984210495e-32,
+        -0.7071067811865476,
+        0.7071067811865475
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-2",
+        "bookcase-profile-10"
+      ],
+      "slotOffsets": [
+        -9.999999999999773,
+        -10.000000000000227
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-8",
+      "type": "inside-corner",
+      "position": [
+        19.4,
+        1980.5,
+        310
+      ],
+      "quaternion": [
+        -1.570092458683775e-16,
+        1.7431527984210495e-32,
+        -0.7071067811865476,
+        0.7071067811865475
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-2",
+        "bookcase-profile-10"
+      ],
+      "slotOffsets": [
+        10.000000000000227,
+        9.999999999999773
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-9",
+      "type": "inside-corner",
+      "position": [
+        860.6,
+        1990,
+        280.5
+      ],
+      "quaternion": [
+        -0.4999999999999999,
+        0.5000000000000001,
+        0.5,
+        0.5
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-12",
+        "bookcase-profile-10"
+      ],
+      "slotOffsets": [
+        -2.2737367544323206e-13,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-10",
+      "type": "inside-corner",
+      "position": [
+        880.6,
+        1980.5,
+        290
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        1.7431527984210492e-32,
+        -1.570092458683775e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-4",
+        "bookcase-profile-10"
+      ],
+      "slotOffsets": [
+        9.999999999999886,
+        10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-11",
+      "type": "inside-corner",
+      "position": [
+        880.6,
+        1980.5,
+        310
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        1.7431527984210492e-32,
+        -1.570092458683775e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-4",
+        "bookcase-profile-10"
+      ],
+      "slotOffsets": [
+        -10.000000000000114,
+        -9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-12",
+      "type": "inside-corner",
+      "position": [
+        39.4,
+        1990,
+        39.5
+      ],
+      "quaternion": [
+        0.5000000000000001,
+        0.4999999999999999,
+        0.5,
+        -0.5
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-11",
+        "bookcase-profile-9"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-13",
+      "type": "inside-corner",
+      "position": [
+        860.6,
+        1990,
+        39.5
+      ],
+      "quaternion": [
+        0.5000000000000001,
+        -0.5000000000000001,
+        0.5,
+        0.5
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-12",
+        "bookcase-profile-9"
+      ],
+      "slotOffsets": [
+        2.2737367544323206e-13,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-14",
+      "type": "inside-corner",
+      "position": [
+        10,
+        359.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-13",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-15",
+      "type": "inside-corner",
+      "position": [
+        10,
+        340.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-13",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-16",
+      "type": "inside-corner",
+      "position": [
+        10,
+        359.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-13",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-17",
+      "type": "inside-corner",
+      "position": [
+        10,
+        340.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-13",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-18",
+      "type": "inside-corner",
+      "position": [
+        890,
+        359.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-14",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-19",
+      "type": "inside-corner",
+      "position": [
+        890,
+        340.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-14",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-20",
+      "type": "inside-corner",
+      "position": [
+        890,
+        359.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-14",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-21",
+      "type": "inside-corner",
+      "position": [
+        890,
+        340.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-14",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-22",
+      "type": "inside-corner",
+      "position": [
+        10,
+        709.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-15",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-23",
+      "type": "inside-corner",
+      "position": [
+        10,
+        690.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-15",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-24",
+      "type": "inside-corner",
+      "position": [
+        10,
+        709.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-15",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-25",
+      "type": "inside-corner",
+      "position": [
+        10,
+        690.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-15",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-26",
+      "type": "inside-corner",
+      "position": [
+        890,
+        709.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-16",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-27",
+      "type": "inside-corner",
+      "position": [
+        890,
+        690.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-16",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-28",
+      "type": "inside-corner",
+      "position": [
+        890,
+        709.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-16",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-29",
+      "type": "inside-corner",
+      "position": [
+        890,
+        690.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-16",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-30",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1040.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-17",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-31",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1059.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-17",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-32",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1040.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-17",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-33",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1059.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-17",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-34",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1040.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-18",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-35",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1059.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-18",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-36",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1040.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-18",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-37",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1059.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-18",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-38",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1390.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-19",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-39",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1409.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-19",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-40",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1390.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-19",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-41",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1409.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-19",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-42",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        19.4,
+        290
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        1.1102230246251565e-16,
+        -5.551115123125783e-17,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-6",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -10,
+        -10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-43",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        19.4,
+        310
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        1.1102230246251565e-16,
+        -5.551115123125783e-17,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-6",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        10,
+        10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-44",
+      "type": "inside-corner",
+      "position": [
+        10,
+        19.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-7",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -10,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-45",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1390.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-20",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-46",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1409.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-20",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-47",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1390.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-20",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-48",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1409.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-20",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-49",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1690.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-21",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-50",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1709.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-21",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-51",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1690.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-21",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-52",
+      "type": "inside-corner",
+      "position": [
+        10,
+        1709.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-21",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-53",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1690.6,
+        39.5
+      ],
+      "quaternion": [
+        0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-22",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-54",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1709.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-22",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-55",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1690.6,
+        280.5
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        7.850462293418875e-17,
+        0.7071067811865476,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-22",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-56",
+      "type": "inside-corner",
+      "position": [
+        890,
+        1709.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-22",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        0,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-57",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        359.4,
+        10
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-23",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -10.000000000000039,
+        -9.999999999999961
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-58",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        359.4,
+        30
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-23",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        9.999999999999961,
+        10.000000000000039
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-59",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        340.6,
+        10
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-23",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        10.000000000000039,
+        9.999999999999961
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-60",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        340.6,
+        30
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-23",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -9.999999999999961,
+        -10.000000000000039
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-61",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        359.4,
+        10
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-23",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        10.000000000000039,
+        9.999999999999961
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-62",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        359.4,
+        30
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-23",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -9.999999999999961,
+        -10.000000000000039
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-63",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        340.6,
+        10
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-23",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -10.000000000000039,
+        -9.999999999999961
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-64",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        340.6,
+        30
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-23",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        9.999999999999961,
+        10.000000000000039
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-65",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        359.4,
+        290
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-24",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -10.000000000000057,
+        -10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-66",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        359.4,
+        310
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-24",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        9.999999999999943,
+        10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-67",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        340.6,
+        290
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-24",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        10.000000000000057,
+        10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-68",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        340.6,
+        310
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-24",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -9.999999999999943,
+        -10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-69",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        359.4,
+        290
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-24",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        10.000000000000057,
+        10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-70",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        359.4,
+        310
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-24",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -9.999999999999943,
+        -10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-71",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        340.6,
+        290
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-24",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -10.000000000000057,
+        -10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-72",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        340.6,
+        310
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-24",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        9.999999999999943,
+        10
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-73",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        709.4,
+        10
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-25",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -10.000000000000078,
+        -9.999999999999922
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-74",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        709.4,
+        30
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-25",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        9.999999999999922,
+        10.000000000000078
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-75",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        690.6,
+        10
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-25",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        10.000000000000078,
+        9.999999999999922
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-76",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        690.6,
+        30
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-25",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -9.999999999999922,
+        -10.000000000000078
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-77",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        709.4,
+        10
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-25",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        10.000000000000078,
+        9.999999999999922
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-78",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        709.4,
+        30
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-25",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -9.999999999999922,
+        -10.000000000000078
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-79",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        690.6,
+        10
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-25",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -10.000000000000078,
+        -9.999999999999922
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-80",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        690.6,
+        30
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-25",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        9.999999999999922,
+        10.000000000000078
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-81",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        709.4,
+        290
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-26",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -10.000000000000057,
+        -9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-82",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        709.4,
+        310
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-26",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        9.999999999999943,
+        10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-83",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        690.6,
+        290
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-26",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        10.000000000000057,
+        9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-84",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        690.6,
+        310
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-26",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -9.999999999999943,
+        -10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-85",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        709.4,
+        290
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-26",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        10.000000000000057,
+        9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-86",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        709.4,
+        310
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-26",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -9.999999999999943,
+        -10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-87",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        690.6,
+        290
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-26",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -10.000000000000057,
+        -9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-88",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        690.6,
+        310
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-26",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        9.999999999999943,
+        10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-89",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1040.6,
+        10
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-27",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        10.000000000000117,
+        9.999999999999883
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-90",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1040.6,
+        30
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-27",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -9.999999999999883,
+        -10.000000000000117
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-91",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1059.4,
+        10
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-27",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -10.000000000000117,
+        -9.999999999999883
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-92",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1059.4,
+        30
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-27",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        9.999999999999883,
+        10.000000000000117
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-93",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1040.6,
+        10
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-27",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -10.000000000000117,
+        -9.999999999999883
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-94",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1040.6,
+        30
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-27",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        9.999999999999883,
+        10.000000000000117
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-95",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1059.4,
+        10
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-27",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        10.000000000000117,
+        9.999999999999883
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-96",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1059.4,
+        30
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-27",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -9.999999999999883,
+        -10.000000000000117
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-97",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1040.6,
+        290
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-28",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        10.000000000000114,
+        9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-98",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1040.6,
+        310
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-28",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -9.999999999999886,
+        -10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-99",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1059.4,
+        290
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-28",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -10.000000000000114,
+        -9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-100",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1059.4,
+        310
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-28",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        9.999999999999886,
+        10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-101",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1040.6,
+        290
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-28",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -10.000000000000114,
+        -9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-102",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1040.6,
+        310
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-28",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        9.999999999999886,
+        10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-103",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1059.4,
+        290
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-28",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        10.000000000000114,
+        9.999999999999886
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-104",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1059.4,
+        310
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-28",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -9.999999999999886,
+        -10.000000000000114
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-105",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1390.6,
+        10
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-29",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        10.000000000000156,
+        9.999999999999844
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-106",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1390.6,
+        30
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-29",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -9.999999999999844,
+        -10.000000000000156
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-107",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1409.4,
+        10
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-29",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -10.000000000000156,
+        -9.999999999999844
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-108",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1409.4,
+        30
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-29",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        9.999999999999844,
+        10.000000000000156
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-109",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1390.6,
+        10
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-29",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -10.000000000000156,
+        -9.999999999999844
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-110",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1390.6,
+        30
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-29",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        9.999999999999844,
+        10.000000000000156
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-111",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1409.4,
+        10
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-29",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        10.000000000000156,
+        9.999999999999844
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-112",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1409.4,
+        30
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-29",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -9.999999999999844,
+        -10.000000000000156
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-113",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        19.4,
+        10
+      ],
+      "quaternion": [
+        5.551115123125783e-17,
+        1,
+        -1.1102230246251564e-16,
+        -1.1102230246251565e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-5",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        9.999999999999902,
+        10.000000000000098
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-114",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        19.4,
+        30
+      ],
+      "quaternion": [
+        5.551115123125783e-17,
+        1,
+        -1.1102230246251564e-16,
+        -1.1102230246251565e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-5",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -10.000000000000096,
+        -9.9999999999999
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-115",
+      "type": "inside-corner",
+      "position": [
+        890,
+        19.4,
+        39.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        -0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-8",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -10,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-116",
+      "type": "inside-corner",
+      "position": [
+        880.6,
+        1980.5,
+        10
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        1.7431527984210492e-32,
+        -1.570092458683775e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-3",
+        "bookcase-profile-9"
+      ],
+      "slotOffsets": [
+        9.999999999999876,
+        10.000000000000124
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-117",
+      "type": "inside-corner",
+      "position": [
+        880.6,
+        1980.5,
+        30
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        1.7431527984210492e-32,
+        -1.570092458683775e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-3",
+        "bookcase-profile-9"
+      ],
+      "slotOffsets": [
+        -10.000000000000124,
+        -9.999999999999876
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-118",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1390.6,
+        290
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-30",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        10.00000000000017,
+        9.99999999999983
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-119",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1390.6,
+        310
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-30",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -9.99999999999983,
+        -10.00000000000017
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-120",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1409.4,
+        290
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-30",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -10.00000000000017,
+        -9.99999999999983
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-121",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1409.4,
+        310
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-30",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        9.99999999999983,
+        10.00000000000017
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-122",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1390.6,
+        290
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-30",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -10.00000000000017,
+        -9.99999999999983
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-123",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1390.6,
+        310
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-30",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        9.99999999999983,
+        10.00000000000017
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-124",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1409.4,
+        290
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-30",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        10.00000000000017,
+        9.99999999999983
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-125",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1409.4,
+        310
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-30",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -9.99999999999983,
+        -10.00000000000017
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-126",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1690.6,
+        10
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-31",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        10.000000000000188,
+        9.999999999999812
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-127",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1690.6,
+        30
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-31",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -9.999999999999812,
+        -10.000000000000188
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-128",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1709.4,
+        10
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-31",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        -10.000000000000188,
+        -9.999999999999812
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-129",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1709.4,
+        30
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-31",
+        "bookcase-profile-1"
+      ],
+      "slotOffsets": [
+        9.999999999999812,
+        10.000000000000188
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-130",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1690.6,
+        10
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-31",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -10.000000000000188,
+        -9.999999999999812
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-131",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1690.6,
+        30
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-31",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        9.999999999999812,
+        10.000000000000188
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-132",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1709.4,
+        10
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-31",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        10.000000000000188,
+        9.999999999999812
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-133",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1709.4,
+        30
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-31",
+        "bookcase-profile-3"
+      ],
+      "slotOffsets": [
+        -9.999999999999812,
+        -10.000000000000188
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-134",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1690.6,
+        290
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-32",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        10.00000000000017,
+        9.999999999999773
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-135",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1690.6,
+        310
+      ],
+      "quaternion": [
+        1,
+        0,
+        0,
+        1.1102230246251564e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-32",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -9.99999999999983,
+        -10.000000000000227
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-136",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1709.4,
+        290
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-32",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        -10.00000000000017,
+        -9.999999999999773
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-137",
+      "type": "inside-corner",
+      "position": [
+        19.5,
+        1709.4,
+        310
+      ],
+      "quaternion": [
+        -1.1102230246251564e-16,
+        0,
+        0,
+        1
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-32",
+        "bookcase-profile-2"
+      ],
+      "slotOffsets": [
+        9.99999999999983,
+        10.000000000000227
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-138",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1690.6,
+        290
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-32",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -10.00000000000017,
+        -9.999999999999773
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-139",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1690.6,
+        310
+      ],
+      "quaternion": [
+        0,
+        1.1102230246251564e-16,
+        1,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-32",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        9.99999999999983,
+        10.000000000000227
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-140",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1709.4,
+        290
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-32",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        10.00000000000017,
+        9.999999999999773
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-141",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        1709.4,
+        310
+      ],
+      "quaternion": [
+        0,
+        1,
+        -1.1102230246251564e-16,
+        0
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-32",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -9.99999999999983,
+        -10.000000000000227
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-142",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        19.4,
+        290
+      ],
+      "quaternion": [
+        5.551115123125783e-17,
+        1,
+        -1.1102230246251564e-16,
+        -1.1102230246251565e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-6",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        9.999999999999886,
+        10.000000000000057
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-143",
+      "type": "inside-corner",
+      "position": [
+        880.5,
+        19.4,
+        310
+      ],
+      "quaternion": [
+        5.551115123125783e-17,
+        1,
+        -1.1102230246251564e-16,
+        -1.1102230246251565e-16
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-6",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        -10.000000000000114,
+        -9.999999999999943
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-144",
+      "type": "inside-corner",
+      "position": [
+        890,
+        19.4,
+        280.5
+      ],
+      "quaternion": [
+        -7.850462293418875e-17,
+        0.7071067811865475,
+        0,
+        0.7071067811865476
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-8",
+        "bookcase-profile-4"
+      ],
+      "slotOffsets": [
+        10,
+        0
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-145",
+      "type": "inside-corner",
+      "position": [
+        39.4,
+        10,
+        39.5
+      ],
+      "quaternion": [
+        0.5000000000000001,
+        0.4999999999999999,
+        0.5,
+        -0.5
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-7",
+        "bookcase-profile-5"
+      ],
+      "slotOffsets": [
+        -1.7763568394002505e-15,
+        1.7763568394002505e-15
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-146",
+      "type": "inside-corner",
+      "position": [
+        860.6,
+        10,
+        39.5
+      ],
+      "quaternion": [
+        0.5000000000000001,
+        -0.5000000000000001,
+        0.5,
+        0.5
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-8",
+        "bookcase-profile-5"
+      ],
+      "slotOffsets": [
+        9.769962616701378e-14,
+        -9.769962616701378e-14
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-147",
+      "type": "inside-corner",
+      "position": [
+        39.4,
+        10,
+        280.5
+      ],
+      "quaternion": [
+        -0.5000000000000001,
+        -0.5000000000000001,
+        0.5,
+        -0.5
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-7",
+        "bookcase-profile-6"
+      ],
+      "slotOffsets": [
+        1.7763568394002505e-15,
+        -1.7763568394002505e-15
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-corner-148",
+      "type": "inside-corner",
+      "position": [
+        860.6,
+        10,
+        280.5
+      ],
+      "quaternion": [
+        -0.4999999999999999,
+        0.5000000000000001,
+        0.5,
+        0.5
+      ],
+      "series": 20,
+      "legs": [
+        "bookcase-profile-8",
+        "bookcase-profile-6"
+      ],
+      "slotOffsets": [
+        -9.769962616701378e-14,
+        9.769962616701378e-14
+      ],
+      "mountSeries": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "bookcase-panel-mount-1",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        340,
+        100
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-1",
+        "profileId": "bookcase-profile-13",
+        "spacer": 6,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-2",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        340,
+        220
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-1",
+        "profileId": "bookcase-profile-13",
+        "spacer": 6,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-3",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        340,
+        100
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-1",
+        "profileId": "bookcase-profile-14",
+        "spacer": 6,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-4",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        340,
+        220
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-1",
+        "profileId": "bookcase-profile-14",
+        "spacer": 6,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-5",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        340,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-1",
+        "profileId": "bookcase-profile-23",
+        "spacer": 6,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-6",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        340,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-1",
+        "profileId": "bookcase-profile-23",
+        "spacer": 6,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-7",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        340,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-1",
+        "profileId": "bookcase-profile-24",
+        "spacer": 6,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-8",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        340,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-1",
+        "profileId": "bookcase-profile-24",
+        "spacer": 6,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-9",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        690,
+        100
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-2",
+        "profileId": "bookcase-profile-15",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-10",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        690,
+        220
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-2",
+        "profileId": "bookcase-profile-15",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-11",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        690,
+        100
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-2",
+        "profileId": "bookcase-profile-16",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-12",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        690,
+        220
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-2",
+        "profileId": "bookcase-profile-16",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-13",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        690,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-2",
+        "profileId": "bookcase-profile-25",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-14",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        690,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-2",
+        "profileId": "bookcase-profile-25",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-15",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        690,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-2",
+        "profileId": "bookcase-profile-26",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-16",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        690,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-2",
+        "profileId": "bookcase-profile-26",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-17",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        1040,
+        100
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-3",
+        "profileId": "bookcase-profile-17",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-18",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        1040,
+        220
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-3",
+        "profileId": "bookcase-profile-17",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-19",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        1040,
+        100
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-3",
+        "profileId": "bookcase-profile-18",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-20",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        1040,
+        220
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-3",
+        "profileId": "bookcase-profile-18",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-21",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        1040,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-3",
+        "profileId": "bookcase-profile-27",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-22",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        1040,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-3",
+        "profileId": "bookcase-profile-27",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-23",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        1040,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-3",
+        "profileId": "bookcase-profile-28",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-24",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        1040,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-3",
+        "profileId": "bookcase-profile-28",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-25",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        1390,
+        100
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-4",
+        "profileId": "bookcase-profile-19",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-26",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        1390,
+        220
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-4",
+        "profileId": "bookcase-profile-19",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-27",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        1390,
+        100
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-4",
+        "profileId": "bookcase-profile-20",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-28",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        1390,
+        220
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-4",
+        "profileId": "bookcase-profile-20",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-29",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        1390,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-4",
+        "profileId": "bookcase-profile-29",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-30",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        1390,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-4",
+        "profileId": "bookcase-profile-29",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-31",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        1390,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-4",
+        "profileId": "bookcase-profile-30",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-32",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        1390,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-4",
+        "profileId": "bookcase-profile-30",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-33",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        1690,
+        100
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-5",
+        "profileId": "bookcase-profile-21",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-34",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        20,
+        1690,
+        220
+      ],
+      "quaternion": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-5",
+        "profileId": "bookcase-profile-21",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-35",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        1690,
+        100
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-5",
+        "profileId": "bookcase-profile-22",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-36",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        880,
+        1690,
+        220
+      ],
+      "quaternion": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-5",
+        "profileId": "bookcase-profile-22",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-37",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        1690,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-5",
+        "profileId": "bookcase-profile-31",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-38",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        1690,
+        40
+      ],
+      "quaternion": [
+        0,
+        0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-5",
+        "profileId": "bookcase-profile-31",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-39",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        235,
+        1690,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-5",
+        "profileId": "bookcase-profile-32",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    },
+    {
+      "id": "bookcase-panel-mount-40",
+      "type": "joining-plate",
+      "series": 20,
+      "position": [
+        665,
+        1690,
+        280
+      ],
+      "quaternion": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0,
+        0
+      ],
+      "panelMount": {
+        "panelId": "bookcase-panel-5",
+        "profileId": "bookcase-profile-32",
+        "spacer": 1,
+        "boardThickness": 18
+      }
+    }
+  ],
+  "fittings": [],
+  "equipment": [],
+  "throughRule": "rails"
 }

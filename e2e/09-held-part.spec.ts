@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, clickWorld, hoverWorld, dragHold, store, tool, w2c } from './helpers'
+import { chooseConnector, openApp, setView, enterDraw, drawMember, clickWorld, hoverWorld, dragHold, store, tool, w2c } from './helpers'
 
 /**
  * There is no drawing mode any more: the sidebar puts a part in your hand, and an empty hand
@@ -75,7 +75,7 @@ test.describe('The hand replaces the draw/navigate modes', () => {
   test('a connector in hand replaces a profile in hand', async ({ page }) => {
     await enterDraw(page)
     expect((await tool(page)).held).toBe('profile')
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     expect((await tool(page)).held).toBe('connector')
     await page.getByTestId('spec-2020').click()
     expect((await tool(page)).held).toBe('profile')

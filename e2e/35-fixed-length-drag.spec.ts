@@ -32,11 +32,13 @@ async function moveB(page: Page, inspect?: () => Promise<void>) {
   await page.mouse.move(from.x, from.y)
   await page.keyboard.down('Shift')
   await page.mouse.down()
-  expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().dragProfileId)).toBe('B')
+  // Shift remains a selection click until the pointer crosses the drag threshold.
+  expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().dragProfileId)).toBeNull()
   for (const z of [5, 15, 25, 60, 150]) {
     const to = await w2c(page, [300, 800, z])
     await page.mouse.move(to.x, to.y, { steps: 3 })
     await settle(page)
+    if (z >= 25) expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().dragProfileId)).toBe('B')
     await inspect?.()
   }
   await page.mouse.up()

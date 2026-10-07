@@ -9,6 +9,7 @@ import hardwareChecks from '../../examples/checks/hardware.json'
 import { auditBrackets } from '../utils/bracketSeat'
 import { migrateFittings } from '../utils/migrate'
 import { parseProjectDocument } from '../utils/document'
+import { panelMountFrame, panelMountSupports } from '../utils/panelMounts'
 import { runnerFaults } from '../utils/runnerMount'
 import { leafObb } from '../utils/fittingGeometry'
 import { obbCorners } from '../utils/obb'
@@ -60,6 +61,19 @@ function doorsInFront(drawer: FittingData, fittings: FittingData[]): Set<string>
   }).map((f) => f.id))
 }
 
+/** Each edge needs two valid mounts spread across at least half its length. */
+function allEdgesFastened(panel: PanelData, profiles: ProfileData[], connectors: ConnectorData[]): boolean {
+  const rotation = new THREE.Quaternion(...panel.quaternion).normalize().invert()
+  const holes = connectors.filter(c => c.panelMount?.panelId === panel.id && panelMountSupports(c, profiles, [panel]))
+    .map(c => panelMountFrame(c).boardHole.sub(new THREE.Vector3(...panel.position)).applyQuaternion(rotation))
+  const half = [panel.width / 2, panel.height / 2]
+  return [0, 1].every(axis => [-1, 1].every(sign => {
+    const along = holes.filter(h => Math.abs(h.getComponent(axis) - sign * half[axis]) <= 25)
+      .map(h => h.getComponent(1 - axis))
+    return along.length >= 2 && Math.max(...along) - Math.min(...along) >= half[1 - axis] - .01
+  }))
+}
+
 /** Check bundled examples for the geometric conditions asserted below. */
 describe('bundled example geometry', () => {
   it('loads the expected example files', () => {
@@ -98,6 +112,20 @@ describe('bundled example geometry', () => {
     expect(bounds.max.z - bounds.min.z).toBeCloseTo(520)
   })
 
+  it('fastens every edge of the five inset bookcase shelves', () => {
+    const { profiles, connectors, panels } = load('bookcase-tall.json')
+    expect(profiles).toHaveLength(32)
+    expect(profiles.filter(p => p.spec === '2020')).toHaveLength(10)
+    expect(panels.map(p => p.position[1])).toEqual([355, 700, 1050, 1400, 1700])
+    expect(connectors.filter(c => c.panelMount)).toHaveLength(40)
+    for (const panel of panels) {
+      expect(allEdgesFastened(panel, profiles, connectors)).toBe(true)
+      const mounts = connectors.filter(c => c.panelMount?.panelId === panel.id)
+      expect(allEdgesFastened(panel, profiles, mounts.slice(0, 1))).toBe(false)
+      expect(allEdgesFastened(panel, profiles, mounts.slice(0, -1))).toBe(false)
+    }
+  })
+
   describe.each(files)('%s', (name) => {
     it('loads as a complete validated project', () => {
       const source = docs.get(name)!
@@ -131,14 +159,14 @@ describe('bundled example geometry', () => {
     })
 
     it('passes connector seating checks', () => {
-      const { profiles, connectors } = load(name)
-      expect(auditBrackets(profiles, connectors).map((f) => `${f.id} ${f.reason} ${f.off}mm`)).toEqual([])
+      const { profiles, connectors, panels } = load(name)
+      expect(auditBrackets(profiles, connectors, undefined, undefined, panels).map((f) => `${f.id} ${f.reason} ${f.off}mm`)).toEqual([])
     })
 
     it('fastens every profile into one assembly and connects each local joint', () => {
-      const { profiles, connectors } = load(name)
+      const { profiles, connectors, panels } = load(name)
       const supports = new Map<string, string[]>()
-      expect(auditBrackets(profiles, connectors, computeAllTrims(profiles), supports)).toEqual([])
+      expect(auditBrackets(profiles, connectors, computeAllTrims(profiles), supports, panels)).toEqual([])
       const reachable = (from: string, at?: THREE.Vector3) => {
         const links = new Map(profiles.map((p) => [p.id, new Set<string>()]))
         for (const c of connectors) {
@@ -214,13 +242,9 @@ describe('bundled example geometry', () => {
       expect(findConflicts(profiles, computeAllTrims(profiles), connectors, panels, everything)).toEqual([])
     })
 
-    /**
-     * The inset cut size ends at the perimeter rails' inside faces. Those touching edge
-     * lines have no bearing area. Shipping examples therefore have separate bearing rails
-     * under the board; verify a full 20 mm bearing width independently of shelfEdges.
-     */
+    /** Shelves use full bearing faces or distributed, validated plate fasteners. */
     it('identifies support geometry along each shelf edge', () => {
-      const { profiles, panels } = load(name)
+      const { profiles, panels, connectors } = load(name)
       const trims = computeAllTrims(profiles)
       const metal = profiles.map((p) => trimmedBox(p, trims.get(p.id)!))
       const loose: string[] = []
@@ -245,7 +269,7 @@ describe('bundled example geometry', () => {
           })
         }
         const edges = [carried('z', box.min.x), carried('z', box.max.x), carried('x', box.min.z), carried('x', box.max.z)]
-        if (edges.includes(false)) loose.push(`board@${b.position.map(Math.round)} ${edges.map((e) => (e ? '■' : '□')).join('')}`)
+        if (edges.includes(false) && !allEdgesFastened(b, profiles, connectors)) loose.push(`board@${b.position.map(Math.round)} ${edges.map((e) => (e ? '■' : '□')).join('')}`)
       }
       expect(loose).toEqual([])
     })

@@ -1,3 +1,4 @@
+import { connectorMeshes } from './connectorGeometry'
 import * as THREE from 'three'
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorExtent, connectorScale } from './connectorCatalog'
@@ -69,7 +70,13 @@ export function panelOBB(b: PanelData): OBB {
 export function connectorOBB(c: ConnectorData): OBB {
   const quat = new THREE.Quaternion(...c.quaternion).normalize()
   const scale = connectorScale(c.series ?? 20)
-  const { centre, half } = connectorExtent(c.type, c.series, c.profileSpec, c.mountSeries)
+  const bounds = c.panelMount ? new THREE.Box3().setFromPoints(connectorMeshes(c.type, c.series, c.profileSpec, c.mountSeries, c.panelMount).flatMap(({ geometry }) => {
+    geometry.computeBoundingBox()
+    const b = geometry.boundingBox!
+    return [b.min, b.max]
+  })) : undefined
+  const { centre, half } = bounds ? { centre: bounds.getCenter(new THREE.Vector3()).toArray(), half: bounds.getSize(new THREE.Vector3()).multiplyScalar(.5).toArray() }
+    : connectorExtent(c.type, c.series, c.profileSpec, c.mountSeries)
   const offset = new THREE.Vector3(...centre).multiplyScalar(scale).applyQuaternion(quat)
   return makeOBB(
     new THREE.Vector3(...c.position).add(offset),
@@ -117,7 +124,7 @@ export function createConflictFinder(
   const panelIds = new Set(panels.map((b) => b.id)), fittingIds = new Set(fittings.map((f) => f.id))
   const profileGeometry = new Map<string, Pose & { spec: string; start: number; length: number; geometry: CollisionGeometry }>()
   const connectorGeometry = new Map<string, Pose & { type: string; series: number; profileSpec?: string;
-    mount0?: number; mount1?: number; geometry: CollisionGeometry }>()
+    mount0?: number; mount1?: number; panelMount?: string; geometry: CollisionGeometry }>()
   const panelGeometry = new Map<string, Pose & { width: number; height: number; thickness: number; geometry: CollisionGeometry }>()
   const fittingGeometry = new Map<string, Map<number, { snapshot: string; geometry: CollisionGeometry[] }>>()
   const source: ConflictGeometrySource = {
@@ -131,10 +138,11 @@ export function createConflictFinder(
     connector: (c) => {
       const old = connectorGeometry.get(c.id), series = c.series ?? 20
       if (old && old.type === c.type && old.series === series && old.profileSpec === c.profileSpec
+        && old.panelMount === JSON.stringify(c.panelMount)
         && old.mount0 === c.mountSeries?.[0] && old.mount1 === c.mountSeries?.[1] && samePose(old, c)) return old.geometry
       const geometry = collisionGeometry(connectorOBB(c))
       if (connectorIds.has(c.id)) connectorGeometry.set(c.id, { ...copyPose(c), type: c.type, series, profileSpec: c.profileSpec,
-        mount0: c.mountSeries?.[0], mount1: c.mountSeries?.[1], geometry })
+        mount0: c.mountSeries?.[0], mount1: c.mountSeries?.[1], panelMount: JSON.stringify(c.panelMount), geometry })
       return geometry
     },
     panel: (b) => {
@@ -253,8 +261,8 @@ function findConflictsWithGeometry(
     const connectorA = i >= members && i < parts ? connectors[i - members] : undefined
     const connectorB = j >= members && j < parts ? connectors[j - members] : undefined
     if (connectorA && connectorB && !connectorsCollide(connectorA, connectorB)) continue
-    if (connectorA && !connectorB && !connectorHitsBody(connectorA, boxes[j].obb, j < members ? 0.15 : 1, j < members)) continue
-    if (connectorB && !connectorA && !connectorHitsBody(connectorB, boxes[i].obb, i < members ? 0.15 : 1, i < members)) continue
+    if (connectorA && !connectorB && !connectorHitsBody(connectorA, boxes[j].obb, j < members ? 0.15 : 1, j < members, ids[j])) continue
+    if (connectorB && !connectorA && !connectorHitsBody(connectorB, boxes[i].obb, i < members ? 0.15 : 1, i < members, ids[i])) continue
     const tol = connectorA || connectorB ? (i < members || j < members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL)
       : i >= parts || j >= parts ? BOARD_TOUCH_TOL
       : i >= members || j >= members ? CONNECTOR_TOUCH_TOL : TOUCH_TOL

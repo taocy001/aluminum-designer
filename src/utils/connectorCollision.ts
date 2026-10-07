@@ -1,3 +1,4 @@
+import { panelMountBoardFits } from './panelMounts'
 import * as THREE from 'three'
 import type { ConnectorData, ProfileSpec } from '../store/useStore'
 import { connectorScale } from './connectorCatalog'
@@ -7,6 +8,7 @@ import { getProfileShape } from './profileShapes'
 import { makeOBB, type OBB } from './obb'
 
 interface Solid {
+  panelShaft?: boolean
   pressFit?: boolean
   vertices?: THREE.Vector3[]
   box?: OBB
@@ -72,7 +74,7 @@ function buildSolids(c: ConnectorData): Solid[] {
   const position = new THREE.Vector3(...c.position)
   const point = (v: V3) => new THREE.Vector3(...v).multiplyScalar(k).applyQuaternion(q).add(position)
   const box = (centre: V3, half: V3) => boxSolid(makeOBB(point(centre), new THREE.Vector3(...half).multiplyScalar(k), q))
-  return connectorMeshes(c.type, c.series, c.profileSpec, c.mountSeries).filter((mesh) => !mesh.visualOnly).flatMap((mesh) => {
+  return connectorMeshes(c.type, c.series, c.profileSpec, c.mountSeries, c.panelMount).filter((mesh) => !mesh.visualOnly).flatMap((mesh) => {
     if (mesh.collisionParts) return mesh.collisionParts.map((part) => ({
       ...('vertices' in part ? transformedPoly(part.vertices, k, q, position) : box(part.centre, part.half)),
       pressFit: part.pressFit,
@@ -81,12 +83,13 @@ function buildSolids(c: ConnectorData): Solid[] {
     if (mesh.collisionBoxes) return mesh.collisionBoxes.map((b) => box(b.centre, b.half))
     mesh.geometry.computeBoundingBox()
     const bounds = mesh.geometry.boundingBox!
-    return [box(bounds.getCenter(new THREE.Vector3()).toArray(), bounds.getSize(new THREE.Vector3()).multiplyScalar(0.5).toArray())]
+    return [{ ...box(bounds.getCenter(new THREE.Vector3()).toArray(), bounds.getSize(new THREE.Vector3()).multiplyScalar(0.5).toArray()), panelShaft: mesh.panelShaft }]
   })
 }
 
 interface ShapeGeometry {
   type: string; series: ConnectorData['series']; profileSpec: ConnectorData['profileSpec']; mountSeries: string; position: number[]; quaternion: number[]; full: Solid[]; metal: Solid[]
+  panelMount?: string
   mounts?: { axis: THREE.Vector3; normal: THREE.Vector3; point: THREE.Vector3 }[]
   bodyHits: Map<string, boolean>
 }
@@ -94,13 +97,14 @@ const shapeCache = new WeakMap<ConnectorData, ShapeGeometry>()
 function shapeGeometry(c: ConnectorData): ShapeGeometry {
   let cached = shapeCache.get(c)
   if (!cached || cached.type !== c.type || cached.series !== c.series || cached.profileSpec !== c.profileSpec
+    || cached.panelMount !== JSON.stringify(c.panelMount)
     || cached.mountSeries !== (c.mountSeries?.join(':') ?? '')
     || cached.position[0] !== c.position[0] || cached.position[1] !== c.position[1] || cached.position[2] !== c.position[2]
     || cached.quaternion[0] !== c.quaternion[0] || cached.quaternion[1] !== c.quaternion[1]
     || cached.quaternion[2] !== c.quaternion[2] || cached.quaternion[3] !== c.quaternion[3]) {
     const full = buildSolids(c)
     cached = { type: c.type, series: c.series, profileSpec: c.profileSpec, mountSeries: c.mountSeries?.join(':') ?? '', position: [...c.position], quaternion: [...c.quaternion],
-      full, metal: full, bodyHits: new Map() }
+      panelMount: JSON.stringify(c.panelMount), full, metal: full, bodyHits: new Map() }
     shapeCache.set(c, cached)
   }
   return cached
@@ -274,13 +278,16 @@ function profileMetal(body: OBB, cache: BodyGeometry, parts: Solid[]): Solid[] {
 }
 
 /** Profile metal follows its visible section; panel/equipment checks use complete solid bounds. */
-export function connectorHitsBody(c: ConnectorData, body: OBB, tolerance = 0.15, againstMetal = true): boolean {
+export function connectorHitsBody(c: ConnectorData, body: OBB, tolerance = 0.15, againstMetal = true, bodyId?: string): boolean {
   const member = bodyGeometry(body), shape = shapeGeometry(c)
   if (!shape.full.some((part) => part.bounds.intersectsBox(member.bounds))) return false
   // Rebuilt OBBs often describe the same cut profile during suggestion and door
   // checks. All body coordinates, clearance and material mode belong to the key;
   // changing any connector coordinate replaces shapeGeometry and this cache.
-  const key = `${againstMetal}:${tolerance}:${body.profileSpec ?? ''}:${member.pose.join(':')}`
+  // Only the matching board's drilled hole depends on identity. Fresh candidate
+  // IDs with identical solid geometry must reuse the same collision result.
+  const panelHost = !againstMetal && !!bodyId && c.panelMount?.panelId === bodyId
+  const key = `${panelHost}:${againstMetal}:${tolerance}:${body.profileSpec ?? ''}:${member.pose.join(':')}`
   const previous = shape.bodyHits.get(key)
   if (previous !== undefined) return previous
   const metal = againstMetal ? profileMetal(body, member, shape.full) : [bodySolid(body, member)]
@@ -315,7 +322,8 @@ export function connectorHitsBody(c: ConnectorData, body: OBB, tolerance = 0.15,
   // Retention ribs of the matching plastic cap interfere with the core by up to
   // 0.6 mm in the manufacturer CAD. Only those inserted pieces permit press fit;
   // every cover plate and unrelated obstacle keeps normal clearance.
-  const hit = shape.full.some((part, i) => metal.some((wall) => overlap(part, wall,
+  const boardHole = panelHost && panelMountBoardFits(c, body)
+  const hit = shape.full.some((part, i) => !(part.panelShaft && boardHole) && metal.some((wall) => overlap(part, wall,
     tappedFootHost && i === 0 ? .85 : adapterHost && i < 8 && i % 2 === 0 ? .4 : pressFitCapHost && part.pressFit ? .65 : tolerance)))
   if (shape.bodyHits.size >= 128) shape.bodyHits.delete(shape.bodyHits.keys().next().value!)
   shape.bodyHits.set(key, hit)

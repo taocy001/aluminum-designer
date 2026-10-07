@@ -7,6 +7,7 @@ import { suggestNext, type SuggestDoc } from '../utils/suggest'
 import { specDims } from '../utils/specUtils'
 import { vet } from '../utils/suggestGate'
 import { computeAllTrims, setThroughRule } from '../utils/jointUtils'
+import { panelMountCandidates } from '../utils/panelMounts'
 
 afterEach(() => { vi.restoreAllMocks(); setThroughRule('rails') })
 
@@ -18,6 +19,54 @@ function cappedMember(): SuggestDoc {
 }
 
 describe('hardware audit reuse across suggestion searches', () => {
+  it('reuses ordinary profile hardware audits across unrelated board subsets and edits', () => {
+    const doc = cappedMember()
+    doc.connectors[0].id = 'board-independent-cap'
+    const trims = computeAllTrims(doc.profiles)
+    const before = hardwareAudit.cachedHardwareSupports(doc, trims)
+    expect(before.faultDetails).toEqual([])
+    doc.panels.push({ id: 'unrelated-board', width: 400, height: 300, thickness: 18,
+      position: [100, 400, 200], quaternion: [0, 0, 0, 1], material: 'ply' })
+    expect(hardwareAudit.cachedHardwareSupports(doc, trims)).toBe(before)
+    doc.panels[0].position[0] += 70
+    doc.panels[0].material = 'acrylic'
+    expect(hardwareAudit.cachedHardwareSupports(doc, trims)).toBe(before)
+    expect(hardwareAudit.cachedHardwareSupports({ ...doc, panels: [] }, trims)).toBe(before)
+  })
+
+  it('invalidates board mount audits after in-place host and installation metadata edits', () => {
+    const rail = buildProfile(new THREE.Vector3(0, 350, 20), new THREE.Vector3(900, 350, 20), '2040')!
+    rail.quaternion = [.5, .5, .5, .5]
+    const doc: SuggestDoc = { profiles: [rail], connectors: [], fittings: [], panels: [{ id: 'audit-board',
+      width: 860, height: 240, thickness: 18, material: 'ply', position: [450, 350, 160],
+      quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] }] }
+    const candidates = panelMountCandidates(doc.panels[0], doc.profiles)
+    expect(candidates).toHaveLength(2)
+    doc.connectors.push(candidates[0])
+    const trims = computeAllTrims(doc.profiles), panel = doc.panels[0], mount = doc.connectors[0].panelMount!
+    const before = hardwareAudit.cachedHardwareSupports(doc, trims)
+    expect(before.faultDetails).toEqual([])
+    const changes: Array<() => () => void> = [
+      () => { panel.position[0] += 1000; return () => { panel.position[0] -= 1000 } },
+      () => { const q = panel.quaternion; panel.quaternion = [0, 0, 0, 1]; return () => { panel.quaternion = q } },
+      () => { panel.thickness++; return () => { panel.thickness-- } },
+      () => { panel.width = 4; return () => { panel.width = 860 } },
+      () => { panel.material = 'acrylic'; return () => { panel.material = 'ply' } },
+      () => { panel.id = 'another-board'; return () => { panel.id = 'audit-board' } },
+      () => { mount.spacer++; return () => { mount.spacer-- } },
+      () => { mount.panelId = 'missing-board'; return () => { mount.panelId = 'audit-board' } },
+    ]
+    for (const change of changes) {
+      const restore = change()
+      const after = hardwareAudit.cachedHardwareSupports(doc, trims)
+      expect(after).not.toBe(before)
+      expect(after.faults.has(doc.connectors[0].id)).toBe(true)
+      expect(after.faultDetails).toEqual(bracketSeats.auditBrackets(doc.profiles, doc.connectors, trims, undefined, doc.panels))
+      restore()
+      expect(hardwareAudit.cachedHardwareSupports(doc, trims).faultDetails).toEqual([])
+    }
+  })
+
   it('uses the rendered audit for the first search and preserves complete fault details', () => {
     const doc = cappedMember()
     doc.profiles[0].id = 'rendered-post'

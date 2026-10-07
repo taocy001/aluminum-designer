@@ -2,6 +2,13 @@ import { expect, type Page } from '@playwright/test'
 
 export type V3 = [number, number, number]
 
+/** The compact hardware row expands only while choosing a different model. */
+export async function chooseConnector(page: Page, type: string) {
+  const toggle = page.getByTestId('connector-picker-toggle')
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click()
+  await page.getByTestId(`connector-${type}`).click()
+}
+
 export async function openApp(page: Page) {
   // Clear this origin before the app starts, without constructing and discarding a scene.
   await page.route('**/__aluframe_e2e_reset__.html', (route) => route.fulfill({

@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { openApp, setView, settle, store, w2c, type V3 } from './helpers'
+import { chooseConnector, openApp, setView, settle, store, w2c, type V3 } from './helpers'
 
 const JOINT: V3 = [0, 100, 0]
 const UP = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2]
@@ -17,7 +17,7 @@ async function loadJoint(page: Page, wide: boolean) {
     })
   }, { wide, up: UP, alongX: ALONG_X })
   await setView(page, [230, 290, 310], [35, 135, 35])
-  await page.getByTestId('connector-inside-corner').click()
+  await chooseConnector(page, 'inside-corner')
   const pointer = await w2c(page, JOINT)
   await page.mouse.move(pointer.x, pointer.y)
   await settle(page)
@@ -76,7 +76,7 @@ test('the actual B6 desk front-left corner fits five inner brackets across all t
     ;(window as any).__aluframe.store.getState().loadDocument(parseProjectDocument(source))
   }, source)
   await setView(page, [-200, 870, 840], [25, 700, 575])
-  await page.getByTestId('connector-inside-corner').click()
+  await chooseConnector(page, 'inside-corner')
   const pointer = await w2c(page, joint)
   await page.mouse.move(pointer.x, pointer.y)
   await settle(page)

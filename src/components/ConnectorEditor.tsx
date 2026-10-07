@@ -10,6 +10,7 @@ import { orientationDegrees, setConnectorSeries } from '../utils/editOps'
 import { hardwareReference } from '../utils/connectorHardware'
 import { accessoryCapReference } from '../utils/connectorAccessoryReferences'
 import { hardwareFastenerLabel } from '../utils/connectorFasteners'
+import { panelMountFasteners } from '../utils/panelMounts'
 import { partNumber } from '../utils/partNumbers'
 import { translations } from '../utils/translations'
 import { SupportBindingEditor } from './OpeningBindingEditor'
@@ -63,6 +64,7 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
   const entry = connectorEntry(connector.type)
   const series = connector.series ?? 20
   const reference = connector.type === 'end-cap' ? accessoryCapReference(connector.profileSpec ?? `${series}${series}` as '2020' | '3030' | '4040') : hardwareReference(connector.type, series, connector.profileSpec)
+  const fasteners = connector.panelMount ? panelMountFasteners(connector.panelMount) : reference?.fasteners ?? []
   const disabled = viewMode || connector.locked
   const euler = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(...connector.quaternion).normalize(), 'YXZ')
   const angles = [euler.x, euler.y, euler.z].map(THREE.MathUtils.radToDeg) as [number, number, number]
@@ -100,7 +102,7 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
     </div>
     <div className="flex justify-between items-center text-xs">
       <span className="text-slate-500">{t.series}</span>
-      <select value={series} data-testid="connector-series" aria-label={t.series}
+      <select value={series} disabled={!!connector.panelMount} data-testid="connector-series" aria-label={t.series}
         onChange={(event) => setConnectorSeries(connector.id, Number(event.target.value) as 20 | 30 | 40)}
         className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-emerald-400">
         {[20, 30, 40].map((value) => <option key={value} value={value}>{value}</option>)}
@@ -109,21 +111,25 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
     <div className="flex justify-between items-center text-[11px]">
       <span className="text-slate-500">{t.fasteners}</span>
       <span className="font-mono text-slate-300" data-testid="connector-fasteners">
-        {!reference?.verified || !reference.fasteners.length ? '—' : reference.fasteners.map((fastener) => `${fastener.count}× ${hardwareFastenerLabel(fastener, language)}`).join(' · ')}
+        {!reference?.verified || !fasteners.length ? '—' : fasteners.map((fastener) => `${fastener.count}× ${hardwareFastenerLabel(fastener, language)}`).join(' · ')}
       </span>
     </div>
     {reference && <div className="space-y-1 text-[10px] text-slate-400" data-testid="connector-reference">
       <a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="text-cyan-400 underline">{reference.sku}</a>
-      <p>{language === 'zh' ? reference.descriptionZh : reference.descriptionEn}</p>
+      <p>{connector.panelMount ? (language === 'zh'
+        ? `板材固定：连接片一孔通过 M5 螺钉和 B6 槽螺母固定型材，另一孔通过 M5 螺栓贯穿 ${connector.panelMount.boardThickness} mm 板材，配垫圈和螺母。垫套长度 ${connector.panelMount.spacer} mm。板材需要钻孔。`
+        : `Panel mount: one plate hole uses an M5 screw and B6 slot nut; the other uses an M5 through-bolt, washers and nut through the ${connector.panelMount.boardThickness} mm panel. Spacer length: ${connector.panelMount.spacer} mm. The panel requires drilling.`)
+        : language === 'zh' ? reference.descriptionZh : reference.descriptionEn}</p>
+      {connector.panelMount && <p>{partNumber('panel', connector.panelMount.panelId)} + {partNumber('profile', connector.panelMount.profileId)}</p>}
       {!reference.verified && <p className="text-amber-400">{language === 'zh' ? '当前型号在此规格上尚无已核验的安装方案，不能安装。' : 'This model has no verified installation for the current specification and cannot be installed.'}</p>}
-      {reference.machining?.map((item) => <p key={item}>{item}</p>)}
-      {reference.limitations?.map((item) => <p key={item}>{item}</p>)}
+      {!connector.panelMount && reference.machining?.map((item) => <p key={item}>{item}</p>)}
+      {!connector.panelMount && reference.limitations?.map((item) => <p key={item}>{item}</p>)}
       {connector.type === 'end-cap' && <p>{language === 'zh' ? '端盖截面' : 'Cap section'}: {connector.profileSpec ?? `${series}${series}`}</p>}
     </div>}
     <div className="space-y-1">
       <span className="text-[10px] text-slate-500">{t.position}</span>
       <div className="grid grid-cols-3 gap-1" data-testid="connector-position">
-        {AXES.map((axis, index) => <PoseField key={axis} axis={index} name={t.position} value={connector.position[index]} step={5}
+        {AXES.map((axis, index) => <PoseField key={axis} axis={index} name={t.position} value={connector.position[index]} step={0.1}
           onCommit={(value) => { const position = [...connector.position] as ConnectorData['position']; position[index] = value; setConnectorPose(connector.id, { position }) }} />)}
       </div>
     </div>
@@ -135,11 +141,11 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
       </div>
       <p className="text-[10px] text-slate-400">{t.connectorManualEditHint}</p>
     </div>
-    {(entry?.fit === 'corner' || !status.allowed) && <p data-testid="connector-installation-status"
+    {(connector.panelMount || entry?.fit === 'corner' || !status.allowed) && <p data-testid="connector-installation-status"
       className={`text-[10px] ${status.allowed ? 'text-emerald-400' : 'text-amber-400'}`}>
       {status.allowed ? t.bracketSeatingOk : reason(status.reason)}
     </p>}
-    {entry?.fit === 'corner' && <div className="space-y-2">
+    {entry?.fit === 'corner' && !connector.panelMount && <div className="space-y-2">
       <button type="button" data-testid="connector-reseat" aria-expanded={!!anchor}
         onClick={() => anchor ? setAnchor(null) : openSeats()}
         className="w-full py-1.5 text-xs bg-slate-700/60 hover:bg-slate-700 rounded-lg">{t.connectorReseat}</button>

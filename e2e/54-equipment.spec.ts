@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { openApp, setView, clickWorld, dragWorld, store, useDownloadFallback } from './helpers'
+import { openApp, setView, clickWorld, dragHold, settle, store, useDownloadFallback, w2c } from './helpers'
 
 async function equipment(page: Page) {
   return page.evaluate(() => (window as any).__aluframe.store.getState().equipment)
@@ -79,10 +79,40 @@ test('vertical gizmo dragging keeps rotated equipment above the floor', async ({
   await addEquipment(page)
   await page.getByTestId('rot-x-plus').click()
   await setView(page, [900, 700, 1700], [0, 300, 0])
+  const original = (await equipment(page))[0]
+  const before = await store(page)
   const at: [number, number, number] = await page.evaluate(() =>
     (window as any).__aluframe.gizmoHandles().find((h: any) => h.kind === 'move' && h.axis === 'y').position)
-  await dragWorld(page, at, [at[0], at[1] - 500, at[2]], ['Shift'])
-  expect((await equipment(page))[0].position[1]).toBeCloseTo(275, 1)
+  // The visible arrow overlaps the equipment body. A click still toggles that body;
+  // crossing the drag threshold must preserve the arrow's vertical constraint.
+  const from = await w2c(page, at), to = await w2c(page, [at[0], at[1] - 500, at[2]])
+  await page.keyboard.down('Shift')
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().isDragging)).toBe(false)
+  await page.mouse.up()
+  await page.keyboard.up('Shift')
+  await settle(page)
+  expect((await store(page)).selectedIds).toEqual([])
+  expect((await store(page)).past).toBe(before.past)
+  expect(await equipment(page)).toEqual([original])
+  await page.evaluate(id => (window as any).__aluframe.store.getState().selectItems([id]), original.id)
+  await settle(page)
+  await page.keyboard.down('Shift')
+  await dragHold(page, from, to)
+  expect(await page.evaluate(() => {
+    const t = (window as any).__aluframe.tool.getState()
+    return { dragging: t.isDragging, axis: t.dragAxis, vertical: t.dragVertical, free: t.dragFree }
+  })).toEqual({ dragging: true, axis: 'y', vertical: true, free: true })
+  await page.mouse.up()
+  await page.keyboard.up('Shift')
+  await settle(page)
+  const moved = (await equipment(page))[0]
+  expect(moved.position[1]).toBeCloseTo(275, 1)
+  expect([moved.position[0], moved.position[2]]).toEqual([original.position[0], original.position[2]])
+  expect(moved.quaternion).toEqual(original.quaternion)
+  expect((await store(page)).past).toBe(before.past + 1)
   await page.getByRole('button', { name: '撤销', exact: true }).click()
   expect((await equipment(page))[0].position[1]).toBeCloseTo(410)
+  expect(await equipment(page)).toEqual([original])
 })

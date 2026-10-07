@@ -322,7 +322,9 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
     if (g) return { ok: false, why: `unflush ${g}` }
   }
   if (near.connectors.length) {
-    const before = once('brackets', () => cachedCheck(cache, 'brackets', [near.profiles, near.connectors], () => cachedHardwareSupports(near, tb).faults))
+    const auditParts = near.connectors.some((c) => c.panelMount)
+      ? [near.profiles, near.connectors, near.panels] : [near.profiles, near.connectors]
+    const before = once('brackets', () => cachedCheck(cache, 'brackets', auditParts, () => cachedHardwareSupports(near, tb).faults))
     // Adding support cannot invalidate an existing mounting face unless its profile
     // is shortened. Otherwise only the bracket claimed to be restored needs a check.
     const shortened = near.profiles.some((p) => {
@@ -330,7 +332,7 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
       return a.start.trim > b.start.trim || a.start.trim + a.cutLength < b.start.trim + b.cutLength
     })
     const check = shortened ? near.connectors : near.connectors.filter((c) => claim.kind === 'close' && c.id === claim.hardwareId)
-    const now = new Set(auditBrackets(after, check, ta).map((f) => f.id))
+    const now = new Set(auditBrackets(after, check, ta, undefined, near.panels).map((f) => f.id))
     g = grew(before, now)
     if (g) return { ok: false, why: `bracket ${g}` }
     if (claim.kind === 'close' && claim.hardwareId
@@ -345,8 +347,8 @@ export function vet(member: ProfileData, claim: Claim, doc: SuggestDoc, frame?: 
 
   // (g) a shelf rail carries the edge it was offered for, and no shelf loses one
   if (near.panels.length) {
-    const was = once('shelves', () => new Set(shelfEdges(near.panels, near.profiles, tb).filter((e) => e.carried).map((e) => `${e.panelId}:${e.edge}`)))
-    const now = new Set(shelfEdges(near.panels, after, ta).filter((e) => e.carried).map((e) => `${e.panelId}:${e.edge}`))
+    const was = once('shelves', () => new Set(shelfEdges(near.panels, near.profiles, tb, near.connectors, near).filter((e) => e.carried || e.fixed).map((e) => `${e.panelId}:${e.edge}`)))
+    const now = new Set(shelfEdges(near.panels, after, ta, near.connectors, near).filter((e) => e.carried || e.fixed).map((e) => `${e.panelId}:${e.edge}`))
     for (const k of was) if (!now.has(k)) return { ok: false, why: `shelf-lost ${k}` }
     if (claim.kind === 'shelf' && !now.has(`${claim.panelId}:${claim.edge}`)) return { ok: false, why: 'shelf-not-carried' }
   } else if (claim.kind === 'shelf') {

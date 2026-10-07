@@ -45,6 +45,8 @@ const PointerRouter: React.FC = () => {
   // kept in refs, not in the effect closure: R3F recreates that closure between pointer events
   const pendingClear = useRef<{ x: number; y: number; keepSelection: boolean } | null>(null)
   const pendingSelect = useRef<{ x: number; y: number; id: string; multi: boolean } | null>(null)
+  /** Shift is additive on release, but a movement still starts the existing free drag. */
+  const pendingShift = useRef<{ pick: ScreenPick; down: PointerEvent; moveAxis?: 'x' | 'y' | 'z' } | null>(null)
   /** draw mode: a press that landed on a member, waiting to see whether it becomes a drag */
   const pendingDrawDrag = useRef<{ x: number; y: number; id: string; point: THREE.Vector3; shift: boolean; alt: boolean } | null>(null)
   /** a press that landed on a rotation arc, waiting for the release */
@@ -118,6 +120,24 @@ const PointerRouter: React.FC = () => {
       })
     }
 
+    const beginGizmoMove = (axis: 'x' | 'y' | 'z', e: PointerEvent) => {
+      const store = useStore.getState()
+      const lead = store.profiles.find((p) => store.selectedIds.includes(p.id) && !p.locked)
+        ?? store.connectors.find((c) => store.selectedIds.includes(c.id) && !c.locked)
+        ?? store.panels.find((b) => store.selectedIds.includes(b.id) && !b.locked)
+        ?? store.fittings.find((f) => store.selectedIds.includes(f.id) && !f.locked)
+        ?? store.equipment.find((e) => store.selectedIds.includes(e.id) && !e.locked)
+      if (!lead) return
+      const groupOrigins: Record<string, [number, number, number]> = {}
+      for (const sid of store.selectedIds) {
+        const part = partById(store, sid)
+        if (part && !part.locked) groupOrigins[sid] = [...part.position]
+      }
+      const anchorPoint = new THREE.Vector3(...lead.position)
+      beginMove(lead.id, anchorPoint, anchorPoint.clone(), groupOrigins,
+        { shift: e.shiftKey, alt: false }, e, store.profiles.some((p) => p.id === lead.id) ? 'profile' : 'connector', axis)
+    }
+
     /** An end belongs to the resolved pointer target, including an explicit Tab choice.
      * Picking the selected member in isolation lets its hidden end steal another member's
      * drag, even while the hover correctly highlights that other member. */
@@ -171,6 +191,33 @@ const PointerRouter: React.FC = () => {
       }
       const ts = useToolStore.getState()
 
+      const shift = pendingShift.current
+      if (shift) {
+        if (Math.hypot(e.clientX - shift.down.clientX, e.clientY - shift.down.clientY) > CLICK_SLOP_PX) {
+          pendingShift.current = null
+          if (shift.moveAxis) {
+            beginGizmoMove(shift.moveAxis, shift.down)
+            return
+          }
+          const store = useStore.getState()
+          const item = partById(store, shift.pick.id)
+          if (!item || item.locked) {
+            if (orbit) orbit.enabled = !ts.selectMode
+            return
+          }
+          const ids = store.selectedIds.includes(item.id) ? store.selectedIds : [item.id]
+          if (!store.selectedIds.includes(item.id)) store.selectItem(item.id, false)
+          const origins: Record<string, [number, number, number]> = {}
+          for (const id of ids) {
+            const member = partById(store, id)
+            if (member && !member.locked) origins[id] = [...member.position]
+          }
+          beginMove(item.id, shift.pick.point, new THREE.Vector3(...item.position), origins,
+            { shift: true, alt: shift.down.altKey }, shift.down, shift.pick.kind === 'profile' ? 'profile' : 'connector')
+        }
+        return
+      }
+
       // draw mode: the press on a member turns into a move once the pointer travels
       const armed = pendingDrawDrag.current
       if (armed && !ts.isDragging) {
@@ -197,8 +244,9 @@ const PointerRouter: React.FC = () => {
       const pointer = resolvePointer(e, !busy)
       // A visible selected end, or a deliberate Tab choice, wins over the gizmo. Other
       // explicit gizmo handles keep their normal precedence over member bodies.
-      const handle = selectedEndAt(pointer.pick) || pointer.index > 0 || e.ctrlKey || e.metaKey || e.altKey
+      let handle = selectedEndAt(pointer.pick) || pointer.index > 0 || e.ctrlKey || e.metaKey || e.altKey
         ? null : gizmoHandleAt(rayOf(pointer.cursor, pointer.rect))
+      if (e.shiftKey && pointer.pick && handle?.kind === 'rotate') handle = null
       ts.setGizmoHover(handle)
       if (handle) {
         ts.setHoverProfile(null); ts.setHoverPart(null); ts.setHoverEnd(null)
@@ -306,34 +354,24 @@ const PointerRouter: React.FC = () => {
       }
 
       // a press on a move arrow slides the selection along that axis, in either mode.
-      // Ctrl/Cmd (add to selection) and Alt (plane drag) are gestures aimed at the model,
-      // so they pass straight through the handles.
-      const modifierHeld = e.ctrlKey || e.metaKey || e.altKey
+      // Ctrl/Cmd and Alt pass through handles. Shift clicks still toggle a part beneath
+      // an arrow, while a Shift drag keeps that arrow's axis and disables snapping.
+      // Shift on an exposed rotation arc keeps its reverse-turn action.
       const pointer = resolvePointer(e)
+      const modifierHeld = e.ctrlKey || e.metaKey || e.altKey
       {
         const ray = rayOf(pointer.cursor, pointer.rect)
         const part = modifierHeld || pointer.index > 0 || selectedEndAt(pointer.pick) ? null : gizmoHandleAt(ray)
         if (part?.kind === 'move') {
-          const store = useStore.getState()
-          const lead = store.profiles.find((p) => store.selectedIds.includes(p.id) && !p.locked)
-            ?? store.connectors.find((c) => store.selectedIds.includes(c.id) && !c.locked)
-            ?? store.panels.find((b) => store.selectedIds.includes(b.id) && !b.locked)
-            ?? store.fittings.find((f) => store.selectedIds.includes(f.id) && !f.locked)
-            ?? store.equipment.find((e) => store.selectedIds.includes(e.id) && !e.locked)
-          if (!lead) return
-          const groupOrigins: Record<string, [number, number, number]> = {}
-          for (const sid of store.selectedIds) {
-            const part2 = partById(store, sid)
-            if (!part2 || part2.locked) continue
-            groupOrigins[sid] = [part2.position[0], part2.position[1], part2.position[2]]
+          if (e.shiftKey && pointer.pick && ts.held === null) {
+            pendingShift.current = { pick: { ...pointer.pick, point: pointer.pick.point.clone() }, down: e, moveAxis: part.axis }
+            if (orbit) orbit.enabled = false
+          } else {
+            beginGizmoMove(part.axis, e)
           }
-          if (Object.keys(groupOrigins).length === 0) return   // everything selected is locked
-          const anchorPoint = new THREE.Vector3(...lead.position)
-          beginMove(lead.id, anchorPoint, anchorPoint.clone(), groupOrigins,
-            { shift: e.shiftKey, alt: false }, e, store.profiles.some((p) => p.id === lead.id) ? 'profile' : 'connector', part.axis)
           return
         }
-        if (part?.kind === 'rotate') {
+        if (part?.kind === 'rotate' && !(e.shiftKey && pointer.pick)) {
           // a click on an arc turns the selection; a drag that wanders off is ignored
           // The same press may already have armed DrawingHandler when a profile is
           // in hand. Give this click exclusively to the arc, in either listener order.
@@ -355,7 +393,7 @@ const PointerRouter: React.FC = () => {
         return
       }
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
-      const multi = e.ctrlKey || e.metaKey
+      const multi = e.ctrlKey || e.metaKey || e.shiftKey
       const pick = pointer.pick
 
       // Box-select mode: a press that turns into a drag draws the box (handled in App),
@@ -379,8 +417,13 @@ const PointerRouter: React.FC = () => {
       const store = useStore.getState()
       const alreadySelected = store.selectedIds.includes(pick.id)
 
-      // Ctrl/Cmd+click only toggles the selection — it must never start a drag
-      if (multi) { store.selectItem(pick.id, true); return }
+      // Ctrl/Cmd stays selection-only. Shift waits to distinguish a click from a free drag.
+      if (e.ctrlKey || e.metaKey) { store.selectItem(pick.id, true); return }
+      if (e.shiftKey) {
+        pendingShift.current = { pick: { ...pick, point: pick.point.clone() }, down: e }
+        if (orbit) orbit.enabled = false
+        return
+      }
       if (!alreadySelected) store.selectItem(pick.id, false)
 
       const item = partById(store, pick.id)
@@ -429,6 +472,16 @@ const PointerRouter: React.FC = () => {
       if (useToolStore.getState().viewMode) { consumePointer(); return }
       pendingDrawDrag.current = null
 
+      const shift = pendingShift.current
+      pendingShift.current = null
+      if (shift) {
+        if (orbit) orbit.enabled = !useToolStore.getState().selectMode
+        if (e.button === 0 && Math.hypot(e.clientX - shift.down.clientX, e.clientY - shift.down.clientY) <= CLICK_SLOP_PX) {
+          useStore.getState().selectItem(shift.pick.id, true)
+        }
+        return
+      }
+
       const sg = pendingSuggest.current
       pendingSuggest.current = null
       if (sg && e.button === 0 && Math.hypot(e.clientX - sg.x, e.clientY - sg.y) <= CLICK_SLOP_PX) {
@@ -467,6 +520,10 @@ const PointerRouter: React.FC = () => {
     }
 
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && pendingShift.current) {
+        pendingShift.current = null
+        if (orbit) orbit.enabled = !useToolStore.getState().selectMode
+      }
       if (e.key === 'Escape' && pendingRotate.current) {
         pendingRotate.current = null
         gizmoState.busy = false
@@ -491,6 +548,7 @@ const PointerRouter: React.FC = () => {
     const consumePointer = () => {
       pendingClear.current = null
       pendingSelect.current = null
+      pendingShift.current = null
       pendingDrawDrag.current = null
       pendingRotate.current = null
       pendingSuggest.current = null
@@ -503,7 +561,7 @@ const PointerRouter: React.FC = () => {
     canvas.addEventListener('aluframe:consume-pointer', consumePointer)
     const unsubscribe = useToolStore.subscribe((state, previous) => {
       if (state.viewMode && !previous.viewMode) consumePointer()
-      else if (pendingRotate.current && (state.held !== previous.held
+      else if ((pendingRotate.current || pendingShift.current) && (state.held !== previous.held
         || state.selectMode !== previous.selectMode || state.showGizmo !== previous.showGizmo)) consumePointer()
     })
     const onPointerCancel = () => consumePointer()

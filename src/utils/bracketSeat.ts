@@ -1,5 +1,6 @@
+import { panelMountSupports } from './panelMounts'
 import * as THREE from 'three'
-import type { ConnectorData, ProfileData, ProfileSpec } from '../store/useStore'
+import type { ConnectorData, PanelData, ProfileData, ProfileSpec } from '../store/useStore'
 import { getProfileDir, getProfileEndpoints, closestOnSegment, crossExtentAlong } from './geometryCore'
 import { flushFaces } from './specCompat'
 import { slotOffsets, profileSlotDimensions } from './specUtils'
@@ -363,7 +364,7 @@ function supportIndex<T extends { bounds: THREE.Box3 }>(items: T[]): (point: THR
 /** Check bolt contact points against distinct members' faces, slots and cut lengths. */
 export function auditBrackets(
   profiles: ProfileData[], connectors: ConnectorData[], trims = computeAllTrims(profiles),
-  supportedMembers?: Map<string, string[]>,
+  supportedMembers?: Map<string, string[]>, panels: PanelData[] = [],
 ): BracketFault[] {
   const faults: BracketFault[] = []
   const members = profiles.map((p) => {
@@ -383,7 +384,7 @@ export function auditBrackets(
   for (const c of connectors) {
     const kind = connectorEntry(c.type)?.seat
     if (!['inside-corner', 'bracket', 'gusset'].includes(c.type)) {
-      const supported = nonCornerSupports(c, profiles, trims)
+      const supported = c.panelMount ? panelMountSupports(c, profiles, panels, trims) : nonCornerSupports(c, profiles, trims)
       if (!supported) faults.push({ id: c.id, off: Infinity, reason: 'no-joint', at: new THREE.Vector3(...c.position) })
       else supportedMembers?.set(c.id, supported)
       continue

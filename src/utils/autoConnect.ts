@@ -1,4 +1,5 @@
 import { noteNext } from './opLog'
+import { repairConnectorSeats } from './connectorRecovery'
 import { reportEditResult } from './editFeedback'
 import * as THREE from 'three'
 import { useStore, type ConnectorData } from '../store/useStore'
@@ -15,6 +16,8 @@ import { connectorInstallationKey, createConnectorPlacementValidator } from './c
 
 export interface AutoConnectResult {
   placed: number
+  repaired?: number
+  unresolved?: number
   /** Installation positions already occupied by a valid connector. */
   skipped: number
   /** Existing connectors are preserved; retained for result consumers. */
@@ -35,7 +38,7 @@ export function autoConnect(type: string): AutoConnectResult {
   const entry = connectorEntry(type)
   const store = useStore.getState()
   const t = translations[useToolStore.getState().language]
-  const { profiles, connectors } = store
+  const { profiles } = store
   if (!entry || profiles.length === 0) return { placed: 0, skipped: 0, reason: 'no-frame' }
   if (entry.fit === 'face' || entry.fit === 'free') {
     useToolStore.getState().showToast(t.toastAutoNeedsSurface, 'info')
@@ -45,6 +48,8 @@ export function autoConnect(type: string): AutoConnectResult {
   const { trims } = analyzeFrame(profiles)
   const options = { equipment: store.equipment, panels: store.panels, fittings: store.fittings }
   const validate = createConnectorPlacementValidator(profiles, options)
+  const { connectors, repaired, unresolved } = repairConnectorSeats(type, profiles, store.connectors, options)
+  const repairFeedback = repaired || unresolved ? t.toastAutoRepaired(repaired, unresolved) : ''
   const made: ConnectorData[] = []
   let skipped = 0
   // Installation positions with no valid, unobstructed seat.
@@ -128,15 +133,15 @@ export function autoConnect(type: string): AutoConnectResult {
     }
   }
 
-  if (made.length === 0) {
-    useToolStore.getState().showToast(blocked ? t.toastAutoEquipmentBlocked(blocked)
-      : unbolted ? t.toastAutoUnbolted(unbolted) : t.toastAutoNothingOpen, 'info')
-    return { placed: 0, skipped, removed: 0, unbolted, blocked, reason: 'nothing-open' }
+  if (made.length === 0 && repaired === 0) {
+    useToolStore.getState().showToast([blocked ? t.toastAutoEquipmentBlocked(blocked)
+      : unbolted ? t.toastAutoUnbolted(unbolted) : t.toastAutoNothingOpen, repairFeedback].filter(Boolean).join(' · '), 'info')
+    return { placed: 0, skipped, removed: 0, unbolted, blocked, repaired, unresolved, reason: 'nothing-open' }
   }
   noteNext(`fit ${connectorLabel(type, useToolStore.getState().language)}`)
   if (!reportEditResult(store.commitDocument({ connectors: [...connectors, ...made] }))) {
-    return { placed: 0, skipped, removed: 0, unbolted, blocked, reason: 'edit-rejected' }
+    return { placed: 0, skipped, removed: 0, unbolted, blocked, repaired: 0, unresolved, reason: 'edit-rejected' }
   }
-  useToolStore.getState().showToast(t.toastAutoConnected(made.length, skipped, 0, unbolted, blocked), unbolted || blocked ? 'info' : 'success')
-  return { placed: made.length, skipped, removed: 0, unbolted, blocked }
+  useToolStore.getState().showToast([t.toastAutoConnected(made.length, skipped, 0, unbolted, blocked), repairFeedback].filter(Boolean).join(' · '), unbolted || blocked || unresolved ? 'info' : 'success')
+  return { placed: made.length, skipped, removed: 0, unbolted, blocked, repaired, unresolved }
 }

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, drawExact, clickWorld, dragWorld, settle, store, tool, conflicts, w2c, r , useDownloadFallback } from './helpers'
+import { chooseConnector, openApp, setView, enterDraw, drawMember, drawExact, clickWorld, dragWorld, settle, store, tool, conflicts, w2c, r , useDownloadFallback } from './helpers'
 
 async function toNavigate(page: Page) {
   await page.keyboard.press('Escape')
@@ -133,7 +133,7 @@ test.describe('Free rotation about any axis', () => {
     expect((await store(page)).past).toBe(1)
   })
 
-  test('a sub-grid connector drag preserves its host binding and history', async ({ page }) => {
+  test('connector fine dragging keeps rounded no-ops and records 0.1 mm edits atomically', async ({ page }) => {
     await page.evaluate(async () => {
       const threePath = '/node_modules/three/build/three.module.js'
       const factoryPath = '/src/utils/profileFactory.ts'
@@ -152,20 +152,34 @@ test.describe('Free rotation about any axis', () => {
     })
     await settle(page)
     const before = (await store(page)).connectors[0]
-    const target = await page.evaluate(async () => {
-      const threePath = '/node_modules/three/build/three.module.js'
-      const T = await import(threePath)
-      const app = (window as any).__aluframe, c = app.store.getState().connectors[0]
-      const p = new T.Vector3(...c.position)
-      app.tool.getState().startDrag({ id: c.id, kind: 'connector', hit: p, origin: p, groupOrigins: { [c.id]: c.position },
-        plane: new T.Plane(new T.Vector3(0, 1, 0), -p.y), vertical: false, free: false, axis: 'x' })
-      return app.worldToClient(p.x + 1, p.y, p.z)
-    })
-    await page.mouse.move(target.x, target.y)
-    await settle(page)
-    await page.mouse.up()
+    const move = async (offset: number) => {
+      const target = await page.evaluate(async (dx) => {
+        const threePath = '/node_modules/three/build/three.module.js'
+        const T = await import(threePath)
+        const app = (window as any).__aluframe, c = app.store.getState().connectors[0]
+        const p = new T.Vector3(...c.position)
+        app.tool.getState().startDrag({ id: c.id, kind: 'connector', hit: p, origin: p, groupOrigins: { [c.id]: c.position },
+          plane: new T.Plane(new T.Vector3(0, 1, 0), -p.y), vertical: false, free: false, axis: 'x' })
+        return app.worldToClient(p.x + dx, p.y, p.z)
+      }, offset)
+      await page.mouse.move(target.x, target.y)
+      await settle(page)
+      await page.mouse.up()
+    }
+    await move(0.02)
     expect((await store(page)).connectors[0]).toEqual(before)
     expect((await store(page)).past).toBe(0)
+    await move(0.1)
+    const moved = (await store(page)).connectors[0]
+    expect(moved.position[0]).toBeCloseTo(before.position[0] + 0.1, 5)
+    expect(moved.position.slice(1)).toEqual(before.position.slice(1))
+    expect(moved.supportBinding).toBeUndefined()
+    expect((await store(page)).past).toBe(1)
+    await page.getByTestId('viewport').focus()
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).connectors[0]).toEqual(before)
+    expect((await store(page)).past).toBe(0)
+
   })
 
   test('connector position and angles are editable and locked controls cannot change them', async ({ page }) => {
@@ -313,7 +327,7 @@ test.describe('Floor and group rules after the rule change', () => {
   test('an explicitly selected connector moves with its member as one undo step', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
-    await page.getByTestId('connector-end-cap').click()
+    await chooseConnector(page, 'end-cap')
     await clickWorld(page, [600, 10, 0])
     await toNavigate(page)
     expect((await store(page)).connectors).toHaveLength(1)
@@ -340,7 +354,7 @@ test.describe('Floor and group rules after the rule change', () => {
   test('an unselected connector stays put when its member moves', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
-    await page.getByTestId('connector-end-cap').click()
+    await chooseConnector(page, 'end-cap')
     await clickWorld(page, [600, 10, 0])
     await toNavigate(page)
     expect((await store(page)).connectors).toHaveLength(1)

@@ -5,7 +5,9 @@ export function hardwareFastenerLabel(f: HardwareFastener, language: 'zh' | 'en'
   const zh = language === 'zh'
   const names = { bolt: zh ? '螺钉' : 'screw', 'set-screw': zh ? '紧定螺钉' : 'set screw',
     't-nut': zh ? 'T 槽螺母' : 'T-slot nut', nut: zh ? '螺母' : 'nut', washer: zh ? '垫圈' : 'washer', other: zh ? '配件' : 'accessory' }
-  const size = `${f.thread ?? ''}${f.length === undefined ? '' : `×${f.length}`}`
+  const size = f.thread
+    ? `${f.thread}${f.length === undefined ? '' : `×${f.length}`}`
+    : f.length === undefined ? '' : `${zh ? '长' : 'Length'} ${f.length} mm`
   const standard = f.standard === 'flat-head' ? (zh ? '沉头' : 'countersunk') : f.standard
   const detail = zh ? f.descriptionZh : f.descriptionEn
   return [size, standard, names[f.kind], detail ? `(${detail})` : ''].filter(Boolean).join(' ')

@@ -36,6 +36,8 @@ export interface ProfileData {
 }
 
 export interface ConnectorData {
+  /** Through-bolted board attachment using a 20-4107 plate and a cut spacer. */
+  panelMount?: { panelId: string; profileId: string; spacer: number; boardThickness: number }
   supportBinding?: SupportBinding
   id: string
   type: string

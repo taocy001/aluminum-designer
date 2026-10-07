@@ -1,3 +1,4 @@
+import { panelMountFasteners } from './panelMounts'
 import { drawerLayout } from './drawerLayout'
 import { fittingBoardNumber, partNumber } from './partNumbers'
 import type { ConnectorData, PanelData, ProfileData, FittingData, HingeType } from '../store/useStore'
@@ -74,7 +75,7 @@ export function buildBom(
     row.partNumbers.push(partNumber('connector', c.id))
     connectorRows.set(key, row)
 
-    if (reference?.verified) for (const fastener of reference.fasteners) {
+    if (reference?.verified) for (const fastener of c.panelMount ? panelMountFasteners(c.panelMount) : reference.fasteners) {
       const key = hardwareFastenerKey(fastener, series)
       const item = fastenerRows.get(key) ?? {
         kind: 'fastener' as const, key, label: hardwareFastenerLabel(fastener, language),

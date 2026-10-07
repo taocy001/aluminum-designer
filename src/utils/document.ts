@@ -1,3 +1,4 @@
+import { validPanelMount } from './panelMounts'
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import type { ThroughRule } from './jointUtils'
 import { ALL_SPECS } from './specUtils'
@@ -7,7 +8,7 @@ import { validFittingFields, validFittingDimensions } from './fittingValidation'
 import { validOpeningRef, validFittingOpeningBinding, validPanelOpeningBinding, validRunnerBinding, validSupportBinding } from './openingBindings'
 import { normalizeEquipmentClearance, validEquipment } from './equipmentValidation'
 
-export const PROJECT_VERSION = 9
+export const PROJECT_VERSION = 10
 export interface ProjectGeometry {
   profiles: ProfileData[]
   connectors: ConnectorData[]
@@ -50,6 +51,7 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
     for (const key of ['openingBinding', 'runnerBinding', 'supportBinding']) {
       if (key !== binding && value[key] !== undefined) fail(`binding of ${value.id}`)
     }
+    if (value.panelMount !== undefined && binding !== 'supportBinding') fail('panel mount host')
     return value
   }
   const profiles = doc.profiles.map((value) => {
@@ -68,6 +70,8 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
   const connectors = ((doc.connectors ?? []) as unknown[]).map((value) => {
     const c = base(value, 'supportBinding')
     if (!optional(c.supportBinding, validSupportBinding)) fail('support binding')
+    if (c.panelMount !== undefined && (!validPanelMount(c.panelMount) || c.type !== 'joining-plate'
+      || (c.series ?? 20) !== 20 || c.supportBinding !== undefined)) fail('panel mount')
     if (typeof c.type !== 'string' || !connectorTypes.has(c.type)
       || !optional(c.series, (v) => oneOf(v, [20, 30, 40]))
       || !optional(c.mountSeries, (v) => Array.isArray(v) && v.length === 2 && v.every((x) => oneOf(x, [20, 30, 40])))
@@ -99,6 +103,10 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
     if (ids.has(id) && !expected.has(id)) fail('binding source type')
   }
   for (const p of profiles) if (p.runnerBinding) reference(p.runnerBinding.fittingId, drawerIds)
+  for (const c of connectors) if (c.panelMount) {
+    reference(c.panelMount.profileId, profileIds)
+    reference(c.panelMount.panelId, new Set(panels.map((p) => p.id)))
+  }
   for (const c of connectors) if (c.supportBinding) reference(c.supportBinding.profileId, profileIds)
   for (const part of [...panels, ...fittings]) if (part.openingBinding) {
     const opening = part.openingBinding.opening

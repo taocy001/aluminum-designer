@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, setView, enterDraw, drawMember, clickWorld, store, tool } from './helpers'
+import { chooseConnector, openApp, setView, enterDraw, drawMember, clickWorld, store, tool } from './helpers'
 
 /**
  * Frames are drawn on centrelines and assembled face to face. These pin down what the tool
@@ -166,7 +166,7 @@ test.describe('Brackets sit on the faces they would be bolted to', () => {
   })
 
   test('every auto-fitted bracket ends up on a surface, not inside the metal', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await page.waitForTimeout(300)
     const depths = await bracketDepths(page)
@@ -176,7 +176,7 @@ test.describe('Brackets sit on the faces they would be bolted to', () => {
   })
 
   test('automatic placement fills the required connector seats', async ({ page }) => {
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await page.waitForTimeout(300)
     const text = await page.getByTestId('bom-brackets').innerText()
@@ -269,7 +269,7 @@ test.describe('Everything under the cursor lights up, not only members', () => {
     await drawMember(page, [0, 0, 0], [0, 800, 0])
     await drawMember(page, [0, 800, 0], [800, 800, 0])
     await emptyHand(page)
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await page.waitForTimeout(300)
     await page.keyboard.press('Escape')

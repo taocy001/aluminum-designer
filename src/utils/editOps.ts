@@ -181,17 +181,45 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
   return true
 }
 
+/** Capture physical parts now; later edits and pastes cannot change the clipboard. */
+function selectedCopyDocument(): PartDocument {
+  return structuredClone({ profiles: fixedSelectedProfiles(), connectors: selectedConnectors(true),
+    panels: selectedPanels(true), fittings: selectedFittings(true), equipment: selectedEquipment(true) })
+}
+
+let partClipboard: { document: PartDocument; pasted: number } | null = null
+
+/** Copying changes neither the document nor undo history. Locked references can be copied. */
+export function copySelected(): boolean {
+  const document = selectedCopyDocument()
+  const count = [...document.profiles, ...document.connectors, ...document.panels,
+    ...document.fittings, ...(document.equipment ?? [])].length
+  if (!count) return false
+  partClipboard = { document, pasted: 0 }
+  toast(t().toastPartsCopied(count), 'success')
+  return true
+}
+
+/** Each paste remaps internal relationships and adds the complete assembly in one undo step. */
+export function pasteCopied(): boolean {
+  if (!partClipboard) return false
+  const next = partClipboard.pasted + 1
+  if (!duplicateDocument(partClipboard.document, next)) return false
+  partClipboard.pasted = next
+  return true
+}
+
 /** Duplicate all selected parts, including locked references, and select the unlocked copies. */
 export function duplicateSelected(): boolean {
-  const profiles = fixedSelectedProfiles()
-  const connectors = selectedConnectors(true)
-  const panels = selectedPanels(true)
-  const fittings = selectedFittings(true)
-  const equipment = selectedEquipment(true)
+  return duplicateDocument(selectedCopyDocument(), 1)
+}
+
+function duplicateDocument(snapshot: PartDocument, step: number): boolean {
+  const { profiles, connectors, panels, fittings, equipment = [] } = structuredClone(snapshot)
   if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
   noteNext('duplicate')
   const axis = profiles[0] ? getProfileAxis(profiles[0]) : 'y'
-  const d: [number, number, number] = axis === 'x' ? [0, 0, 50] : [50, 0, 0]
+  const d: [number, number, number] = axis === 'x' ? [0, 0, 50 * step] : [50 * step, 0, 0]
   const before = conflictPairsNow()
   const newProfiles = profiles.map((p) => ({
     ...p, id: nextId('p'), locked: false,
@@ -249,7 +277,8 @@ function reflectedQuaternion(
 }
 
 /** Symmetries of the connector solids; handed three-way parts are reseated separately. */
-function connectorSymmetry(type: string): RotAxis | 'swapXY' {
+function connectorSymmetry(type: string, panelMount = false): RotAxis | 'swapXY' {
+  if (panelMount) return 'y' // keep the distinct board/profile bolt ends and the mounting face
   if (type === 'gusset' || type === 'bracket' || type === 'inside-corner') return 'z'
   if (type === 'hinge') return 'y'
   return 'x'
@@ -292,7 +321,7 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
   }))
   const connectorCopies: ConnectorData[] = connectors.map((c2) => {
     return { ...c2, id: nextId('c'), locked: false, position: positionAt(c2.position),
-      quaternion: reflectedQuaternion(c2.quaternion, axis, connectorSymmetry(c2.type)) }
+      quaternion: reflectedQuaternion(c2.quaternion, axis, connectorSymmetry(c2.type, !!c2.panelMount)) }
   })
   const panelCopies: PanelData[] = panels.map((b) => {
     return { ...b, id: nextId('b'), locked: false, position: positionAt(b.position),
@@ -696,7 +725,7 @@ export function setProfileSpec(id: string, spec: ProfileSpec): boolean {
 /** Change which extrusion series a connector is made for */
 export function setConnectorSeries(id: string, series: 20 | 30 | 40): boolean {
   const c = useStore.getState().connectors.find((q) => q.id === id)
-  if (!c || c.locked || ![20, 30, 40].includes(series)) return false
+  if (!c || c.locked || ![20, 30, 40].includes(series) || (c.panelMount && series !== 20)) return false
   return reportEditResult(useStore.getState().commitTransform({ connectors: [{ id, updates: { series } }] }))
 }
 

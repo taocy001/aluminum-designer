@@ -1,3 +1,4 @@
+import { panelMountMeshes } from './panelMountGeometry'
 import * as THREE from 'three'
 import type { ConnectorData, ProfileSpec } from '../store/useStore'
 import { connectorScale, type ConnectorSeries } from './connectorCatalog'
@@ -90,14 +91,15 @@ function cornerMeshes(): ConnectorMesh[] {
 
 const meshCache = new Map<string, readonly ConnectorMesh[]>()
 export function connectorMeshes(type: string, series: ConnectorSeries = 20, profileSpec?: ProfileSpec,
-  mountSeries?: readonly [ConnectorSeries, ConnectorSeries]): readonly ConnectorMesh[] {
-  const key = `${type}:${series}:${profileSpec ?? ''}:${mountSeries?.join(',') ?? ''}`
+  mountSeries?: readonly [ConnectorSeries, ConnectorSeries], panelMount?: ConnectorData['panelMount']): readonly ConnectorMesh[] {
+  const key = `${type}:${series}:${profileSpec ?? ''}:${mountSeries?.join(',') ?? ''}:${panelMount ? `${panelMount.spacer}:${panelMount.boardThickness}` : ''}`
   if (!meshCache.has(key)) {
     let physical: ConnectorMesh[] | undefined
     if (type === 'inside-corner') physical = insideMeshes(series, mountSeries)
     if (type === 'bracket') physical = bracketMeshes(series)
     if (type === 'gusset') physical = gussetMeshes()
     if (type === 'corner-3way') physical = cornerMeshes()
+    if (type === 'joining-plate' && panelMount && series === 20) physical = [...(accessoryMeshes(type, series) ?? []), ...panelMountMeshes(panelMount)]
     meshCache.set(key, physical ? normalized(physical, series) : accessoryMeshes(type, series, profileSpec) ?? [])
   }
   return meshCache.get(key)!
@@ -109,7 +111,7 @@ export function connectorSolidTop(connector: ConnectorData): number {
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(quat.invert())
   const scale = connectorScale(connector.series ?? 20)
   let top = -Infinity
-  for (const { geometry } of connectorMeshes(connector.type, connector.series, connector.profileSpec, connector.mountSeries)) {
+  for (const { geometry } of connectorMeshes(connector.type, connector.series, connector.profileSpec, connector.mountSeries, connector.panelMount)) {
     const positions = geometry.getAttribute('position')
     for (let i = 0; i < positions.count; i++) {
       const y = positions.getX(i) * up.x + positions.getY(i) * up.y + positions.getZ(i) * up.z

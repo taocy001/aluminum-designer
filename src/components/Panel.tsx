@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import type { PanelData } from '../store/useStore'
+import { useStore, type PanelData } from '../store/useStore'
+import { panelShape } from '../utils/panelDrilling'
 import { useToolStore } from '../store/useToolStore'
 
 const MATERIAL_LOOK: Record<PanelData['material'], { color: string; opacity: number; metalness: number; roughness: number }> = {
@@ -18,8 +19,12 @@ const Panel: React.FC<PanelData & { isSelected?: boolean }> = ({
   const hovered = useToolStore((s) => !s.isDragging && s.hoverPartId === id)
   const look = MATERIAL_LOOK[material]
 
-  const geometry = useMemo(() => new THREE.BoxGeometry(width, height, thickness), [width, height, thickness])
+  const connectors = useStore((s) => s.connectors)
+  const geometry = useMemo(() => new THREE.ExtrudeGeometry(panelShape({ id, width, height, thickness, position, quaternion, material }, connectors),
+    { depth: thickness, bevelEnabled: false, curveSegments: 16 }).translate(0, 0, -thickness / 2),
+  [id, width, height, thickness, position, quaternion, material, connectors])
   const edges = useMemo(() => new THREE.EdgesGeometry(geometry), [geometry])
+  useEffect(() => () => { geometry.dispose(); edges.dispose() }, [geometry, edges])
   const quat = useMemo(() => new THREE.Quaternion(...quaternion).normalize(), [quaternion])
 
   const color = isSelected ? '#3b82f6' : isDraggingThis ? '#f59e0b'

@@ -1,9 +1,9 @@
 [
   {
     "file": "examples/bookcase-tall.json",
-    "profiles": 52,
-    "connectors": 148,
-    "connectedProfiles": 52,
+    "profiles": 32,
+    "connectors": 188,
+    "connectedProfiles": 32,
     "unsupportedCornerPairs": [],
     "unfastenedLocalJoints": []
   },

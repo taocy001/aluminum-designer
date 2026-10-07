@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, settle, setView, store } from './helpers'
+import { chooseConnector, openApp, settle, setView, store } from './helpers'
 
 /** a rail and an upright meeting at the origin: the smallest thing with a real joint */
 async function loadCorner(page: import('@playwright/test').Page) {
@@ -78,7 +78,7 @@ test.describe('A connector can be positioned independently', () => {
   test.beforeEach(async ({ page }) => {
     await openApp(page)
     await loadCorner(page)
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.keyboard.press('Escape')
@@ -142,7 +142,7 @@ test.describe('A connector can be positioned independently', () => {
     const moved = await store(page)
     expect(moved.connectors.find((c) => c.id === installed.id)?.position[0]).toBe(3000)
 
-    await page.getByTestId('connector-bracket').click()
+    await chooseConnector(page, 'bracket')
     await page.getByTestId('auto-connect').click()
     await settle(page)
     const filled = await store(page)
@@ -178,7 +178,7 @@ test('an installed inner bracket previews and switches 2040 slots in one undo st
     })
   })
   await settle(page)
-  await page.getByTestId('connector-inside-corner').click()
+  await chooseConnector(page, 'inside-corner')
   await page.getByTestId('auto-connect').click()
   await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')

@@ -163,8 +163,7 @@ test.describe('A drawing in a link', () => {
   test('a link opens the drawing it carries, in a browser that has never seen it', async ({ browser }) => {
     const sender = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] })
     const a = await sender.newPage()
-    await a.goto('/')
-    await a.evaluate(() => localStorage.clear())
+    // A new context already has empty storage; initialize its drawing once.
     await a.goto('/')
     await a.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })
     await a.getByTestId('template-shelving').click()
@@ -175,6 +174,8 @@ test.describe('A drawing in a link', () => {
     await a.waitForTimeout(400)
     const link = await a.evaluate(() => navigator.clipboard.readText())
     expect(link).toContain('#d=')
+    // The recipient must load independently, after the sender has gone away.
+    await sender.close()
 
     const receiver = await browser.newContext()
     const b = await receiver.newPage()
@@ -190,7 +191,6 @@ test.describe('A drawing in a link', () => {
     await b.waitForTimeout(600)
     expect(await b.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)).toBe(sent)
 
-    await sender.close()
     await receiver.close()
   })
 

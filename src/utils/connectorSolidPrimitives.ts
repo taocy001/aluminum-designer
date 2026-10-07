@@ -11,6 +11,8 @@ export interface ConnectorMesh {
   polished?: boolean
   previewDepthWrite?: boolean
   visualOnly?: boolean
+  /** Through bolt: only the validated board hole permits this shaft to overlap. */
+  panelShaft?: boolean
   collisionParts?: readonly CollisionPart[]
   /** Conservative convex parts; holes may be filled, but empty L corners never are. */
   collisionBoxes?: readonly CollisionBox[]

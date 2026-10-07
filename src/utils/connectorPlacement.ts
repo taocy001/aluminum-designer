@@ -1,8 +1,9 @@
+import { panelMountSupports } from './panelMounts'
 import * as THREE from 'three'
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorEntry, connectorMounts, connectorScale } from './connectorCatalog'
 import { auditBrackets, connectorSeatAt, connectorSeatsAt, type BracketSeat } from './bracketSeat'
-import { computeAllTrims } from './jointUtils'
+import { computeAllTrims, type ProfileTrims } from './jointUtils'
 import { panelOBB, trimmedOBB } from './analysis'
 import { equipmentClearance } from './equipmentGeometry'
 import { fittingSolids } from './fittingGeometry'
@@ -75,23 +76,23 @@ export function validateConnectorPlacement(
 }
 
 /** Reuse frame geometry while evaluating a batch of seats or adding connectors. */
-export function createConnectorPlacementValidator(profiles: ProfileData[], options: ConnectorPlacementOptions = {}) {
-  const trims = computeAllTrims(profiles)
+export function createConnectorPlacementValidator(profiles: ProfileData[], options: ConnectorPlacementOptions = {},
+  trims: Map<string, ProfileTrims> = computeAllTrims(profiles)) {
   const members = profiles.map((p) => trimmedOBB(p, trims.get(p.id)!))
   const equipment = (options.equipment ?? []).map(equipmentClearance)
-  const boards = [...(options.panels ?? []).map(panelOBB), ...(options.fittings ?? []).flatMap((fitting) => fittingSolids(fitting))]
+  const boards = [...(options.panels ?? []).map((p) => ({ body: panelOBB(p), id: p.id })), ...(options.fittings ?? []).flatMap((fitting) => fittingSolids(fitting).map((body) => ({ body, id: fitting.id })))]
   return (part: ConnectorData, connectors: ConnectorData[]): ConnectorPlacementStatus => {
     const others = connectors.filter((c) => c.id !== options.excludeConnectorId)
     if (others.some((c) => sameConnectorInstallation(part, c))) return { occupied: true, allowed: false, reason: 'occupied' }
     if (!hardwareReference(part.type, part.series ?? 20, part.profileSpec)?.verified) return { occupied: false, allowed: false, reason: 'unverified' }
     const corner = connectorEntry(part.type)?.fit === 'corner' && part.type !== 'corner-3way'
-    if (!corner && !nonCornerMounted(part, profiles, trims)) return { occupied: false, allowed: false, reason: 'no-joint' }
+    if (part.panelMount ? !panelMountSupports(part, profiles, options.panels ?? [], trims) : !corner && !nonCornerMounted(part, profiles, trims)) return { occupied: false, allowed: false, reason: 'no-joint' }
     if (corner && auditBrackets(profiles, [part], trims).length) return { occupied: false, allowed: false, reason: 'no-joint' }
     if (equipment.some((body) => connectorHitsBody(part, body, 1, false)))
       return { occupied: false, allowed: false, reason: 'equipment' }
     if (others.some((c) => connectorsCollide(part, c))
       || members.some((body) => connectorHitsBody(part, body))
-      || boards.some((body) => connectorHitsBody(part, body, 1, false)))
+      || boards.some(({ body, id }) => connectorHitsBody(part, body, 1, false, id)))
       return { occupied: false, allowed: false, reason: 'collision' }
     return { occupied: false, allowed: true }
   }

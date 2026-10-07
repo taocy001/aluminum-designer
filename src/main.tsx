@@ -57,7 +57,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
     },
     bracketFaults: () => {
       const s = useStore.getState()
-      return auditBrackets(s.profiles, s.connectors).map((f) => ({ id: f.id, off: f.off, reason: f.reason }))
+      return auditBrackets(s.profiles, s.connectors, undefined, undefined, s.panels).map((f) => ({ id: f.id, off: f.off, reason: f.reason }))
     },
     conflicts: () => {
       const s = useStore.getState()
