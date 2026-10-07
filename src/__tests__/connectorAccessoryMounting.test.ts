@@ -6,7 +6,7 @@ import { computeAllTrims } from '../utils/jointUtils'
 import { trimmedOBB } from '../utils/analysis'
 import { connectorHitsBody } from '../utils/connectorCollision'
 import { nonCornerSupports } from '../utils/connectorMounting'
-import { auditBrackets } from '../utils/bracketSeat'
+import { auditBrackets, connectorSeatAt } from '../utils/bracketSeat'
 import { validateConnectorPlacement } from '../utils/connectorPlacement'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
@@ -15,15 +15,28 @@ const C = (type: string, series: 20 | 30 | 40 = 20): ConnectorData => ({ id: typ
 const body = (p: ReturnType<typeof P>) => trimmedOBB(p, computeAllTrims([p]).get(p.id)!)
 
 describe('accessory mounting against actual member sections', () => {
-  it.each(['2020', '2040', '3030', '4040'] as const)('press-fits a %s cap only into its own aligned end', (spec) => {
+  it.each(['2020', '2040', '3030', '4040', '4040-B6'] as const)('press-fits a %s cap only into its own aligned end', (spec) => {
     const p = P('host', [0, 0, -150], [0, 0, 0], spec)
-    const c = { ...C('end-cap', Number(spec.slice(0, 2)) as 20 | 30 | 40), profileSpec: spec }
+    const c = { ...C('end-cap', spec === '4040-B6' ? 20 : Number(spec.slice(0, 2)) as 20 | 30 | 40), profileSpec: spec }
     expect(validateConnectorPlacement(c, [p], []).allowed).toBe(true)
     expect(connectorHitsBody(c, body(p), .15, false)).toBe(true)
     expect(connectorHitsBody({ ...c, position: [1, 0, 0] }, body(p))).toBe(true)
     expect(connectorHitsBody({ ...c, position: [0, 0, -1] }, body(p))).toBe(true)
     const obstacle = P('obstacle', [0, 0, -75], [0, 0, 75], spec)
     expect(connectorHitsBody(c, body(obstacle))).toBe(true)
+  })
+
+  it('snaps four B6 caps to a B6 end and keeps I8 and B6 caps incompatible', () => {
+    const b6 = P('b6', [0, 0, -150], [0, 0, 0], '4040-B6'), i8 = P('i8', [0, 0, -150], [0, 0, 0], '4040')
+    const c = { ...C('end-cap'), profileSpec: '4040-B6' as const }
+    expect(nonCornerSupports(c, [i8])).toBeNull()
+    expect(nonCornerSupports({ ...C('end-cap', 40), profileSpec: '4040' }, [b6])).toBeNull()
+    const seat = connectorSeatAt('end-cap', V(4, 3, 2), [b6])
+    expect(seat).toMatchObject({ profileSpec: '4040-B6', series: 20, position: [0, 0, 0] })
+    expect(validateConnectorPlacement({ ...c, ...seat }, [b6], []).allowed).toBe(true)
+    expect(validateConnectorPlacement(c, [b6], [{ ...c, id: 'installed' }]).allowed).toBe(false)
+    b6.miterCuts = [{ side: 'end', angle: 45 }]
+    expect(nonCornerSupports(c, [b6])).toBeNull()
   })
 
   it('requires the full cap specification and permits a square cut opposite a miter', () => {
@@ -64,8 +77,24 @@ describe('accessory mounting against actual member sections', () => {
     expect(nonCornerSupports({ ...c, position: [0, .7, 0] }, [a, b])).toBeNull()
   })
 
-  it('does not accept an unverified caster or legacy 3040 slot', () => {
-    expect(validateConnectorPlacement(C('caster-mount', 30), [P('p', [0, 0, 0], [0, 150, 0], '3030')], []).reason).toBe('unverified')
+  it.each([30, 40] as const)('mounts a D75 caster and its M8 screw in a series %s bottom core', (series) => {
+    const p = P('host', [0, 0, 0], [0, 150, 0], `${series}${series}` as ProfileSpec), c = C('caster-mount', series)
+    expect(nonCornerSupports(c, [p])).toEqual(['host'])
+    expect(validateConnectorPlacement(c, [p], []).allowed).toBe(true)
+    expect(connectorHitsBody(c, body(p), .15, false)).toBe(true)
+    expect(connectorHitsBody({ ...c, position: [2, 0, 0] }, body(p))).toBe(true)
+    expect(nonCornerSupports({ ...c, position: [0, 150, 0] }, [p])).toBeNull()
+    expect(validateConnectorPlacement(c, [p], [{ ...c, id: 'existing' }]).allowed).toBe(false)
+    const obstruction = P('obstacle', [20, -62, -100], [20, -62, 100])
+    expect(validateConnectorPlacement(c, [p, obstruction], []).allowed).toBe(false)
+    expect(connectorSeatAt('caster-mount', V(8, -10, 3), [p])?.position).toEqual([0, 0, 0])
+    p.miterCuts = [{ side: 'start', angle: 45 }]
+    expect(nonCornerSupports(c, [p])).toBeNull()
+  })
+
+  it('rejects caster mounting in unsupported cores and a legacy 3040 slot', () => {
+    for (const spec of ['2020', '2040', '4040-B6'] as const)
+      expect(nonCornerSupports(C('caster-mount', spec === '4040-B6' ? 40 : 20), [P('p', [0, 0, 0], [0, 150, 0], spec)])).toBeNull()
     expect(nonCornerSupports(C('t-nut', 30), [P('p', [0, -20, -100], [0, -20, 100], '3040')])).toBeNull()
   })
 })

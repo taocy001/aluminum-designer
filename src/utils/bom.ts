@@ -64,13 +64,13 @@ export function buildBom(
   for (const c of connectors) {
     const series = (c.series ?? 20) as ConnectorSeries
     const capSpec = c.type === 'end-cap' ? (c.profileSpec ?? `${series}${series}`) : undefined
-    const reference = c.type === 'end-cap' ? accessoryCapReference((c.profileSpec ?? `${series}${series}`) as ProfileData['spec']) : hardwareReference(c.type, series)
-    const key = `${c.type}-${capSpec ?? series}`
+    const reference = c.type === 'end-cap' ? accessoryCapReference((c.profileSpec ?? `${series}${series}`) as ProfileData['spec']) : hardwareReference(c.type, series, c.profileSpec)
+    const key = `${c.type}-${capSpec ?? (c.type === 'foot' && series === 20 && c.profileSpec === '4040-B6' ? '4040-B6' : series)}`
     const row = connectorRows.get(key) ?? {
       kind: 'connector' as const, key,
-      label: connectorLabel(c.type, language), spec: capSpec ?? `${reference?.sku ?? `${series}${language === 'zh' ? ' 系列' : ' series'}`}${reference?.verified ? '' : language === 'zh' ? '（安装适配未核定）' : ' (installation unverified)'}`, qty: 0, partNumbers: [],
+      label: connectorLabel(c.type, language), spec: capSpec === '4040-B6' ? 'Motedis PTS6B20x20 (4040 B6)' : capSpec ?? `${reference?.sku ?? `${series}${language === 'zh' ? ' 系列' : ' series'}`}${reference?.verified ? '' : language === 'zh' ? '（安装适配未核定）' : ' (installation unverified)'}`, qty: 0, partNumbers: [],
     }
-    row.qty++
+    row.qty += capSpec === '4040-B6' ? 4 : 1
     row.partNumbers.push(partNumber('connector', c.id))
     connectorRows.set(key, row)
 
@@ -123,9 +123,9 @@ export function buildBom(
     const missing = Math.max(0, qty - (placedCaps.get(spec) ?? 0))
     if (missing === 0) continue
     suggested.push({
-      kind: 'suggested', key: `suggest-cap-${spec}`, spec,
+      kind: 'suggested', key: `suggest-cap-${spec}`, spec: spec === '4040-B6' ? 'Motedis PTS6B20x20 (4040 B6)' : spec,
       label: language === 'zh' ? `端盖 ${spec}（按自由端推算）` : `End cap ${spec} (from free ends)`,
-      qty: missing, partNumbers: [],
+      qty: missing * (spec === '4040-B6' ? 4 : 1), partNumbers: [],
     })
   }
 

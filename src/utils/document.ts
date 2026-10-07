@@ -1,5 +1,6 @@
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import type { ThroughRule } from './jointUtils'
+import { ALL_SPECS } from './specUtils'
 import { CONNECTOR_CATALOG } from './connectorCatalog'
 import { migrateFittings } from './migrate'
 import { validFittingFields, validFittingDimensions } from './fittingValidation'
@@ -17,7 +18,7 @@ export interface ProjectGeometry {
 export interface ProjectDocument extends ProjectGeometry { throughRule: ThroughRule }
 export interface ValidatedProjectDocument extends ProjectDocument { equipment: EquipmentData[] }
 export interface ParsedProjectDocument extends ValidatedProjectDocument { version: typeof PROJECT_VERSION }
-const specs = ['2020', '2040', '3030', '3040', '4040']
+const specs = ALL_SPECS
 const materials = ['mdf', 'ply', 'acrylic', 'alu']
 const connectorTypes = new Set(CONNECTOR_CATALOG.map((entry) => entry.type))
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -70,7 +71,7 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
     if (typeof c.type !== 'string' || !connectorTypes.has(c.type)
       || !optional(c.series, (v) => oneOf(v, [20, 30, 40]))
       || !optional(c.mountSeries, (v) => Array.isArray(v) && v.length === 2 && v.every((x) => oneOf(x, [20, 30, 40])))
-      || !optional(c.profileSpec, (v) => oneOf(v, ['2020', '2040', '3030', '3040', '4040']))) fail('connector type or series')
+      || !optional(c.profileSpec, (v) => oneOf(v, ALL_SPECS))) fail('connector type or series')
     return { ...c } as unknown as ConnectorData
   })
   const panels = ((doc.panels ?? []) as unknown[]).map((value) => {

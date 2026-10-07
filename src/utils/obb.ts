@@ -1,7 +1,10 @@
 import * as THREE from 'three'
+import type { ProfileSpec } from '../store/useStore'
 
 /** Oriented bounding box: centre, half extents and the three unit axes */
 export interface OBB {
+  /** Preserve section identity when equal-size profiles have different slots and cores. */
+  profileSpec?: ProfileSpec
   center: THREE.Vector3
   half: THREE.Vector3
   axes: [THREE.Vector3, THREE.Vector3, THREE.Vector3]

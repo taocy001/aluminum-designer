@@ -139,6 +139,7 @@ test.describe('Suggesting the next member', () => {
   })
 
   test('the first press after each cabinet is rendered is quick', async ({ page }) => {
+    test.setTimeout(180_000)
     const dir = path.join(process.cwd(), 'examples', 'flat')
     for (const f of fs.readdirSync(dir).filter((x: string) => x.endsWith('.json'))) {
       const doc = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))

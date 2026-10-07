@@ -7,17 +7,20 @@ import { useStore } from '../store/useStore'
 import { getProfileShape } from '../utils/profileShapes'
 import { pickDrawingStart } from '../utils/pickDrawingStart'
 import { modelPointFromHit, pickPoint, resolveAxisEnd, type MeshHit } from '../utils/pickUtils'
+import { pickConnectorMember } from '../utils/pickConnectorMember'
+import { connectorSupportVisible } from '../utils/connectorVisibility'
+import { cutAway } from '../utils/frontmost'
 import SnapMarker from './SnapMarker'
 import { floorY, tryAddProfile, placeConnector } from '../utils/profileFactory'
 import { specDims } from '../utils/specUtils'
-import { resolveConnectorPlacement } from '../utils/connectorPlacement'
+import { resolveConnectorPlacement, type ConnectorPlacementOptions } from '../utils/connectorPlacement'
 import { connectorEntry } from '../utils/connectorCatalog'
 import { profileBodyEndpoints, profileFace } from '../utils/profileFaces'
 import Connector from './Connector'
 import ConnectorSeatGuides from './ConnectorSeatGuides'
 import { translations } from '../utils/translations'
 import { drawingInput, drawingStartAnchor, prepareDrawingPreview } from '../utils/drawPreview'
-import { computeTrims } from '../utils/jointUtils'
+import { computeAllTrims, computeTrims } from '../utils/jointUtils'
 import { FacePatch } from './SnapFaces'
 import { DrawContactGuides } from './DrawContactGuides'
 import { gizmoState } from './TransformGizmo'
@@ -33,6 +36,7 @@ interface ConnectorTarget {
   normal: THREE.Vector3 | null
   jointPoint: THREE.Vector3 | null
   keys: string[]
+  view: string
 }
 
 /** Pointer placement prefers a usable seat; an explicit selection keeps its own status. */
@@ -45,27 +49,51 @@ function availablePlacement(placement: ReturnType<typeof resolveConnectorPlaceme
 }
 
 const DrawingHandler: React.FC = () => {
-  const { isDrawing, isDragging, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace, drawLengthInput, language } = useToolStore()
+  const { isDrawing, isDragging, startPoint, currentPoint, snapPoint, snapKind, held, activeSpec, activeConnectorType, drawAxis, alignGuides, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace, drawLengthInput, language, section, buildStep } = useToolStore()
   const profiles = useStore((s) => s.profiles)
   const connectors = useStore((s) => s.connectors)
   const throughRule = useStore((s) => s.throughRule)
   const equipment = useStore((s) => s.equipment)
   const panels = useStore((s) => s.panels)
   const fittings = useStore((s) => s.fittings)
+  const connectorTrims = useMemo(() => held === 'connector' ? computeAllTrims(profiles) : undefined, [held, profiles, throughRule])
   const { camera, size, scene, gl } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
+  const connectorView = JSON.stringify([section, buildStep])
+  const visibleMemberIds = useCallback(() => {
+    const visible = new Set<string>()
+    scene.traverseVisible((o) => { if ((o as THREE.Mesh).isMesh && o.userData?.profileId) visible.add(o.userData.profileId) })
+    const section = useToolStore.getState().section
+    if (section) {
+      const current = useStore.getState().profiles
+      const trims = current === profiles && connectorTrims ? connectorTrims : computeAllTrims(current)
+      for (const profile of current) if (visible.has(profile.id)
+        && !connectorSupportVisible(profile, trims.get(profile.id)!, section)) visible.delete(profile.id)
+    }
+    return visible
+  }, [scene, profiles, connectorTrims])
+  const visibleSeatFilter = useCallback((): NonNullable<ConnectorPlacementOptions['seatFilter']> => {
+    const visible = visibleMemberIds()
+    return (seat, supportIds) => supportIds.every((id) => visible.has(id)) && !cutAway(new THREE.Vector3(...seat.position))
+  }, [visibleMemberIds])
 
   /** First member body under the ray (the catcher sphere and markers are skipped) */
   const hitMember = useCallback((ray: THREE.Ray): MeshHit | null => {
     raycaster.ray.copy(ray)
     const meshes: THREE.Object3D[] = []
-    scene.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.userData?.profileId) meshes.push(o) })
+    scene.traverseVisible((o) => { if ((o as THREE.Mesh).isMesh && o.userData?.profileId) meshes.push(o) })
     const hits = raycaster.intersectObjects(meshes, false)
-    const h = hits[0]
+    const h = hits.find((hit) => !cutAway(hit.point))
     if (!h || !h.face) return null
     const normal = h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize()
     return { profileId: h.object.userData.profileId as string, point: h.point.clone(), normal }
   }, [raycaster, scene])
+  const hitConnectorMember = useCallback((ray: THREE.Ray): MeshHit | null => {
+    const visible = visibleMemberIds()
+    const current = useStore.getState().profiles
+    const trims = current === profiles && connectorTrims ? connectorTrims : computeAllTrims(current)
+    return pickConnectorMember(ray, current.filter((p) => visible.has(p.id)), trims, cutAway)
+  }, [visibleMemberIds, profiles, connectorTrims])
   /** Only canvas events update this point; moving onto the HUD must not steer a draft. */
   const lastCanvasPointer = useRef<THREE.Vector2 | null>(null)
   const pointerOnCanvas = useRef(false)
@@ -115,14 +143,14 @@ const DrawingHandler: React.FC = () => {
     if (ts.held !== 'connector' || !ts.activeConnectorType || !ts.currentPoint) return
     const current = availablePlacement(resolveConnectorPlacement(ts.activeConnectorType, ts.currentPoint,
       store.profiles, store.connectors, hoverNormal.current, connectorChoice.current, hoverJointPoint.current ?? undefined,
-      { equipment: store.equipment, panels: store.panels, fittings: store.fittings }), pinnedJoint.current)
+      { equipment: store.equipment, panels: store.panels, fittings: store.fittings, seatFilter: visibleSeatFilter() }), pinnedJoint.current)
     const choices = current.candidates.filter((candidate) => !pairFilter || candidate.seat.legs?.slice().sort().join('|') === pairFilter)
     if (choices.length < 2) return
     const selected = choices.findIndex((candidate) => candidate.key === current.key)
     const index = (Math.max(0, selected) + step + choices.length) % choices.length
     const key = choices[index].key
     selectConnector(key)
-  }, [selectConnector, pairFilter])
+  }, [selectConnector, pairFilter, visibleSeatFilter])
 
   useEffect(() => {
     connectorChoice.current = 0
@@ -133,6 +161,12 @@ const DrawingHandler: React.FC = () => {
     rememberedJoint.current = null
     hudTarget.current = null
   }, [held, activeConnectorType])
+
+  useEffect(() => {
+    releaseJoint()
+    hoverNormal.current = null
+    hoverJointPoint.current = null
+  }, [connectorView, releaseJoint])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -309,12 +343,16 @@ const DrawingHandler: React.FC = () => {
     const ts = useToolStore.getState()
     if (ts.held === 'connector' && pinnedJoint.current) return
     const profiles = useStore.getState().profiles
-    const hit = hitMember(ray)
-    const cornerHit = hit && ts.held === 'connector' && connectorEntry(ts.activeConnectorType ?? '')?.fit === 'corner'
+    const corner = ts.held === 'connector' && connectorEntry(ts.activeConnectorType ?? '')?.fit === 'corner'
+    const hit = ts.held === 'connector' ? hitConnectorMember(ray) : hitMember(ray)
+    const cornerHit = corner && hit
+    const visible = ts.held === 'connector' || ts.held === 'profile' ? visibleMemberIds() : null
+    const pickProfiles = visible ? profiles.filter((p) => visible.has(p.id)) : profiles
     const pick: ReturnType<typeof pickDrawingStart> = ts.held === 'profile'
-      ? pickDrawingStart(ray, cursor, camera, size, profiles, hit, ts.workPlaneY, ts.drawSnapFace)
-      : cornerHit ? { ...hit, kind: 'segment' }
-      : pickPoint(ray, cursor, camera, size, profiles, hit, ts.workPlaneY, ts.drawSnapFace)
+      ? pickDrawingStart(ray, cursor, camera, size, profiles, hit, ts.workPlaneY, ts.drawSnapFace, visible!)
+      : ts.held === 'connector' && hit ? { ...hit, kind: 'segment' }
+      : corner ? { point: new THREE.Vector3(), kind: 'none' }
+      : pickPoint(ray, cursor, camera, size, pickProfiles, hit, ts.workPlaneY, ts.drawSnapFace)
     hoverNormal.current = pick.normal ?? null
     hoverJointPoint.current = cornerHit ? modelPointFromHit(hit, profiles, ray)?.point ?? null : null
     if (ts.held === 'connector' && (pick.kind === 'ground' || pick.kind === 'none')) {
@@ -328,7 +366,7 @@ const DrawingHandler: React.FC = () => {
     const aligned = pick.kind === 'ground' && (pick.guides?.length ?? 0) > 0
     ts.setHover(pick.point, aligned || pick.kind !== 'ground' ? pick.point : null, pick.kind === 'ground' ? (aligned ? 'align' : null) : pick.kind, pick.profileId ?? null, pick.face ?? null, pick.alignmentFace ?? null)
     ts.updateDraw({ alignGuides: (pick.guides ?? []).map((g) => ({ from: g.from.toArray() as any, to: g.to.toArray() as any })) })
-  }, [camera, size, hitMember])
+  }, [camera, size, hitMember, hitConnectorMember, visibleMemberIds])
 
   const refreshPointer = useCallback(() => {
     const client = lastCanvasPointer.current
@@ -349,13 +387,14 @@ const DrawingHandler: React.FC = () => {
     if (state.lockedAxis !== previous.lockedAxis || state.activeSpec !== previous.activeSpec) refreshPointer()
   }), [refreshPointer])
 
-  const lastView = useRef({ world: new THREE.Matrix4(), projection: new THREE.Matrix4(), width: 0, height: 0 })
+  const lastView = useRef({ world: new THREE.Matrix4(), projection: new THREE.Matrix4(), width: 0, height: 0, connectorView: '' })
   useFrame(() => {
     const previous = lastView.current
     if (previous.world.equals(camera.matrixWorld) && previous.projection.equals(camera.projectionMatrix)
-      && previous.width === size.width && previous.height === size.height) return
+      && previous.width === size.width && previous.height === size.height && previous.connectorView === connectorView) return
     previous.world.copy(camera.matrixWorld); previous.projection.copy(camera.projectionMatrix)
     previous.width = size.width; previous.height = size.height
+    previous.connectorView = connectorView
     const ts = useToolStore.getState()
     // During orbit/pan the draft stays put. A stationary canvas pointer after a wheel
     // zoom needs a fresh ray, while a pointer on a toolbar/HUD keeps its chosen point.
@@ -417,14 +456,16 @@ const DrawingHandler: React.FC = () => {
     if (ts.held === 'connector') {
       if (!ts.activeConnectorType) return
       if (pinnedJoint.current && ts.currentPoint) {
-        placeConnector(ts.currentPoint, ts.activeConnectorType, hoverNormal.current, connectorChoice.current, hoverJointPoint.current ?? undefined)
+        placeConnector(ts.currentPoint, ts.activeConnectorType, hoverNormal.current, connectorChoice.current, hoverJointPoint.current ?? undefined, visibleSeatFilter())
         return
       }
       const profiles = useStore.getState().profiles
-      const hit = hitMember(ray)
+      const hit = hitConnectorMember(ray)
       const cornerHit = hit && connectorEntry(ts.activeConnectorType)?.fit === 'corner'
-      const pick = cornerHit ? { ...hit, kind: 'segment' as const }
-        : pickPoint(ray, cursor, camera, size, profiles, hit, ts.workPlaneY)
+      if (!hit && connectorEntry(ts.activeConnectorType)?.fit === 'corner') return
+      const visible = visibleMemberIds()
+      const pick = hit ? { ...hit, kind: 'segment' as const }
+        : pickPoint(ray, cursor, camera, size, profiles.filter((p) => visible.has(p.id)), hit, ts.workPlaneY)
       if (pick.kind === 'none') return
       const jointPoint = cornerHit ? modelPointFromHit(hit, profiles, ray)?.point : undefined
       // A free-space click uses the same point as the visible free ghost.
@@ -433,13 +474,14 @@ const DrawingHandler: React.FC = () => {
       const store = useStore.getState()
       const placement = availablePlacement(resolveConnectorPlacement(ts.activeConnectorType, point, profiles, store.connectors,
         pick.normal, connectorChoice.current, jointPoint,
-        { equipment: store.equipment, panels: store.panels, fittings: store.fittings }), false)
-      placeConnector(point, ts.activeConnectorType, pick.normal ?? null, placement.key ?? connectorChoice.current, jointPoint)
+        { equipment: store.equipment, panels: store.panels, fittings: store.fittings, seatFilter: visibleSeatFilter() }), false)
+      placeConnector(point, ts.activeConnectorType, pick.normal ?? null, placement.key ?? connectorChoice.current, jointPoint, visibleSeatFilter())
       return
     }
 
     if (!ts.isDrawing) {
-      const pick = pickDrawingStart(ray, cursor, camera, size, useStore.getState().profiles, hitMember(ray), ts.workPlaneY, ts.drawSnapFace)
+      const pick = pickDrawingStart(ray, cursor, camera, size, useStore.getState().profiles,
+        hitMember(ray), ts.workPlaneY, ts.drawSnapFace, visibleMemberIds())
       if (pick.kind === 'none') return
       ts.beginDraw(pick.point, pick.face, pick.alignmentFace)
       return
@@ -452,7 +494,7 @@ const DrawingHandler: React.FC = () => {
     const input = drawingInput(s, c, { startFace: drawStartFace, endFace: drawSnapFace, startAlignmentFace: drawStartAlignmentFace }, drawLengthInput)
     if (!input) return
     if (tryAddProfile(s, input.end, activeSpec, input.faces)) ts.cancelDraw()
-  }, [camera, size, updateEnd, updateHover, hitMember])
+  }, [camera, size, updateEnd, updateHover, hitMember, hitConnectorMember, visibleSeatFilter, visibleMemberIds])
 
   // Release decides between drawing and orbiting
   useEffect(() => {
@@ -477,18 +519,20 @@ const DrawingHandler: React.FC = () => {
 
   const pointerPlacement = useMemo(() => {
     if (held !== 'connector' || !activeConnectorType || !currentPoint) return null
+    const seatFilter = connectorEntry(activeConnectorType)?.fit === 'corner' && !hoverNormal.current
+      ? () => false : visibleSeatFilter()
     return availablePlacement(resolveConnectorPlacement(activeConnectorType, currentPoint, profiles, connectors, hoverNormal.current,
-      connectorSelection, hoverJointPoint.current ?? undefined, { equipment, panels, fittings }), jointPinned)
-  }, [held, activeConnectorType, currentPoint, profiles, connectors, equipment, panels, fittings, throughRule, connectorSelection, jointPinned])
+      connectorSelection, hoverJointPoint.current ?? undefined, { equipment, panels, fittings, seatFilter }), jointPinned)
+  }, [held, activeConnectorType, currentPoint, profiles, connectors, equipment, panels, fittings, throughRule, connectorSelection, jointPinned, connectorView, visibleSeatFilter])
   // The HUD retains a joint while its independent canvas preview follows the pointer.
-  const previousTarget = rememberedJoint.current?.type === activeConnectorType ? rememberedJoint.current : null
+  const previousTarget = rememberedJoint.current?.type === activeConnectorType && rememberedJoint.current.view === connectorView ? rememberedJoint.current : null
   // Crossing one member on the way to the HUD must not truncate the same joint's other pairs.
   const sameJointSubset = !jointPinned && !!previousTarget && !!pointerPlacement?.count
     && pointerPlacement.keys.length < previousTarget.keys.length
     && pointerPlacement.keys.every((key) => previousTarget.keys.includes(key))
   const liveTarget = pointerPlacement?.count && activeConnectorType && currentPoint
     ? { type: activeConnectorType, point: currentPoint, normal: hoverNormal.current,
-      jointPoint: hoverJointPoint.current, keys: pointerPlacement.keys }
+      jointPoint: hoverJointPoint.current, keys: pointerPlacement.keys, view: connectorView }
     : null
   const target = sameJointSubset ? previousTarget : liveTarget ?? previousTarget
   hudTarget.current = target
@@ -496,8 +540,8 @@ const DrawingHandler: React.FC = () => {
   const connectorPlacement = useMemo(() => {
     if (!target || (pointerPlacement?.count && !sameJointSubset)) return pointerPlacement
     return availablePlacement(resolveConnectorPlacement(target.type, target.point, profiles, connectors, target.normal,
-      connectorSelection, target.jointPoint ?? undefined, { equipment, panels, fittings }), jointPinned)
-  }, [target?.point, pointerPlacement, sameJointSubset, profiles, connectors, equipment, panels, fittings, throughRule, connectorSelection, jointPinned])
+      connectorSelection, target.jointPoint ?? undefined, { equipment, panels, fittings, seatFilter: visibleSeatFilter() }), jointPinned)
+  }, [target?.point, pointerPlacement, sameJointSubset, profiles, connectors, equipment, panels, fittings, throughRule, connectorSelection, jointPinned, connectorView, visibleSeatFilter])
   const connectorPreview = pointerPlacement?.seat
   hudChoice.current = connectorPlacement?.key ?? null
   const pairKeys = [...new Set((connectorPlacement?.candidates ?? []).map((candidate) => candidate.seat.legs?.slice().sort().join('|') ?? ''))]
@@ -615,7 +659,8 @@ const DrawingHandler: React.FC = () => {
               className="absolute bottom-24 md:bottom-14 left-1/2 -translate-x-1/2 w-[min(540px,calc(100%-2rem))] rounded-lg border border-cyan-400/40 bg-slate-900/95 px-3 py-2 text-xs text-slate-200">
               <div className="flex items-center justify-between gap-2">
                 <span role="status">
-                  {connectorPlacement.count ? t.connectorSeatChoice(connectorPlacement.index + 1, connectorPlacement.count) : reasonLabel(pointerPlacement.reason)}
+                  {connectorPlacement.count ? t.connectorSeatChoice(connectorPlacement.index + 1, connectorPlacement.count)
+                    : pointerPlacement.allowed ? t.connectorClickToPlace : reasonLabel(pointerPlacement.reason)}
                   {(connectorPlacement.occupied || !connectorPlacement.allowed) && connectorPlacement.count > 0 &&
                     <span className="block text-amber-300">{reasonLabel(connectorPlacement.reason)}</span>}
                 </span>
@@ -661,7 +706,7 @@ const DrawingHandler: React.FC = () => {
                       const at = hudTarget.current
                       if (!at) return
                       pinJoint()
-                      placeConnector(at.point, activeConnectorType, at.normal, connectorPlacement.key ?? connectorSelection, at.jointPoint ?? undefined)
+                      placeConnector(at.point, activeConnectorType, at.normal, connectorPlacement.key ?? connectorSelection, at.jointPoint ?? undefined, visibleSeatFilter())
                     }}
                     className="rounded bg-cyan-700 px-3 py-1 hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40">{t.connectorSeatPlace}</button>
                 </div>

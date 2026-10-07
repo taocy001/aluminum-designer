@@ -3,7 +3,11 @@ import { expect, type Page } from '@playwright/test'
 export type V3 = [number, number, number]
 
 export async function openApp(page: Page) {
-  await page.goto('/')
+  // Clear this origin before the app starts, without constructing and discarding a scene.
+  await page.route('**/__aluframe_e2e_reset__.html', (route) => route.fulfill({
+    contentType: 'text/html', body: '<!doctype html><html><head><title>Reset</title></head><body></body></html>',
+  }), { times: 1 })
+  await page.goto('/__aluframe_e2e_reset__.html')
   await page.evaluate(() => localStorage.clear())
   await page.goto('/')
   await page.waitForFunction(() => (window as any).__aluframe?.setView, null, { timeout: 20_000 })

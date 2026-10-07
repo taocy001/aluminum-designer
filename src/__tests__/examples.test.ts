@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { findConflicts } from '../utils/analysis'
 import * as THREE from 'three'
-import { computeAllTrims, trimmedBox } from '../utils/jointUtils'
+import { computeAllTrims, computeFrameBounds, trimmedBox } from '../utils/jointUtils'
 import { getProfileEndpoints } from '../utils/geometryCore'
+import { jointPartnersAt } from '../utils/connectorFit'
 import { unflushPairs } from '../utils/faceAlign'
 import hardwareChecks from '../../examples/checks/hardware.json'
 import { auditBrackets } from '../utils/bracketSeat'
@@ -62,7 +63,39 @@ function doorsInFront(drawer: FittingData, fittings: FittingData[]): Set<string>
 /** Check bundled examples for the geometric conditions asserted below. */
 describe('bundled example geometry', () => {
   it('loads the expected example files', () => {
-    expect(files.length).toBeGreaterThan(5)
+    expect(files).toHaveLength(18)
+  })
+
+  it.each([
+    ['desk-with-pedestal.json', [1500, 720, 600]],
+    ['wardrobe-2-door.json', [1800, 2200, 600]],
+    ['03-tall-unit.json', [1610, 2300, 690]],
+    ['06-wardrobe.json', [2040, 2400, 640]],
+    ['10-wardrobe-small.json', [1240, 2200, 640]],
+  ] as const)('keeps %s dimensions with six compatible B6 posts', (name, dimensions) => {
+    const { profiles, connectors } = load(name)
+    expect(profiles.filter((p) => p.spec === '4040-B6')).toHaveLength(6)
+    expect(profiles.some((p) => p.spec === '4040')).toBe(false)
+    const size = computeFrameBounds(profiles, computeAllTrims(profiles))!.getSize(new THREE.Vector3())
+    expect(size.toArray().map((v) => Math.round(v * 1000) / 1000)).toEqual(dimensions)
+    for (const foot of connectors.filter((c) => c.type === 'foot')) {
+      expect(foot).toMatchObject({ series: 20, profileSpec: '4040-B6' })
+    }
+  })
+
+  it('equips the 3030 tool cart with four wheels while retaining its shelves and top height', () => {
+    const { profiles, connectors, panels } = load('rolling-cart.json')
+    expect(profiles.every((p) => p.spec === '3030')).toBe(true)
+    const wheels = connectors.filter((c) => c.type === 'caster-mount')
+    expect(wheels).toHaveLength(4)
+    expect(wheels.every((c) => c.series === 30 && c.profileSpec === '3030' && c.position[1] === 99.7)).toBe(true)
+    expect(panels.map((p) => [p.width, p.height, p.thickness, p.position[1]])).toEqual([
+      [460, 760, 18, 319], [460, 760, 18, 619],
+    ])
+    const bounds = computeFrameBounds(profiles, computeAllTrims(profiles))!
+    expect(bounds.max.y).toBeCloseTo(900)
+    expect(bounds.max.x - bounds.min.x).toBeCloseTo(820)
+    expect(bounds.max.z - bounds.min.z).toBeCloseTo(520)
   })
 
   describe.each(files)('%s', (name) => {
@@ -89,16 +122,45 @@ describe('bundled example geometry', () => {
       expect(named).toEqual([])
     })
 
-    it('reports exactly the documented corner pairs without a supported connector', () => {
+    it('has no corner pairs without a supported connector', () => {
       const { profiles } = load(name)
       const known = hardwareChecks.find((entry) => entry.file.endsWith(`/${name}`))!
       expect(known).toBeDefined()
-      expect(unflushPairs(profiles).map(({ a, b }) => [a, b].sort().join('|')).sort()).toEqual(known.unsupportedCornerPairs)
+      expect(known.unsupportedCornerPairs).toEqual([])
+      expect(unflushPairs(profiles)).toEqual([])
     })
 
     it('passes connector seating checks', () => {
       const { profiles, connectors } = load(name)
       expect(auditBrackets(profiles, connectors).map((f) => `${f.id} ${f.reason} ${f.off}mm`)).toEqual([])
+    })
+
+    it('fastens every profile into one assembly and connects each local joint', () => {
+      const { profiles, connectors } = load(name)
+      const supports = new Map<string, string[]>()
+      expect(auditBrackets(profiles, connectors, computeAllTrims(profiles), supports)).toEqual([])
+      const reachable = (from: string, at?: THREE.Vector3) => {
+        const links = new Map(profiles.map((p) => [p.id, new Set<string>()]))
+        for (const c of connectors) {
+          // The supported hardware reaches less than 80 mm from these joint centres.
+          // A remote brace must not conceal an unfastened end at this node.
+          if (at && new THREE.Vector3(...c.position).distanceTo(at) >= 80) continue
+          for (const a of supports.get(c.id) ?? []) for (const b of supports.get(c.id) ?? []) links.get(a)!.add(b)
+        }
+        const seen = new Set([from])
+        for (const id of seen) for (const next of links.get(id) ?? []) seen.add(next)
+        return seen
+      }
+      expect([...reachable(profiles[0].id)].sort()).toEqual(profiles.map((p) => p.id).sort())
+      const checked = new Set<string>()
+      for (const p of profiles) for (const tip of Object.values(getProfileEndpoints(p))) {
+        for (const { a, b, at } of jointPartnersAt(tip, p, profiles)) {
+          const key = [a.id, b.id].sort().join('|')
+          if (checked.has(key)) continue
+          checked.add(key)
+          expect(reachable(a.id, at).has(b.id), `${key} at ${at.toArray()}`).toBe(true)
+        }
+      }
     })
 
     /** A trimmed joint end must be occupied by a neighbouring member. */

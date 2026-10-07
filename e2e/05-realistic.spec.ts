@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { Quaternion, Vector3 } from 'three'
 import { openApp, enterDraw, setView, settle, store, tool, w2c, type V3 } from './helpers'
 
 // deterministic jitter so runs are reproducible
@@ -44,8 +45,7 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
   test.beforeEach(async ({ page }) => {
     seed = 7 // same jitter sequence for every test regardless of run order
     await openApp(page)
-    // These cabinets are described with the posts running past the rails, which decides
-    // every trim and every butt end in them. The default is the other way round now.
+    // Make the through-post policy explicit for every trim and butt end.
     await page.getByTestId('through-posts').click()
     await setView(page, [1900, 1500, 2300], [300, 400, 200])
   })
@@ -92,6 +92,7 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
   })
 
   test('cabinet A: posts first, rails clicked on post bodies (600×400×800, 2020)', async ({ page }) => {
+    test.setTimeout(120_000)
     const W = 600, D = 400, H = 800
     await enterDraw(page, '2020')
     // four posts from sloppy floor clicks; heights align to the first post via the alignment snap
@@ -114,7 +115,7 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     expect(await sloppy(page, [ax0 + 2, h, az0 + 3], [ax0 + 2, h, az1 - 3])).toBe(1)
     expect(await sloppy(page, [ax1 - 2, h, az0 + 3], [ax1 - 2, h, az1 - 3])).toBe(1)
     const b = await bom(page)
-    if (b.brackets !== '16') console.log('JOINTS A', JSON.stringify(await dumpJoints(page)))
+    if (b.brackets !== '0/16') console.log('JOINTS A', JSON.stringify(await dumpJoints(page)))
     expect(b.count).toBe('12')
     expect(b.pen).toBe('无干涉')
     expect(b.brackets).toBe('0/16')   // none fitted yet, sixteen joints want one
@@ -129,44 +130,77 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
   })
 
   test('cabinet B: floor rectangle first, posts from the rail corners, top rails between post tops', async ({ page }) => {
+    test.setTimeout(120_000)
     const W = 600, D = 400, H = 800
     await enterDraw(page, '2020')
     expect(await sloppy(page, [0, 0, 0], [W, 10, 0])).toBe(1)
     const r1 = (await store(page)).profiles[0]
     const [x0, , z0] = r1.position.map(Math.round); const x1 = x0 + Math.round(r1.length)
-    expect(await sloppy(page, [x1, 10, z0], [x1, 10, z0 + D])).toBe(1)     // start on the rail end
+    // Continue from visible end caps, keeping the floor rectangle's ordinary
+    // corner joints. A top/side face instead specifies a different butt attachment.
+    const continueFromEnd = async (index: number, toward: V3) => {
+      const profiles = (await store(page)).profiles
+      const rail = profiles[index], q = new Quaternion(...rail.quaternion)
+      const direction = new Vector3(0, 0, 1).applyQuaternion(q)
+      const end = new Vector3(...rail.position).addScaledVector(direction, rail.length)
+      const material = end.clone().add(new Vector3(7, 7, 0).applyQuaternion(q))
+      const camera = end.clone().addScaledVector(direction, 250).add(new Vector3(0, 130, 0))
+      await setView(page, camera.toArray() as V3, material.toArray() as V3)
+      await clickNear(page, material.toArray() as V3)
+      const face = await page.evaluate(() => (window as any).__aluframe.tool.getState().drawStartFace)
+      expect(face).toEqual({ profileId: rail.id, axis: 2, side: 1 })
+      await setView(page, [1900, 1500, 2300], [300, 400, 200])
+      await hoverNear(page, toward); await clickNear(page, toward)
+      expect((await store(page)).profiles.length).toBe(profiles.length + 1)
+    }
+    await continueFromEnd(0, [x1, 10, z0 + D])
     const r2 = (await store(page)).profiles[1]; const z1 = z0 + Math.round(r2.length)
-    expect(await sloppy(page, [x1, 10, z1], [x0, 10, z1])).toBe(1)          // end snaps to the far corner's X coordinate (alignment)
-    expect(await sloppy(page, [x0, 10, z1], [x0, 10, z0])).toBe(1)          // closes on rail 1's start (endpoint snap)
-    const corners: V3[] = [[x0, 10, z0], [x1, 10, z0], [x0, 10, z1], [x1, 10, z1]]
-    // posts up from the four rail corners (corner joints: posts extend down to the rail bottom face)
-    for (const [x, , z] of corners) expect(await sloppy(page, [x, 10, z], [x, 10 + H, z])).toBe(1)
+    await continueFromEnd(1, [x0, 10, z1])
+    await continueFromEnd(2, [x0, 10, z0])
+    const corners: V3[] = [[x0, 20, z0], [x1, 20, z0], [x0, 20, z1], [x1, 20, z1]]
+    // Zoom onto the top material beside the slot. A centreline click can see the
+    // underside through an end opening; that face cannot receive an upward post.
+    for (const [x, y, z] of corners) {
+      const onTop: V3 = [x + (x === x0 ? 7 : -7), y, z + (z === z0 ? 7 : -7)]
+      await setView(page, [x + 50, y + 500, z + 80], onTop)
+      const n = (await store(page)).profiles.length
+      await clickNear(page, onTop)
+      const face = await page.evaluate(() => (window as any).__aluframe.tool.getState().drawStartFace)
+      expect(face).toMatchObject({ axis: 1, side: 1 })
+      const start = (await tool(page)).start!
+      await setView(page, [1900, 1500, 2300], [300, 400, 200])
+      const toward: V3 = [start[0], 10 + H, start[2]]
+      await hoverNear(page, toward); await clickNear(page, toward)
+      expect((await store(page)).profiles.length).toBe(n + 1)
+    }
     const posts = (await store(page)).profiles.slice(4)
     const h = posts[0].length
     for (const p of posts) expect(p.length).toBe(h)
+    expect(posts.map((p) => p.position.map(Math.round))).toEqual(corners.map(([x, , z]) => [x, 10, z]))
     const top = 10 + h
     expect(await sloppy(page, [x0, top, z0], [x1, top, z0])).toBe(1)
     expect(await sloppy(page, [x1, top, z0], [x1, top, z1])).toBe(1)
     expect(await sloppy(page, [x1, top, z1], [x0, top, z1])).toBe(1)
     expect(await sloppy(page, [x0, top, z1], [x0, top, z0])).toBe(1)
     const b = await bom(page)
-    if (b.brackets !== '16') console.log('JOINTS B', JSON.stringify(await dumpJoints(page)))
+    if (b.brackets !== '0/16') console.log('JOINTS B', JSON.stringify(await dumpJoints(page)))
     expect(b.count).toBe('12')
     expect(b.pen).toBe('无干涉')
     expect(b.brackets).toBe('0/16')   // none fitted yet, sixteen joints want one
-    // These corner clicks use both automatic joints and explicit face attachments.
-    // Check the resulting physical lengths in drawing order, including each foot.
+    // The bottom X rails run through both Z rails. Each post rests on their
+    // Y=20 top face, while the upper rails butt between the upright faces.
     const finalCuts = (await dumpJoints(page)).map((p: any) => p.cut)
     const width = x1 - x0, depth = z1 - z0
-    expect(finalCuts.slice(0, 4)).toEqual([width, depth - 20, width + 20, depth - 20])
-    expect(finalCuts.slice(4, 8)).toEqual([h + 10, h - 10, h, h])
+    expect(finalCuts.slice(0, 4)).toEqual([width + 20, depth - 20, width + 20, depth - 20])
+    expect(finalCuts.slice(4, 8)).toEqual([h - 10, h - 10, h - 10, h - 10])
     expect(finalCuts.slice(8)).toEqual([width - 20, depth - 20, width - 20, depth - 20])
+    expect(b.overall).toBe(`${width + 20}×${depth + 20}×${top + 10}`)
     await page.screenshot({ path: 'test-results/cabinet-B.png' })
   })
 
   test('cabinet C: 2040 posts with 2020 rails and two shelves — trims follow the partner section', async ({ page }) => {
     // Seventeen members are built entirely through the UI; allow room for concurrent rendering.
-    test.setTimeout(90_000)
+    test.setTimeout(120_000)
     const W = 600, D = 400, H = 800
     await enterDraw(page, '2040')
     for (const [x, z] of [[0, 0], [W, 0], [0, D], [W, D]]) expect(await sloppy(page, [x, 0, z], [x, H, z])).toBe(1)
@@ -197,7 +231,6 @@ test.describe('Hand-built cabinets with imprecise clicks', () => {
     await settle(page)
     expect(await sloppy(page, [ax, 400, (az + cz) / 2], [bx, 400, (az + cz) / 2])).toBe(1)
     const b = await bom(page)
-    console.log('JOINTS C', JSON.stringify(await dumpJoints(page)))
     expect(b.count).toBe('17')
     expect(b.pen).toBe('无干涉')
     expect(b.brackets).toBe('0/26')

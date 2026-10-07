@@ -6,7 +6,7 @@ import { buildProfile, prepareProfile } from '../utils/profileFactory'
 import { suggestNext, type SuggestDoc } from '../utils/suggest'
 import { specDims } from '../utils/specUtils'
 import { vet } from '../utils/suggestGate'
-import { setThroughRule } from '../utils/jointUtils'
+import { computeAllTrims, setThroughRule } from '../utils/jointUtils'
 
 afterEach(() => { vi.restoreAllMocks(); setThroughRule('rails') })
 
@@ -18,6 +18,47 @@ function cappedMember(): SuggestDoc {
 }
 
 describe('hardware audit reuse across suggestion searches', () => {
+  it('uses the rendered audit for the first search and preserves complete fault details', () => {
+    const doc = cappedMember()
+    doc.profiles[0].id = 'rendered-post'
+    doc.connectors[0].id = 'rendered-cap'
+    // A displaced cap supplies the full diagnostic payload used by the sidebar.
+    doc.connectors[0].position[0] = 8
+    const trims = computeAllTrims(doc.profiles)
+    const expected = bracketSeats.auditBrackets(doc.profiles, doc.connectors, trims)
+    const audit = vi.spyOn(bracketSeats, 'auditBrackets')
+    const rendered = hardwareAudit.cachedHardwareSupports(doc, trims)
+    expect(rendered.faultDetails).toEqual(expected)
+    expect([...rendered.faults]).toEqual(expected.map((fault) => fault.id))
+    expect(expected).toHaveLength(1)
+    expect(() => rendered.faultDetails[0].at.set(900, 900, 900)).toThrow(TypeError)
+    const baselineCalls = () => audit.mock.calls.filter((args) => args[3] !== undefined
+      && args[0] === doc.profiles && args[1] === doc.connectors)
+    expect(baselineCalls()).toHaveLength(1)
+    suggestNext(doc, []).next()
+    expect(baselineCalls()).toHaveLength(1)
+    expect(hardwareAudit.cachedHardwareSupports(doc, trims)).toBe(rendered)
+  })
+
+  it('uses explicit rendered cuts and invalidates their in-place changes', () => {
+    const doc = cappedMember()
+    doc.profiles[0].id = 'rendered-cut-post'
+    doc.connectors[0].id = 'rendered-cut-cap'
+    const trims = computeAllTrims(doc.profiles)
+    const before = hardwareAudit.cachedHardwareSupports(doc, trims)
+    expect(before.faultDetails).toEqual([])
+    expect(before.supported.get('rendered-cut-cap')).toEqual(['rendered-cut-post'])
+    expect(Object.isFrozen(before.supported.get('rendered-cut-cap'))).toBe(true)
+    const cut = trims.get('rendered-cut-post')!
+    cut.start.trim += 10
+    cut.cutLength -= 10
+    const after = hardwareAudit.cachedHardwareSupports(doc, trims)
+    expect(after).not.toBe(before)
+    expect(after.faultDetails).toEqual(bracketSeats.auditBrackets(doc.profiles, doc.connectors, trims))
+    expect(after.faults.has('rendered-cut-cap')).toBe(true)
+    expect(before.faultDetails).toEqual([])
+  })
+
   it('reconstructs a real missing rail from current objects after detached originals are edited', () => {
     const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
     const posts = [0, 600].flatMap((x) => [0, 400].map((z) =>

@@ -5,6 +5,7 @@ import { getProfileDir } from '../utils/geometryCore'
 import { computeTrims } from '../utils/jointUtils'
 import { profileBodyEndpoints, profileFace } from '../utils/profileFaces'
 import { pickDrawingStart } from '../utils/pickDrawingStart'
+import { getProfileShape } from '../utils/profileShapes'
 import { pickPoint, toScreen, type MeshHit } from '../utils/pickUtils'
 import type { ProfileData } from '../store/useStore'
 
@@ -23,11 +24,11 @@ function rayAt(c: THREE.Camera, px: THREE.Vector2) {
   ray.setFromCamera(new THREE.Vector2(px.x / size.width * 2 - 1, 1 - px.y / size.height * 2), c)
   return ray.ray
 }
-function pick(profiles: ProfileData[], hit: MeshHit | null, options: { scale?: number; planeY?: number; cursor?: THREE.Vector2; view?: THREE.Camera } = {}) {
+function pick(profiles: ProfileData[], hit: MeshHit | null, options: { scale?: number; planeY?: number; cursor?: THREE.Vector2; view?: THREE.Camera; visibleIds?: ReadonlySet<string> } = {}) {
   const c = options.view ?? camera(options.scale)
   const cursor = options.cursor ?? toScreen(hit?.point ?? V(0, 0, 0), c, size)
   const ray = rayAt(c, cursor)
-  return { result: pickDrawingStart(ray, cursor, c, size, profiles, hit, options.planeY),
+  return { result: pickDrawingStart(ray, cursor, c, size, profiles, hit, options.planeY, undefined, options.visibleIds),
     legacy: pickPoint(ray, cursor, c, size, profiles, hit, options.planeY) }
 }
 function surfaceHit(p: ProfileData, side: -1 | 1, cap: -1 | 1, inset = 4): MeshHit {
@@ -298,6 +299,37 @@ describe('drawing starts above a horizontal T interface', () => {
     expect(result.alignmentFace).toBeUndefined()
     expect(result).toEqual(legacy)
   })
+
+  it('does not infer a T alignment from a hidden neighbouring branch', () => {
+    const a = crossbar(), b = stem(), hit = topHit(a)
+    expect(pick([a, b], hit).result.alignmentFace).toBeDefined()
+    const result = pick([a, b], hit, { visibleIds: new Set([a.id]) }).result
+    expect(result).toEqual(pick([a], hit).result)
+    expect(result.face?.profileId).toBe(a.id)
+    expect(result.alignmentFace).toBeUndefined()
+  })
+
+  it('excludes hidden endpoints and stale hidden mesh hits from fallback picking', () => {
+    const a = crossbar(), b = stem(), hit = surfaceHit(b, 1, -1)
+    for (const staleHit of [null, hit]) {
+      const result = pick([a, b], staleHit, { cursor: toScreen(hit.point, camera(), size), visibleIds: new Set() }).result
+      expect(result.profileId).toBeUndefined()
+      expect(result.face).toBeUndefined()
+      expect(result.alignmentFace).toBeUndefined()
+      expect(result.kind).toBe('ground')
+    }
+  })
+
+  it('keeps cuts from hidden members when resolving the visible branch end edge', () => {
+    const a = crossbar()
+    const b = buildProfile(V(0, 100, 0), V(0, 100, 400), '2020', 'automatic-stem')!
+    const hit = topHit(b, V(0, 110, 14))
+    const result = pick([a, b], hit, { visibleIds: new Set([b.id]) }).result
+    expect(result.face).toEqual({ profileId: b.id, axis: 1, side: 1 })
+    expect(result.alignmentFace).toEqual({ profileId: b.id, axis: 2, side: -1 })
+    expect(result.point.distanceTo(V(0, 100, 10))).toBeLessThan(1e-6)
+    expect(profileBodyEndpoints(b, computeTrims(b, [b])).start.z).toBeCloseTo(0)
+  })
 })
 
 describe('occupied T faces do not replace usable start surfaces', () => {
@@ -307,7 +339,10 @@ describe('occupied T faces do not replace usable start surfaces', () => {
   it.each(['cap', 'side'] as const)('recovers the nearby top when the seam triangle belongs to its occupied %s', (kind) => {
     const a = crossbar(), b = stem()
     const hit = { profileId: kind === 'cap' ? b.id : a.id, point: V(0, 105, 10), normal: V(0, 0, kind === 'cap' ? -1 : 1) }
-    const { result } = pick([a, b], hit)
+    // Approach from the through-member side of the seam.
+    const view = camera()
+    view.position.z = -950; view.lookAt(200, 100, 0); view.updateMatrixWorld()
+    const { result } = pick([a, b], hit, { view })
     expect(result.face).toEqual({ profileId: a.id, axis: 1, side: 1 })
     expect(result.alignmentFace?.profileId).toBe(a.id)
     expect(result.point.distanceTo(V(0, 100, 0))).toBeLessThan(1e-6)
@@ -316,10 +351,52 @@ describe('occupied T faces do not replace usable start surfaces', () => {
 
   it('recovers the bottom when the occupied seam is viewed from below', () => {
     const a = crossbar(), b = stem(), view = camera()
-    view.position.set(850, -900, 950); view.lookAt(200, 100, 0); view.updateMatrixWorld()
+    view.position.set(850, -900, -950); view.lookAt(200, 100, 0); view.updateMatrixWorld()
     const { result } = pick([a, b], { profileId: b.id, point: V(0, 95, 10), normal: V(0, 0, -1) }, { view })
     expect(result.face).toEqual({ profileId: a.id, axis: 1, side: -1 })
     expect(result.alignmentFace?.profileId).toBe(a.id)
+  })
+
+  it.each([1, -1] as const)('recovers the branch surface from its side of a seam at vertical side %s', (side) => {
+    const a = crossbar(), b = stem(), view = camera()
+    view.position.set(850, side * 900, 950); view.lookAt(200, 100, 0); view.updateMatrixWorld()
+    const hit = { profileId: a.id, point: V(0, 100 + side * 5, 10), normal: V(0, 0, 1) }
+    const { result } = pick([a, b], hit, { view })
+    expect(result.face).toEqual({ profileId: b.id, axis: 1, side })
+    expect(result.alignmentFace).toEqual({ profileId: b.id, axis: 2, side: -1 })
+    expect(result.point.distanceTo(V(0, 100, 10))).toBeLessThan(1e-6)
+    expect(result.normal?.distanceTo(hit.normal)).toBeLessThan(1e-6)
+  })
+
+  it('keeps the branch under the pointer when its real top slot exposes the through-member side', () => {
+    const a = { ...rail('through', V(0, 400, 0), V(1000, 400, 0)), spec: '4040' as const }
+    const b = { ...rail('branch', V(500, 400, 0), V(500, 400, 500)), spec: '4040' as const, fixedTrims: { start: 20, end: 0 } }
+    const profiles = [a, b], viewport = { width: 1080, height: 821 }
+    const view = new THREE.PerspectiveCamera(45, viewport.width / viewport.height, 1, 100000)
+    view.position.set(1300, 1400, 1400); view.lookAt(450, 400, 50); view.updateMatrixWorld(); view.updateProjectionMatrix()
+    const meshes = profiles.map((profile) => {
+      const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(getProfileShape(profile.spec), { depth: 1, bevelEnabled: false }))
+      const ends = profileBodyEndpoints(profile)
+      mesh.position.copy(ends.start); mesh.quaternion.fromArray(profile.quaternion)
+      mesh.scale.z = ends.start.distanceTo(ends.end); mesh.updateMatrixWorld()
+      mesh.userData.profileId = profile.id
+      return mesh
+    })
+    try {
+      const cursor = toScreen(V(500, 420, 28), view, viewport), raycaster = new THREE.Raycaster()
+      raycaster.setFromCamera(new THREE.Vector2(cursor.x / viewport.width * 2 - 1, 1 - cursor.y / viewport.height * 2), view)
+      const hit = raycaster.intersectObjects(meshes, false)[0]
+      expect(hit.object.userData.profileId).toBe(a.id)
+      expect(hit.point.distanceTo(V(495.335276968, 414.285714286, 20))).toBeLessThan(1e-6)
+      const normal = hit.face!.normal.clone().transformDirection(hit.object.matrixWorld)
+      const result = pickDrawingStart(raycaster.ray, cursor, view, viewport, profiles,
+        { profileId: a.id, point: hit.point, normal })
+      expect(result.face).toEqual({ profileId: b.id, axis: 1, side: 1 })
+      expect(result.alignmentFace).toEqual({ profileId: b.id, axis: 2, side: -1 })
+      expect(result.point.distanceTo(V(500, 400, 20))).toBeLessThan(1e-6)
+    } finally {
+      for (const mesh of meshes) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose() }
+    }
   })
 
   it('does not recover toward a surface edge-on to the viewing ray', () => {

@@ -199,7 +199,9 @@ export function connectorSeatAt(
     const ends = mountingEnds(profiles).filter((e) => e.square && e.outward.y < -0.999 && e.at.distanceTo(point) <= REACH)
       .sort((a, b) => a.at.distanceToSquared(point) - b.at.distanceToSquared(point))
     for (const end of ends) {
-      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.outward.clone().negate())
+      const into = end.outward.clone().negate(), across = end.body.axes[0]
+      const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+        across, into, new THREE.Vector3().crossVectors(across, into)))
       const seat = { position: end.at.toArray() as [number, number, number], quaternion: q.toArray(),
         series: seriesOf(end.p.spec), profileSpec: end.p.spec, seated: true }
       if (nonCornerMounted({ id: 'candidate', type, ...seat }, profiles)) return seat
@@ -399,17 +401,19 @@ export function auditBrackets(
     const supportGroups: ProfileData[][] = []
     for (const [mountIndex, mount] of worldMounts(c).entries()) {
       const supports: ProfileData[] = []
+      const bolts = c.type === 'inside-corner' && [20, 30, 40].includes(mountSeries[mountIndex])
+        ? mount.bolts.map((point) => point.clone().addScaledVector(mount.normal,
+          innerInset(mountSeries[mountIndex], mountIndex === 0 ? 'y' : 'x'))) : mount.bolts
       const findSupports = ({ p, body, slots }: typeof members[number]) => {
         if (p.spec === '3040' || (c.type !== 'inside-corner' && seriesOf(p.spec) !== (c.series ?? 20))) return
         if (c.type === 'inside-corner' && mountSeries[mountIndex] !== seriesOf(p.spec)) return
         if (c.type === 'inside-corner' && (seriesOf(p.spec) === 20) !== ((c.series ?? 20) === 20)) return
-        const bolts = c.type === 'inside-corner'
-          ? mount.bolts.map((point) => point.clone().addScaledVector(mount.normal, innerInset(seriesOf(p.spec), mountIndex === 0 ? 'y' : 'x'))) : mount.bolts
         if (Math.abs(body.axes[2].dot(mount.axis)) > 0.999
           && bolts.every((bolt) => boltOnFace(bolt, mount.normal, body, slots))) supports.push(p)
       }
-      if (c.type === 'inside-corner') members.forEach(findSupports)
-      else nearby(mount.bolts[0], findSupports)
+      nearby(bolts[0], findSupports)
+      // Keep the original member order when more than one host meets a mount.
+      if (c.type === 'inside-corner' && supports.length > 1) supports.sort((a, b) => profiles.indexOf(a) - profiles.indexOf(b))
       supportGroups.push(supports)
       if (!supports.length) break
     }

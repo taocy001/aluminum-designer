@@ -433,6 +433,24 @@
    ],
    "miterCuts": [],
    "holes": []
+  },
+  {
+   "id": "caster-mount-profile-1",
+   "spec": "3030",
+   "length": 160,
+   "position": [
+    1800,
+    99.7,
+    1200
+   ],
+   "quaternion": [
+    -0.7071067811865476,
+    0,
+    0,
+    0.7071067811865476
+   ],
+   "miterCuts": [],
+   "holes": []
   }
  ],
  "connectors": [
@@ -652,10 +670,10 @@
   {
    "id": "caster-mount",
    "type": "caster-mount",
-   "series": 40,
+   "series": 30,
    "position": [
     1800,
-    150,
+    99.7,
     1200
    ],
    "quaternion": [
@@ -663,7 +681,8 @@
     0,
     0,
     1
-   ]
+   ],
+   "profileSpec": "3030"
   }
  ],
  "panels": [],
@@ -761,15 +780,10 @@
   },
   {
    "connectorId": "caster-mount",
-   "profileIds": []
+   "profileIds": [
+    "caster-mount-profile-1"
+   ]
   }
  ],
- "showcaseSamples": [
-  {
-   "connectorId": "caster-mount",
-   "type": "caster-mount",
-   "reason": "独立厂家样品，未安装。Motedis 963 官方 STEP/图纸为安装孔 Ø11、总高 74.2 mm；产品页另标 Ø6.5、71 mm，转接件及紧固方案尚未核定。",
-   "sourceUrl": "https://www.motedis.com/en/Roller-50-single-bolt-hole-without-brake"
-  }
- ]
+ "showcaseSamples": []
 }

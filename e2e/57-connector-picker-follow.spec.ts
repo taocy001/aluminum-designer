@@ -44,8 +44,8 @@ test('the picker shows model silhouettes and explains each type on hover and key
     expect(await button.textContent()).toBe('')
     const model = button.locator('img')
     const source = (await model.getAttribute('src'))!
-    expect(source).toMatch(/^data:image\/png;base64,/)
-    expect(await model.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([168, 168])
+    expect(source).toMatch(/\/connector-thumbnails\/[\w-]+-20-[\da-f]{12}\.png$/)
+    await expect.poll(() => model.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([168, 168])
     shapes.add(source)
   }
   expect(shapes.size).toBe(count)

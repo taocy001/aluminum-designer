@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useStore, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
@@ -24,7 +24,8 @@ function PoseField({ value, axis, name, step, onCommit }: {
   const [text, setText] = useState(display(value))
   const [focused, setFocused] = useState(false)
   const cancelled = useRef(false)
-  useEffect(() => { if (!focused) setText(display(value)) }, [value, focused])
+  // Finish the accepted-value update before another focus/select/input sequence.
+  useLayoutEffect(() => { if (!focused) setText(display(value)) }, [value, focused])
   return <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500">
     <span className="text-[9px] font-bold" style={{ color: COLORS[axis] }}>{AXES[axis]}</span>
     <input type="number" step={step} value={text} aria-label={`${name} ${AXES[axis]}`}
@@ -36,7 +37,6 @@ function PoseField({ value, axis, name, step, onCommit }: {
         if (!cancelled.current && Number.isFinite(next) && next !== Number(display(value))) onCommit(next)
         cancelled.current = false
         setFocused(false)
-        setText(display(value))
       }}
       onKeyDown={(event) => {
         event.stopPropagation()
@@ -62,7 +62,7 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
   const t = translations[language]
   const entry = connectorEntry(connector.type)
   const series = connector.series ?? 20
-  const reference = connector.type === 'end-cap' ? accessoryCapReference(connector.profileSpec ?? `${series}${series}` as '2020' | '3030' | '4040') : hardwareReference(connector.type, series)
+  const reference = connector.type === 'end-cap' ? accessoryCapReference(connector.profileSpec ?? `${series}${series}` as '2020' | '3030' | '4040') : hardwareReference(connector.type, series, connector.profileSpec)
   const disabled = viewMode || connector.locked
   const euler = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(...connector.quaternion).normalize(), 'YXZ')
   const angles = [euler.x, euler.y, euler.z].map(THREE.MathUtils.radToDeg) as [number, number, number]
@@ -115,7 +115,7 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
     {reference && <div className="space-y-1 text-[10px] text-slate-400" data-testid="connector-reference">
       <a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="text-cyan-400 underline">{reference.sku}</a>
       <p>{language === 'zh' ? reference.descriptionZh : reference.descriptionEn}</p>
-      {!reference.verified && <p className="text-amber-400">{language === 'zh' ? '当前型号未核定适配安装，不提供自动安装。' : 'Installation compatibility is unverified; automatic placement is unavailable.'}</p>}
+      {!reference.verified && <p className="text-amber-400">{language === 'zh' ? '当前型号在此规格上尚无已核验的安装方案，不能安装。' : 'This model has no verified installation for the current specification and cannot be installed.'}</p>}
       {reference.machining?.map((item) => <p key={item}>{item}</p>)}
       {reference.limitations?.map((item) => <p key={item}>{item}</p>)}
       {connector.type === 'end-cap' && <p>{language === 'zh' ? '端盖截面' : 'Cap section'}: {connector.profileSpec ?? `${series}${series}`}</p>}

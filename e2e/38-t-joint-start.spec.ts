@@ -108,6 +108,26 @@ test.describe('Starting an upright above a horizontal T joint', () => {
     expect((await feedback(page)).contacts).toEqual([])
   })
 
+  test('a fully sectioned-away branch cannot supply a start alignment', async ({ page }) => {
+    const before = await store(page)
+    await page.evaluate(() => (window as any).__aluframe.tool.getState().setSection({ axis: 'z', at: 19, flip: false }))
+    await enterDraw(page)
+    await hoverWorld(page, [500, 420, 0])
+    const pending = await feedback(page)
+    expect(pending.support).toMatchObject({ profileId: 'through', axis: 1, side: 1 })
+    expect(pending.alignment).toBeNull()
+    expect(pending.startMarkers).toHaveLength(1)
+    const anchor = pending.startMarkers[0].position
+    await clickWorld(page, [500, 420, 0])
+    expect((await feedback(page)).startMarkers[0].position).toEqual(anchor)
+    await page.keyboard.press('y')
+    await hoverWorld(page, [500, 900, 0])
+    const preview = await feedback(page)
+    expect(preview.alignment).toBeNull()
+    for (let i = 0; i < 3; i++) expect(preview.ghost.position[i]).toBeCloseTo(anchor[i])
+    expect((await store(page)).profiles).toEqual(before.profiles)
+  })
+
   test('the hidden joint endpoint cannot steal a visible top hit outside the edge capture range', async ({ page }) => {
     await enterDraw(page)
     // The pointer is over the branch top at (516, 420, 47.6); its buried cap is excluded.

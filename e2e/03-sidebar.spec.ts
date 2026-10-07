@@ -21,12 +21,30 @@ test.describe('Sidebar properties', () => {
     const len = page.getByTestId('properties').locator('input[type=number]').first()
     await len.fill('650'); await len.press('Enter')
     expect((await store(page)).profiles[0].length).toBe(650)
-    await len.fill('3'); await len.press('Enter')
+    await expect(len).toHaveValue('650')
+    await len.fill('3')
+    await expect(len).toHaveValue('3')
+    await len.press('Enter')
     expect((await store(page)).profiles[0].length).toBe(650)
     await expect(page.getByTestId('toasts')).toContainText('太短')
     await expect(len).toHaveValue('650')
     await page.keyboard.press('Control+z')
     expect((await store(page)).profiles[0].length).toBe(400)
+  })
+
+  test('successive length commits replace the previous draft and each undo once', async ({ page }) => {
+    const len = page.getByRole('spinbutton', { name: '中心线长度 (mm)', exact: true })
+    for (const value of [650, 725, 480]) {
+      await len.fill(String(value))
+      await len.press('Enter')
+      expect((await store(page)).profiles[0].length).toBe(value)
+    }
+    await expect(len).toHaveValue('480')
+    for (const value of [725, 650, 400]) {
+      await page.keyboard.press('Control+z')
+      expect((await store(page)).profiles[0].length).toBe(value)
+      await expect(len).toHaveValue(String(value))
+    }
   })
 
   test('typed coordinates are applied exactly, including below the floor', async ({ page }) => {

@@ -8,13 +8,16 @@ import { equipmentClearance } from './equipmentGeometry'
 import { fittingSolids } from './fittingGeometry'
 import { connectorHitsBody, connectorsCollide } from './connectorCollision'
 import { hardwareReference } from './connectorHardware'
-import { nonCornerMounted } from './connectorMounting'
+import { nonCornerMounted, nonCornerSupports } from './connectorMounting'
 
 export interface ConnectorPlacementOptions {
   excludeConnectorId?: string
   equipment?: EquipmentData[]
   panels?: PanelData[]
   fittings?: FittingData[]
+  /** Limit selectable seats by every actual support, retaining the full frame for cuts and obstruction checks. */
+  seatFilter?: (seat: Pick<BracketSeat, 'position' | 'quaternion' | 'series' | 'profileSpec' | 'mountSeries'>,
+    supportIds: readonly string[]) => boolean
 }
 export type ConnectorPlacementReason = 'occupied' | 'collision' | 'equipment' | 'no-joint' | 'unverified'
 export interface ConnectorPlacementStatus {
@@ -80,7 +83,7 @@ export function createConnectorPlacementValidator(profiles: ProfileData[], optio
   return (part: ConnectorData, connectors: ConnectorData[]): ConnectorPlacementStatus => {
     const others = connectors.filter((c) => c.id !== options.excludeConnectorId)
     if (others.some((c) => sameConnectorInstallation(part, c))) return { occupied: true, allowed: false, reason: 'occupied' }
-    if (!hardwareReference(part.type, part.series ?? 20)?.verified) return { occupied: false, allowed: false, reason: 'unverified' }
+    if (!hardwareReference(part.type, part.series ?? 20, part.profileSpec)?.verified) return { occupied: false, allowed: false, reason: 'unverified' }
     const corner = connectorEntry(part.type)?.fit === 'corner' && part.type !== 'corner-3way'
     if (!corner && !nonCornerMounted(part, profiles, trims)) return { occupied: false, allowed: false, reason: 'no-joint' }
     if (corner && auditBrackets(profiles, [part], trims).length) return { occupied: false, allowed: false, reason: 'no-joint' }
@@ -100,8 +103,14 @@ export function connectorPlacementCandidates(
 ): ConnectorPlacementCandidate[] {
   const seen = new Set<string>()
   const validate = createConnectorPlacementValidator(profiles, options)
+  const cornerPair = connectorEntry(type)?.fit === 'corner' && type !== 'corner-3way'
+  const trims = options.seatFilter && !cornerPair ? computeAllTrims(profiles) : undefined
   return connectorSeatsAt(type, point, profiles, normal, searchPoint).flatMap((candidate) => {
     const part = { id: 'candidate', type, ...candidate }, key = connectorInstallationKey(part)
+    if (options.seatFilter) {
+      const supportIds = cornerPair ? candidate.legs : nonCornerSupports(part, profiles, trims)
+      if (!supportIds?.length || !options.seatFilter(candidate, supportIds)) return []
+    }
     if (seen.has(key)) return []
     seen.add(key)
     return [{ seat: { ...candidate, seated: true as const }, legs: candidate.legs, key,
@@ -121,8 +130,16 @@ export function resolveConnectorPlacement(
   const index = typeof choice === 'string' ? Math.max(0, keys.indexOf(choice))
     : candidates.length ? ((choice % candidates.length) + candidates.length) % candidates.length : 0
   const candidate = candidates[index]
-  const seat = candidate?.seat ?? connectorSeatAt(type, point, profiles, normal)
-  const status = candidate ?? (!hardwareReference(type, seat.series)?.verified
+  let filteredFallback = corner && !!options.seatFilter
+  let seat: ReturnType<typeof connectorSeatAt> = candidate?.seat ?? connectorSeatAt(type, point, filteredFallback ? [] : profiles, normal)
+  if (!candidate && options.seatFilter && !corner) {
+    const supportIds = nonCornerSupports({ id: 'candidate', type, ...seat }, profiles)
+    filteredFallback = !supportIds?.length || !options.seatFilter(seat, supportIds)
+    if (filteredFallback) seat = connectorSeatAt(type, point, [], normal)
+  }
+  const status = candidate ?? (filteredFallback
+    ? { occupied: false, allowed: false, reason: 'no-joint' as const }
+    : !hardwareReference(type, seat.series, seat.profileSpec)?.verified
     ? { occupied: false, allowed: false, reason: 'unverified' as const } : corner ? { occupied: false, allowed: false, reason: 'no-joint' as const }
     : validateConnectorPlacement({ id: 'candidate', type, ...seat }, profiles, connectors, options))
   return { seat, index, keys, key: keys[index] ?? null, count: candidates.length, legs: candidate?.legs,

@@ -33,6 +33,8 @@ const SECTIONS: Record<string, SectionProps> = {
   '3030': { area: 258, strong: 30000, weak: 30000 },
   '3040': { area: 340, strong: 65000, weak: 40000 },
   '4040': { area: 384, strong: 85000, weak: 85000 },
+  // Integrated from the Motedis 40×40 B6 STEP planar section.
+  '4040-B6': { area: 461.85, strong: 80986.67, weak: 80986.67 },
 }
 
 export function sectionProps(spec: string): SectionProps {

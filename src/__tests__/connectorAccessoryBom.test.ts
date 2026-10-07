@@ -3,20 +3,35 @@ import type { ConnectorData } from '../store/useStore'
 import { buildBom } from '../utils/bom'
 import { accessoryHardwareReference, accessoryHingeDimensions, accessoryPlateDimensions } from '../utils/connectorAccessoryReferences'
 import { profileSlotDimensions } from '../utils/specUtils'
+import { buildProfile } from '../utils/profileFactory'
+import { computeAllTrims } from '../utils/jointUtils'
+import { Vector3 } from 'three'
 
 const C = (type: string, series: 20 | 30 | 40 = 20): ConnectorData => ({ id: `${type}-${series}`, type, series,
   position: [0, 0, 0], quaternion: [0, 0, 0, 1] })
 
 describe('physical accessory bill of materials', () => {
-  it('does not derive slot nuts or loose bolts from a stud foot, cap, or unverified caster', () => {
+  it('lists the supplied foot locknut and the specified caster fixing screw without inventing slot nuts', () => {
     const rows = buildBom([], [C('foot', 40), C('end-cap'), C('caster-mount', 40)], new Map(), 'en').fasteners
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ label: 'M8 nut (supplied locknut)', qty: 1 })
+    expect(rows).toHaveLength(2)
+    expect(rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'M8 nut (supplied locknut)', qty: 1 }),
+      expect.objectContaining({ label: 'M8×25 DIN 7991 screw (caster core mounting)', qty: 1 }),
+    ]))
   })
 
   it('keeps square and rectangular caps separate, including legacy square defaults', () => {
     const rows = buildBom([], [C('end-cap'), { ...C('end-cap'), id: 'rectangular', profileSpec: '2040' }], new Map(), 'en').connectors
     expect(rows.map((r) => [r.spec, r.qty])).toEqual([['2020', 1], ['2040', 1]])
+  })
+
+  it('counts four purchased 2020 B6 caps per 4040 B6 end in placed and suggested hardware', () => {
+    const p = buildProfile(new Vector3(0, 0, -100), new Vector3(), '4040-B6', 'b6')!
+    const c = { ...C('end-cap'), profileSpec: '4040-B6' as const }
+    const bom = buildBom([p], [c], computeAllTrims([p]), 'en')
+    expect(bom.connectors).toEqual([expect.objectContaining({ spec: 'Motedis PTS6B20x20 (4040 B6)', qty: 4 })])
+    expect(bom.suggested).toEqual([expect.objectContaining({ key: 'suggest-cap-4040-B6', spec: 'Motedis PTS6B20x20 (4040 B6)', qty: 4 })])
+    expect(bom.fasteners).toEqual([])
   })
 
   it('uses M6 countersunk screws on a 40-series hinge and leaves the bearing screw length unspecified', () => {

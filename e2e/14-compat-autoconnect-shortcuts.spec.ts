@@ -22,14 +22,14 @@ async function postAndRail(page: Page, post: string, rail: string) {
 }
 
 test.describe('Joint compatibility', () => {
-  test('a 2020 on a 4040 is called out: they share no edge', async ({ page }) => {
+  test('B6 2020 on I8 4040 is reported as unsupported', async ({ page }) => {
     await postAndRail(page, '4040', '2020')
-    await expect(page.getByTestId('bom-mismatches')).toContainText('贴不平')
+    await expect(page.getByTestId('bom-mismatches')).toContainText('缺少可用连接件')
   })
 
-  test('a 2040 on a 4040 bolts up: they share the 40 side', async ({ page }) => {
-    await postAndRail(page, '4040', '2040')
-    await expect(page.getByTestId('bom-mismatches')).not.toContainText('贴不平')
+  test('B6 2040 fits the two slots of a 4040-B6 post', async ({ page }) => {
+    await postAndRail(page, '4040-B6', '2040')
+    await expect(page.getByTestId('bom-mismatches')).not.toContainText('缺少可用连接件')
   })
 
   test('a 2020 on a 2040 bolts up: they share the 20 side', async ({ page }) => {
@@ -39,20 +39,33 @@ test.describe('Joint compatibility', () => {
 
   test('a 2020 on a 3030 is called out', async ({ page }) => {
     await postAndRail(page, '3030', '2020')
-    await expect(page.getByTestId('bom-mismatches')).toContainText('贴不平')
+    await expect(page.getByTestId('bom-mismatches')).toContainText('缺少可用连接件')
   })
 
-  test('crossing series is a note, not a warning: it gets its own quiet line', async ({ page }) => {
-    // 2040 (20 series, 6 mm slot) onto 4040 (40 series, 8 mm slot): the faces line up but
-    // the fasteners do not, so it needs a bracket for each side. That is an everyday
-    // pairing, so it must not put a warning marker on the frame.
+  test('matching outside faces do not hide unsupported B6/I8 slot systems', async ({ page }) => {
     await postAndRail(page, '4040', '2040')
+    await expect(page.getByTestId('bom-mismatches')).toContainText('缺少可用连接件')
+    await expect(page.getByTestId('bom-cross-series')).toBeVisible()
+    await page.getByTestId('connector-inside-corner').click()
+    await page.getByTestId('auto-connect').click()
+    expect((await store(page)).connectors).toEqual([])
+  })
+
+  test('3030 B8 and 4040 I8 use the verified common inner bracket', async ({ page }) => {
+    await postAndRail(page, '4040', '3030')
     await expect(page.getByTestId('bom-mismatches')).toContainText('全部可接')
-    await expect(page.getByTestId('bom-cross-series')).toContainText('两侧各需对应角码')
+    await expect(page.getByTestId('bom-cross-series')).toHaveCount(0)
+    await page.getByTestId('connector-inside-corner').click()
+    await page.getByTestId('auto-connect').click()
+    const connectors = (await store(page)).connectors
+    expect(connectors.length).toBeGreaterThan(0)
+    expect(connectors.every((c: any) => c.type === 'inside-corner' && c.mountSeries?.includes(30) && c.mountSeries?.includes(40))).toBe(true)
+    expect(await page.evaluate(() => (window as any).__aluframe.bracketFaults())).toEqual([])
+    expect(await page.evaluate(() => (window as any).__aluframe.conflicts().conflicts)).toEqual([])
   })
 
   test('a buildable frame has no warning markers in the scene', async ({ page }) => {
-    await postAndRail(page, '4040', '2040')
+    await postAndRail(page, '4040-B6', '2040')
     const markers = await page.evaluate(() => (window as any).__aluframe.spriteCount())
     await postAndRail(page, '4040', '2020')
     const withBad = await page.evaluate(() => (window as any).__aluframe.spriteCount())

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { openApp, enterDraw, drawMember, drawExact, clickWorld, hoverWorld, store, tool, setView, settle, w2c } from './helpers'
 
 const CONNECTORS = [
@@ -6,66 +7,102 @@ const CONNECTORS = [
   ['端盖', 'end-cap'], ['滑块螺母', 't-nut'], ['合页', 'hinge'], ['轴承座', 'pivot'],
   ['脚轮', 'caster-mount'], ['调节脚', 'foot'],
 ] as const
-const CORNER_CONNECTORS = ['L型角码', '内角码', '加强筋', 'T型角码', '三维角码']
+const CORNER_CONNECTORS = ['L型角码', '内角码', '加强角码', 'T型角码', '三维角码']
+const DEMO = JSON.parse(readFileSync('examples/connector-demo.json', 'utf8'))
 
 test.describe('Connectors', () => {
   test.beforeEach(async ({ page }) => { await openApp(page) })
 
-  test('end and surface connectors can be placed, selected and deleted', async ({ page }) => {
-    await enterDraw(page, '2020')
-    await drawMember(page, [0, 0, 0], [600, 10, 0])
-    const profiles = (await store(page)).profiles
-    for (const [i, [name, type]] of CONNECTORS.entries()) {
-      await test.step(name, async () => {
-        await setView(page, [1300, 1000, 1600], [300, 300, 200])
-        await page.getByRole('button', { name, exact: true }).click()
-        expect((await tool(page)).held).toBe('connector')
-        const target: [number, number, number] = i % 2 === 0 ? [603, 10, 2] : [-2, 10, 3]
-        await clickWorld(page, target)
-        const placed = await store(page)
-        expect(placed.connectors).toHaveLength(1)
-        const connector = placed.connectors[0]
-        expect(connector.type).toBe(type)
-        expect(connector.series).toBe(20)
-        // The physical top of an under-post part touches the selected end face.
-        const outside = type === 'foot' ? 28 : type === 'caster-mount' ? 2 : 0
-        const want = i % 2 === 0 ? [600 + outside, 10, 0] : [-outside, 10, 0]
-        for (const axis of [0, 1, 2]) expect(connector.position[axis]).toBeCloseTo(want[axis], 5)
-        await expect(page.getByTestId('bom-table')).toContainText(name)
-
-        await page.keyboard.press('Escape')
-        expect((await tool(page)).held).toBe(null)
-        const at = connector.position as [number, number, number]
-        await setView(page, [at[0] + 120, at[1] + 100, at[2] + 140], at)
-        await page.getByTestId('viewport').focus()
-        await hoverWorld(page, at)
-        const hovered = () => page.evaluate(() => (window as any).__aluframe.tool.getState().hoverPartId)
-        const count = await page.evaluate(() => (window as any).__aluframe.tool.getState().hoverCandidates.count as number)
-        expect(count).toBeGreaterThan(0)
-        for (let n = 0; n < count && await hovered() !== connector.id; n++) {
-          await page.keyboard.press('Tab')
-          await settle(page)
-        }
-        expect(await hovered()).toBe(connector.id)
-        const pointer = await w2c(page, at)
-        await page.mouse.click(pointer.x, pointer.y)
-        await settle(page)
-        expect((await store(page)).selectedIds).toEqual([connector.id])
-        await page.keyboard.press('Delete')
-        await settle(page)
-        expect((await store(page)).connectors).toEqual([])
-        expect((await store(page)).profiles).toEqual(profiles)
-        await page.keyboard.press('Control+z')
-        await settle(page)
-        expect((await store(page)).connectors).toEqual([connector])
-        expect((await store(page)).profiles).toEqual(profiles)
-        // Leave the same empty fixture for the next connector type.
-        await page.keyboard.press('Control+Shift+z')
-        await settle(page)
-        expect((await store(page)).connectors).toEqual([])
+  for (const [name, type] of CONNECTORS) {
+    test(`${type} can be installed on its matching members, selected and deleted`, async ({ page }) => {
+      const reference = DEMO.connectors.find((part: any) => part.type === type)
+      const at: [number, number, number] = [300, 250, 0]
+      const profiles = DEMO.profiles.filter((p: any) => p.id.startsWith(`${type}-profile-`)).map((p: any) => ({
+        ...p, position: p.position.map((v: number, axis: number) => v - reference.position[axis] + at[axis]),
+      }))
+      expect(profiles.length).toBeGreaterThan(0)
+      await page.evaluate(({ profiles, throughRule }) => {
+        ;(window as any).__aluframe.store.getState().loadDocument({
+          profiles, connectors: [], panels: [], fittings: [], equipment: [], throughRule,
+        })
+      }, { profiles, throughRule: DEMO.throughRule })
+      // View each actual mounting face; under-post hardware is installed at the bottom end.
+      const view: [number, number, number] = type === 'foot' || type === 'caster-mount' ? [220, -260, 260]
+        : type === 'joining-plate' || type === 'hinge' ? [380, 60, 80]
+        : type === 'end-cap' || type === 'cross-bracket' ? [100, 80, 380] : [100, 380, 100]
+      await setView(page, view.map((v, i) => v + at[i]) as [number, number, number], at)
+      await page.getByTestId(`connector-${type}`).click()
+      expect((await tool(page)).held).toBe('connector')
+      const pointerTarget: [number, number, number] = type === 'hinge' ? [at[0], at[1] - 10.5, at[2]] : at
+      await hoverWorld(page, pointerTarget)
+      await expect.poll(() => page.evaluate(() => {
+        let allowed = false
+        ;(window as any).__aluframe.sceneRoot.traverse((object: any) => {
+          if (object.userData.connectorPreview) allowed = object.userData.allowed === true
+        })
+        return allowed
+      })).toBe(true)
+      if (type === 'end-cap' || type === 'foot' || type === 'caster-mount') {
+        await expect(page.getByTestId('connector-seat-hud')).toContainText('点击画布，安装到预览位置')
+        await expect(page.getByTestId('connector-seat-hud')).not.toContainText('没有匹配的接头')
+      }
+      const ghost = await page.evaluate(() => {
+        let pose: { position: number[]; quaternion: number[] } | null = null
+        ;(window as any).__aluframe.sceneRoot.traverse((object: any) => {
+          if (!object.userData.connectorPreview) return
+          const part = object.children.find((child: any) => 'connectorId' in child.userData)
+          if (part) pose = { position: part.position.toArray(), quaternion: part.quaternion.toArray() }
+        })
+        return pose
       })
-    }
-  })
+      expect(ghost).not.toBeNull()
+      await clickWorld(page, pointerTarget)
+      const placed = await store(page)
+      expect(placed.connectors).toHaveLength(1)
+      const connector = placed.connectors[0]
+      expect(connector.type).toBe(type)
+      expect(connector.series).toBe(reference.series)
+      if (reference.profileSpec) expect(connector.profileSpec).toBe(reference.profileSpec)
+      expect(Math.hypot(...connector.position.map((v: number, i: number) => v - at[i]))).toBeLessThan(0.6)
+      for (const axis of [0, 1, 2]) expect(connector.position[axis]).toBeCloseTo(ghost!.position[axis], 5)
+      expect(Math.abs(connector.quaternion.reduce((sum: number, v: number, i: number) => sum + v * ghost!.quaternion[i], 0))).toBeCloseTo(1, 5)
+      expect(await page.evaluate(() => (window as any).__aluframe.conflicts().conflicts)).toEqual([])
+      expect(await page.evaluate(() => (window as any).__aluframe.bracketFaults())).toEqual([])
+      await expect(page.getByTestId('bom-table')).toContainText(name)
+
+      await page.keyboard.press('Escape')
+      expect((await tool(page)).held).toBe(null)
+      const center = await page.evaluate(id => (window as any).__aluframe.connectorOBB(id), connector.id)
+      await setView(page, view.map((v, i) => v * 0.6 + center[i]) as [number, number, number], center)
+      await page.getByTestId('viewport').focus()
+      // Use the rendered body, rather than a mounting origin that may be inside a slot.
+      await hoverWorld(page, center)
+      const hovered = () => page.evaluate(() => (window as any).__aluframe.tool.getState().hoverPartId)
+      const count = await page.evaluate(() => (window as any).__aluframe.tool.getState().hoverCandidates.count as number)
+      expect(count).toBeGreaterThan(0)
+      for (let n = 0; n < count && await hovered() !== connector.id; n++) {
+        await page.keyboard.press('Tab')
+        await settle(page)
+      }
+      expect(await hovered()).toBe(connector.id)
+      const pointer = await w2c(page, center)
+      await page.mouse.click(pointer.x, pointer.y)
+      await settle(page)
+      expect((await store(page)).selectedIds).toEqual([connector.id])
+      await page.keyboard.press('Delete')
+      await settle(page)
+      expect((await store(page)).connectors).toEqual([])
+      expect((await store(page)).profiles).toEqual(profiles)
+      await page.keyboard.press('Control+z')
+      await settle(page)
+      expect((await store(page)).connectors).toEqual([connector])
+      expect((await store(page)).profiles).toEqual(profiles)
+      await page.keyboard.press('Control+Shift+z')
+      await settle(page)
+      expect((await store(page)).connectors).toEqual([])
+      expect((await store(page)).profiles).toEqual(profiles)
+    })
+  }
 
   test('corner connectors require a joint and leave no edit at a free end', async ({ page }) => {
     await enterDraw(page, '2020')
@@ -88,6 +125,7 @@ test.describe('Connectors', () => {
 
 test.describe('Cabinet build', () => {
   test('a 600×400×800 cabinet frame with a shelf is buildable end-to-end', async ({ page }) => {
+    test.setTimeout(120_000)
     await openApp(page)
     await page.getByTestId('through-posts').click()   // this build is described posts-through
     await setView(page, [1900, 1500, 2300], [300, 400, 200])
@@ -190,7 +228,6 @@ test.describe('Connectors land the right way round', () => {
     await page.getByRole('button', { name: 'L型角码', exact: true }).click()
     await clickWorld(page, [0, 10, 0])
     expect((await store(page)).connectors).toHaveLength(1)
-    await page.getByTestId('connector-joint-lock').click()
     await clickWorld(page, [600, 10, 0])
     const connectors = (await store(page)).connectors
     expect(connectors).toHaveLength(2)
@@ -200,10 +237,10 @@ test.describe('Connectors land the right way round', () => {
     const table = page.getByTestId('bom-table')
     await expect(table).toContainText('L型角码')
     await expect(page.getByTestId('bom-fasteners')).toBeVisible()
-    await expect(table).toContainText('螺栓 M5×10')
-    await expect(table).toContainText('T型螺母 M5')
+    await expect(table).toContainText('M4×8 DIN 7984 螺钉')
+    await expect(table).toContainText('M4 T 槽螺母')
     // two L-brackets at two bolts each
-    await expect(table.locator('div', { hasText: '螺栓 M5×10' }).last()).toContainText('×4')
+    await expect(table.locator('div', { hasText: 'M4×8 DIN 7984 螺钉' }).last()).toContainText('×4')
   })
 
   test('suggestions drop as the real parts are placed', async ({ page }) => {

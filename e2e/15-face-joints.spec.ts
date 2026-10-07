@@ -22,8 +22,8 @@ test.describe('A new member lines its faces up with what it lands on', () => {
     await setView(page, [1800, 1300, 2200], [400, 400, 200])
   })
 
-  test('a 2040 rail landing on a 4040 post turns rather than steps aside', async ({ page }) => {
-    await enterDraw(page, '4040')
+  test('a 2040 B6 rail landing on a 4040-B6 post turns rather than steps aside', async ({ page }) => {
+    await enterDraw(page, '4040-B6')
     await drawMember(page, [0, 0, 0], [0, 800, 0])
     await enterDraw(page, '2040')
     await drawMember(page, [0, 0, 0], [800, 0, 0])
@@ -60,9 +60,9 @@ test.describe('A new member lines its faces up with what it lands on', () => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [800, 0, 0])
     await emptyHand(page)
-    // 20 against 40 leaves a 10 mm step whichever way it is pushed
+    // These B6 and I8 slots do not share a verified connecting bracket.
     expect(await unflush(page)).toBeGreaterThan(0)
-    await expect(page.getByTestId('bom-mismatches')).toContainText('贴不平')
+    await expect(page.getByTestId('bom-mismatches')).toContainText('缺少可用连接件')
   })
 
   test('the first member sets the plane; nothing already placed is moved', async ({ page }) => {
@@ -175,7 +175,7 @@ test.describe('Brackets sit on the faces they would be bolted to', () => {
     expect(buried).toBe(0)
   })
 
-  test('the brackets are still one per butting end', async ({ page }) => {
+  test('automatic placement fills the required connector seats', async ({ page }) => {
     await page.getByTestId('connector-bracket').click()
     await page.getByTestId('auto-connect').click()
     await page.waitForTimeout(300)

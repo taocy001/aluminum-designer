@@ -4,7 +4,7 @@ import ConnectorEditor from './ConnectorEditor'
 import ConnectorThumbnail from './ConnectorThumbnail'
 import { hardwareReference } from '../utils/connectorHardware'
 import OpeningBindingEditor, { SupportBindingEditor } from './OpeningBindingEditor'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode, Link2, Wrench } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, HINGE_ANGLES, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
@@ -39,7 +39,7 @@ import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { repairJoints } from '../utils/repairJoints'
 import { assemblySteps } from '../utils/assembly'
 import { deflect, saggingMembers, SLENDER } from '../utils/deflection'
-import { auditBrackets } from '../utils/bracketSeat'
+import { cachedHardwareSupports } from '../utils/connectorAuditCache'
 import { runnerFaults } from '../utils/runnerMount'
 import { shelfEdges } from '../utils/shelfSupport'
 import { arraySelected, directionLabel, duplicateSelected, flipProfile, liveParts, mirrorSelected, orientationDegrees, rotateSelected, selectionLocked as areSelectedLocked, setProfileEnd, setProfileLength, setProfilePosition, setProfileSpec, type RotAxis } from '../utils/editOps'
@@ -114,15 +114,14 @@ const NumField: React.FC<{
     if (!onLive) return
     if (onLive(v, !started.current)) started.current = true
   }
-  useEffect(() => { if (!focused) setText(String(Math.round(value * 100) / 100)) }, [value, focused])
+  // Finish the accepted-value update before another focus/select/input sequence.
+  useLayoutEffect(() => { if (!focused) setText(String(Math.round(value * 100) / 100)) }, [value, focused])
   const commit = () => {
     const v = parseFloat(text)
     if (isFinite(v)) {
       if (onLive) live(v)
       else if (Math.abs(v - value) > 1e-6) onCommit(v)
     }
-    // Invalid drafts never become geometry; reflect the last accepted value on blur.
-    setText(String(Math.round(value * 100) / 100))
   }
   return (
     <label className={`flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500 ${className}`}>
@@ -281,11 +280,11 @@ const Sidebar: React.FC = () => {
   const selectedDrawerLayout = selectedFitting?.kind === 'drawer' ? drawerLayout(selectedFitting) : null
   const pickedPanelIds = () => pickedPanels.map((b) => b.id)
   const pickedFittingIds = () => pickedFittings.map((f) => f.id)
-  const bracketFaults = useMemo(() => auditBrackets(profiles, connectors), [profiles, connectors, throughRule])
+  const bracketFaults = useMemo(() => cachedHardwareSupports({ profiles, connectors }, trims).faultDetails,
+    [profiles, connectors, trims])
   const runnerProblems = useMemo(() => runnerFaults(profiles, trims, fittings, panels), [profiles, trims, fittings, panels])
   const supports = useMemo(() => shelfEdges(panels, profiles, trims), [panels, profiles, trims])
   const unconfirmedEdges = supports.filter((edge) => !edge.carried)
-  const edgeMismatches = mismatches.filter((m) => m.kind === 'face')
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
   // Limit the section slider to the frame extent.
@@ -316,7 +315,7 @@ const Sidebar: React.FC = () => {
   const bom = useMemo(() => buildBom(profiles, connectors, trims, language, panels, fittings), [profiles, connectors, trims, language, panels, fittings])
   const stockMm = Math.max(500, parseFloat(stockText) || 6000)
   const nesting = useMemo(() => nestProfiles(bom.profiles, stockMm), [bom.profiles, stockMm])
-  const reviewCount = equipmentConflicts.length + conflicts.length + edgeMismatches.length + bracketFaults.length + runnerProblems.length
+  const reviewCount = equipmentConflicts.length + conflicts.length + mismatches.length + bracketFaults.length + runnerProblems.length
     + clashes.length + sagging.length + nesting.unsatisfied.reduce((sum, item) => sum + item.qty, 0)
   const notifyExport = () => { if (reviewCount) showToast(t.toastExportReview(reviewCount), 'info') }
   const totalCut = bom.totalCutLength
@@ -509,14 +508,14 @@ const Sidebar: React.FC = () => {
             </div>
 
             <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.profiles}</label>
-            <div className="grid grid-cols-5 gap-1">
+            <div className="grid grid-cols-3 gap-1">
               {ALL_SPECS.map((spec) => (
                 <button key={spec} onClick={() => handleSpecClick(spec)} data-testid={`spec-${spec}`} data-keep-draw
-                  title={t.hintSpec(spec)}
+                  title={t.hintSpec(spec === '4040' ? '4040 I8' : spec === '4040-B6' ? '4040 B6' : spec)}
                   className={`px-1 py-2 rounded-lg text-[11px] font-bold transition-all ${
                     held === 'profile' && activeSpec === spec
                       ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
-                  {spec}
+                  {spec === '4040' ? '4040 I8' : spec === '4040-B6' ? '4040 B6' : spec}
                 </button>
               ))}
             </div>
@@ -786,7 +785,7 @@ const Sidebar: React.FC = () => {
                     <select value={selectedProfile.spec} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onChange={(e) => setProfileSpec(selectedProfile.id, e.target.value as ProfileSpec)}
                       aria-label={t.spec}
                       className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-xs font-mono text-blue-400 outline-none disabled:opacity-40 disabled:cursor-not-allowed">
-                      {ALL_SPECS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      {ALL_SPECS.map((s) => <option key={s} value={s}>{s === '4040' ? '4040 I8' : s === '4040-B6' ? '4040 B6' : s}</option>)}
                     </select>
                   </div>
                   <div className="flex justify-between items-center gap-1">
@@ -1182,14 +1181,14 @@ const Sidebar: React.FC = () => {
         )}
         {profiles.length > 1 && (
           <button
-            onClick={() => { if (edgeMismatches.length) useStore.getState().selectItems(edgeMismatches.flatMap((m) => [m.a, m.b])) }}
+            onClick={() => { if (mismatches.length) useStore.getState().selectItems(mismatches.flatMap((m) => [m.a, m.b])) }}
             title={t.hintMismatches}
-            disabled={edgeMismatches.length === 0}
-            className={`w-full text-[10px] flex justify-between items-center ${edgeMismatches.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
+            disabled={mismatches.length === 0}
+            className={`w-full text-[10px] flex justify-between items-center ${mismatches.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
           >
-            <span className="flex items-center gap-1">{edgeMismatches.length > 0 && <AlertTriangle size={11} />}{t.specMismatch}</span>
+            <span className="flex items-center gap-1">{mismatches.length > 0 && <AlertTriangle size={11} />}{t.specMismatch}</span>
             <span className="font-mono" data-testid="bom-mismatches">
-              {edgeMismatches.length ? t.specMismatchCount(edgeMismatches.length) : t.specMismatchOk}
+              {mismatches.length ? t.specMismatchCount(mismatches.length) : t.specMismatchOk}
             </span>
           </button>
         )}

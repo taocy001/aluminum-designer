@@ -224,7 +224,7 @@ export function emptyCorners(profiles: ProfileData[], trims: Map<string, Profile
   return out
 }
 
-function grew(before: Set<string>, after: Iterable<string>): string | null {
+function grew(before: ReadonlySet<string>, after: Iterable<string>): string | null {
   for (const k of after) if (!before.has(k)) return k
   return null
 }

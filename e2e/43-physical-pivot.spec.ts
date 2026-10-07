@@ -32,7 +32,8 @@ async function workbench(page: Page) {
   await page.getByTestId('template-place').click()
   await page.keyboard.press('Escape')
   await setView(page, [2000, 1700, 2600], [750, 450, 350])
-  const rail = (await store(page)).profiles.find((p) => p.position[0] === 0 && p.position[1] === 900 && p.position[2] === 710)
+  // The 4040 rails share the posts' centreline; the displayed end extends 20 mm.
+  const rail = (await store(page)).profiles.find((p) => p.position[0] === 0 && p.position[1] === 900 && p.position[2] === 700)
   expect(rail).toBeTruthy()
   await clickWorld(page, [400, 900, 710])
   expect((await store(page)).selectedIds).toEqual([rail.id])
@@ -54,7 +55,6 @@ for (const mode of ['start', 'end'] as const) {
       const at = await anchor(page)
       return at ? distance(at, before[rail.id][mode]) : Infinity
     }).toBeLessThan(0.01)
-    await page.screenshot({ path: `/tmp/aluframe-ux-edit-physical-pivot-${mode}-before.png` })
     await page.keyboard.press('r')
     await page.keyboard.press('y')
     await settle(page)
@@ -68,7 +68,6 @@ for (const mode of ['start', 'end'] as const) {
       expect(distance(after[id].end, solid.end)).toBeLessThan(0.01)
     }
     expect((await store(page)).past).toBe(beforeStore.past + 1)
-    await page.screenshot({ path: `/tmp/aluframe-ux-edit-physical-pivot-${mode}-after.png` })
     await page.keyboard.press('Control+z')
     await settle(page)
     expect((await store(page)).profiles).toEqual(beforeStore.profiles)
@@ -106,7 +105,6 @@ test('a locked selected reference does not move the gizmo away from the actual r
   expect(distance(after[lockedId].start, before[lockedId].start)).toBeLessThan(0.01)
   expect(distance(after[lockedId].end, before[lockedId].end)).toBeLessThan(0.01)
   expect((await store(page)).past).toBe(beforeStore.past + 1)
-  await page.screenshot({ path: '/tmp/aluframe-ux-edit-physical-pivot-locked-reference.png' })
 })
 
 test('changing the joint rule refreshes both physical endpoint pivots while selection stays active', async ({ page }) => {

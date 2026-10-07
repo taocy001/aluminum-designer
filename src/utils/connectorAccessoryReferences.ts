@@ -29,7 +29,7 @@ export function accessoryHingeDimensions(series: ConnectorSeries) {
 
 export function accessoryNutDimensions(series: ConnectorSeries) {
   return series === 20 ? { width: 11.5, length: 5.7, neckWidth: 5.7, neckHeight: 1, thickness: 4.2, thread: 5, shoulderDepth: 1.5, holeFromEnd: 2.85 }
-    : series === 30 ? { width: 16.5, length: 8, neckWidth: 7.9, neckHeight: 1.5, thickness: 6, thread: 6, shoulderDepth: 2.2, holeFromEnd: 4 }
+    : series === 30 ? { width: 16.5, length: 8, neckWidth: 7.9, neckHeight: 1.5, thickness: 6, thread: 6, shoulderDepth: 2.4, holeFromEnd: 4 }
       : { width: 13.5, length: 22, neckWidth: 7.8, neckHeight: .8, thickness: 7.2, thread: 8, shoulderDepth: 4.5, holeFromEnd: 7.5 }
 }
 
@@ -64,6 +64,14 @@ export function accessoryMountPoints(type: string, series: ConnectorSeries): Con
 }
 
 export function accessoryCapReference(spec: ProfileSpec): HardwareReference {
+  if (spec === '4040-B6') return {
+    sku: 'Motedis PTS6B20x20 ×4', sourceUrl: 'https://www.motedis.com/shop/products_files/Motedis_PTS6B20x20.zip',
+    descriptionZh: '4040 B6 端面使用四只 2020 B6 原厂端盖，中央销插入四个芯孔，侧卡脚朝外',
+    descriptionEn: 'Four original 2020 B6 caps cover a 4040 B6 end; pins enter its four cores and side tabs face outwards',
+    mounting: 'press-fit', verified: true, supportedSeries: [20], fasteners: [],
+    limitations: ['每个端面采购四只 PTS6B20x20；组合处保留接缝，不是单体 4040 盖，也不构成密封。',
+      '仅安装于直切、未被占用的 4040 B6 端面；不能用于 4040 I8。'],
+  }
   const sku = ({ '2020': 'PTS6B20x20', '2040': 'PTS6B20x40', '3030': 'PTS8B30x30', '4040': 'PTS8I40x40' } as Partial<Record<ProfileSpec, string>>)[spec]
   return { sku: sku ? `Motedis ${sku}` : '3040 cap: no verified model',
     sourceUrl: sku ? `https://www.motedis.com/shop/products_files/Motedis_${sku}.zip` : 'https://www.motedis.com/en/Covers-Bracket-Covers-Covers-Cap',
@@ -73,7 +81,7 @@ export function accessoryCapReference(spec: ProfileSpec): HardwareReference {
     limitations: ['端盖按完整截面及槽系匹配；只安装于未被占用的直切端面。'] }
 }
 
-export function accessoryHardwareReference(type: string, series: ConnectorSeries): HardwareReference | undefined {
+export function accessoryHardwareReference(type: string, series: ConnectorSeries, profileSpec?: ProfileSpec): HardwareReference | undefined {
   const i = seriesIndex(series), thread = ['M5', 'M6', 'M8'][i], length = [10, 12, 16][i]
   if (['flat-plate', 'joining-plate', 't-bracket', 'cross-bracket'].includes(type)) {
     const codes = type === 'flat-plate' ? ['20-4117', '30-4305', '40-4305']
@@ -96,24 +104,45 @@ export function accessoryHardwareReference(type: string, series: ConnectorSeries
     fasteners: bolts(4, series === 20 ? 'M5' : 'M6', [8, 10, 12][i]).map((f) => f.kind === 'bolt' ? { ...f, standard: 'flat-head' } : f),
     limitations: ['每片合页叶的两个孔连接各自构件；40 系列也使用 M6 螺钉。', '螺母须匹配实际槽系；参考图的 HNTT8 槽 10 螺母不适配槽 8。'],
   }
-  if (type === 'end-cap') return accessoryCapReference(`${series}${series}` as ProfileSpec)
+  if (type === 'end-cap') return accessoryCapReference(profileSpec ?? `${series}${series}` as ProfileSpec)
+  if (type === 'foot' && series === 20 && profileSpec === '4040-B6') return {
+    sku: 'Motedis BD40-8x50 + AP-4040B6-M8',
+    sourceUrl: 'https://www.motedis.com/en/Adjustable-feet-D40-M8-L50',
+    drawingUrl: '/hardware/ap-4040b6-m8.svg',
+    descriptionZh: 'D40 M8 调节脚，配 4040 B6 加工转接板及四颗 M6 沉头螺钉',
+    descriptionEn: 'D40 M8 foot with a machined 4040 B6 adapter plate and four M6 countersunk screws',
+    mounting: 'end-tapped', verified: true, supportedSeries: [20],
+    dimensionsMm: { plateWidth: 40, plateThickness: 8, pitch: 20, mountingHole: 6.6, countersink: 12.8, threadEngagement: 12.1 },
+    fasteners: [
+      { kind: 'nut', count: 1, thread: 'M8', descriptionZh: '随脚附带锁紧螺母', descriptionEn: 'supplied locknut' },
+      { kind: 'other', count: 1, standard: 'AP-4040B6-M8', descriptionZh: '40×40×8 钢制加工板，中心 M8，四个 M6 沉头孔', descriptionEn: '40×40×8 machined steel adapter, central M8 and four M6 countersunk holes' },
+      { kind: 'bolt', count: 4, thread: 'M6', length: 20, standard: 'DIN 7991' },
+    ],
+    machining: ['4040 B6 四个芯孔攻 M6，有效螺纹至少 13 mm，另留入口倒角和丝锥导程余量。转接板按 AP-4040B6-M8 图加工，中心攻 M8 通牙。'],
+    limitations: ['AP-4040B6-M8 是加工件，不是 Motedis 现货型号；安装次序为转接板、调节脚、锁紧螺母。',
+      '仅适配四芯孔中心距 20 mm 的 4040 B6；不适配 2020/2040。模型从板底旋入 10 mm；转接板增加 8 mm 安装高度。螺纹牙型简化，未给出承载评级。'],
+  }
   if (type === 'foot') return {
     sku: 'Motedis BD40-8x50', sourceUrl: 'https://www.motedis.com/en/Adjustable-feet-D40-M8-L50',
     drawingUrl: 'https://www.motedis.com/shop/products_files/BD40-8x50-Drawing.pdf',
     descriptionZh: 'D40 可调脚，M8 螺杆与锁紧螺母', descriptionEn: 'D40 levelling foot with M8 stud and locknut',
-    mounting: 'end-tapped', verified: true, supportedSeries: [30, 40],
+    mounting: 'end-tapped', verified: series !== 20, supportedSeries: [30, 40],
     fasteners: [{ kind: 'nut', count: 1, thread: 'M8', descriptionZh: '随脚附带锁紧螺母', descriptionEn: 'supplied locknut' }],
     machining: ['安装端孔须有 M8 内螺纹；孔径不足时需另配匹配截面的转接底板。'],
     dimensionsMm: { diameter: 39.4, height: 78.24, baseHeight: 19.5, threadDiameter: 8, threadLength: 50 },
     limitations: ['外露螺杆高度随旋入深度改变；图中为 10 mm 旋入量。螺纹牙型与底盘圆角简化。'],
   }
   if (type === 'caster-mount') return {
-    sku: 'Motedis 963', sourceUrl: 'https://www.motedis.com/en/Roller-50-single-bolt-hole-without-brake',
-    drawingUrl: 'https://www.motedis.com/shop/products_files/Motedis_963-Drawing.pdf',
-    descriptionZh: 'D50 万向脚轮，完整支架、转盘与轮轴来自厂家 STEP', descriptionEn: 'D50 swivel caster, including the manufacturer STEP fork, swivel and axle',
-    mounting: 'surface', verified: false, supportedSeries: [], fasteners: [],
-    dimensionsMm: { wheelDiameter: 50, mountingHeight: 74.2, mountingHole: 11, offset: 19.5 },
-    limitations: ['厂家图纸及 STEP 为 Ø11 安装孔、74.2 mm 总高，产品网页另标 Ø6.5、71 mm；模型使用图纸及 STEP。安装转接件未核定，不提供直接安装或紧固件配方。'],
+    sku: 'Motedis 10146', sourceUrl: 'https://www.motedis.com/en/Roller-75-single-bolt-hole-without-brake-NEW',
+    drawingUrl: 'https://www.motedis.com/shop/products_files/Motedis_10146-Drawing.pdf',
+    cadUrl: 'https://www.motedis.com/shop/products_files/Motedis_10146.zip',
+    descriptionZh: 'D75 万向脚轮，M8 沉头螺钉从支架下方拧入型材端面芯孔', descriptionEn: 'D75 swivel caster; an M8 countersunk screw enters the tapped profile core from below the swivel head',
+    mounting: 'end-tapped', verified: true, supportedSeries: [30, 40],
+    fasteners: [{ kind: 'bolt', count: 1, thread: 'M8', length: 25, standard: 'DIN 7991', descriptionZh: '脚轮芯孔安装', descriptionEn: 'caster core mounting' }],
+    machining: ['3030 B8 / 4040 I8 的向下正切端面芯孔攻 M8；螺钉旋入约 8.36 mm。'],
+    dimensionsMm: { wheelDiameter: 75, wheelWidth: 25, mountingHeight: 99.7, mountingHole: 11, offset: 29.94386, threadEngagement: 8.3609 },
+    limitations: ['模型以厂家 10146 STEP 与工程图的 Ø11 孔版本为准；网页文字另列 Ø10，采购时核对图纸版本。',
+      '按 Motedis_Wheels.pdf 的芯孔安装方式使用 DIN 7991 M8×25。仅适配 3030 B8、4040 I8；不适配 2020 或 4040 B6。轮体、叉架、轴及转盘保留厂家实体；紧固螺钉省略螺纹牙型。'],
   }
   if (type === 'pivot') return {
     sku: 'igus ESTM-10', sourceUrl: 'https://www.igus.com/product/igubal-ESTM', drawingUrl: 'https://www.igus.com/us/pdf/igubal.pdf',
@@ -132,7 +161,7 @@ export function accessoryHardwareReference(type: string, series: ConnectorSeries
       descriptionEn: `${series === 20 ? 'B-type slot 6' : series === 30 ? 'B-type slot 8' : 'I-type slot 8'} nut, ${thread} through thread`,
       mounting: 'slot-clamp', verified: true, supportedSeries: [series], fasteners: [],
       dimensionsMm: accessoryNutDimensions(series),
-      limitations: ['螺母肩部位于槽唇内侧；B 型旋转 90° 锁住槽口，I 型可后装。模型使用厂家 STEP；20 系列以 M5 底孔表示螺纹，40 系列钢珠处于压入 0.65 mm 的安装状态。未附螺栓。'],
+      limitations: ['螺母肩部位于槽唇内侧；B 型旋转 90° 锁住槽口，I 型可后装。模型使用厂家 STEP；20 系列以 M5 底孔表示螺纹，30 系列肩深 2.4 mm，圆角抵靠槽唇，40 系列钢珠处于压入 0.65 mm 的安装状态。未附螺栓。'],
     }
   }
   return undefined

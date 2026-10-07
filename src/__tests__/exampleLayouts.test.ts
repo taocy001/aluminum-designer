@@ -117,6 +117,45 @@ describe('example cabinet layouts', () => {
   })
 
   it.each([
+    ['desk-with-pedestal', 1, 940],
+    ['07-desk', -1, 880],
+  ] as const)('%s leaves the leg entry open on the drawer-facing side and retains a rear brace', (name, frontSign, width) => {
+    const doc = load(name)
+    const drawers = doc.fittings.filter((f) => f.kind === 'drawer')
+    expect(drawers.length).toBeGreaterThan(0)
+    const out = V(0, 0, 1).applyQuaternion(new THREE.Quaternion(...drawers[0].quaternion))
+    expect(out.z).toBeCloseTo(frontSign, 8)
+    for (const drawer of drawers) {
+      const direction = V(0, 0, 1).applyQuaternion(new THREE.Quaternion(...drawer.quaternion))
+      expect(direction.distanceTo(out)).toBeLessThan(1e-8)
+      expect(openTransform({ ...drawer, open: 1 }).position.applyQuaternion(new THREE.Quaternion(...drawer.quaternion)).dot(out)).toBeGreaterThan(0)
+    }
+
+    const trims = computeAllTrims(doc.profiles)
+    const bodies = doc.profiles.map((p) => ({ p, box: trimmedBox(p, trims.get(p.id)!) }))
+    const posts = bodies.filter(({ p }) => Math.abs(getProfileDir(p).y) > 0.999)
+    const columns = [...new Set(posts.map(({ p }) => p.position[0]))].sort((a, b) => a - b)
+    const left = Math.max(...posts.filter(({ p }) => p.position[0] === columns[0]).map(({ box }) => box.max.x))
+    const right = Math.min(...posts.filter(({ p }) => p.position[0] === columns[1]).map(({ box }) => box.min.x))
+    expect(right - left).toBeCloseTo(width, 6)
+    const floor = Math.min(...posts.map(({ box }) => box.min.y))
+    const front = frontSign > 0 ? Math.max(...posts.map(({ box }) => box.max.z)) : Math.min(...posts.map(({ box }) => box.min.z))
+    const rear = frontSign > 0 ? Math.min(...posts.map(({ p }) => p.position[2])) : Math.max(...posts.map(({ p }) => p.position[2]))
+    const crossRails = bodies.filter(({ p, box }) => Math.abs(getProfileDir(p).x) > 0.999
+      && box.min.x <= left + 0.1 && box.max.x >= right - 0.1)
+    const header = Math.min(...crossRails.filter(({ box }) => box.min.y > floor + 100).map(({ box }) => box.min.y))
+    expect(Number.isFinite(header)).toBe(true)
+    expect(header - floor).toBeGreaterThanOrEqual(600)
+    // Derive the approach side from the drawers, including the low foot-entry zone.
+    // The strip extends 100 mm into the frame and 30 mm outside its front posts.
+    const depth = [front - out.z * 100, front + out.z * 30].sort((a, b) => a - b)
+    const entry = new THREE.Box3(V(left + 0.1, floor + 0.1, depth[0]), V(right - 0.1, header - 0.1, depth[1]))
+    expect(bodies.filter(({ box }) => box.intersectsBox(entry)).map(({ p }) => p.id)).toEqual([])
+    expect(crossRails.some(({ box }) => box.min.y <= floor + 0.1 && box.max.y > floor
+      && box.min.z <= rear && box.max.z >= rear)).toBe(true)
+  })
+
+  it.each([
     ['01-kitchen-base', 400, 780, 6],
     ['01-kitchen-base', 3030, 680, 6],
     ['02-kitchen-wall', 400, 780, 6],

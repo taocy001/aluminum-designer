@@ -167,16 +167,24 @@ test.describe('A connector can be positioned independently', () => {
   })
 })
 
-test('an installed bracket previews and switches mounting faces in one undo step', async ({ page }) => {
+test('an installed inner bracket previews and switches 2040 slots in one undo step', async ({ page }) => {
   await openApp(page)
-  await loadCorner(page)
-  await page.getByTestId('connector-gusset').click()
+  await page.evaluate(() => {
+    const member = (id: string, quaternion: number[]) => ({ id, spec: '2040', length: 300,
+      position: [0, 100, 0], quaternion, miterCuts: [], holes: [] })
+    ;(window as any).__aluframe.store.getState().loadDocument({
+      profiles: [member('rail', [0.5, 0.5, 0.5, 0.5]), member('post', [-Math.SQRT1_2, 0, 0, Math.SQRT1_2])],
+      connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails',
+    })
+  })
+  await settle(page)
+  await page.getByTestId('connector-inside-corner').click()
   await page.getByTestId('auto-connect').click()
   await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
   const before = await page.evaluate(() => {
-    const app = (window as any).__aluframe, c = app.store.getState().connectors.find((part: any) => part.type === 'gusset')
-    if (!c) throw new Error('Gusset not installed')
+    const app = (window as any).__aluframe, c = app.store.getState().connectors.find((part: any) => part.type === 'inside-corner')
+    if (!c) throw new Error('Inner bracket not installed')
     app.store.setState({ connectors: [c], selectedIds: [c.id], past: [], future: [] })
     return c
   })

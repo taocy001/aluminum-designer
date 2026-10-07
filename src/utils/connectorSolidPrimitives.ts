@@ -1,9 +1,9 @@
 import * as THREE from 'three'
-import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg'
+import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg/src/index.js'
 
 export type V3 = [number, number, number]
-export interface CollisionBox { centre: V3; half: V3 }
-export type CollisionPart = CollisionBox | { vertices: readonly V3[] }
+export interface CollisionBox { centre: V3; half: V3; pressFit?: boolean }
+export type CollisionPart = CollisionBox | { vertices: readonly V3[]; pressFit?: boolean }
 export interface ConnectorMesh {
   /** Shared immutable geometry, already transformed into the normalized connector frame. */
   geometry: THREE.BufferGeometry

@@ -1,4 +1,5 @@
 import type { ConnectorSeries } from './connectorCatalog'
+import type { ProfileSpec } from '../store/useStore'
 import { accessoryHardwareReference } from './connectorAccessoryReferences'
 
 export interface HardwareFastener {
@@ -156,10 +157,10 @@ function unverifiedSeries(reference: HardwareReference, series: ConnectorSeries)
     limitations: [...(reference.limitations ?? []), '仅展示所引用实物的尺寸，不能按系列比例推定可安装。'] }
 }
 
-export function hardwareReference(type: string, series: ConnectorSeries = 20): HardwareReference | undefined {
+export function hardwareReference(type: string, series: ConnectorSeries = 20, profileSpec?: ProfileSpec): HardwareReference | undefined {
   if (type === 'inside-corner') return series === 20 ? inside20 : inside30And40
   if (type === 'bracket') return bracketReference(series)
   if (type === 'gusset') return series === 40 ? gusset40 : unverifiedSeries(gusset40, series)
   if (type === 'corner-3way') return series === 40 ? corner40 : unverifiedSeries(corner40, series)
-  return accessoryHardwareReference(type, series)
+  return accessoryHardwareReference(type, series, profileSpec)
 }

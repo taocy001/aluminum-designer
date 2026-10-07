@@ -94,8 +94,9 @@ export function connectorLabel(type: string, language: 'zh' | 'en'): string {
   return language === 'zh' ? e.labelZh : e.labelEn
 }
 
-/** The series a profile spec belongs to: 2020 and 2040 are 20 series, 4040 is 40 */
+/** Hardware family follows the slot system, independently of the outside dimensions. */
 export function seriesOf(spec: ProfileSpec): ConnectorSeries {
+  if (spec === '4040-B6') return 20
   const { w, h } = specDims(spec)
   const base = Math.min(w, h)
   return base >= 40 ? 40 : base >= 30 ? 30 : 20

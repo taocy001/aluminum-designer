@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  resolve: { alias: { 'three-bvh-csg': 'three-bvh-csg/src/index.js' } },
+  resolve: { alias: [{ find: /^three-bvh-csg$/, replacement: 'three-bvh-csg/src/index.js' }] },
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',

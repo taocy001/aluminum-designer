@@ -9,7 +9,6 @@ import { specDims } from '../utils/specUtils'
 import { fittingSolids, leafObb } from '../utils/fittingGeometry'
 import { obbPenetration } from '../utils/obb'
 import type { FittingData } from '../store/useStore'
-import hardwareChecks from '../../examples/checks/hardware.json'
 
 const examples = import.meta.glob(['../../examples/*.json', '../../examples/flat/*.json'], { eager: true }) as Record<string, { default: unknown }>
 const cases = [
@@ -56,7 +55,7 @@ describe.each(cases)('$name drawer bays', ({ name, prefix, width, count, centres
     }
   })
 
-  it('connects drawer supports where a verified connector exists and records unsupported pairs', () => {
+  it('fastens both ends of every drawer support to a touching frame member', () => {
     const doc = load(name)
     const trims = computeAllTrims(doc.profiles)
     expect(auditBrackets(doc.profiles, doc.connectors, trims)).toEqual([])
@@ -80,12 +79,7 @@ describe.each(cases)('$name drawer bays', ({ name, prefix, width, count, centres
         expect(partners.length, `${p.id} at ${tip.toArray()}`).toBeGreaterThan(0)
         const connected = partners.some((q) => doc.connectors.some((c) => c.type === 'inside-corner'
           && auditBrackets([p, q], [c], trims).length === 0))
-        if (!connected) {
-          // The wardrobe's B6 rails meet I8 posts; no verified adapter is in this catalogue.
-          expect(name).toBe('wardrobe-2-door')
-          const unsupported = hardwareChecks.find((entry) => entry.file.endsWith(`/${name}.json`))!.unsupportedCornerPairs
-          expect(partners.some((q) => unsupported.includes([p.id, q.id].sort().join('|'))), `${p.id} at ${tip.toArray()}`).toBe(true)
-        }
+        expect(connected, `${p.id} at ${tip.toArray()}`).toBe(true)
       }
     }
   })

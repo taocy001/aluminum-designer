@@ -1,14 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { afterAll, describe, it, expect, vi } from 'vitest'
 import * as THREE from 'three'
 import { suggestNext, focusOf, type Candidate } from '../utils/suggest'
 import { findConflicts } from '../utils/analysis'
-import { computeAllTrims, trimmedBox } from '../utils/jointUtils'
+import { computeAllTrims, getThroughRule, setThroughRule, trimmedBox } from '../utils/jointUtils'
 import { getProfileDir, getProfileEndpoints } from '../utils/geometryCore'
 import { countUnflush } from '../utils/faceAlign'
 import { prepareProfile } from '../utils/profileFactory'
 import { migrateFittings } from '../utils/migrate'
 import { auditBrackets, seatFor } from '../utils/bracketSeat'
 import { vet } from '../utils/suggestGate'
+import * as shelfSupport from '../utils/shelfSupport'
 import type { ConnectorData, FittingData, PanelData, ProfileData, ProfileSpec } from '../store/useStore'
 
 interface Doc { profiles: ProfileData[]; connectors: ConnectorData[]; panels: PanelData[]; fittings: FittingData[] }
@@ -94,17 +95,17 @@ function emptyCorners(profiles: ProfileData[]): Set<string> {
 }
 const noEdge = (a: ProfileSpec, b: ProfileSpec) => [a, b].sort().join() === '2020,4040'
 
-/** The fixtures use B6 for 2020/2040 and I8 for 4040. No listed connector
- * adapts these slots. Identify actual perpendicular contacts independently of vet. */
+/** Identify perpendicular B6-to-B8/I8 contacts without an available adapter independently of vet. */
 function unsupportedMixedMembers(doc: Doc): Set<string> {
   const trims = computeAllTrims(doc.profiles)
   const bodies = new Map(doc.profiles.map((p) => [p.id, trimmedBox(p, trims.get(p.id)!)]))
   const ids = new Set<string>()
-  const b6 = (spec: ProfileSpec) => spec === '2020' || spec === '2040'
+  const b6 = (spec: ProfileSpec) => spec === '2020' || spec === '2040' || spec === '4040-B6'
+  const b8 = (spec: ProfileSpec) => spec === '3030' || spec === '4040'
   for (let i = 0; i < doc.profiles.length; i++) {
     const a = doc.profiles[i]
     for (const b of doc.profiles.slice(i + 1)) {
-      if (!((b6(a.spec) && b.spec === '4040') || (a.spec === '4040' && b6(b.spec)))) continue
+      if (!((b6(a.spec) && b8(b.spec)) || (b8(a.spec) && b6(b.spec)))) continue
       if (Math.abs(getProfileDir(a).dot(getProfileDir(b))) > 0.1) continue
       if (depth(bodies.get(a.id)!.clone().expandByScalar(0.5), bodies.get(b.id)!) <= 0) continue
       ids.add(a.id); ids.add(b.id)
@@ -145,6 +146,116 @@ describe('suggesting the next member', () => {
     expect(files.length).toBeGreaterThan(10)
   })
 
+  it('reuses structural recipes without sharing candidate edits and invalidates changed inputs', () => {
+    const profiles: ProfileData[] = []
+    const add = (a: number[], b: number[]) => profiles.push(prepareProfile(new THREE.Vector3(...a), new THREE.Vector3(...b), '2020', profiles)!)
+    add([0, 10, 0], [600, 10, 0])
+    add([0, 10, 0], [0, 10, 400])
+    add([0, 0, 0], [0, 700, 0])
+    add([600, 0, 0], [600, 700, 0])
+    const doc: Doc = { profiles, connectors: [], fittings: [], panels: [{
+      id: 'recipe-cache-board', width: 2, height: 2, thickness: 2, material: 'ply',
+      position: [300, 690, 200], quaternion: [0, 0, 0, 1],
+    }] }
+    const generate = vi.spyOn(shelfSupport, 'shelfEdges')
+    const rule = getThroughRule()
+    const snapshot = (items: Candidate[]) => items.map(({ member: { id: _id, ...member }, ...rest }) => ({ ...rest, member }))
+    const search = () => [...suggestNext(doc, [])]
+    try {
+      const first = search()
+      expect(first.length).toBeGreaterThan(1)
+      const expected = structuredClone(snapshot(first))
+      const initialCalls = generate.mock.calls.length
+      first[0].member.position[0] += 3000
+      first[0].anchors.push('external-edit')
+      first[0].reasons.push('ring')
+      expect(snapshot(search())).toEqual(expected)
+      // The generation check uses the unchanged scope; candidate checks may call
+      // shelfEdges on smaller neighbourhoods and are deliberately not cached here.
+      const generationCalls = () => generate.mock.calls.filter(([, ps]) => ps.length === profiles.length).length
+      expect(initialCalls).toBeGreaterThan(0)
+      const warmCalls = generationCalls()
+      search()
+      expect(generationCalls()).toBe(warmCalls)
+      doc.panels[0].position[0] += 1
+      search()
+      expect(generationCalls()).toBeGreaterThan(warmCalls)
+      const panelCalls = generationCalls()
+      profiles[0].length += 20
+      search()
+      expect(generationCalls()).toBeGreaterThan(panelCalls)
+      const profileCalls = generationCalls()
+      setThroughRule(rule === 'rails' ? 'posts' : 'rails')
+      search()
+      expect(generationCalls()).toBeGreaterThan(profileCalls)
+    } finally {
+      setThroughRule(rule)
+      generate.mockRestore()
+    }
+  })
+
+  it.each(['current', 'detached'] as const)('does not cache old segment recipes after %s objects change between hardware suggestions', (objects) => {
+    const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
+    const posts: ProfileData[] = []
+    for (const x of [0, 600]) for (const z of [0, 400]) posts.push(prepareProfile(V(x, 0, z), V(x, 800, z), '2020', posts)!)
+    const rails = [0, 600].map((x) => prepareProfile(V(x, 200, 0), V(x, 200, 400), '2020', posts)!)
+    const connectors: ConnectorData[] = rails.flatMap((rail) => Object.values(getProfileEndpoints(rail)).map((at, i) => {
+      const post = posts.find((p) => p.position[0] === rail.position[0] && p.position[2] === Math.round(at.z))!
+      return { id: `${rail.id}-resume-${i}`, type: 'inside-corner', ...seatFor('inside-corner', rail, post, at)! }
+    }))
+    const doc: Doc = { profiles: [...posts, rails[1]], connectors, panels: [], fittings: [] }
+    const suspended = suggestNext(doc, [])
+    expect((suspended.next().value as Candidate).claim).toHaveProperty('hardwareId')
+    if (objects === 'current') {
+      for (const part of [...doc.profiles, ...doc.connectors]) part.position[0] += 900
+    } else {
+      const detached = doc.profiles
+      doc.profiles = structuredClone(detached)
+      detached[0].spec = '3030'
+      detached[0].length += 50
+      detached[0].position[0] += 900
+    }
+    // An identical drawing with fresh IDs supplies an uncached reference search.
+    const control = structuredClone(doc)
+    for (const part of [...control.profiles, ...control.connectors]) part.id = `control-${part.id}`
+    const snapshot = (items: Candidate[]) => items.map((c) => ({
+      key: c.key, rule: c.rule, reasons: c.reasons, score: c.score,
+      member: { ...c.member, id: '' }, anchors: c.anchors.map((id) => id.replace(/^control-/, '')),
+      claim: c.claim.kind === 'close' && c.claim.hardwareId
+        ? { ...c.claim, hardwareId: c.claim.hardwareId.replace(/^control-/, '') } : c.claim,
+    }))
+    const expected = snapshot([...suggestNext(control, [])])
+    expect(expected.some((c) => c.score < 3)).toBe(true)
+    // Resume the original snapshot after mutation before searching the new drawing.
+    for (const _candidate of suspended) { /* exhaust the remaining generation stages */ }
+    expect(snapshot([...suggestNext(doc, [])])).toEqual(expected)
+  })
+
+  it('keeps cached recipe ranking, derivations and order when focus changes', () => {
+    const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
+    const profiles: ProfileData[] = []
+    for (const x of [0, 600]) for (const z of [0, 400]) profiles.push(prepareProfile(V(x, 0, z), V(x, 800, z), '2020', profiles)!)
+    for (const x of [0, 600]) profiles.push(prepareProfile(V(x, 200, 0), V(x, 200, 400), '2020', profiles)!)
+    const connectors: ConnectorData[] = profiles.slice(4).flatMap((rail) => Object.values(getProfileEndpoints(rail)).map((at, i) => {
+      const post = profiles.find((p) => p.position[0] === rail.position[0] && p.position[2] === Math.round(at.z))!
+      return { id: `${rail.id}-rank-${i}`, type: 'inside-corner', ...seatFor('inside-corner', rail, post, at)! }
+    }))
+    const doc: Doc = { profiles: profiles.filter((_, i) => i !== 4), connectors, panels: [], fittings: [] }
+    const snapshot = (items: Candidate[], prefix = '') => items.map((c) => ({
+      ...c, member: { ...c.member, id: '' }, anchors: c.anchors.map((id) => id.replace(prefix, '')),
+      claim: c.claim.kind === 'close' && c.claim.hardwareId
+        ? { ...c.claim, hardwareId: c.claim.hardwareId.replace(prefix, '') } : c.claim,
+    }))
+    Array.from(suggestNext(doc, []))
+    for (const [index, focus] of [[profiles[0].id], [profiles[5].id], [profiles[5].id, profiles[0].id]].entries()) {
+      const prefix = `cold-rank-${index}-`
+      const control = structuredClone(doc)
+      for (const part of [...control.profiles, ...control.connectors]) part.id = prefix + part.id
+      const expected = snapshot([...suggestNext(control, focus.map((id) => prefix + id))], prefix)
+      expect(snapshot([...suggestNext(doc, focus)])).toEqual(expected)
+    }
+  })
+
   it('keeps a missing perimeter rail distinct from its nearby inboard bearer', () => {
     const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
     const profiles: ProfileData[] = []
@@ -173,16 +284,19 @@ describe('suggesting the next member', () => {
       profiles.push(p)
       return p
     }
-    add(V(0, 200, 0), V(0, 200, 400))
+    const firstTemplate = add(V(0, 200, 0), V(0, 200, 400))
     const selected = add(V(1200, 200, 0), V(1200, 200, 400))
     add(V(0, 200, 0), V(600, 200, 0))
     add(V(1200, 200, 0), V(600, 200, 0))
     const expected = prepareProfile(V(600, 200, 0), V(600, 200, 400), '2020', profiles, { twin: selected })!
     const doc: Doc = { profiles, connectors: [], panels: [], fittings: [] }
-    const c = [...suggestNext(doc, [selected.id])].find((s) => same(s.member, expected))
-    expect(c).toBeTruthy()
-    expect(c!.anchors[0]).toBe(selected.id)
-    expect(faultsOf(doc, c!)).toEqual([])
+    Array.from(suggestNext(doc, []))
+    for (const template of [selected, firstTemplate, selected]) {
+      const c = [...suggestNext(doc, [template.id])].find((s) => same(s.member, expected))
+      expect(c).toBeTruthy()
+      expect(c!.anchors[0]).toBe(template.id)
+      expect(faultsOf(doc, c!)).toEqual([])
+    }
   })
 
   it.each(['2020', '2040'] as const)('reconstructs a %s mid-span mounting rail from placed brackets and rejects a different empty route', (spec) => {
@@ -212,13 +326,26 @@ describe('suggesting the next member', () => {
 
   /**
    * Remove each fixture member in turn and use up to three preceding members as focus.
-   * Measure supported members among the first three suggestions. Members that require
-   * an unavailable B6/I8 adapter must remain absent from the suggestions.
+   * Keep every member-removal case, with one test per fixture so a large fixture set
+   * does not share one timeout. Accuracy is measured across the complete set.
    */
-  it('meets first-choice and top-three thresholds for supported fixture members', async () => {
-    let n = 0, top1 = 0, top3 = 0, unsupported = 0
-    const bad: string[] = []
-    for (const name of files) {
+  describe('fixture member reconstruction', () => {
+    const results = new Map<string, { n: number; top1: number; top3: number; unsupported: number }>()
+    afterAll(() => {
+      expect([...results.keys()].sort()).toEqual(files)
+      const total = [...results.values()].reduce((sum, row) => ({
+        n: sum.n + row.n, top1: sum.top1 + row.top1, top3: sum.top3 + row.top3,
+        unsupported: sum.unsupported + row.unsupported,
+      }), { n: 0, top1: 0, top3: 0, unsupported: 0 })
+      expect(total.n).toBe([...docs.values()].reduce((n, doc) => n + doc.profiles.length, 0))
+      expect(total.n).toBeGreaterThan(600)
+      expect(total.unsupported).toBe(0)
+      expect(total.top1 / total.n).toBeGreaterThanOrEqual(0.7)
+      expect(total.top3 / total.n).toBeGreaterThanOrEqual(0.85)
+    })
+    it.each(files)('%s restores members without new geometry faults', async (name) => {
+      let n = 0, top1 = 0, top3 = 0, unsupported = 0
+      const bad: string[] = []
       const doc = docs.get(name)!
       const unavailable = unsupportedMixedMembers(doc)
       for (let i = 0; i < doc.profiles.length; i++) {
@@ -241,13 +368,11 @@ describe('suggesting the next member', () => {
         // Let the worker report progress during the exhaustive geometry checks.
         if (i % 8 === 0) await new Promise((resolve) => setTimeout(resolve, 0))
       }
-    }
-    expect(bad).toEqual([])
-    expect(n).toBeGreaterThan(600)
-    expect(unsupported).toBe(143)
-    expect(top1 / n).toBeGreaterThanOrEqual(0.7)
-    expect(top3 / n).toBeGreaterThanOrEqual(0.85)
-  }, 180_000)
+      results.set(name, { n, top1, top3, unsupported })
+      expect(bad).toEqual([])
+      expect(unsupported).toBe(0)
+    }, 60_000)
+  })
 
   /** Validate proposed reinforcing rails and supports against the geometry checks. */
   describe.each(files)('%s, finished', (name) => {
@@ -327,7 +452,6 @@ describe('suggesting the next member', () => {
     for (const name of files.filter((f) => /^\d\d-/.test(f))) {
       const doc = docs.get(name)!
       let worst = 0, worstIndex = -1
-      let worstTimings: number[] = []
       for (let i = 0; i < doc.profiles.length; i += 3) {
         const rest = { ...doc, profiles: doc.profiles.filter((_, j) => j !== i) }
         // Keep the 50 ms budget for every scene. Three independent searches distinguish
@@ -339,9 +463,9 @@ describe('suggesting the next member', () => {
           timings.push(performance.now() - t0)
         }
         const median = [...timings].sort((a, b) => a - b)[1]
-        if (median > worst) { worst = median; worstIndex = i; worstTimings = timings }
+        if (median > worst) { worst = median; worstIndex = i }
       }
-      measured.push(`${name}: ${worst.toFixed(2)} ms (member ${worstIndex}; ${worstTimings.map((t) => t.toFixed(2)).join("/")})`)
+      measured.push(`${name}: ${worst.toFixed(2)} ms (member ${worstIndex})`)
       if (worst > 50) slow.push(`${name} ${worst.toFixed(0)} ms`)
     }
     console.info(measured.join('; '))

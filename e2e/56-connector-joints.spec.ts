@@ -63,11 +63,13 @@ async function assertNoConnectorConflicts(page: Page) {
 
 test.beforeEach(async ({ page }) => { await openApp(page) })
 
-test('the actual desk corner only offers the verified B6 rail pair and keeps obstructed orientations visible', async ({ page }) => {
+test('the actual B6 desk front-left corner fits five inner brackets across all three member pairs', async ({ page }) => {
+  test.setTimeout(120_000)
   const source = JSON.parse(readFileSync('examples/desk-with-pedestal.json', 'utf8'))
+  const joint: V3 = [40, 700, 560]
   source.connectors = source.connectors.filter((part: any) => {
     const [x, y, z] = part.position
-    return Math.hypot(x - 20, y - 700, z - 580) > 80
+    return Math.hypot(x - joint[0], y - joint[1], z - joint[2]) > 80
   })
   await page.evaluate(async (source) => {
     const { parseProjectDocument } = await import('/src/utils/document.ts')
@@ -75,32 +77,32 @@ test('the actual desk corner only offers the verified B6 rail pair and keeps obs
   }, source)
   await setView(page, [-200, 870, 840], [25, 700, 575])
   await page.getByTestId('connector-inside-corner').click()
-  const pointer = await w2c(page, [20, 700, 580])
+  const pointer = await w2c(page, joint)
   await page.mouse.move(pointer.x, pointer.y)
   await settle(page)
   const hud = page.getByTestId('connector-seat-hud')
-  await expect(hud).toHaveAttribute('data-seat-count', '2')
+  await expect(hud).toHaveAttribute('data-seat-count', '10')
   const lock = page.getByTestId('connector-joint-lock')
   const lockBox = (await lock.boundingBox())!
   await page.mouse.move(lockBox.x + lockBox.width / 2, lockBox.y + lockBox.height / 2, { steps: 25 })
-  await expect(hud).toHaveAttribute('data-seat-count', '2')
+  await expect(hud).toHaveAttribute('data-seat-count', '10')
   await lock.click()
   const initial = await store(page)
   const filter = page.getByTestId('connector-pair-filter')
   const pairs = await filter.locator('option').evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value).filter(Boolean))
-  expect(pairs).toHaveLength(1)
+  expect(pairs).toHaveLength(3)
   const groupCounts: number[] = []
   for (const pair of pairs) {
     await filter.selectOption(pair)
     groupCounts.push(await page.getByTestId('connector-seat-option').count())
   }
-  expect(groupCounts).toEqual([2])
+  expect(groupCounts.sort()).toEqual([2, 4, 4])
   await filter.selectOption('')
-  const options = page.getByTestId('connector-seat-option')
-  for (let index = 0; index < 2; index++) {
-    await options.nth(index).click()
-    await expect(options.nth(index)).toHaveAttribute('aria-pressed', 'true')
-    const position = (await options.nth(index).getAttribute('data-position'))!.split(',').map(Number)
+  const positions = [[39.4, 700.5, 570], [39.4, 700.5, 590], [39.4, 710, 560.5], [30, 700.5, 560.6], [10, 700.5, 560.6]]
+  for (const position of positions) {
+    const option = page.getByTestId('connector-seat-option').and(page.locator(`[data-position="${position.join(',')}"]`))
+    await option.click()
+    await expect(option).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(async () => (await preview(page))?.position).toEqual(position)
     const ghost = await preview(page)
     expect(ghost).not.toBeNull()
@@ -108,16 +110,18 @@ test('the actual desk corner only offers the verified B6 rail pair and keeps obs
     await setView(page, [-100, 840, 800], [25, 700, 575])
     expect(await preview(page)).toEqual(ghost)
     const place = page.getByTestId('connector-seat-place')
-    if (await place.isEnabled()) await place.click()
+    await expect(place).toBeEnabled()
+    await place.click()
+    await expect(place).toBeDisabled()
   }
   const result = await store(page)
-  expect(result.connectors).toHaveLength(initial.connectors.length + 1)
-  expect(result.past).toBe(initial.past + 1)
-  const seats = result.connectors.filter((part) => Math.hypot(part.position[0] - 20, part.position[1] - 700, part.position[2] - 580) < 80)
+  expect(result.connectors).toHaveLength(initial.connectors.length + 5)
+  expect(result.past).toBe(initial.past + 5)
+  const seats = result.connectors.filter((part) => Math.hypot(part.position[0] - joint[0], part.position[1] - joint[1], part.position[2] - joint[2]) < 80)
     .map((part) => part.position.map((n: number) => Number(n.toFixed(1))))
-  expect(seats).toEqual([[39.4, 710, 560.5]])
+  expect(seats).toEqual(positions)
   await assertNoConnectorConflicts(page)
-  await page.screenshot({ path: test.info().outputPath('desk-verified-inner-bracket.png') })
+  await page.screenshot({ path: test.info().outputPath('desk-five-inner-brackets.png') })
 })
 
 test('both slots on a 2040 joint can be chosen and placed without duplicate parts', async ({ page }) => {
@@ -261,7 +265,10 @@ test('a three-axis joint exposes every member pair and prevents the obstructed i
   const keys = await page.getByTestId('connector-seat-option').evaluateAll((options) => options.map((button) => button.getAttribute('data-seat-key')!))
   for (const key of keys) {
     const option = page.getByTestId('connector-seat-option').and(page.locator(`[data-seat-key=${JSON.stringify(key)}]`))
+    const position = (await option.getAttribute('data-position'))!.split(',').map(Number)
     await option.click()
+    await expect(option).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(async () => (await preview(page))?.position).toEqual(position)
     const ghost = (await preview(page))!
     pairs.add([...ghost.legs].sort().join('/'))
     const allowed = await page.getByTestId('connector-seat-place').isEnabled()

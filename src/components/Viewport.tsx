@@ -493,14 +493,10 @@ const MismatchMarker: React.FC<{ at: THREE.Vector3 }> = ({ at }) => {
   )
 }
 
-/**
- * Only the joints that cannot be built get a marker. Crossing series is a note about which
- * brackets to order, not a mistake — a 2040 on a 4040 is an everyday pairing — so marking
- * every one of them would put warnings all over a perfectly good frame.
- */
+/** Mark joints without a verified connector, including incompatible slot systems. */
 const MismatchMarkers: React.FC<{ mismatches: SpecMismatch[] }> = ({ mismatches }) => (
   <>
-    {mismatches.filter((m) => m.kind === 'face').map((m) => <MismatchMarker key={`${m.a}-${m.b}`} at={m.at} />)}
+    {mismatches.map((m) => <MismatchMarker key={`${m.a}-${m.b}`} at={m.at} />)}
   </>
 )
 

@@ -187,6 +187,8 @@ describe('STEP export', () => {
     expect(threeWay.bounds.max.toArray().map(Math.round)).toEqual([120, 220, 320])
   })
 
+  // Allow a full minute for the original caster's multi-body faceted BREP;
+  // every entity reference and every shell edge is checked.
   it.each(CONNECTOR_CATALOG)('exports every $type body as a closed shell after rotation, without exporting visual-only markers', (entry) => {
     const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(.28, -.7, .43))
     const connector: ConnectorData = { id: entry.type, type: entry.type, series: 40,
@@ -205,9 +207,25 @@ describe('STEP export', () => {
     expect(badEdges, `${entry.type}: every edge must be used twice in opposite directions`).toEqual([])
     expect(solids.every((solid) => solid.uses.size > 0)).toBe(true)
     if (['t-bracket', 'cross-bracket', 'flat-plate', 'joining-plate', 'bracket', 'gusset', 'corner-3way'].includes(entry.type)) expect(solids).toHaveLength(1)
+  }, 60_000)
+
+  it.each(['end-cap', 'foot'])('exports the 4040 B6 %s assembly as closed solids after rotation', (type) => {
+    const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(.23, -.31, .67))
+    const connector: ConnectorData = { id: `b6-${type}`, type, series: 20, profileSpec: '4040-B6',
+      position: [57, 40, -81], quaternion: rotation.toArray() }
+    const output = buildStep({ profiles: [], connectors: [connector] }), { defined, used } = ids(output)
+    expect(output).toContain(`${type} 20 4040-B6`)
+    expect([...used].filter((id) => !defined.has(id))).toEqual([])
+    const solids = solidsOf(output)
+    expect(solids).toHaveLength(type === 'end-cap' ? 4 : 10)
+    const badEdges = solids.flatMap((solid) => [...solid.uses]
+      .filter(([, directions]) => directions.length !== 2 || directions[0] === directions[1])
+      .map(([edge, directions]) => ({ solid: solid.name, edge, directions })))
+    expect(badEdges).toEqual([])
+    expect(solids.every((solid) => solid.uses.size > 0)).toBe(true)
   }, 30_000)
 
-  it.each([['2020', 1], ['2040', 3], ['3030', 5], ['4040', 5]] as const)(
+  it.each([['2020', 1], ['2040', 3], ['3030', 5], ['4040', 5], ['4040-B6', 5]] as const)(
     'preserves the %s core and internal cavities in both end faces', (spec, holeCount) => {
       const profile = P(0, 0, 0, 0, 0, 80, spec)
       const out = buildStep({ profiles: [profile] })
@@ -216,7 +234,7 @@ describe('STEP export', () => {
       expect((out.match(/= FACE_BOUND\(/g) ?? []).length).toBe(holeCount * 2)
       for (const [edge, senses] of solids[0].uses) expect(senses.sort(), `${spec} edge #${edge}`).toEqual(['F', 'T'])
       const size = new THREE.Box3().setFromPoints(solids[0].points).getSize(new THREE.Vector3())
-      expect(size.toArray().map(Math.round)).toEqual([Number(spec.slice(0, 2)), Number(spec.slice(2)), 80])
+      expect(size.toArray().map(Math.round)).toEqual([Number(spec.slice(0, 2)), Number(spec.slice(2, 4)), 80])
     },
   )
 

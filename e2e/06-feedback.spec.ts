@@ -235,13 +235,16 @@ test.describe('Drawing cannot get stuck', () => {
 test.describe('Regressions caught in review', () => {
   test.beforeEach(async ({ page }) => { await openApp(page); await setView(page, [1900, 1500, 2300], [300, 400, 200]) })
 
-  test('a connector sitting on a member endpoint can still be selected and deleted', async ({ page }) => {
+  test('an installed end cap can be selected and deleted without selecting its member', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
-    await page.getByRole('button', { name: 'L型角码', exact: true }).click()
+    await setView(page, [860, 150, 240], [600, 10, 0])
+    await page.getByTestId('connector-end-cap').click()
     await clickWorld(page, [600, 10, 0])
     const { connectors, profiles } = await store(page)
     expect(connectors).toHaveLength(1)
+    expect(connectors[0].type).toBe('end-cap')
+    expect(connectors[0].profileSpec).toBe('2020')
     await toNavigate(page)
     await clickWorld(page, [600, 10, 0])
     expect((await store(page)).selectedIds).toEqual([connectors[0].id])   // the member underneath must not win

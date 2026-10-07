@@ -4,6 +4,7 @@ import { getProfileDir, getProfileEndpoints, closestOnSegment } from './geometry
 import { actualTouching, supportsProfileJoint, unsupportedProfileJoint } from './connectorSupport'
 import { computeAllTrims, withFixedProfileCuts, type ProfileTrims } from './jointUtils'
 import { findConflicts } from './analysis'
+import { specDims } from './specUtils'
 import { rollProfile } from './faceAlign'
 import { reportEditResult } from './editFeedback'
 
@@ -168,7 +169,7 @@ export function planRepair(input: ProfileData[]): { profiles: ProfileData[]; rep
       // whichever of the two is the smaller section is the one to move: a post carries the
       // frame and a rail is hung off it
       const order = [joint.a, joint.b].filter((p) => !p.locked).sort((p, q) =>
-        (Number(p.spec.slice(0, 2)) + Number(p.spec.slice(2))) - (Number(q.spec.slice(0, 2)) + Number(q.spec.slice(2))))
+        (specDims(p.spec).w + specDims(p.spec).h) - (specDims(q.spec).w + specDims(q.spec).h))
 
       let done = false
       for (const who of order) {

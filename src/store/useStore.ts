@@ -7,7 +7,7 @@ import { validEquipmentList } from '../utils/equipmentValidation'
 import { reconcileBindings, type EditResult, type FittingOpeningBinding, type PanelOpeningBinding, type RunnerBinding, type SupportBinding } from '../utils/openingBindings'
 import { setThroughRule as applyThroughRule, withFixedProfileCuts, validFixedProfileCut, type ThroughRule } from '../utils/jointUtils'
 
-export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
+export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040' | '4040-B6'
 
 export interface MiterCut {
   angle: number

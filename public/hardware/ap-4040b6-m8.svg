@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="820" viewBox="0 0 1100 820" role="img" aria-labelledby="title desc">
+  <title id="title">AP-4040B6-M8 调节脚转接板尺寸图</title>
+  <desc id="desc">钢板40乘40乘8毫米，中心M8通牙，四孔中心位于正负10毫米，通孔直径6.6，底面90度沉头直径12.8。四颗DIN7991 M6乘20安装螺钉连接4040 B6的四个攻M6芯孔。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M10 0 0 5 10 10" fill="none" stroke="#334155"/></marker>
+    <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0V8" stroke="#94a3b8" stroke-width="1"/></pattern>
+    <style>
+      text{font-family:Arial,"Noto Sans CJK SC",sans-serif;fill:#172033;font-size:17px}
+      .title{font-size:26px;font-weight:bold}.label{font-size:19px;font-weight:bold}.small{font-size:15px}
+      .part{stroke:#172033;stroke-width:2;fill:none}.dim{stroke:#334155;stroke-width:1;fill:none;marker-start:url(#arrow);marker-end:url(#arrow)}
+      .ext{stroke:#94a3b8;stroke-width:1;fill:none}.axis{stroke:#64748b;stroke-width:1;stroke-dasharray:12 4 2 4;fill:none}
+    </style>
+  </defs>
+  <rect width="1100" height="820" fill="white"/>
+  <rect x="25" y="25" width="1050" height="770" fill="none" stroke="#cbd5e1"/>
+  <text x="55" y="68" class="title">AP-4040B6-M8　调节脚转接板</text>
+  <text x="55" y="100">自制加工件 · 单位 mm · 比例示意，以标注尺寸为准</text>
+
+  <text x="135" y="145" class="label">底视图（沉头侧）</text>
+  <rect x="155" y="200" width="240" height="240" class="part"/>
+  <g class="part">
+    <circle cx="215" cy="260" r="19.8"/><circle cx="215" cy="260" r="38.4"/>
+    <circle cx="335" cy="260" r="19.8"/><circle cx="335" cy="260" r="38.4"/>
+    <circle cx="215" cy="380" r="19.8"/><circle cx="215" cy="380" r="38.4"/>
+    <circle cx="335" cy="380" r="19.8"/><circle cx="335" cy="380" r="38.4"/>
+    <circle cx="275" cy="320" r="20.1"/>
+    <path d="M298.2 313.8A24 24 0 1 1 268.8 296.8" stroke-width="1"/>
+  </g>
+  <path d="M135 320H415M275 180V460M195 260H235M215 240V280M315 260H355M335 240V280M195 380H235M215 360V400M315 380H355M335 360V400" class="axis"/>
+  <path d="M155 190V165M395 190V165M145 200H110M145 440H110M215 450V495M335 450V495" class="ext"/>
+  <path d="M155 175H395M120 200V440M215 480H335" class="dim"/>
+  <text x="265" y="168">40</text><text x="85" y="325">40</text><text x="264" y="475">20</text>
+  <path d="M405 260H455M405 380H455M440 260V380" class="ext"/>
+  <path d="M440 260V380" class="dim"/><text x="447" y="325">20</text>
+  <path d="M298 320H490" class="ext"/><text x="480" y="309">M8×1.25 通牙</text>
+  <path d="M362 233 455 200H520" class="ext"/>
+  <text x="475" y="185">4 × Ø6.6 通孔</text>
+  <text x="475" y="211">底面 Ø12.8 × 90° 沉头</text>
+
+  <text x="715" y="145" class="label">单孔剖面</text>
+  <path d="M655 350H759.2V379.4L740.6 398H655ZM817.4 398 798.8 379.4V350H900V398Z" fill="url(#hatch)" stroke="#172033" stroke-width="2"/>
+  <path d="M779 332V420" class="axis"/>
+  <path d="M910 350H951M910 398H951" class="ext"/><path d="M935 350V398" class="dim"/>
+  <text x="944" y="380">8</text>
+  <path d="M740.6 425H817.4" class="dim"/><text x="753" y="451">Ø12.8</text>
+  <text x="675" y="480" class="small">沉头理论深度 3.1；螺钉顶面下沉 0.1</text>
+  <text x="665" y="338" class="small">型材接触面</text>
+  <text x="880" y="427" class="small">脚侧</text>
+
+  <path d="M55 520H1045" class="ext"/>
+  <text x="55" y="552" class="label">加工与装配</text>
+  <text x="55" y="583">1. 钢板厚 8，四孔以板中心为基准，孔中心坐标 (±10, ±10)。去除锐边和毛刺。</text>
+  <text x="55" y="613">2. 4040 B6 的四个芯孔攻 M6×1，有效螺纹至少 13，另留入口倒角及丝锥导程余量。</text>
+  <text x="55" y="643">3. 四颗 DIN 7991 M6×20 固定底板；螺钉进入型材约 12.1。先装板，再装脚并锁紧。</text>
+  <text x="55" y="673">4. Motedis BD40-8x50 脚杆从板底旋入 10，穿出板顶 2；锁紧螺母贴合板底。</text>
+  <text x="55" y="712" class="small">螺钉参考：DIN 7991 M6，头径 12、头高 3.3、内六角 4；螺纹牙型在显示模型中简化。</text>
+  <text x="55" y="739" class="small">钢材牌号、加工公差、防腐和承载由制造方按用途确定。本图给出装配几何，无额定承载声明。</text>
+  <text x="55" y="774" class="small">适用截面：Motedis 40×40 B 型槽 6（四个 M6 芯孔）；不能替代 I8 中央孔安装方案。</text>
+</svg>

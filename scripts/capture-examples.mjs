@@ -77,20 +77,19 @@ try {
     ['t-nut', 'I8 槽内 · M8 槽螺母', [160, 280, 250]],
     ['hinge', '两构件四孔 · 合页', [380, 160, 190]],
     ['pivot', '两孔固定 · 轴承座', [200, 220, 300]],
-    ['caster-mount', '独立样品 · 脚轮（未安装）', [250, 150, 375]],
+    ['caster-mount', '3030 B8 端孔 M8×25 · 75 mm 脚轮', [250, 150, 375]],
   ]
   const canvas = await page.locator('canvas').boundingBox()
   if (!canvas || demo.connectors.length !== 14 || samples.length !== 14
     || new Set(demo.connectors.map((part) => part.type)).size !== 14) throw new Error('Connector demo must contain all 14 connector types')
-  if (demo.showcaseSamples?.length !== 1 || demo.showcaseSamples[0].connectorId !== 'caster-mount')
-    throw new Error('Only the explicitly documented caster may be an unmounted sample')
+  if (demo.showcaseSamples?.length) throw new Error('Every connector demo part must be installed')
   const clip = { x: canvas.x + (canvas.width - 650) / 2, y: canvas.y + (canvas.height - 520) / 2, width: 650, height: 520 }
   const tiles = []
   for (const [id, label, offset] of samples) {
     const part = demo.connectors.find((connector) => connector.id === id)
     if (!part) throw new Error(`Connector demo is missing ${id}`)
     const profileIds = demo.showcaseFixtures?.find((fixture) => fixture.connectorId === id)?.profileIds
-    if (!profileIds || (!profileIds.length && id !== 'caster-mount')) throw new Error(`Connector demo is missing its fixture for ${id}`)
+    if (!profileIds?.length) throw new Error(`Connector demo is missing its fixture for ${id}`)
     const profiles = demo.profiles.filter((profile) => profileIds.includes(profile.id))
     if (profiles.length !== profileIds.length) throw new Error(`Connector demo is missing members for ${id}`)
     // Each tile shows one complete fixture, without unrelated samples in its background.
@@ -101,7 +100,7 @@ try {
     }, { target: part.position, direction })
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     const png = await page.screenshot({ clip })
-    tiles.push({ label, note: id === 'caster-mount' ? '图纸孔 Ø11 / 网页 Ø6.5；转接方案未核验' : '', src: `data:image/png;base64,${png.toString('base64')}` })
+    tiles.push({ label, note: '', src: `data:image/png;base64,${png.toString('base64')}` })
   }
   const collage = await browser.newPage({ viewport: { width: 1300, height: 1920 } })
   await collage.setContent('<!doctype html><html lang="zh"><head><meta charset="utf-8"><style>body{margin:0;background:#0f172a;color:#e2e8f0;font:20px system-ui,sans-serif}main{box-sizing:border-box;padding:8px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(5,1fr);gap:8px;width:1300px;height:1920px}figure{margin:0;min-height:0;overflow:hidden;background:#1e293b;display:flex;flex-direction:column}img{display:block;width:100%;min-height:0;flex:1;object-fit:cover}figcaption{padding:9px 12px;line-height:24px}small{display:block;color:#fbbf24;font-size:14px;line-height:19px}</style></head><body><main></main></body></html>')

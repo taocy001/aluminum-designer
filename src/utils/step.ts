@@ -307,7 +307,7 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const quat = new THREE.Quaternion(...c.quaternion).normalize()
     const at = new THREE.Vector3(...c.position)
     const label = partNumber('connector', c.id)
-    const description = `${c.type} ${series}`
+    const description = `${c.type} ${series}${c.profileSpec ? ` ${c.profileSpec}` : ''}`
     const transform = new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
     const bodies = connectorMeshes(c.type, series, c.profileSpec, c.mountSeries).filter((mesh) => !mesh.visualOnly)
       .map(({ geometry }, index) => meshSolid(s, geometry, `${label}-${index + 1}`, transform))

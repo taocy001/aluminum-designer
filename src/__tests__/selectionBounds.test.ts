@@ -57,7 +57,7 @@ it('returns no target for an empty or no longer existing selection', () => {
 it.each([
   ['foot', 110], ['gusset', 140], ['inside-corner', 120.45], ['t-bracket', 150],
   ['bracket', 118], ['flat-plate', 104], ['joining-plate', 109], ['end-cap', 110],
-  ['caster-mount', 100], ['cross-bracket', 145], ['hinge', 118], ['pivot', 122],
+  ['caster-mount', 108.361], ['cross-bracket', 145], ['hinge', 118], ['pivot', 122],
   ['corner-3way', 120], ['t-nut', 99.5],
 ])('uses the actual %s solids instead of a collision envelope', (type, expected) => {
   const part: ConnectorData = { id: 'part', type, series: 20, position: [0, 100, 0], quaternion: [0, 0, 0, 1] }

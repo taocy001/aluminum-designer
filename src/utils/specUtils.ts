@@ -1,10 +1,10 @@
 import type { ProfileSpec } from '../store/useStore'
 
-export const ALL_SPECS: ProfileSpec[] = ['2020', '2040', '3030', '3040', '4040']
+export const ALL_SPECS: ProfileSpec[] = ['2020', '2040', '3030', '3040', '4040', '4040-B6']
 
 type SectionDimensions = Readonly<{ w: number; h: number; hw: number; hh: number }>
 const sectionDimensions = new Map<string, SectionDimensions>(ALL_SPECS.map((spec) => {
-  const w = Number(spec.substring(0, 2)), h = Number(spec.substring(2))
+  const w = Number(spec.substring(0, 2)), h = Number(spec.substring(2, 4))
   return [spec, Object.freeze({ w, h, hw: w / 2, hh: h / 2 })]
 }))
 
@@ -13,7 +13,7 @@ export function specDims(spec: string): SectionDimensions {
   const known = sectionDimensions.get(spec)
   if (known) return known
   const w = Number(spec.substring(0, 2)) || 20
-  const h = Number(spec.substring(2)) || w
+  const h = Number(spec.substring(2, 4)) || w
   return { w, h, hw: w / 2, hh: h / 2 }
 }
 

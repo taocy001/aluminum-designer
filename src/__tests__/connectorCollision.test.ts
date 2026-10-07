@@ -205,9 +205,9 @@ describe('modeled connector collision bodies', () => {
     }
   })
 
-  it('keeps the foot stud insertion and caster plate contact origins distinct', () => {
+  it('includes the actual foot and caster screw insertion above their mounting faces', () => {
     expect(connectorSolidTop({ ...part('foot'), series: 40 })).toBeCloseTo(10, 4)
-    expect(connectorSolidTop(part('caster-mount'))).toBeCloseTo(0, 5)
+    expect(connectorSolidTop(part('caster-mount'))).toBeCloseTo(8.3609, 4)
     const post = makeOBB(V(0, 100, 0), V(20, 20, 100), new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), -Math.PI / 2))
     const foot: ConnectorData = { ...part('foot'), series: 40 }
     expect(connectorHitsBody(foot, post)).toBe(false)

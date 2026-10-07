@@ -3,7 +3,7 @@ import type { ProfileSpec } from '../store/useStore'
 import type { ConnectorSeries } from './connectorCatalog'
 import { accessoryHingeDimensions, accessoryMountPoints, accessoryNutDimensions, accessoryPlateDimensions } from './connectorAccessoryReferences'
 import { boxGeometry, cylinderGeometry, plateGeometry, ringGeometry, geometryFromCad,
-  type CollisionBox, type ConnectorMesh, type V3 } from './connectorSolidPrimitives'
+  type CollisionBox, type CollisionPart, type ConnectorMesh, type V3 } from './connectorSolidPrimitives'
 import nut20 from '../assets/connectorCad/motedis-tnut-20-installed.json'
 import nut30 from '../assets/connectorCad/motedis-tnut-30-installed.json'
 import nut40 from '../assets/connectorCad/motedis-tnut-40-installed.json'
@@ -11,14 +11,17 @@ import cap2020 from '../assets/connectorCad/motedis-cap-2020.json'
 import cap2040 from '../assets/connectorCad/motedis-cap-2040.json'
 import cap3030 from '../assets/connectorCad/motedis-cap-3030.json'
 import cap4040 from '../assets/connectorCad/motedis-cap-4040.json'
-import caster0 from '../assets/connectorCad/motedis-caster-963-0.json'
-import caster1 from '../assets/connectorCad/motedis-caster-963-1.json'
-import caster2 from '../assets/connectorCad/motedis-caster-963-2.json'
-import caster3 from '../assets/connectorCad/motedis-caster-963-3.json'
-import caster4 from '../assets/connectorCad/motedis-caster-963-4.json'
-import caster5 from '../assets/connectorCad/motedis-caster-963-5.json'
-import caster6 from '../assets/connectorCad/motedis-caster-963-6.json'
-import caster7 from '../assets/connectorCad/motedis-caster-963-7.json'
+import casterBearings from '../assets/connectorCad/motedis-caster-10146-bearings.json'
+import casterAxleTube from '../assets/connectorCad/motedis-caster-10146-14.json'
+import casterAxle from '../assets/connectorCad/motedis-caster-10146-15.json'
+import casterNut from '../assets/connectorCad/motedis-caster-10146-16.json'
+import casterWheel from '../assets/connectorCad/motedis-caster-10146-17.json'
+import casterFork from '../assets/connectorCad/motedis-caster-10146-18.json'
+import casterSwivel from '../assets/connectorCad/motedis-caster-10146-19.json'
+import casterBore from '../assets/connectorCad/motedis-caster-10146-20.json'
+import casterCover from '../assets/connectorCad/motedis-caster-10146-21.json'
+import casterScrew from '../assets/connectorCad/din7991-m8x25-caster.json'
+import adapterScrew from '../assets/connectorCad/din7991-m6x20.json'
 
 const rect = (x0: number, y0: number, x1: number, y1: number): [number, number][] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
 const box = (size: V3, centre: V3, dark = false): ConnectorMesh => ({ geometry: boxGeometry(size, centre), dark,
@@ -39,11 +42,11 @@ function normalize(parts: ConnectorMesh[], series: ConnectorSeries): ConnectorMe
   for (const part of parts) {
     part.geometry.scale(k, k, k)
     if (part.collisionBoxes) part.collisionBoxes = part.collisionBoxes.map((b) => ({
-      centre: b.centre.map((n) => n * k) as V3, half: b.half.map((n) => n * k) as V3,
+      ...b, centre: b.centre.map((n) => n * k) as V3, half: b.half.map((n) => n * k) as V3,
     }))
     if (part.collisionParts) part.collisionParts = part.collisionParts.map((solid) => 'vertices' in solid
-      ? { vertices: solid.vertices.map((v) => v.map((n) => n * k) as V3) }
-      : { centre: solid.centre.map((n) => n * k) as V3, half: solid.half.map((n) => n * k) as V3 })
+      ? { ...solid, vertices: solid.vertices.map((v) => v.map((n) => n * k) as V3) }
+      : { ...solid, centre: solid.centre.map((n) => n * k) as V3, half: solid.half.map((n) => n * k) as V3 })
     if (part.collisionVertices) part.collisionVertices = part.collisionVertices.map((v) => v.map((n) => n * k) as V3)
   }
   return parts
@@ -113,8 +116,21 @@ export function accessoryMeshes(type: string, series: ConnectorSeries, profileSp
     }
   } else if (type === 'end-cap') {
     const spec = profileSpec ?? `${series}${series}`
-    const cad = spec === '2020' ? cap2020 : spec === '2040' ? cap2040 : spec === '4040' ? cap4040 : cap3030
-    parts.push({ geometry: geometryFromCad(cad), dark: true, collisionParts: cad.collisionParts as { centre: V3; half: V3 }[] })
+    if (spec === '4040-B6') {
+      // Four original B6 caps: each pin enters one core; retention tabs face outwards.
+      for (const x of [-10, 10]) for (const y of [-10, 10]) {
+        const sign = x < 0 ? 1 : -1
+        parts.push({ geometry: geometryFromCad(cap2020).rotateZ(x < 0 ? 0 : Math.PI).translate(x, y, 0), dark: true,
+          collisionParts: cap2020.collisionParts.map((b, i) => ({
+            centre: [sign * b.centre[0] + x, sign * b.centre[1] + y, b.centre[2]] as V3,
+            half: b.half as V3, pressFit: i > 0,
+          })) })
+      }
+    } else {
+      const cad = spec === '2020' ? cap2020 : spec === '2040' ? cap2040 : spec === '4040' ? cap4040 : cap3030
+      parts.push({ geometry: geometryFromCad(cad), dark: true,
+        collisionParts: cad.collisionParts.map((b, i) => ({ centre: b.centre as V3, half: b.half as V3, pressFit: i > 0 })) })
+    }
   } else if (type === 'hinge') {
     const d = accessoryHingeDimensions(series), r = d.barrelRadius
     for (const side of [-1, 1]) {
@@ -137,13 +153,39 @@ export function accessoryMeshes(type: string, series: ConnectorSeries, profileSp
   } else if (type === 't-nut') {
     const d = accessoryNutDimensions(series), z = d.length / 2 - d.holeFromEnd
     const pieces: CollisionBox[] = [
-      { centre: [0, -d.shoulderDepth + d.neckHeight / 2, z], half: [d.neckWidth / 2, d.neckHeight / 2, d.length / 2] },
-      { centre: [0, -d.shoulderDepth - (d.thickness - d.neckHeight) / 2, z], half: [d.width / 2, (d.thickness - d.neckHeight) / 2, d.length / 2] },
+      { centre: [0, -d.shoulderDepth + d.neckHeight / 2, z], half: [series === 30 ? 4 : d.neckWidth / 2, d.neckHeight / 2, d.length / 2] },
+      { centre: [0, -d.shoulderDepth - (d.thickness - d.neckHeight) / 2, z], half: [series === 40 ? 6.753 : d.width / 2, (d.thickness - d.neckHeight) / 2, d.length / 2] },
     ]
     if (series === 40) pieces.push({ centre: [0, -11.45, 9.5], half: [2.5, .55, 2.5] })
-    parts.push(mesh(geometryFromCad(series === 20 ? nut20 : series === 30 ? nut30 : nut40), pieces))
+    if (series === 30) {
+      parts.push({ geometry: geometryFromCad(nut30), collisionParts: nut30.collisionParts as CollisionPart[] })
+    } else if (series === 20) {
+      // The B6 hammer nut has 2 mm bottom chamfers matching the slot floor.
+      const chamfer = 2, half = d.width / 2
+      const bottom = -d.shoulderDepth - d.thickness + d.neckHeight
+      parts.push({ geometry: geometryFromCad(nut20), collisionParts: [pieces[0], {
+        vertices: [-d.length / 2, d.length / 2].flatMap((depth) => [
+          [-half, -d.shoulderDepth, depth], [half, -d.shoulderDepth, depth], [half, bottom + chamfer, depth],
+          [half - chamfer, bottom, depth], [-half + chamfer, bottom, depth], [-half, bottom + chamfer, depth],
+        ] as V3[]),
+      }] })
+    } else parts.push(mesh(geometryFromCad(nut40), pieces))
   } else if (type === 'foot') {
+    const adapter = series === 20 && profileSpec === '4040-B6'
+    if (adapter) {
+      // Each M6 screw contributes a shaft followed by a head collision solid.
+      for (const x of [-10, 10]) for (const z of [-10, 10]) {
+        const shaft = axial(3, 16.7, 'y', [x, 3.75, z])
+        parts.push({ geometry: geometryFromCad(adapterScrew).translate(x, -7.9, z), polished: true,
+          collisionParts: [{ vertices: shaft.collisionVertices! }, { centre: [x, -6.25, z], half: [6, 1.65, 6] }] })
+        shaft.geometry.dispose()
+      }
+      const holes = [-10, 10].flatMap((x) => [-10, 10].map((y) => ({ x, y, bore: 6.6, sink: 12.8 })))
+      holes.push({ x: 0, y: 0, bore: 8, sink: 8 })
+      parts.push(mesh(countersunkPlate(rect(-20, -20, 20, 20), 8, holes).rotateX(Math.PI / 2)))
+    }
     // 10 mm of the M8 stud enters the tapped end; the locknut's contact face is Y=0.
+    const footStart = parts.length
     parts.push({ ...axial(4, 58.74, 'y', [0, -19.37, 0]), polished: true })
     const nut = (y: number) => {
       const polygon = Array.from({ length: 6 }, (_, i): [number, number] => [7 / Math.cos(Math.PI / 6) * Math.cos(i * Math.PI / 3), 7 / Math.cos(Math.PI / 6) * Math.sin(i * Math.PI / 3)])
@@ -152,16 +194,23 @@ export function accessoryMeshes(type: string, series: ConnectorSeries, profileSp
     parts.push(nut(-6), nut(-55))
     const base = new THREE.CylinderGeometry(6.5, 19.7, 12, 40).translate(0, -54.74, 0)
     parts.push({ geometry: base, dark: true }, axial(19.7, 7.5, 'y', [0, -64.49, 0], true))
+    if (adapter) for (const part of parts.slice(footStart)) {
+      part.geometry.translate(0, -8, 0)
+      if (part.collisionVertices) part.collisionVertices = part.collisionVertices.map(([x, y, z]) => [x, y - 8, z])
+      if (part.collisionBoxes) part.collisionBoxes = part.collisionBoxes.map((b) => ({ ...b, centre: [b.centre[0], b.centre[1] - 8, b.centre[2]] }))
+    }
   } else if (type === 'caster-mount') {
-    const fork = geometryFromCad(caster0)
-    parts.push({ geometry: fork, collisionBoxes: [
-      { centre: [8, -32, -12.75], half: [19, 24.7, .75] },
-      { centre: [8, -32, 12.75], half: [19, 24.7, .75] },
-      { centre: [0, -9.45, 0], half: [18.95, 2.25, 18.95] },
-      { centre: [-8.5, -30, 0], half: [10.5, 15, 12] },
+    // The fixing screw bears on the STEP bore's lower edge. Its first collision
+    // part is only the M8 shaft; the head remains subject to normal clearance.
+    const shaft = axial(4, 20.6, 'y', [0, -1.9391, 0])
+    parts.push({ geometry: geometryFromCad(casterScrew), polished: true, collisionParts: [
+      { vertices: shaft.collisionVertices! }, { centre: [0, -14.4391, 0], half: [8, 2.2, 8] },
     ] })
-    for (const [i, cad] of [caster1, caster2, caster3, caster4, caster5, caster6, caster7].entries())
-      parts.push({ geometry: geometryFromCad(cad), dark: i < 3 })
+    shaft.geometry.dispose()
+    parts.push({ geometry: geometryFromCad(casterFork), collisionBoxes: casterFork.collisionParts as CollisionBox[] })
+    for (const cad of [casterBearings, casterAxleTube, casterAxle, casterNut, casterSwivel, casterBore, casterCover])
+      parts.push({ geometry: geometryFromCad(cad), polished: true })
+    parts.push({ geometry: geometryFromCad(casterWheel), dark: true })
   } else if (type === 'pivot') {
     // Each foot is drilled along Y; the housing and bearing are drilled along Z.
     // Separate closed solids share attachment faces without CSG triangulation seams.

@@ -1,13 +1,18 @@
 ﻿Category,Item,Spec,Cut length (mm),Quantity,Part numbers
-Profile,2020,2020,880,4,"P-p-mufs8zlu9b; P-p-mufs90699c; P-p-mufs90ki9d; P-p-mufs90vh9e"
-Profile,2020,2020,800,2,"P-p-mufs930k9j; P-p-mufs93e29k"
-Profile,2020,2020,760,10,"P-b-mufvmswr14-bearing-back; P-b-mufvmswr14-bearing-front; P-b-mufvmsws17-bearing-back; P-b-mufvmsws17-bearing-front; P-p-mufs91if9f; P-p-mufs91t69g; P-p-mufvmswq12; P-p-mufvmswq13; P-p-mufvmswr15; P-p-mufvmswr16"
-Profile,2020,2020,460,8,"P-p-mufs922g9h; P-p-mufs92ec9i; P-p-mufs93oi9l; P-p-mufs941n9m; P-p-mufs9hqq9v; P-p-mufs9i3v9w; P-p-mufs9je19y; P-p-mufs9jro9z"
-Profile,2020,2020,398,4,"P-b-mufvmswr14-bearing-left; P-b-mufvmswr14-bearing-right; P-b-mufvmsws17-bearing-left; P-b-mufvmsws17-bearing-right"
-Connector,"内角码","Motedis S6BIBM5",,56,"C-b-mufvmswr14-bearing-back-end-joint; C-b-mufvmswr14-bearing-back-start-joint; C-b-mufvmswr14-bearing-front-end-joint; C-b-mufvmswr14-bearing-front-start-joint; C-b-mufvmswr14-bearing-left-end-joint; C-b-mufvmswr14-bearing-left-start-joint; C-b-mufvmswr14-bearing-right-end-joint; C-b-mufvmswr14-bearing-right-start-joint; C-b-mufvmsws17-bearing-back-end-joint; C-b-mufvmsws17-bearing-back-start-joint; C-b-mufvmsws17-bearing-front-end-joint; C-b-mufvmsws17-bearing-front-start-joint; C-b-mufvmsws17-bearing-left-end-joint; C-b-mufvmsws17-bearing-left-start-joint; C-b-mufvmsws17-bearing-right-end-joint; C-b-mufvmsws17-bearing-right-start-joint; C-c-mufs9ks7a1; C-c-mufs9ks7a2; C-c-mufs9ks7a3; C-c-mufs9ks7a4; C-c-mufs9ks7a5; C-c-mufs9ks7a6; C-c-mufs9ks7a7; C-c-mufs9ks7a8; C-c-mufs9ks7a9; C-c-mufs9ks7aa; C-c-mufs9ks7ab; C-c-mufs9ks7ac; C-c-mufs9ks7ad; C-c-mufs9ks7ae; C-c-mufs9ks7af; C-c-mufs9ks7ag; C-c-mufs9ks7ah; C-c-mufs9ks7ai; C-c-mufs9ks7aj; C-c-mufs9ks7ak; C-c-mufs9ks7al; C-c-mufs9ks7am; C-c-mufs9ks7an; C-c-mufs9ks7ao; C-c-seat-063737969be7; C-c-seat-161805ed01fe; C-c-seat-1ef55ba73e4d; C-c-seat-307aa21f325c; C-c-seat-364f87f3da4f; C-c-seat-3788e591afca; C-c-seat-639f20265dfa; C-c-seat-a75b911b67ed; C-c-seat-afb7469ced57; C-c-seat-b6aafe1b11ce; C-c-seat-b8bb4637be34; C-c-seat-cc05c3d0c3ce; C-c-seat-ceef9de4a3e1; C-c-seat-d3ad4615586c; C-c-seat-d5156074aae8; C-c-seat-f5138dfd90c5"
-Fastener,"M5×6 DIN 913 紧定螺钉","",,112,""
+Profile,3030,3030,820,2,"P-p-mufs930k9j; P-p-mufs93e29k"
+Profile,3030,3030,770.3,4,"P-p-mufs8zlu9b; P-p-mufs90699c; P-p-mufs90ki9d; P-p-mufs90vh9e"
+Profile,3030,3030,760,10,"P-b-mufvmswr14-bearing-back; P-b-mufvmswr14-bearing-front; P-b-mufvmsws17-bearing-back; P-b-mufvmsws17-bearing-front; P-p-mufs91if9f; P-p-mufs91t69g; P-p-mufvmswq12; P-p-mufvmswq13; P-p-mufvmswr15; P-p-mufvmswr16"
+Profile,3030,3030,460,8,"P-p-mufs922g9h; P-p-mufs92ec9i; P-p-mufs93oi9l; P-p-mufs941n9m; P-p-mufs9hqq9v; P-p-mufs9i3v9w; P-p-mufs9je19y; P-p-mufs9jro9z"
+Profile,3030,3030,370,4,"P-b-mufvmswr14-bearing-left; P-b-mufvmswr14-bearing-right; P-b-mufvmsws17-bearing-left; P-b-mufvmsws17-bearing-right"
+Connector,"L型角码","Motedis S8BBR30",,8,"C-c-frame-072; C-c-frame-073; C-c-frame-074; C-c-frame-075; C-c-frame-076; C-c-frame-077; C-c-frame-078; C-c-frame-079"
+Connector,"内角码","Motedis S8IBIBM6",,72,"C-c-frame-000; C-c-frame-001; C-c-frame-002; C-c-frame-003; C-c-frame-004; C-c-frame-005; C-c-frame-006; C-c-frame-007; C-c-frame-008; C-c-frame-009; C-c-frame-010; C-c-frame-011; C-c-frame-012; C-c-frame-013; C-c-frame-014; C-c-frame-015; C-c-frame-016; C-c-frame-017; C-c-frame-018; C-c-frame-019; C-c-frame-020; C-c-frame-021; C-c-frame-022; C-c-frame-023; C-c-frame-024; C-c-frame-025; C-c-frame-026; C-c-frame-027; C-c-frame-028; C-c-frame-029; C-c-frame-030; C-c-frame-031; C-c-frame-032; C-c-frame-033; C-c-frame-034; C-c-frame-035; C-c-frame-036; C-c-frame-037; C-c-frame-038; C-c-frame-039; C-c-frame-040; C-c-frame-041; C-c-frame-042; C-c-frame-043; C-c-frame-044; C-c-frame-045; C-c-frame-046; C-c-frame-047; C-c-frame-048; C-c-frame-049; C-c-frame-050; C-c-frame-051; C-c-frame-052; C-c-frame-053; C-c-frame-054; C-c-frame-055; C-c-frame-056; C-c-frame-057; C-c-frame-058; C-c-frame-059; C-c-frame-060; C-c-frame-061; C-c-frame-062; C-c-frame-063; C-c-frame-064; C-c-frame-065; C-c-frame-066; C-c-frame-067; C-c-frame-068; C-c-frame-069; C-c-frame-070; C-c-frame-071"
+Connector,"脚轮","Motedis 10146",,4,"C-caster-0; C-caster-1; C-caster-2; C-caster-3"
+Fastener,"M6×12 DIN 7984 螺钉","",,16,""
+Fastener,"M8×25 DIN 7991 螺钉 (脚轮芯孔安装)","",,4,""
+Fastener,"M6×8 DIN 913 紧定螺钉","",,144,""
+Fastener,"M6 T 槽螺母","30 系列槽用",,16,""
 Board,"760 × 460 mm","密度板 18mm",,2,"B-b-mufvmswr14; B-b-mufvmsws17"
-Suggested,"端盖 2020（按自由端推算）","2020",,4,""
-Summary,Overall WxDxH,800x500x900,,,
-Summary,Total cut length (mm),,17992,,
+Suggested,"端盖 3030（按自由端推算）","3030",,4,""
+Summary,Overall WxDxH,820x520x800.3,,,
+Summary,Total cut length (mm),,17481.2,,
 Summary,Board area (m2),,0.70,,

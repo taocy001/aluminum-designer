@@ -2,10 +2,12 @@ import * as THREE from 'three'
 import type { ConnectorData, ProfileSpec } from '../store/useStore'
 import { connectorScale } from './connectorCatalog'
 import { connectorMeshes } from './connectorGeometry'
+import { ALL_SPECS } from './specUtils'
 import { getProfileShape } from './profileShapes'
 import { makeOBB, type OBB } from './obb'
 
 interface Solid {
+  pressFit?: boolean
   vertices?: THREE.Vector3[]
   box?: OBB
   normals: THREE.Vector3[]
@@ -40,6 +42,30 @@ function polySolid(vertices: THREE.Vector3[]): Solid {
   return { vertices, normals, edges, bounds: new THREE.Box3().setFromPoints(vertices) }
 }
 
+interface LocalPoly {
+  coordinates: number[][]
+  scale: number
+  solid: Solid
+}
+const localPolys = new WeakMap<readonly (readonly number[])[], LocalPoly>()
+
+/** A rigid transform rotates SAT axes without changing their local construction. */
+function transformedPoly(points: readonly (readonly number[])[], scale: number,
+  rotation: THREE.Quaternion, position: THREE.Vector3): Solid {
+  let cached = localPolys.get(points)
+  if (!cached || cached.scale !== scale || cached.coordinates.length !== points.length
+    || points.some((point, i) => point[0] !== cached!.coordinates[i][0]
+      || point[1] !== cached!.coordinates[i][1] || point[2] !== cached!.coordinates[i][2])) {
+    cached = { scale, coordinates: points.map((point) => [point[0], point[1], point[2]]),
+      solid: polySolid(points.map((point) => new THREE.Vector3(point[0], point[1], point[2]).multiplyScalar(scale))) }
+    localPolys.set(points, cached)
+  }
+  const vertices = cached.solid.vertices!.map((v) => v.clone().applyQuaternion(rotation).add(position))
+  return { vertices, normals: cached.solid.normals.map((v) => v.clone().applyQuaternion(rotation)),
+    edges: cached.solid.edges.map((v) => v.clone().applyQuaternion(rotation)),
+    bounds: new THREE.Box3().setFromPoints(vertices) }
+}
+
 /** Mesh producers expose convex pieces in the same local coordinates as the visible part. */
 function buildSolids(c: ConnectorData): Solid[] {
   const q = new THREE.Quaternion(...c.quaternion).normalize(), k = connectorScale(c.series ?? 20)
@@ -47,9 +73,11 @@ function buildSolids(c: ConnectorData): Solid[] {
   const point = (v: V3) => new THREE.Vector3(...v).multiplyScalar(k).applyQuaternion(q).add(position)
   const box = (centre: V3, half: V3) => boxSolid(makeOBB(point(centre), new THREE.Vector3(...half).multiplyScalar(k), q))
   return connectorMeshes(c.type, c.series, c.profileSpec, c.mountSeries).filter((mesh) => !mesh.visualOnly).flatMap((mesh) => {
-    if (mesh.collisionParts) return mesh.collisionParts.map((part) => 'vertices' in part
-      ? polySolid(part.vertices.map((v) => point(v as V3))) : box(part.centre, part.half))
-    if (mesh.collisionVertices) return [polySolid(mesh.collisionVertices.map((v) => point(v as V3)))]
+    if (mesh.collisionParts) return mesh.collisionParts.map((part) => ({
+      ...('vertices' in part ? transformedPoly(part.vertices, k, q, position) : box(part.centre, part.half)),
+      pressFit: part.pressFit,
+    }))
+    if (mesh.collisionVertices) return [transformedPoly(mesh.collisionVertices, k, q, position)]
     if (mesh.collisionBoxes) return mesh.collisionBoxes.map((b) => box(b.centre, b.half))
     mesh.geometry.computeBoundingBox()
     const bounds = mesh.geometry.boundingBox!
@@ -83,12 +111,13 @@ function solids(c: ConnectorData, againstMetal = false): Solid[] {
 }
 
 interface BodyGeometry {
+  profileSpec?: ProfileSpec
   pose: number[]
   bounds: THREE.Box3
   axes?: OBB['axes']
   solid?: Solid
   slots?: [number[], number[]]
-  metal?: Solid[]
+  metal?: SectionMetal
 }
 const bodyCache = new WeakMap<OBB, BodyGeometry>()
 function sameVector(v: THREE.Vector3, pose: number[], offset: number): boolean {
@@ -99,9 +128,9 @@ function sameVector(v: THREE.Vector3, pose: number[], offset: number): boolean {
 function bodyGeometry(body: OBB): BodyGeometry {
   let geometry = bodyCache.get(body)
   const { center, half, axes } = body
-  if (!geometry || !sameVector(center, geometry.pose, 0) || !sameVector(half, geometry.pose, 3)
+  if (!geometry || geometry.profileSpec !== body.profileSpec || !sameVector(center, geometry.pose, 0) || !sameVector(half, geometry.pose, 3)
     || !sameVector(axes[0], geometry.pose, 6) || !sameVector(axes[1], geometry.pose, 9) || !sameVector(axes[2], geometry.pose, 12)) {
-    geometry = { pose: [center.x, center.y, center.z, half.x, half.y, half.z,
+    geometry = { profileSpec: body.profileSpec, pose: [center.x, center.y, center.z, half.x, half.y, half.z,
       axes[0].x, axes[0].y, axes[0].z, axes[1].x, axes[1].y, axes[1].z, axes[2].x, axes[2].y, axes[2].z],
     bounds: boxBounds(body) }
     bodyCache.set(body, geometry)
@@ -165,39 +194,83 @@ export function connectorsCollide(a: ConnectorData, b: ConnectorData): boolean {
 }
 
 const sectionTriangles = new Map<ProfileSpec, THREE.Vector2[][]>()
-const metalByPose = new Map<string, Solid[]>()
+interface SectionMetal {
+  triangles: THREE.Vector2[][]
+  bounds: Float64Array
+  solids: (Solid | undefined)[]
+}
+const metalByPose = new Map<string, SectionMetal>()
 
-/** Extrude the rendered section's triangulation, including slot undercuts and core holes. */
-function profileMetal(body: OBB, cache: BodyGeometry): Solid[] {
-  if (cache.metal) return cache.metal
-  const width = Math.round(body.half.x * 2), height = Math.round(body.half.y * 2)
-  const spec = `${width}${height}` as ProfileSpec
-  if (!['2020', '2040', '3030', '3040', '4040'].includes(spec)) return [bodySolid(body, cache)]
-  const key = cache.pose.join(':')
-  const saved = metalByPose.get(key)
-  if (saved) return cache.metal = saved
-  let triangles = sectionTriangles.get(spec)
-  if (!triangles) {
-    const shape = getProfileShape(spec).extractPoints(6)
-    for (const ring of [shape.shape, ...shape.holes]) if (ring.length > 1 && ring[0].equals(ring[ring.length - 1])) ring.pop()
-    const points = [...shape.shape, ...shape.holes.flat()]
-    triangles = THREE.ShapeUtils.triangulateShape(shape.shape, shape.holes).map((tri) => tri.map((i) => points[i]))
-    sectionTriangles.set(spec, triangles)
+/** Cache conservative prism bounds; construct exact solids only near the connector. */
+function profileMetal(body: OBB, cache: BodyGeometry, parts: Solid[]): Solid[] {
+  let section = cache.metal
+  if (!section) {
+    const width = Math.round(body.half.x * 2), height = Math.round(body.half.y * 2)
+    const spec = body.profileSpec ?? `${width}${height}` as ProfileSpec
+    if (!ALL_SPECS.includes(spec)) return [bodySolid(body, cache)]
+    const key = `${spec}:${cache.pose.join(':')}`
+    section = metalByPose.get(key)
+    if (!section) {
+      let triangles = sectionTriangles.get(spec)
+      if (!triangles) {
+        const shape = getProfileShape(spec).extractPoints(6)
+        for (const ring of [shape.shape, ...shape.holes]) if (ring.length > 1 && ring[0].equals(ring[ring.length - 1])) ring.pop()
+        const points = [...shape.shape, ...shape.holes.flat()]
+        triangles = THREE.ShapeUtils.triangulateShape(shape.shape, shape.holes).map((tri) => tri.map((i) => points[i]))
+        sectionTriangles.set(spec, triangles)
+      }
+      const bounds = new Float64Array(triangles.length * 6)
+      const { center, axes, half } = body
+      for (let i = 0; i < triangles.length; i++) {
+        const offset = i * 6
+        bounds[offset] = bounds[offset + 1] = bounds[offset + 2] = Infinity
+        bounds[offset + 3] = bounds[offset + 4] = bounds[offset + 5] = -Infinity
+        // Use the same six vertices and operation order as the exact prism.
+        for (let end = -1; end <= 1; end += 2) for (const p of triangles[i]) {
+          const z = half.z * end
+          const x = ((center.x + axes[0].x * p.x) + axes[1].x * p.y) + axes[2].x * z
+          const y = ((center.y + axes[0].y * p.x) + axes[1].y * p.y) + axes[2].y * z
+          const w = ((center.z + axes[0].z * p.x) + axes[1].z * p.y) + axes[2].z * z
+          bounds[offset] = Math.min(bounds[offset], x)
+          bounds[offset + 1] = Math.min(bounds[offset + 1], y)
+          bounds[offset + 2] = Math.min(bounds[offset + 2], w)
+          bounds[offset + 3] = Math.max(bounds[offset + 3], x)
+          bounds[offset + 4] = Math.max(bounds[offset + 4], y)
+          bounds[offset + 5] = Math.max(bounds[offset + 5], w)
+        }
+      }
+      section = { triangles, bounds, solids: new Array(triangles.length) }
+      // Door-motion checks rebuild OBBs. Keep a bounded set of unchanged poses.
+      if (metalByPose.size >= 256) metalByPose.delete(metalByPose.keys().next().value!)
+      metalByPose.set(key, section)
+    }
+    cache.metal = section
   }
-  cache.metal = triangles.map((tri): Solid => {
-    const vertices = [-body.half.z, body.half.z].flatMap((z) => tri.map((p) =>
-      body.center.clone().addScaledVector(body.axes[0], p.x)
-        .addScaledVector(body.axes[1], p.y).addScaledVector(body.axes[2], z)))
-    // A triangular prism has three in-plane edge directions and one extrusion axis.
-    const axis = body.axes[2].clone()
-    const sides = [0, 1, 2].map((i) => vertices[(i + 1) % 3].clone().sub(vertices[i]).normalize())
-    return { vertices, edges: [...sides, axis], normals: [axis, ...sides.map((e) => new THREE.Vector3().crossVectors(e, axis).normalize())],
-      bounds: new THREE.Box3().setFromPoints(vertices) }
-  })
-  // Door-motion checks rebuild profile OBBs. Reuse unchanged poses with bounded memory.
-  if (metalByPose.size >= 256) metalByPose.delete(metalByPose.keys().next().value!)
-  metalByPose.set(key, cache.metal)
-  return cache.metal
+  const metal: Solid[] = [], { bounds } = section
+  for (let i = 0; i < section.triangles.length; i++) {
+    const offset = i * 6
+    // Expand only this prefilter. The final AABB and SAT keep their original
+    // tests, including negative clearance and host-specific fit tolerances.
+    const nearby = parts.some(({ bounds: other }) => !(other.max.x < bounds[offset] - 1e-8
+      || other.min.x > bounds[offset + 3] + 1e-8 || other.max.y < bounds[offset + 1] - 1e-8
+      || other.min.y > bounds[offset + 4] + 1e-8 || other.max.z < bounds[offset + 2] - 1e-8
+      || other.min.z > bounds[offset + 5] + 1e-8))
+    if (!nearby) continue
+    let solid = section.solids[i]
+    if (!solid) {
+      const tri = section.triangles[i]
+      const vertices = [-body.half.z, body.half.z].flatMap((z) => tri.map((p) =>
+        body.center.clone().addScaledVector(body.axes[0], p.x)
+          .addScaledVector(body.axes[1], p.y).addScaledVector(body.axes[2], z)))
+      const axis = body.axes[2].clone()
+      const sides = [0, 1, 2].map((j) => vertices[(j + 1) % 3].clone().sub(vertices[j]).normalize())
+      solid = { vertices, edges: [...sides, axis], normals: [axis, ...sides.map((e) => new THREE.Vector3().crossVectors(e, axis).normalize())],
+        bounds: new THREE.Box3().setFromPoints(vertices) }
+      section.solids[i] = solid
+    }
+    metal.push(solid)
+  }
+  return metal
 }
 
 /** Profile metal follows its visible section; panel/equipment checks use complete solid bounds. */
@@ -207,25 +280,33 @@ export function connectorHitsBody(c: ConnectorData, body: OBB, tolerance = 0.15,
   // Rebuilt OBBs often describe the same cut profile during suggestion and door
   // checks. All body coordinates, clearance and material mode belong to the key;
   // changing any connector coordinate replaces shapeGeometry and this cache.
-  const key = `${againstMetal}:${tolerance}:${member.pose.join(':')}`
+  const key = `${againstMetal}:${tolerance}:${body.profileSpec ?? ''}:${member.pose.join(':')}`
   const previous = shape.bodyHits.get(key)
   if (previous !== undefined) return previous
-  const metal = againstMetal ? profileMetal(body, member) : [bodySolid(body, member)]
-  // The M8 envelope may overlap only its coaxial 3030/4040 tapping pilot. The foot's
-  // locknut/base, other members and non-metal obstacles retain normal clearance.
+  const metal = againstMetal ? profileMetal(body, member, shape.full) : [bodySolid(body, member)]
+  // Only the foot stud or caster fixing screw may overlap its coaxial M8 tapping
+  // pilot. Their remaining parts and unrelated bodies retain normal clearance.
   const origin = new THREE.Vector3(...c.position), into = new THREE.Vector3(0, 1, 0).applyQuaternion(new THREE.Quaternion(...c.quaternion).normalize())
   const delta = origin.clone().sub(body.center)
-  const tappedFootHost = againstMetal && c.type === 'foot' && (c.series === 30 || c.series === 40)
+  const tappedFootHost = againstMetal && (c.type === 'foot' || c.type === 'caster-mount') && (c.series === 30 || c.series === 40)
+    && body.profileSpec !== '4040-B6'
     && Math.abs(body.half.x - c.series / 2) < 1e-6 && Math.abs(body.half.y - c.series / 2) < 1e-6
     && Math.abs(delta.dot(body.axes[0])) < 1e-5 && Math.abs(delta.dot(body.axes[1])) < 1e-5
     && Math.abs(Math.abs(delta.dot(body.axes[2])) - body.half.z) < 1e-5
     && Math.abs(into.dot(body.axes[2])) > .999999 && into.dot(delta) < 0
   const q = new THREE.Quaternion(...c.quaternion).normalize()
+  const adapterHost = againstMetal && c.type === 'foot' && c.series === 20 && c.profileSpec === '4040-B6'
+    && body.profileSpec === '4040-B6'
+    && Math.abs(delta.dot(body.axes[0])) < 1e-5 && Math.abs(delta.dot(body.axes[1])) < 1e-5
+    && Math.abs(Math.abs(delta.dot(body.axes[2])) - body.half.z) < 1e-5
+    && Math.abs(into.dot(body.axes[2])) > .999999 && into.dot(delta) < 0
+    && (Math.abs(new THREE.Vector3(1, 0, 0).applyQuaternion(q).dot(body.axes[0])) > .999999
+      || Math.abs(new THREE.Vector3(1, 0, 0).applyQuaternion(q).dot(body.axes[1])) > .999999)
   const capNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
   const capX = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
   const capSpec = c.profileSpec ?? `${c.series ?? 20}${c.series ?? 20}`
   const pressFitCapHost = againstMetal && c.type === 'end-cap' && capSpec !== '3040'
-    && capSpec === `${Math.round(body.half.x * 2)}${Math.round(body.half.y * 2)}`
+    && capSpec === (body.profileSpec ?? `${Math.round(body.half.x * 2)}${Math.round(body.half.y * 2)}`)
     && Math.abs(delta.dot(body.axes[0])) < 1e-5 && Math.abs(delta.dot(body.axes[1])) < 1e-5
     && Math.abs(Math.abs(delta.dot(body.axes[2])) - body.half.z) < 1e-5
     && Math.abs(capNormal.dot(body.axes[2])) > .999999 && capNormal.dot(delta) > 0
@@ -233,9 +314,9 @@ export function connectorHitsBody(c: ConnectorData, body: OBB, tolerance = 0.15,
       || (body.half.x === body.half.y && Math.abs(capX.dot(body.axes[1])) > .999999))
   // Retention ribs of the matching plastic cap interfere with the core by up to
   // 0.6 mm in the manufacturer CAD. Only those inserted pieces permit press fit;
-  // the cover plate (piece 0) and unrelated obstacles keep normal clearance.
+  // every cover plate and unrelated obstacle keeps normal clearance.
   const hit = shape.full.some((part, i) => metal.some((wall) => overlap(part, wall,
-    tappedFootHost && i === 0 ? .85 : pressFitCapHost && i > 0 ? .65 : tolerance)))
+    tappedFootHost && i === 0 ? .85 : adapterHost && i < 8 && i % 2 === 0 ? .4 : pressFitCapHost && part.pressFit ? .65 : tolerance)))
   if (shape.bodyHits.size >= 128) shape.bodyHits.delete(shape.bodyHits.keys().next().value!)
   shape.bodyHits.set(key, hit)
   return hit

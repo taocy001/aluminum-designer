@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import connectorDemo from '../../examples/connector-demo.json'
+import deskExample from '../../examples/desk-with-pedestal.json'
 import { useStore, type ConnectorData, type FittingData, type ProfileData } from '../store/useStore'
 import { autoConnect } from '../utils/autoConnect'
 import { auditBrackets, seatsFor } from '../utils/bracketSeat'
@@ -97,6 +98,38 @@ describe('two-slot 2040 corner', () => {
 })
 
 describe('plate and connector geometry', () => {
+  it('fits five real B6 inside corners at the desk front-left joint across all three member pairs', () => {
+    const frame = deskExample.profiles as unknown as ProfileData[]
+    const parts = deskExample.connectors as unknown as ConnectorData[]
+    const point = V(40, 700, 560)
+    const installed = parts.filter((part) => new THREE.Vector3(...part.position).distanceTo(point) < 35)
+    const supports = new Map<string, string[]>()
+    expect(installed).toHaveLength(5)
+    expect(auditBrackets(frame, installed, computeAllTrims(frame), supports)).toEqual([])
+    const pairCounts = new Map<string, number>()
+    for (const part of installed) {
+      const members = supports.get(part.id)!
+      expect(members).toHaveLength(2)
+      const key = [...members].sort().join('|')
+      pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1)
+      expect(validateConnectorPlacement(part, frame, parts, { excludeConnectorId: part.id }))
+        .toEqual({ allowed: true, occupied: false })
+    }
+    expect([...pairCounts.values()].sort()).toEqual([1, 2, 2])
+    expect(installed.map((part) => part.position).sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]))
+      .toEqual([[10, 700.5, 560.6], [30, 700.5, 560.6], [39.4, 700.5, 570], [39.4, 700.5, 590], [39.4, 710, 560.5]])
+    expect(analyzeFrame(frame, parts).conflicts).toEqual([])
+
+    // Extending the front beam over the post blocks the two side-beam brackets.
+    // A third member must still obstruct them despite valid holes in both hosts.
+    const front = frame.find((p) => p.id === 'p-mufs7f0j6g')!
+    expect(front.position[0]).toBe(40)
+    const obstructed = frame.map((p) => p.id === front.id ? { ...p, position: [0, ...p.position.slice(1)] as ProfileData['position'], length: p.length + 40 } : p)
+    for (const part of installed.filter((p) => p.position[0] < 35)) {
+      expect(validateConnectorPlacement(part, obstructed, [], {})).toMatchObject({ allowed: false, reason: 'collision' })
+    }
+  })
+
   it.each([0, 0.5, 1])('checks the current door opening %s independently of fitting order', (open) => {
     const door: FittingData = { id: 'door', kind: 'door', position: [0, 100, 0], quaternion: [0, 0, 0, 1],
       width: 200, height: 200, depth: 100, material: 'ply', open, hinge: 'left', hingeType: 'cup', swing: 90 }
@@ -132,24 +165,18 @@ describe('plate and connector geometry', () => {
     expect(connectorHitsBody(part, blocker, 1, false)).toBe(true)
   })
 
-  it('installs every verified showcase part and explicitly identifies its one unmounted sample', () => {
+  it('installs all fourteen showcase parts on their supported profiles', () => {
     const frame = connectorDemo.profiles as unknown as ProfileData[]
     const parts = connectorDemo.connectors as unknown as ConnectorData[]
     expect(new Set(parts.map((part) => part.type))).toEqual(new Set(CONNECTOR_CATALOG.map((part) => part.type)))
-    expect(connectorDemo.showcaseSamples.map((sample) => sample.type)).toEqual(['caster-mount'])
-    const sampleIds = new Set(connectorDemo.showcaseSamples.map((sample) => sample.connectorId))
-    expect(auditBrackets(frame, parts).map(({ id, reason }) => ({ id, reason })))
-      .toEqual([{ id: 'caster-mount', reason: 'no-joint' }])
+    expect(connectorDemo.showcaseSamples).toEqual([])
+    expect(auditBrackets(frame, parts)).toEqual([])
     expect(analyzeFrame(frame, parts).conflicts).toEqual([])
     expect(analyzeFrame(frame, parts).mismatches.filter((m) => m.kind === 'face')).toEqual([])
     for (const part of parts) {
       const status = validateConnectorPlacement(part, frame, parts, { excludeConnectorId: part.id })
-      expect(status, part.type).toEqual(sampleIds.has(part.id)
-        ? { allowed: false, occupied: false, reason: 'unverified' }
-        : { allowed: true, occupied: false })
+      expect(status, part.type).toEqual({ allowed: true, occupied: false })
     }
-    expect(connectorDemo.showcaseSamples[0].reason).toContain('未安装')
-    expect(connectorDemo.showcaseSamples[0].sourceUrl).toMatch(/^https:\/\/www\.motedis\.com\//)
   })
 
   it('does not accept a displaced, incompatible or obstructed three-way installation', () => {
@@ -183,8 +210,8 @@ describe('plate and connector geometry', () => {
       const parts = (connectorDemo.connectors as unknown as ConnectorData[]).map(pose)
       const ids = new Set(parts.map((p) => p.id))
       expect(analyzeFrame(frame, parts).conflicts.filter((c) => ids.has(c.a) || ids.has(c.b))).toEqual([])
-      // A floor foot intentionally requires a downward-facing host; its supported
-      // orientation is checked above. The unmounted caster remains a catalogue sample.
+      // Feet and casters require downward-facing hosts; their supported floor
+      // orientation is checked above, independently of rigid contact transforms.
       expect(auditBrackets(frame, parts.filter((part) => !['foot', 'caster-mount'].includes(part.type)))).toEqual([])
     }
   })

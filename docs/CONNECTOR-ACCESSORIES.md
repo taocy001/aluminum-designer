@@ -19,7 +19,7 @@ BOM 为每个孔统计一颗螺钉及一颗匹配槽系的螺母：20 系列 M5�
 
 ## 端盖与槽螺母
 
-端盖按完整截面匹配，2040 使用矩形盖，不能与 2020 方盖混用。模型包括厂家卡脚。安装要求直切、未占用的端面；另一端存在斜切不影响本端。3040 尚无已核验端盖，不能自动安装。
+端盖按完整截面匹配，2040 使用矩形盖，不能与 2020 方盖混用。模型包括厂家卡脚。安装要求直切、未占用的端面；另一端存在斜切不影响本端。3040 尚无已核验端盖，不能安装。
 
 | 截面 | 厂家 STEP | 外盖厚度 |
 | --- | --- | --- |
@@ -27,28 +27,43 @@ BOM 为每个孔统计一颗螺钉及一颗匹配槽系的螺母：20 系列 M5�
 | 2040 | [Motedis PTS6B20x40](https://www.motedis.com/shop/products_files/Motedis_PTS6B20x40.zip) | 2.5 |
 | 3030 | [Motedis PTS8B30x30](https://www.motedis.com/shop/products_files/Motedis_PTS8B30x30.zip) | 4 |
 | 4040 | [Motedis PTS8I40x40](https://www.motedis.com/shop/products_files/Motedis_PTS8I40x40.zip) | 4 |
+| 4040 B6 | 四只 [Motedis PTS6B20x20](https://www.motedis.com/shop/products_files/Motedis_PTS6B20x20.zip) | 2.5 |
+
+4040 B6 端盖由四只原厂 2020 B6 盖组合，中心位于端面 `(±10, ±10)`。左列保持原方向，右列绕端面法向旋转 180°，使四个中央销分别进入芯孔、侧卡脚全部朝向外侧槽口。物料表每个端面计四只 PTS6B20x20；组合有接缝，不是单体 4040 盖，也不构成密封。
 
 塑料卡脚采用压入配合。只有端盖规格、端面中心、朝向和截面转角均匹配时，碰撞检查才对卡脚允许 0.65 mm 过盈，包含 CAD 分块包围的余量；盖板、其他型材、板件和设备没有这项豁免。
 
 | 槽螺母 | 槽系与螺纹 | 安装 |
 | --- | --- | --- |
 | [Motedis S6BHASNM5](https://www.motedis.com/en/T-nut-B-type-slot-6-M5) | 20 B 型槽 6，M5 | 旋转锁入槽口，肩部位于槽唇后方 |
-| [Motedis S8BHASNM6](https://www.motedis.com/en/T-nut-B-type-slot-8-M6) | 30 B 型槽 8，M6 | 旋转锁入槽口，肩部位于槽唇后方 |
+| [Motedis S8BHASNM6](https://www.motedis.com/en/T-nut-B-type-slot-8-M6) | 30 B 型槽 8，M6 | 旋转锁入槽口，肩部距型材表面 2.4 mm，肩部圆角抵靠槽唇内圆角 |
 | [Motedis S8ISMONM8](https://www.motedis.com/en/T-nut-guided-I-type-slot-8-M8) | 40 I 型槽 8，M8 | 后装式，偏心螺纹孔和弹簧珠按厂家结构布置 |
 
 槽螺母模型不附螺栓。20 系列使用 M5 底孔表示螺纹；40 系列弹簧珠按装入槽后的状态压入 0.65 mm，其余结构来自厂家 STEP。槽口宽度相同不代表不同槽系可以互换。
+
+4040 B6 每面两条槽线距面中心各 10 mm，使用 20 系列 B6 配件。内角码、外角码、连接板、合页、轴承座和槽螺母按实际槽线选位，安装孔须全部有支承，外形不得干涉其他构件。端部 T 接时，T 板只有支臂两孔都落在支杆上的方向可用。20 系列没有已核验的加强角码、三通角件和十字板，不能借用 40 I8 型号。
 
 ## 合页、调节脚、脚轮与轴承座
 
 | 配件 | 来源和主要尺寸 | 安装与清单 |
 | --- | --- | --- |
 | 合页 | [MISUMI HHPSN5 / 6 / 8 图纸](https://uk.misumi-ec.com/pdf/fa/p2_0719.pdf)。外形分别 47 × 36、47 × 48、63 × 62；孔距分别 25 × 21、30 × 32、37 × 42 | 两叶各两个沉头孔，分别连接不同构件。20/30/40 系列分别配四颗 M5×8 / M6×10 / M6×12 沉头螺钉及匹配槽系的螺母；40 系列也用 M6。轴线平行安装面。叶片、孔位和外形按图纸，铰节和销轴结构简化；没有开合驱动 |
-| 调节脚 | [Motedis BD40-8x50](https://www.motedis.com/en/Adjustable-feet-D40-M8-L50)，[尺寸图](https://www.motedis.com/shop/products_files/BD40-8x50-Drawing.pdf)。底盘 Ø39.4，M8×50 螺杆，总高 78.24 | 安装于 3030 B8 或 4040 I8 的朝下直切端，中心孔须攻 M8 牙。模型旋入量 10 mm，锁紧螺母顶面与型材端面接触。BOM 列一颗随脚锁紧螺母，不另造槽螺母。2020/2040 须另核转接底板，不能直接安装。螺纹与底盘圆角简化，没有调高参数 |
-| 脚轮 | [Motedis 963](https://www.motedis.com/en/Roller-50-single-bolt-hole-without-brake)，[尺寸图](https://www.motedis.com/shop/products_files/Motedis_963-Drawing.pdf)，[STEP](https://www.motedis.com/shop/products_files/Motedis_963.zip) | 模型采用图纸与 STEP：轮径 50、安装孔 Ø11、总高 74.2、偏距 19.5。网页另标 Ø6.5 孔和 71 总高，与 CAD 不一致。支架、转盘、轮轴和紧固件保留原 CAD；转接安装与紧固件未核定，因此仅作独立样品，不提供直接安装或推定螺栓 |
+| 调节脚 | [Motedis BD40-8x50](https://www.motedis.com/en/Adjustable-feet-D40-M8-L50)，[尺寸图](https://www.motedis.com/shop/products_files/BD40-8x50-Drawing.pdf)。底盘 Ø39.4，M8×50 螺杆，总高 78.24 | 3030 B8 / 4040 I8 的朝下直切端芯孔攻 M8 后直接安装；4040 B6 使用下述四孔转接板。模型旋入量 10 mm，锁紧螺母贴合型材端面或转接板底面。BOM 列随脚锁紧螺母及对应板件、螺钉。2020/2040 不能直接安装。螺纹与底盘圆角简化，没有调高参数 |
+| 脚轮 | [Motedis 10146](https://www.motedis.com/en/Roller-75-single-bolt-hole-without-brake-NEW)，[尺寸图](https://www.motedis.com/shop/products_files/Motedis_10146-Drawing.pdf)，[STEP](https://www.motedis.com/shop/products_files/Motedis_10146.zip)。轮径 75、轮宽 25、安装高 99.7、偏距 29.94、安装孔 Ø11 | 按[厂家安装说明](https://www.motedis.com/shop/products_files/Motedis_Wheels.pdf)，一颗 DIN 7991 M8×25 沉头螺钉从轮架下方穿过安装孔，旋入 3030 B8 或 4040 I8 朝下直切端的 M8 芯孔。BOM 列脚轮和该螺钉。模型啮合长 8.36；不适用于 2020、2040、3040 或 4040 B6。无刹车。网页列孔径 Ø10，模型按尺寸图与 STEP 的 Ø11，采购须核对型号版本 |
 | 轴承座 | [igus ESTM-10](https://www.igus.com/product/igubal-ESTM)，[目录](https://www.igus.com/us/pdf/igubal.pdf)。轴孔 Ø10，总高 22，轴高 11，底脚孔距 26 | 两个安装孔须同时落在一根型材的同一槽线上；轴线平行底面。BOM 列两颗 M5 螺钉和对应槽螺母，长度待按所选实物螺母确定。模型不随系列放大轴孔；球面和圆角简化 |
+
+脚轮按厂家示意使用折弯内六角扳手，从轮架侧下方接近安装螺钉；M8 安装螺钉使用 5 mm 内六角。显示和导出保留轮架、转盘、滚珠和轮轴，轮轴螺母内螺纹以平滑孔表示，安装螺钉省略螺纹牙型。程序检查安装支承和实体间隙，不验证扳手运动路径。
+
+### 4040 B6 调节脚转接板
+
+[4040 B6 型材图纸](https://www.motedis.com/shop/products_files/Motedis_profile%2040x40%20B-Type%20slot%206.pdf)包含四个中心距 20 mm 的 M6 芯孔，中央为空腔。调节脚通过 [AP-4040B6-M8 加工图](../public/hardware/ap-4040b6-m8.svg)安装：40×40×8 钢板，中心 M8×1.25 通牙，四个 Ø6.6 通孔位于 `(±10, ±10)`，脚侧为 Ø12.8×90° 沉头。
+
+每块板使用四颗 [DIN 7991 M6×20 螺钉](https://www.motedis.be/fr/Vis-a-tete-fraisee-a-six-pans-creux-selon-DIN-7991/M6x20)。按[头部尺寸](https://belmetric.com/content/1.%20Product%20Assets/SF6X20BLKSS.pdf)建模，头顶下沉 0.1 mm，进入型材 12.1 mm。四个芯孔须攻 M6×1，有效螺纹至少 13 mm，另留入口倒角和丝锥导程余量。先固定转接板，再旋入调节脚并锁紧。板增加 8 mm 安装高度；所示脚底位于型材端面下方 76.24 mm。
+
+AP-4040B6-M8 是按上述接口设计的加工件，没有对应的 Motedis 现货料号。模型和清单保留板、四颗 M6 螺钉及 M8 锁紧螺母；图纸给出装配几何，钢材牌号、公差、防腐及承载需按用途确定。
 
 ## 坐标与检查
 
-各配件坐标以物理毫米定义，显示与 STEP 使用同一几何。直连板底面为 Y=0、长边沿 X；对接板底面为 X=0、长边沿 Z；T 板和十字板底面为 Z=0。合页安装面为 X=0、铰轴沿 Z。端盖外法向为 +Z；调节脚及脚轮安装面为 Y=0，脚轮和调节脚底盘位于负 Y，调节脚螺杆伸入正 Y 方向 10 mm；轴承座底面为 Y=0，轴孔沿 Z。
+各配件坐标以物理毫米定义，显示与 STEP 使用同一几何。直连板底面为 Y=0、长边沿 X；对接板底面为 X=0、长边沿 Z；T 板和十字板底面为 Z=0。合页安装面为 X=0、铰轴沿 Z。端盖外法向为 +Z；调节脚及脚轮安装面为 Y=0，脚轮和调节脚底盘位于负 Y。直装调节脚螺杆伸入正 Y 方向 10 mm；4040 B6 转接板底面为 Y=−8，M8 脚杆端为 Y=2，四颗 M6 螺钉端为 Y=12.1。脚轮安装螺钉伸入 8.36 mm，轮轴沿 Z，轮心位于 X=29.94、Y=−62.2。轴承座底面为 Y=0，轴孔沿 Z。
 
 保存或手动移开的连接件仍参加安装审计。孔位支承与碰撞分别检查：支承合格不代表周围没有干涉。连接板使用分块实体，型材使用包含槽腔和中心孔的截面；安装小孔在碰撞体中可按实心保守处理。检查不计算连接强度、安装路径或工具操作空间。

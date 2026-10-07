@@ -130,7 +130,7 @@ test.describe('Drawing', () => {
   })
 
   test('every spec draws and lifts by its own half height', async ({ page }) => {
-    const expectY: Record<string, number> = { '2020': 10, '2040': 20, '3030': 15, '3040': 20, '4040': 20 }
+    const expectY: Record<string, number> = { '2020': 10, '2040': 20, '3030': 15, '3040': 20, '4040': 20, '4040-B6': 20 }
     let z = 0
     for (const spec of Object.keys(expectY)) {
       await enterDraw(page, spec)
@@ -141,7 +141,7 @@ test.describe('Drawing', () => {
       expect(r(p.position[1])).toBe(expectY[spec])
       z += 100
     }
-    await expect(page.getByTestId('bom-count')).toHaveText('5')
+    await expect(page.getByTestId('bom-count')).toHaveText('6')
   })
 
   test('too-short click is ignored and a member under 10 mm is refused', async ({ page }) => {

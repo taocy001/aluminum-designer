@@ -1,11 +1,15 @@
-import { auditBrackets } from './bracketSeat'
+import { auditBrackets, type BracketFault } from './bracketSeat'
 import type { ProfileTrims } from './jointUtils'
 import type { SuggestDoc } from './suggestGate'
 
-interface HardwareSupports { faults: Set<string>; supported: Map<string, string[]> }
+interface HardwareSupports {
+  readonly faults: ReadonlySet<string>
+  readonly supported: ReadonlyMap<string, readonly string[]>
+  readonly faultDetails: readonly Readonly<BracketFault>[]
+}
 const hardwareSupportCache = new Map<string, HardwareSupports>()
 
-/** Repeated searches can share only this document audit, never candidate validation.
+/** Rendering and searches share the document audit, never candidate validation.
  * Snapshot every audit input by value so edits to existing arrays and cut faces invalidate it. */
 export function cachedHardwareSupports(doc: Pick<SuggestDoc, 'profiles' | 'connectors'>, trims: Map<string, ProfileTrims>): HardwareSupports {
   const key = JSON.stringify([
@@ -19,10 +23,12 @@ export function cachedHardwareSupports(doc: Pick<SuggestDoc, 'profiles' | 'conne
   const cached = hardwareSupportCache.get(key)
   if (cached) return cached
   const supported = new Map<string, string[]>()
-  const faults = new Set(auditBrackets(doc.profiles, doc.connectors, trims, supported).map((f) => f.id))
-  const result = { faults, supported }
+  const faultDetails = Object.freeze(auditBrackets(doc.profiles, doc.connectors, trims, supported)
+    .map((fault) => { Object.freeze(fault.at); return Object.freeze(fault) }))
+  for (const ids of supported.values()) Object.freeze(ids)
+  const faults = new Set(faultDetails.map((f) => f.id))
+  const result = Object.freeze({ faults, supported, faultDetails })
   if (hardwareSupportCache.size >= 8) hardwareSupportCache.delete(hardwareSupportCache.keys().next().value!)
   hardwareSupportCache.set(key, result)
   return result
 }
-

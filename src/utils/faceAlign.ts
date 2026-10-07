@@ -333,7 +333,7 @@ export function rollProfile(id: string, quarters = 1): boolean {
 /** Which way a rectangular section is turned, for the panel: the direction its long side faces */
 export function sectionFacing(p: ProfileData): THREE.Vector3 {
   const quat = new THREE.Quaternion(...p.quaternion).normalize()
-  const { w, h } = { w: Number(p.spec.slice(0, 2)), h: Number(p.spec.slice(2)) }
+  const { w, h } = specDims(p.spec)
   const long = h >= w ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)
   return long.applyQuaternion(quat)
 }

@@ -3,7 +3,7 @@ import { useStore, type ProfileData, type ProfileSpec } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { analyzeFrame } from './analysis'
 import { faceAlignOnCreate, constrainDrawingFaces, type DrawingFaceOptions, type DrawingFacePlacement } from './faceAlign'
-import { resolveConnectorPlacement } from './connectorPlacement'
+import { resolveConnectorPlacement, type ConnectorPlacementOptions } from './connectorPlacement'
 import { specDims } from './specUtils'
 import { translations } from './translations'
 import { reportEditResult } from './editFeedback'
@@ -147,11 +147,17 @@ export function tryAddProfile(start: THREE.Vector3, end: THREE.Vector3, spec: Pr
 export function placeConnector(
   point: THREE.Vector3, type: string, surfaceNormal?: THREE.Vector3 | null,
   choice: number | string = 0, searchPoint = point,
+  seatFilter?: ConnectorPlacementOptions['seatFilter'],
 ): void {
   const { profiles, connectors, equipment, panels, fittings, addConnector } = useStore.getState()
-  const { seat, occupied, allowed, reason } = resolveConnectorPlacement(type, point, profiles, connectors, surfaceNormal, choice, searchPoint, { equipment, panels, fittings })
+  const placement = resolveConnectorPlacement(type, point, profiles, connectors, surfaceNormal, choice, searchPoint, { equipment, panels, fittings, seatFilter })
+  const { seat, occupied, allowed, reason } = placement
   const { showToast, language } = useToolStore.getState()
   const t = translations[language]
+  if (seatFilter && typeof choice === 'string' && placement.key !== choice) {
+    showToast(t.connectorNoSeat, 'info')
+    return
+  }
   if (occupied) { showToast(t.connectorOccupied, 'info'); return }
   if (!allowed) {
     showToast(reason === 'collision' ? t.connectorReasonCollision : reason === 'equipment' ? t.connectorReasonEquipment : reason === 'unverified' ? t.connectorReasonUnverified : t.connectorNoSeat, 'info')

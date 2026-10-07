@@ -43,7 +43,8 @@ test('runner supports are added once and undo removes the rails and brackets tog
         quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2], miterCuts: [], holes: [],
       }))), connectors: [], panels: [], fittings: [{
         id: 'drawer', kind: 'drawer', width: 600, height: 240, depth: 500,
-        material: 'ply', open: 0, position: [0, 200, 0], quaternion: [0, 0, 0, 1],
+        // The overlay front clears the 20 mm posts before adding runner supports.
+        frame: 20, material: 'ply', open: 0, position: [0, 200, 0], quaternion: [0, 0, 0, 1],
       }] })
     s.setState({ selectedIds: ['drawer'], past: [], future: [] })
   })

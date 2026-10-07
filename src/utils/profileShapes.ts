@@ -1,8 +1,9 @@
 import * as THREE from 'three'
-import { profileSlotDimensions, slotOffsets } from './specUtils'
+import { profileSlotDimensions, slotOffsets, specDims } from './specUtils'
 import profileSections from '../assets/profileSections.json'
 
-export type ProfileSpec = '2020' | '2040' | '3030' | '3040' | '4040'
+import type { ProfileSpec } from '../store/useStore'
+export type { ProfileSpec } from '../store/useStore'
 
 interface ProfileSide { axis: 0 | 1; side: -1 | 1 }
 interface OutlineSegment {
@@ -18,8 +19,7 @@ function profileOutline(spec: ProfileSpec): OutlineSegment[] {
   const cached = outlines.get(spec)
   if (cached) return cached
 
-  const w = Number(spec.substring(0, 2))
-  const h = Number(spec.substring(2)) || w
+  const { w, h } = specDims(spec)
 
   const hw = w / 2
   const hh = h / 2

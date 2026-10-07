@@ -44,7 +44,7 @@ export function trimmedOBB(p: ProfileData, t: ProfileTrims): OBB {
   const start = new THREE.Vector3(...p.position).addScaledVector(dir, t.start.trim)
   const center = start.clone().addScaledVector(dir, t.cutLength / 2)
   const { hw, hh } = specDims(p.spec)
-  return makeOBB(center, new THREE.Vector3(hw, hh, t.cutLength / 2), quat)
+  return { ...makeOBB(center, new THREE.Vector3(hw, hh, t.cutLength / 2), quat), profileSpec: p.spec }
 }
 
 function regionOf(a: OBB, b: OBB): THREE.Box3 {

@@ -1,23 +1,25 @@
 import { test, expect } from '@playwright/test'
 import { openApp, setView, settle } from './helpers'
 
-test('selection work planes coincide with the rendered connector solids, including rotated and scaled parts', async ({ page }) => {
+test('selection work planes coincide with the real connector solids across series and rotations', async ({ page }) => {
   await openApp(page)
   // Geometry fixtures isolate the bounds calculation; the work-plane action itself uses UI.
-  const fixtures = await page.evaluate(() => {
+  const definitions = [
+    { type: 'foot', series: 20, profileSpec: '4040-B6', rotation: [0, 0, 0], top: 112.1 },
+    { type: 'gusset', series: 40, profileSpec: '4040', rotation: [0, 0, 0], top: 140 },
+    { type: 'foot', series: 40, profileSpec: '4040', rotation: [Math.PI / 2, 0, 0], top: 119.7 },
+    { type: 'gusset', series: 40, profileSpec: '4040', rotation: [0, 0, Math.PI / 4], top: 128.284 },
+    { type: 'foot', series: 30, profileSpec: '3030', rotation: [0, 0, Math.PI / 4], top: 109.899 },
+  ]
+  const fixtures = await page.evaluate((definitions) => {
     const w = (window as any).__aluframe, T = w.THREE
-    const definitions = [
-      ['foot', 20, [0, 0, 0]], ['gusset', 20, [0, 0, 0]],
-      ['foot', 40, [Math.PI / 2, 0, 0]], ['gusset', 30, [0, 0, Math.PI / 4]],
-      ['foot', 30, [0, 0, Math.PI / 4]],
-    ]
-    const connectors = definitions.map(([type, series, rotation], index) => ({
-      id: `part-${index}`, type, series, position: [index * 100, 100, 0],
-      quaternion: new T.Quaternion().setFromEuler(new T.Euler(...rotation as number[])).toArray(),
+    const connectors = definitions.map(({ type, series, profileSpec, rotation }, index) => ({
+      id: `part-${index}`, type, series, profileSpec, position: [index * 100, 100, 0],
+      quaternion: new T.Quaternion().setFromEuler(new T.Euler(...rotation)).toArray(),
     }))
     w.store.getState().loadDocument({ profiles: [], panels: [], fittings: [], connectors, throughRule: 'rails' })
     return connectors.map((part: any) => part.id)
-  })
+  }, definitions)
   await setView(page, [500, 360, 650], [200, 100, 0])
   for (const [index, id] of fixtures.entries()) {
     await page.evaluate((id) => (window as any).__aluframe.store.getState().selectItems([id]), id)
@@ -40,8 +42,9 @@ test('selection work planes coincide with the rendered connector solids, includi
       return { top: Math.round(top * 1000) / 1000, count }
     }, id)
     expect(actualTop.count).toBeGreaterThan(20)
-    // The gusset reaches Y=30; its diagonal x+y=22 is horizontal after the 45° turn.
-    expect(actualTop.top).toBeCloseTo([128, 130, 136, 123.335, 140.305][index], 3)
+    // B6 plate screws project 12.1 mm; 40-4332 reaches 40 mm, or 40/√2 after a 45° turn.
+    // The fixed foot radius is 19.7 mm; its tilted M8 stud reaches (10 + 4)/√2.
+    expect(actualTop.top).toBeCloseTo(definitions[index].top, 3)
     await page.getByTestId('work-plane-from-selection').click()
     await expect(page.getByTestId('work-plane')).toHaveValue(String(actualTop.top))
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().workPlaneY)).toBe(actualTop.top)

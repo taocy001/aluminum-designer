@@ -1,0 +1,216 @@
+{
+  "format": 1,
+  "width": 168,
+  "height": 168,
+  "sources": {
+    "package-lock.json": "74eea631c5a95a78766e29b6851cd3d237a0141a81ebb4d97809c2e0fe3d5e6e",
+    "scripts/connector-thumbnail-model.ts": "9d414fa28d1994e85409453b05dc4da1984818e72a8c29de0d46d6f384ade7ad",
+    "scripts/connector-thumbnail-sources.mjs": "3da42669cceee410bb5302144f4daebe132fc9a5ed2b664bb04449ab76fa38b5",
+    "scripts/generate-connector-thumbnails.mjs": "682448e3103b6069f74233ef6467721d463fe3e4994674fee0ec9b46c7361d18",
+    "src/assets/connectorCad/80-20-14173-derived.json": "5c6025d8fc769e74c96df350331ae0739423bbf02ac8da982ce6b1c6062c0e64",
+    "src/assets/connectorCad/80-20-40-4332-derived.json": "b84a906987cb93e59b3657c1e83c640406dbad1b2d7ff4280c3961c506fcec48",
+    "src/assets/connectorCad/din7991-m6x20.json": "ebf461006ed12c4fdaa443240b9ccd4b691628c2e4fb07a06aa490df1d41c202",
+    "src/assets/connectorCad/din7991-m8x25-caster.json": "d62a736da2ed3b29b489daa0268b47b76931eb0b02bd49979c6aa0cc5ebac15e",
+    "src/assets/connectorCad/motedis-cap-2020.json": "f35f2feb1d65179993392a5373bec9da4a459301be57d8c7824cbd9b4dedbf18",
+    "src/assets/connectorCad/motedis-cap-2040.json": "e020c84bbdb7835c512391c8e5dd620c3afd714ed6a68ce0823b3571305c11e2",
+    "src/assets/connectorCad/motedis-cap-3030.json": "1a9cecf4b4a7422af5b943606eae02898c425255705abb8a952f9c118743ec2d",
+    "src/assets/connectorCad/motedis-cap-4040.json": "e0f2ef2e2c99bcd0dba052a67db71f4f356616223f54a051b1990e57df0b4f17",
+    "src/assets/connectorCad/motedis-caster-10146-14.json": "cc348a5ae79a41add8edf3f3db683f8fb983cd141753fa6d71d5b50aed1293a9",
+    "src/assets/connectorCad/motedis-caster-10146-15.json": "235c9bef0132316f993ac025593da9da67a9e1b3699379f235fd157e6fefce55",
+    "src/assets/connectorCad/motedis-caster-10146-16.json": "304003338c618844f99b26353b46d8c38a2da3c39f379e297f7985963dbc22a6",
+    "src/assets/connectorCad/motedis-caster-10146-17.json": "03ba7893185d5e8d98797d2c5a2e850804ac2d40efc34163e773ab5f2ca59a80",
+    "src/assets/connectorCad/motedis-caster-10146-18.json": "6f6a6720e02dde73117247e6d84f3dec1430bf38fc3ba742e5a803618d81f528",
+    "src/assets/connectorCad/motedis-caster-10146-19.json": "09f082e50c790a33af463e61d5de450eba4e0ffa6b8be9f6c162e2c88b0c3b62",
+    "src/assets/connectorCad/motedis-caster-10146-20.json": "0acff3b019d284fe9b0ee42f6be5050f78ef25448fbf6b204bf27841aa9de678",
+    "src/assets/connectorCad/motedis-caster-10146-21.json": "fa005bb1bcb19afbed2793920c25f03e1f0fc1ea86d8210cef151f7c3c555f73",
+    "src/assets/connectorCad/motedis-caster-10146-bearings.json": "be607e4a8255a0c7b171f639af024d6718cfcd75d5d02adb7c058f65959727d4",
+    "src/assets/connectorCad/motedis-din913-m5x6.json": "7a494819ff41d5d1c716c07a4a41aa51564671f429d5504501f8a84c538d150a",
+    "src/assets/connectorCad/motedis-din913-m6x8.json": "4b75898043ef00d508a05ac13b8eb16fed2255d4deded8cf9a4255a9c8a0f763",
+    "src/assets/connectorCad/motedis-s6bbr20.json": "49b5d2ad40e2c212c7ebcf53d1d9be14af935239da5f19666c74bdfcc0989431",
+    "src/assets/connectorCad/motedis-s6bibm5.json": "6e7ee9adcf81c0d6a6283c2efae19d40a6deb723795ddb2902938e0202cca7f1",
+    "src/assets/connectorCad/motedis-s8bbr30.json": "3aef1b9ef3a0e8c979770b1a6a3aa642d8aaab1d7db76973a9a41e6d8a4a7ff8",
+    "src/assets/connectorCad/motedis-s8ibibm6.json": "1f5714b63a4f2ea304c5a24b394c9b1a17d1716995de938dea27b5f4a211aab2",
+    "src/assets/connectorCad/motedis-s8ibr40.json": "8b11ca9105eca93cc69bb102d760fc2137adcf747ef697f690fb53aa61cd2cf0",
+    "src/assets/connectorCad/motedis-tnut-20-installed.json": "f7573051977d1f018e1f8cee9da75cdaf6f03ad70aeed47033f598a8c18870eb",
+    "src/assets/connectorCad/motedis-tnut-30-installed.json": "333242fd04d6d76c9f7d8d27c346bce90845b825973fcc5faf0d57d7be2547c9",
+    "src/assets/connectorCad/motedis-tnut-40-installed.json": "2c576a2971372c9dc629e545613307b80f8babc5ca77829e5c483ec3b8208fda",
+    "src/utils/connectorAccessoryGeometry.ts": "25bc6a9713f584035fcd25f0e9bbb1d107dedc5fd1743e770e5324176912e7e5",
+    "src/utils/connectorAccessoryReferences.ts": "a9c8cadf79f7bb889d4cdcc1a0aad15095e32d00613ddff18d2be6ddfd4091d8",
+    "src/utils/connectorCatalog.ts": "28df4906ee0acb5584adccc554100b79adace9e5f352ed4110ccb00e660fd67c",
+    "src/utils/connectorGeometry.ts": "886ccdd0bf4757fa2246a0044b797d7bd40114892d9b4fb42cc949b79164cab9",
+    "src/utils/connectorHardware.ts": "6e26426d24db4c9878ce0d9017ec5d9fca6e1c34d680ada52be3274a8c533ca2",
+    "src/utils/connectorSolidPrimitives.ts": "bb9c1760d8ee20424d419d64afef5a9b1b373b5f0b35b4f4c7934359e0658bac",
+    "src/utils/specUtils.ts": "9c149a590a3250161d9216035acc15ced9ae34c2521a5ba33c5295f4f3854f55"
+  },
+  "sourceHash": "fcf969fb1f47eca548a860e56b6645e34ab3ca53853c143dbc96e67e11ca2b12",
+  "images": {
+    "bracket:20": {
+      "file": "bracket-20-9df5579da940.png",
+      "sha256": "9df5579da9404b9e4f9464bd9d68ad3eaafeac8a716ca4c9e8b7ba3be3112f6a"
+    },
+    "bracket:30": {
+      "file": "bracket-30-35bba437b19e.png",
+      "sha256": "35bba437b19eb35f34405f5ca37af29a9c62e1fd1c8003b968468a245f581f13"
+    },
+    "bracket:40": {
+      "file": "bracket-40-07b30aecd7c7.png",
+      "sha256": "07b30aecd7c76f4b6fdd980be1b552f7a24bfe37b3243b12837d7f24e46a5ffd"
+    },
+    "inside-corner:20": {
+      "file": "inside-corner-20-73502efdb979.png",
+      "sha256": "73502efdb97919c0577e1e0cc1c9ecb8d55efc20513e7fb35303de3643fb0c25"
+    },
+    "inside-corner:30": {
+      "file": "inside-corner-30-6057dc1cda3d.png",
+      "sha256": "6057dc1cda3ded2968383dd1855724034c9ddaf82ee67c5aa31f53ac27b87f45"
+    },
+    "inside-corner:40": {
+      "file": "inside-corner-40-423f431d5b5f.png",
+      "sha256": "423f431d5b5f3b9ab9f2b648c416af6886cd9f6a26c4b67a039871a17bb9e272"
+    },
+    "gusset:20": {
+      "file": "gusset-20-fa37d671a130.png",
+      "sha256": "fa37d671a1301a22e777f3a44b6dd1cc87d29261b43e5436de72808c27eca886"
+    },
+    "gusset:30": {
+      "file": "gusset-30-fa37d671a130.png",
+      "sha256": "fa37d671a1301a22e777f3a44b6dd1cc87d29261b43e5436de72808c27eca886"
+    },
+    "gusset:40": {
+      "file": "gusset-40-fa37d671a130.png",
+      "sha256": "fa37d671a1301a22e777f3a44b6dd1cc87d29261b43e5436de72808c27eca886"
+    },
+    "t-bracket:20": {
+      "file": "t-bracket-20-946d7ba28be8.png",
+      "sha256": "946d7ba28be8b9d7ca7a4879e2414dce37cf638dab047b02dff30c3c27e6f1aa"
+    },
+    "t-bracket:30": {
+      "file": "t-bracket-30-44746b4f1795.png",
+      "sha256": "44746b4f17957679ba5834831c4cc257628c0c9a0f9ce8a3d347d20adb65bc1c"
+    },
+    "t-bracket:40": {
+      "file": "t-bracket-40-30807c0f039b.png",
+      "sha256": "30807c0f039b018f1f1d7251ec4f27a807d942841eeb4aeb5858819a80ad5979"
+    },
+    "corner-3way:20": {
+      "file": "corner-3way-20-ed649434e6ff.png",
+      "sha256": "ed649434e6ffe61b8d3cadf8caf321f73ee4befd8b7f45392a089459ce6eec49"
+    },
+    "corner-3way:30": {
+      "file": "corner-3way-30-ed649434e6ff.png",
+      "sha256": "ed649434e6ffe61b8d3cadf8caf321f73ee4befd8b7f45392a089459ce6eec49"
+    },
+    "corner-3way:40": {
+      "file": "corner-3way-40-ed649434e6ff.png",
+      "sha256": "ed649434e6ffe61b8d3cadf8caf321f73ee4befd8b7f45392a089459ce6eec49"
+    },
+    "flat-plate:20": {
+      "file": "flat-plate-20-d7facca0cb40.png",
+      "sha256": "d7facca0cb40ce0f319d16af2283e7f37d52b4b4914e5d440783517c23504eb5"
+    },
+    "flat-plate:30": {
+      "file": "flat-plate-30-9262a67397bc.png",
+      "sha256": "9262a67397bc20da9865f088f944d8e5f768e3c61c6c1165c3ee7d1d1bf7f5c6"
+    },
+    "flat-plate:40": {
+      "file": "flat-plate-40-5de12e932bcb.png",
+      "sha256": "5de12e932bcbd8408911f3e4a583d3dc063ecbd4518c7b5e45167d2e3c45a79f"
+    },
+    "joining-plate:20": {
+      "file": "joining-plate-20-a4c3dfdf881e.png",
+      "sha256": "a4c3dfdf881ee9b6937d1ea882b36787fa23c2b3e78c428acdae78d003c61984"
+    },
+    "joining-plate:30": {
+      "file": "joining-plate-30-69f2801bce41.png",
+      "sha256": "69f2801bce4130d2e4dda4b4fb4621f7e2ca24b2a61a98395dea641fbecdcb10"
+    },
+    "joining-plate:40": {
+      "file": "joining-plate-40-67922e28ba24.png",
+      "sha256": "67922e28ba24230da59020c995b381124483250336b2863a4aea78f44eb2beaf"
+    },
+    "end-cap:20": {
+      "file": "end-cap-20-d4aec1b94392.png",
+      "sha256": "d4aec1b94392ed1902f8c1abb9585fc99edc8d80d1a609aaed85171ca5ca3e53"
+    },
+    "end-cap:30": {
+      "file": "end-cap-30-0bd78b720a72.png",
+      "sha256": "0bd78b720a724472a34557fdcc59942024ec46c4b5576c13462bcc8ba5647a6b"
+    },
+    "end-cap:40": {
+      "file": "end-cap-40-0a35fd7e76ed.png",
+      "sha256": "0a35fd7e76edef130adb2864572275af350003b9b9e2c2d42146445d1974dc9a"
+    },
+    "caster-mount:20": {
+      "file": "caster-mount-20-08f996479687.png",
+      "sha256": "08f9964796877534ee1356a39cb5c13a4c0a0ae2ee89559459e1be440a716b0c"
+    },
+    "caster-mount:30": {
+      "file": "caster-mount-30-08f996479687.png",
+      "sha256": "08f9964796877534ee1356a39cb5c13a4c0a0ae2ee89559459e1be440a716b0c"
+    },
+    "caster-mount:40": {
+      "file": "caster-mount-40-08f996479687.png",
+      "sha256": "08f9964796877534ee1356a39cb5c13a4c0a0ae2ee89559459e1be440a716b0c"
+    },
+    "foot:20": {
+      "file": "foot-20-1dd351ec819b.png",
+      "sha256": "1dd351ec819b0f1a4b9bbf178871349ce2ec11e67ed71ad5cac71acba0fa1f1a"
+    },
+    "foot:30": {
+      "file": "foot-30-1dd351ec819b.png",
+      "sha256": "1dd351ec819b0f1a4b9bbf178871349ce2ec11e67ed71ad5cac71acba0fa1f1a"
+    },
+    "foot:40": {
+      "file": "foot-40-1dd351ec819b.png",
+      "sha256": "1dd351ec819b0f1a4b9bbf178871349ce2ec11e67ed71ad5cac71acba0fa1f1a"
+    },
+    "cross-bracket:20": {
+      "file": "cross-bracket-20-115793eb0fbf.png",
+      "sha256": "115793eb0fbf567077ad51190cd596ab2234ada30ad3d15b066864030adfd7bf"
+    },
+    "cross-bracket:30": {
+      "file": "cross-bracket-30-115793eb0fbf.png",
+      "sha256": "115793eb0fbf567077ad51190cd596ab2234ada30ad3d15b066864030adfd7bf"
+    },
+    "cross-bracket:40": {
+      "file": "cross-bracket-40-a3863e24e2cb.png",
+      "sha256": "a3863e24e2cb1bc0f09f5b6adea1a381983f666d938cca7cac1fb265924cd212"
+    },
+    "t-nut:20": {
+      "file": "t-nut-20-0c19ac227998.png",
+      "sha256": "0c19ac227998baf73138cbde2e68370ec0080249592207647df6334922d207b3"
+    },
+    "t-nut:30": {
+      "file": "t-nut-30-87f0ac56ffd0.png",
+      "sha256": "87f0ac56ffd0f23039210166cfea4925a3fa5a0b991e7667d5693e1d62c80e6d"
+    },
+    "t-nut:40": {
+      "file": "t-nut-40-36d616bbe334.png",
+      "sha256": "36d616bbe334d9f498ae319a2713f65fea6ea33bdcac0e2b76acb34bc4c03a34"
+    },
+    "hinge:20": {
+      "file": "hinge-20-74c29039fe2b.png",
+      "sha256": "74c29039fe2bff6115124317486b787b0c0f86bbc57e28b5e18ed6463b5468dc"
+    },
+    "hinge:30": {
+      "file": "hinge-30-253a9cc52361.png",
+      "sha256": "253a9cc52361fd21b6a56f38a0f88b12767e929bff65db0b81ac0928a6fd30e1"
+    },
+    "hinge:40": {
+      "file": "hinge-40-159260485612.png",
+      "sha256": "1592604856126a3d6c68bd44f4f60d115f765a8fb351decb266fd3117ef6d098"
+    },
+    "pivot:20": {
+      "file": "pivot-20-5888a8977ea5.png",
+      "sha256": "5888a8977ea5902a481cdabc3a17b38503cf97c6fa3d51b18bb37320deb570d9"
+    },
+    "pivot:30": {
+      "file": "pivot-30-5888a8977ea5.png",
+      "sha256": "5888a8977ea5902a481cdabc3a17b38503cf97c6fa3d51b18bb37320deb570d9"
+    },
+    "pivot:40": {
+      "file": "pivot-40-5888a8977ea5.png",
+      "sha256": "5888a8977ea5902a481cdabc3a17b38503cf97c6fa3d51b18bb37320deb570d9"
+    }
+  }
+}

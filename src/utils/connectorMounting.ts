@@ -66,7 +66,7 @@ function distinctSupports(groups: string[][]): string[] | null {
 }
 
 export function nonCornerSupports(part: ConnectorData, profiles: ProfileData[], trims = computeAllTrims(profiles)): string[] | null {
-  const ref = hardwareReference(part.type, part.series ?? 20)
+  const ref = hardwareReference(part.type, part.series ?? 20, part.profileSpec)
   if (!ref?.verified || !ref.supportedSeries.includes(part.series ?? 20)) return null
   const origin = new THREE.Vector3(...part.position), q = new THREE.Quaternion(...part.quaternion).normalize()
   if (part.type === 'end-cap') {
@@ -87,7 +87,14 @@ export function nonCornerSupports(part: ConnectorData, profiles: ProfileData[], 
     return selected.every((id) => id !== undefined) && new Set(selected).size === 3 ? selected as string[] : null
   }
   if (part.type === 'foot' || part.type === 'caster-mount') {
-    if (part.type === 'caster-mount') return null
+    if (part.type === 'foot' && part.series === 20) {
+      if (part.profileSpec !== '4040-B6') return null
+      const into = V('y').applyQuaternion(q), across = V('x').applyQuaternion(q)
+      const end = mountingEnds(profiles, trims).find((end) => end.square && end.p.spec === '4040-B6'
+        && end.outward.y < -0.999 && end.outward.dot(into) < -0.999 && near(origin, end.at)
+        && (Math.abs(across.dot(end.body.axes[0])) > 0.999 || Math.abs(across.dot(end.body.axes[1])) > 0.999))
+      return end ? [end.p.id] : null
+    }
     const spec = part.series === 30 ? '3030' : '4040'
     if (part.series !== 30 && part.series !== 40) return null
     const into = V('y').applyQuaternion(q)

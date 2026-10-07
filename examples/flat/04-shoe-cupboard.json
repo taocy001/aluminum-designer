@@ -1193,7 +1193,7 @@
    "id": "b-mufvmsxt2o-bearing-left",
    "spec": "2020",
    "position": [
-    30,
+    35,
     200,
     31
    ],
@@ -1211,7 +1211,7 @@
    "id": "b-mufvmsxt2o-bearing-right",
    "spec": "2020",
    "position": [
-    570,
+    565,
     200,
     31
    ],
@@ -1265,7 +1265,7 @@
    "id": "b-mufvmsxv2r-bearing-left",
    "spec": "2020",
    "position": [
-    30,
+    35,
     400,
     31
    ],
@@ -1283,7 +1283,7 @@
    "id": "b-mufvmsxv2r-bearing-right",
    "spec": "2020",
    "position": [
-    570,
+    565,
     400,
     31
    ],
@@ -1337,7 +1337,7 @@
    "id": "b-mufvmsxy2u-bearing-left",
    "spec": "2020",
    "position": [
-    30,
+    35,
     600,
     31
    ],
@@ -1355,7 +1355,7 @@
    "id": "b-mufvmsxy2u-bearing-right",
    "spec": "2020",
    "position": [
-    570,
+    565,
     600,
     31
    ],
@@ -1409,7 +1409,7 @@
    "id": "b-mufvmsy02x-bearing-left",
    "spec": "2020",
    "position": [
-    30,
+    35,
     800,
     31
    ],
@@ -1427,7 +1427,7 @@
    "id": "b-mufvmsy02x-bearing-right",
    "spec": "2020",
    "position": [
-    570,
+    565,
     800,
     31
    ],
@@ -1481,7 +1481,7 @@
    "id": "b-mufvmsy330-bearing-left",
    "spec": "2020",
    "position": [
-    30,
+    35,
     1000,
     31
    ],
@@ -1499,7 +1499,7 @@
    "id": "b-mufvmsy330-bearing-right",
    "spec": "2020",
    "position": [
-    570,
+    565,
     1000,
     31
    ],
@@ -1553,7 +1553,7 @@
    "id": "b-mufvmsy533-bearing-left",
    "spec": "2020",
    "position": [
-    30,
+    35,
     1200,
     31
    ],
@@ -1571,7 +1571,7 @@
    "id": "b-mufvmsy533-bearing-right",
    "spec": "2020",
    "position": [
-    570,
+    565,
     1200,
     31
    ],
@@ -1625,7 +1625,7 @@
    "id": "b-mufvmsy836-bearing-left",
    "spec": "2020",
    "position": [
-    30,
+    35,
     1400,
     31
    ],
@@ -1643,7 +1643,7 @@
    "id": "b-mufvmsy836-bearing-right",
    "spec": "2020",
    "position": [
-    570,
+    565,
     1400,
     31
    ],
@@ -1697,7 +1697,7 @@
    "id": "b-mufvmsyb39-bearing-left",
    "spec": "2020",
    "position": [
-    30,
+    35,
     1600,
     31
    ],
@@ -1715,7 +1715,7 @@
    "id": "b-mufvmsyb39-bearing-right",
    "spec": "2020",
    "position": [
-    570,
+    565,
     1600,
     31
    ],
@@ -1769,7 +1769,7 @@
    "id": "b-mufvmsye3c-bearing-left",
    "spec": "2020",
    "position": [
-    630,
+    635,
     450,
     31
    ],
@@ -1787,7 +1787,7 @@
    "id": "b-mufvmsye3c-bearing-right",
    "spec": "2020",
    "position": [
-    1170,
+    1165,
     450,
     31
    ],
@@ -1841,7 +1841,7 @@
    "id": "b-mufvmsyh3f-bearing-left",
    "spec": "2020",
    "position": [
-    630,
+    635,
     900,
     31
    ],
@@ -1859,7 +1859,7 @@
    "id": "b-mufvmsyh3f-bearing-right",
    "spec": "2020",
    "position": [
-    1170,
+    1165,
     900,
     31
    ],
@@ -1913,7 +1913,7 @@
    "id": "b-mufvmsyk3i-bearing-left",
    "spec": "2020",
    "position": [
-    630,
+    635,
     1350,
     31
    ],
@@ -1931,7 +1931,7 @@
    "id": "b-mufvmsyk3i-bearing-right",
    "spec": "2020",
    "position": [
-    1170,
+    1165,
     1350,
     31
    ],
@@ -1948,9 +1948,1788 @@
  ],
  "connectors": [
   {
+   "id": "c-frame-000",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    200,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-001",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    200,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-002",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    200,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-003",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    200,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-004",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    200,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-005",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    200,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-006",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    200,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-007",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    200,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-008",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    400,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-009",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    400,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-010",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    400,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-011",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    400,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-012",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    400,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-013",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    400,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-014",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    400,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-015",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    400,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-016",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    600,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-017",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    600,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-018",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    600,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-019",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    600,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-020",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    600,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-021",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    600,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-022",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    600,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-023",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    600,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-024",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    800,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-025",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    800,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-026",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    800,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-027",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    800,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-028",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    800,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-029",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    800,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-030",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    800,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-031",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    800,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-032",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1000,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-033",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1000,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-034",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1000,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-035",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1000,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-036",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    1000,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-037",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    1000,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-038",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    1000,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-039",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    1000,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-040",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1200,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-041",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1200,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-042",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1200,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-043",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1200,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-044",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    1200,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-045",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    1200,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-046",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    1200,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-047",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    1200,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-048",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1400,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-049",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1400,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-050",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1400,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-051",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1400,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-052",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    1400,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-053",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    1400,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-054",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    1400,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-055",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    1400,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-056",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1600,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-057",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1600,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-058",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1600,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-059",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1600,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-060",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    1600,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-061",
+   "type": "inside-corner",
+   "position": [
+    44.4,
+    1600,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-062",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    1600,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-063",
+   "type": "inside-corner",
+   "position": [
+    555.6,
+    1600,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-064",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    450,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-065",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    450,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-066",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    450,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-067",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    450,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-068",
+   "type": "inside-corner",
+   "position": [
+    644.4,
+    450,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-069",
+   "type": "inside-corner",
+   "position": [
+    644.4,
+    450,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-070",
+   "type": "inside-corner",
+   "position": [
+    1155.6,
+    450,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-071",
+   "type": "inside-corner",
+   "position": [
+    1155.6,
+    450,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-072",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    900,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-073",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    900,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-074",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    900,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-075",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    900,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-076",
+   "type": "inside-corner",
+   "position": [
+    644.4,
+    900,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-077",
+   "type": "inside-corner",
+   "position": [
+    644.4,
+    900,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-078",
+   "type": "inside-corner",
+   "position": [
+    1155.6,
+    900,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-079",
+   "type": "inside-corner",
+   "position": [
+    1155.6,
+    900,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-080",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    1350,
+    339.6
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-081",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    1350,
+    339.6
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-082",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    1350,
+    40.4
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-083",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    1350,
+    40.4
+   ],
+   "quaternion": [
+    7.850462293418875e-17,
+    0.7071067811865475,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-084",
+   "type": "inside-corner",
+   "position": [
+    644.4,
+    1350,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-085",
+   "type": "inside-corner",
+   "position": [
+    644.4,
+    1350,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-086",
+   "type": "inside-corner",
+   "position": [
+    1155.6,
+    1350,
+    40.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-frame-087",
+   "type": "inside-corner",
+   "position": [
+    1155.6,
+    1350,
+    339.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-338c4fbc9bc9",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    29.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
    "id": "c-mueqr37h9w",
    "type": "inside-corner",
-   "series": 20,
    "position": [
     -1.6653345369377348e-16,
     29.4,
@@ -1962,6 +3741,67 @@
     0,
     0.7071067811865476
    ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr37ia6",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1970.6,
+    -2.2204460492503114e-17
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr37jac",
+   "type": "inside-corner",
+   "position": [
+    0,
+    1970.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-9a11dd5a1276",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    29.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
    "mountSeries": [
     20,
     20
@@ -1970,7 +3810,6 @@
   {
    "id": "c-mueqr37h9x",
    "type": "inside-corner",
-   "series": 20,
    "position": [
     0,
     29.4,
@@ -1982,106 +3821,7 @@
     0,
     0.7071067811865476
    ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37h9y",
-   "type": "inside-corner",
    "series": 20,
-   "position": [
-    1190.5,
-    29.4,
-    2.2204460492503114e-17
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37h9z",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1190.5,
-    29.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37ia2",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    590.5,
-    29.4,
-    2.2204460492503114e-17
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37ia3",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    590.5,
-    29.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37ia6",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    9.5,
-    1970.6,
-    -2.2204460492503114e-17
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
    "mountSeries": [
     20,
     20
@@ -2090,7 +3830,6 @@
   {
    "id": "c-mueqr37ia7",
    "type": "inside-corner",
-   "series": 20,
    "position": [
     9.5,
     1970.6,
@@ -2102,37 +3841,97 @@
     -1.1102230246251564e-16,
     1.1102230246251564e-16
    ],
+   "series": 20,
    "mountSeries": [
     20,
     20
    ]
   },
   {
-   "id": "c-mueqr37ja8",
+   "id": "c-mueqr37jad",
    "type": "inside-corner",
-   "series": 20,
    "position": [
-    609.5,
+    1.6653345369377348e-16,
     1970.6,
-    -2.2204460492503114e-17
+    370.5
    ],
    "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
    ],
+   "series": 20,
    "mountSeries": [
     20,
     20
    ]
   },
   {
-   "id": "c-mueqr37ja9",
+   "id": "c-mueqr37ia2",
    "type": "inside-corner",
-   "series": 20,
    "position": [
-    1190.5,
+    590.5,
+    29.4,
+    2.2204460492503114e-17
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-cde65f3aae60",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    29.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-8350b62ffc2b",
+   "type": "inside-corner",
+   "position": [
+    600,
+    29.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-dcbb27f7d62b",
+   "type": "inside-corner",
+   "position": [
+    590.5,
     1970.6,
     -2.442490654175344e-16
    ],
@@ -2142,6 +3941,127 @@
     1,
     0
    ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr37ja8",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    1970.6,
+    -2.2204460492503114e-17
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr37jae",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1970.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr37ia3",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    29.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-a7e926ea400b",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    29.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-f9d9d1755cfd",
+   "type": "inside-corner",
+   "position": [
+    600,
+    29.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-2551046ea763",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1970.6,
+    380
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
    "mountSeries": [
     20,
     20
@@ -2150,7 +4070,6 @@
   {
    "id": "c-mueqr37jaa",
    "type": "inside-corner",
-   "series": 20,
    "position": [
     609.5,
     1970.6,
@@ -2162,86 +4081,7 @@
     -1.1102230246251564e-16,
     1.1102230246251564e-16
    ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37jab",
-   "type": "inside-corner",
    "series": 20,
-   "position": [
-    1190.5,
-    1970.6,
-    380
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37jac",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    0,
-    1970.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37jad",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1.6653345369377348e-16,
-    1970.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37jae",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1970.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
    "mountSeries": [
     20,
     20
@@ -2250,7 +4090,6 @@
   {
    "id": "c-mueqr37jaf",
    "type": "inside-corner",
-   "series": 20,
    "position": [
     600,
     1970.6,
@@ -2262,926 +4101,27 @@
     0.7071067811865476,
     0
    ],
+   "series": 20,
    "mountSeries": [
     20,
     20
    ]
   },
   {
-   "id": "c-mueqr37jag",
+   "id": "c-mueqr37h9y",
    "type": "inside-corner",
-   "series": 20,
    "position": [
-    1200,
-    1970.6,
-    9.5
+    1190.5,
+    29.4,
+    2.2204460492503114e-17
    ],
    "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr37jah",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1200,
-    1970.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr391iw",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    -1.6653345369377348e-16,
-    209.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
     0,
-    0.7071067811865476
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
    ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr391ix",
-   "type": "inside-corner",
    "series": 20,
-   "position": [
-    0,
-    209.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr391iy",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    209.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr391iz",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    209.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr391j0",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    -1.6653345369377348e-16,
-    409.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr392j1",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    0,
-    409.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr392j2",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    409.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr392j3",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    409.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr392j4",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    -1.6653345369377348e-16,
-    609.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr392j5",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    0,
-    609.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr393j6",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    609.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr393j7",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    609.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr393j8",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    -1.6653345369377348e-16,
-    809.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr393j9",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    0,
-    809.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr393ja",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    809.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr393jb",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    809.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr394jc",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    -1.6653345369377348e-16,
-    1009.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr394jd",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    0,
-    1009.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr394je",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1009.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr394jf",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1009.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr394jg",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    0,
-    1190.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr395jh",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1.6653345369377348e-16,
-    1190.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr395ji",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1190.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr395jj",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1190.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr395jk",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    0,
-    1390.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr395jl",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1.6653345369377348e-16,
-    1390.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr395jm",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1390.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr396jn",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1390.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr396jo",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    0,
-    1590.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr396jp",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1.6653345369377348e-16,
-    1590.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr396jq",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1590.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr396jr",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1590.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr397js",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    459.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr397jt",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    459.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr397ju",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1200,
-    459.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr397jv",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1200,
-    459.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr397jw",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    909.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr397jx",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    909.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr398jy",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1200,
-    909.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr398jz",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1200,
-    909.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr398k0",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1340.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr398k1",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    600,
-    1340.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr398k2",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1200,
-    1340.6,
-    9.5
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mueqr399k3",
-   "type": "inside-corner",
-   "series": 20,
-   "position": [
-    1200,
-    1340.6,
-    370.5
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0.7071067811865476,
-    0
-   ],
    "mountSeries": [
     20,
     20
@@ -3200,6 +4140,66 @@
     -0.7071067811865475,
     0,
     0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr37ja9",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    1970.6,
+    -2.442490654175344e-16
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr37jag",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    1970.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr37h9z",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    29.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -3228,18 +4228,18 @@
    ]
   },
   {
-   "id": "b-mufvmsxt2o-bearing-front-start-joint",
+   "id": "c-mueqr37jab",
    "type": "inside-corner",
    "position": [
-    39.4,
-    200,
-    40.5
+    1190.5,
+    1970.6,
+    380
    ],
    "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
    ],
    "series": 20,
    "mountSeries": [
@@ -3248,18 +4248,18 @@
    ]
   },
   {
-   "id": "b-mufvmsxt2o-bearing-front-end-joint",
+   "id": "c-mueqr37jah",
    "type": "inside-corner",
    "position": [
-    560.6,
-    200,
-    40.5
+    1200,
+    1970.6,
+    370.5
    ],
    "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
    ],
    "series": 20,
    "mountSeries": [
@@ -3268,18 +4268,18 @@
    ]
   },
   {
-   "id": "b-mufvmsxt2o-bearing-back-start-joint",
+   "id": "c-mueqr391iw",
    "type": "inside-corner",
    "position": [
-    39.4,
-    200,
-    339.5
+    -1.6653345369377348e-16,
+    209.4,
+    9.5
    ],
    "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
    ],
    "series": 20,
    "mountSeries": [
@@ -3288,18 +4288,1738 @@
    ]
   },
   {
-   "id": "b-mufvmsxt2o-bearing-back-end-joint",
+   "id": "c-mueqr391ix",
    "type": "inside-corner",
    "position": [
-    560.6,
-    200,
-    339.5
+    0,
+    209.4,
+    370.5
    ],
    "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr391iy",
+   "type": "inside-corner",
+   "position": [
+    600,
+    209.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr391iz",
+   "type": "inside-corner",
+   "position": [
+    600,
+    209.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr391j0",
+   "type": "inside-corner",
+   "position": [
+    -1.6653345369377348e-16,
+    409.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr392j1",
+   "type": "inside-corner",
+   "position": [
+    0,
+    409.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr392j2",
+   "type": "inside-corner",
+   "position": [
+    600,
+    409.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr392j3",
+   "type": "inside-corner",
+   "position": [
+    600,
+    409.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr392j4",
+   "type": "inside-corner",
+   "position": [
+    -1.6653345369377348e-16,
+    609.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr392j5",
+   "type": "inside-corner",
+   "position": [
+    0,
+    609.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr393j6",
+   "type": "inside-corner",
+   "position": [
+    600,
+    609.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr393j7",
+   "type": "inside-corner",
+   "position": [
+    600,
+    609.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr393j8",
+   "type": "inside-corner",
+   "position": [
+    -1.6653345369377348e-16,
+    809.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr393j9",
+   "type": "inside-corner",
+   "position": [
+    0,
+    809.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr393ja",
+   "type": "inside-corner",
+   "position": [
+    600,
+    809.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr393jb",
+   "type": "inside-corner",
+   "position": [
+    600,
+    809.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr394jc",
+   "type": "inside-corner",
+   "position": [
+    -1.6653345369377348e-16,
+    1009.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr394jd",
+   "type": "inside-corner",
+   "position": [
+    0,
+    1009.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr394je",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1009.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr394jf",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1009.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr394jg",
+   "type": "inside-corner",
+   "position": [
+    0,
+    1190.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr395jh",
+   "type": "inside-corner",
+   "position": [
+    1.6653345369377348e-16,
+    1190.6,
+    370.5
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr395ji",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1190.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr395jj",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1190.6,
+    370.5
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr395jk",
+   "type": "inside-corner",
+   "position": [
+    0,
+    1390.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr395jl",
+   "type": "inside-corner",
+   "position": [
+    1.6653345369377348e-16,
+    1390.6,
+    370.5
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr395jm",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1390.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr396jn",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1390.6,
+    370.5
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr396jo",
+   "type": "inside-corner",
+   "position": [
+    0,
+    1590.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr396jp",
+   "type": "inside-corner",
+   "position": [
+    1.6653345369377348e-16,
+    1590.6,
+    370.5
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr396jq",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1590.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr396jr",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1590.6,
+    370.5
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr397js",
+   "type": "inside-corner",
+   "position": [
+    600,
+    459.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr397jt",
+   "type": "inside-corner",
+   "position": [
+    600,
+    459.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr397ju",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    459.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr397jv",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    459.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr397jw",
+   "type": "inside-corner",
+   "position": [
+    600,
+    909.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr397jx",
+   "type": "inside-corner",
+   "position": [
+    600,
+    909.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr398jy",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    909.4,
+    9.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr398jz",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    909.4,
+    370.5
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    0,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr398k0",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1340.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr398k1",
+   "type": "inside-corner",
+   "position": [
+    600,
+    1340.6,
+    370.5
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr398k2",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    1340.6,
+    9.5
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-mueqr399k3",
+   "type": "inside-corner",
+   "position": [
+    1200,
+    1340.6,
+    370.5
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    7.850462293418875e-17,
+    0.7071067811865476,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-dc3e83118e1f",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    209.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-94f407c46d65",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    209.4,
+    2.2204460492503114e-17
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-cce3204eb0cb",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    209.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-07511f76d0de",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    209.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-ab96ac6b8188",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    409.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-393e7326b820",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    409.4,
+    2.2204460492503114e-17
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-19a526d4c3a9",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    409.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-c3948ced6294",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    409.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-c3f316bb9bc3",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    609.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-d918d7efa13b",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    609.4,
+    2.2204460492503114e-17
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-f796292c5b8c",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    609.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-b965615c2b29",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    609.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-252bc57c81e3",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    809.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-54d6170ee48b",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    809.4,
+    2.2204460492503114e-17
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-61b7771484ac",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    809.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-4b2f981a67d4",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    809.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-d5ca367a9764",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1009.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-28514c7d0d90",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1009.4,
+    2.2204460492503114e-17
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-462f2010ad24",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1009.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-31388f283099",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1009.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-5dfee598df3a",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1190.6,
+    -2.2204460492503114e-17
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-790a00140f7f",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1190.6,
+    -2.442490654175344e-16
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-6b066a34bb56",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1190.6,
+    380
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-e834f589761f",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1190.6,
+    380
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-15486a1bbae5",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1390.6,
+    -2.2204460492503114e-17
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-6d3ce6ba1d27",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1390.6,
+    -2.442490654175344e-16
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-86bfadd6c0d6",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1390.6,
+    380
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-f16ec1453495",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1390.6,
+    380
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-f56b4be53caa",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1590.6,
+    -2.2204460492503114e-17
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-4ef3b4d650c1",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1590.6,
+    -2.442490654175344e-16
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-b5f1d64454c8",
+   "type": "inside-corner",
+   "position": [
+    9.5,
+    1590.6,
+    380
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-6e864eddc0fb",
+   "type": "inside-corner",
+   "position": [
+    590.5,
+    1590.6,
+    380
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-0b753d78da63",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    459.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-444962bd3cde",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    459.4,
+    2.2204460492503114e-17
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-8542534c3c55",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    459.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-f2d042b370be",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    459.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-9dbe073c6aa7",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    909.4,
+    2.442490654175344e-16
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-1fd8b8334d9f",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    909.4,
+    2.2204460492503114e-17
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-8099b050ea08",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    909.4,
+    380
+   ],
+   "quaternion": [
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    0,
+    1
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-ac3a97da52c4",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    909.4,
+    380
+   ],
+   "quaternion": [
+    0,
+    1,
+    -1.1102230246251564e-16,
+    -1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "b-mufvmsyk3i-bearing-left-start-joint",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    1340.6,
+    -2.2204460492503114e-17
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-82b96eef82ea",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    1340.6,
+    -2.442490654175344e-16
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "b-mufvmsyk3i-bearing-left-end-joint",
+   "type": "inside-corner",
+   "position": [
+    609.5,
+    1340.6,
+    380
+   ],
+   "quaternion": [
+    1,
+    0,
+    -1.1102230246251564e-16,
+    1.1102230246251564e-16
+   ],
+   "series": 20,
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "c-seat-dd4f20916b4f",
+   "type": "inside-corner",
+   "position": [
+    1190.5,
+    1340.6,
+    380
+   ],
+   "quaternion": [
+    1.1102230246251564e-16,
+    1.1102230246251564e-16,
+    1,
+    0
    ],
    "series": 20,
    "mountSeries": [
@@ -3388,86 +6108,6 @@
    ]
   },
   {
-   "id": "b-mufvmsxv2r-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    400,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsxv2r-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    400,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsxv2r-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    400,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsxv2r-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    400,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "b-mufvmsxv2r-bearing-left-start-joint",
    "type": "inside-corner",
    "position": [
@@ -3540,86 +6180,6 @@
     7.850462293418875e-17,
     0.7071067811865476,
     0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsxy2u-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    600,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsxy2u-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    600,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsxy2u-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    600,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsxy2u-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    600,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
    ],
    "series": 20,
    "mountSeries": [
@@ -3708,86 +6268,6 @@
    ]
   },
   {
-   "id": "b-mufvmsy02x-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    800,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy02x-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    800,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy02x-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    800,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy02x-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    800,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "b-mufvmsy02x-bearing-left-start-joint",
    "type": "inside-corner",
    "position": [
@@ -3860,86 +6340,6 @@
     7.850462293418875e-17,
     0.7071067811865476,
     0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy330-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1000,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy330-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    1000,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy330-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1000,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy330-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    1000,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
    ],
    "series": 20,
    "mountSeries": [
@@ -4028,86 +6428,6 @@
    ]
   },
   {
-   "id": "b-mufvmsy533-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1200,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy533-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    1200,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy533-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1200,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy533-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    1200,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "b-mufvmsy533-bearing-left-start-joint",
    "type": "inside-corner",
    "position": [
@@ -4180,86 +6500,6 @@
     0.7071067811865475,
     0,
     0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy836-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1400,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy836-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    1400,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy836-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1400,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsy836-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    1400,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
    ],
    "series": 20,
    "mountSeries": [
@@ -4348,86 +6588,6 @@
    ]
   },
   {
-   "id": "b-mufvmsyb39-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1600,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyb39-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    1600,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyb39-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    39.4,
-    1600,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyb39-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    560.6,
-    1600,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "b-mufvmsyb39-bearing-left-start-joint",
    "type": "inside-corner",
    "position": [
@@ -4508,126 +6668,6 @@
    ]
   },
   {
-   "id": "b-mufvmsye3c-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    639.4,
-    450,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    1160.6,
-    450,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    639.4,
-    450,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    1160.6,
-    450,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-left-start-joint",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    440.6,
-    -2.2204460492503114e-17
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-left-end-joint",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    440.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "b-mufvmsye3c-bearing-right-start-joint",
    "type": "inside-corner",
    "position": [
@@ -4660,86 +6700,6 @@
     7.850462293418875e-17,
     0.7071067811865476,
     0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyh3f-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    639.4,
-    900,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyh3f-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    1160.6,
-    900,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyh3f-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    639.4,
-    900,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyh3f-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    1160.6,
-    900,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
    ],
    "series": 20,
    "mountSeries": [
@@ -4828,126 +6788,6 @@
    ]
   },
   {
-   "id": "b-mufvmsyk3i-bearing-front-start-joint",
-   "type": "inside-corner",
-   "position": [
-    639.4,
-    1350,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-front-end-joint",
-   "type": "inside-corner",
-   "position": [
-    1160.6,
-    1350,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-back-start-joint",
-   "type": "inside-corner",
-   "position": [
-    639.4,
-    1350,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-back-end-joint",
-   "type": "inside-corner",
-   "position": [
-    1160.6,
-    1350,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-left-start-joint",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    1340.6,
-    -2.2204460492503114e-17
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-left-end-joint",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    1340.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "b-mufvmsyk3i-bearing-right-start-joint",
    "type": "inside-corner",
    "position": [
@@ -4988,166 +6828,6 @@
    ]
   },
   {
-   "id": "c-seat-338c4fbc9bc9",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    29.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-9a11dd5a1276",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    29.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-8350b62ffc2b",
-   "type": "inside-corner",
-   "position": [
-    600,
-    29.4,
-    9.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-cde65f3aae60",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    29.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-dcbb27f7d62b",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1970.6,
-    -2.442490654175344e-16
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-f9d9d1755cfd",
-   "type": "inside-corner",
-   "position": [
-    600,
-    29.4,
-    370.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-a7e926ea400b",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    29.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-2551046ea763",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1970.6,
-    380
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-86978bbfb30f",
    "type": "inside-corner",
    "position": [
@@ -5160,66 +6840,6 @@
     0,
     -1.1102230246251564e-16,
     1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-dc3e83118e1f",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    209.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-967d999e2dc7",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    190.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-cce3204eb0cb",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    209.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
    ],
    "series": 20,
    "mountSeries": [
@@ -5248,18 +6868,18 @@
    ]
   },
   {
-   "id": "c-seat-94f407c46d65",
+   "id": "c-seat-967d999e2dc7",
    "type": "inside-corner",
    "position": [
-    590.5,
-    209.4,
-    2.2204460492503114e-17
+    9.5,
+    190.6,
+    380
    ],
    "quaternion": [
-    0,
     1,
+    0,
     -1.1102230246251564e-16,
-    -1.1102230246251564e-16
+    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -5288,26 +6908,6 @@
    ]
   },
   {
-   "id": "c-seat-07511f76d0de",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    209.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-2cb929c243eb",
    "type": "inside-corner",
    "position": [
@@ -5320,66 +6920,6 @@
     0,
     -1.1102230246251564e-16,
     1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-ab96ac6b8188",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    409.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-7bd32f5672c7",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    390.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-19a526d4c3a9",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    409.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
    ],
    "series": 20,
    "mountSeries": [
@@ -5408,18 +6948,18 @@
    ]
   },
   {
-   "id": "c-seat-393e7326b820",
+   "id": "c-seat-7bd32f5672c7",
    "type": "inside-corner",
    "position": [
-    590.5,
-    409.4,
-    2.2204460492503114e-17
+    9.5,
+    390.6,
+    380
    ],
    "quaternion": [
-    0,
     1,
+    0,
     -1.1102230246251564e-16,
-    -1.1102230246251564e-16
+    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -5448,26 +6988,6 @@
    ]
   },
   {
-   "id": "c-seat-c3948ced6294",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    409.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-8dbc5f2d6f56",
    "type": "inside-corner",
    "position": [
@@ -5480,66 +7000,6 @@
     0,
     -1.1102230246251564e-16,
     1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-c3f316bb9bc3",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    609.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-9edf7256942e",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    590.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-f796292c5b8c",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    609.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
    ],
    "series": 20,
    "mountSeries": [
@@ -5568,18 +7028,18 @@
    ]
   },
   {
-   "id": "c-seat-d918d7efa13b",
+   "id": "c-seat-9edf7256942e",
    "type": "inside-corner",
    "position": [
-    590.5,
-    609.4,
-    2.2204460492503114e-17
+    9.5,
+    590.6,
+    380
    ],
    "quaternion": [
-    0,
     1,
+    0,
     -1.1102230246251564e-16,
-    -1.1102230246251564e-16
+    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -5608,26 +7068,6 @@
    ]
   },
   {
-   "id": "c-seat-b965615c2b29",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    609.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-02d5eb2f487c",
    "type": "inside-corner",
    "position": [
@@ -5640,66 +7080,6 @@
     0,
     -1.1102230246251564e-16,
     1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-252bc57c81e3",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    809.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-28a52eef689c",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    790.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-61b7771484ac",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    809.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
    ],
    "series": 20,
    "mountSeries": [
@@ -5728,18 +7108,18 @@
    ]
   },
   {
-   "id": "c-seat-54d6170ee48b",
+   "id": "c-seat-28a52eef689c",
    "type": "inside-corner",
    "position": [
-    590.5,
-    809.4,
-    2.2204460492503114e-17
+    9.5,
+    790.6,
+    380
    ],
    "quaternion": [
-    0,
     1,
+    0,
     -1.1102230246251564e-16,
-    -1.1102230246251564e-16
+    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -5768,26 +7148,6 @@
    ]
   },
   {
-   "id": "c-seat-4b2f981a67d4",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    809.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-a0da526ec4c8",
    "type": "inside-corner",
    "position": [
@@ -5800,66 +7160,6 @@
     0,
     -1.1102230246251564e-16,
     1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-d5ca367a9764",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1009.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-692be71a4b0d",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    990.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-462f2010ad24",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1009.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
    ],
    "series": 20,
    "mountSeries": [
@@ -5888,18 +7188,18 @@
    ]
   },
   {
-   "id": "c-seat-28514c7d0d90",
+   "id": "c-seat-692be71a4b0d",
    "type": "inside-corner",
    "position": [
-    590.5,
-    1009.4,
-    2.2204460492503114e-17
+    9.5,
+    990.6,
+    380
    ],
    "quaternion": [
-    0,
     1,
+    0,
     -1.1102230246251564e-16,
-    -1.1102230246251564e-16
+    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -5928,26 +7228,6 @@
    ]
   },
   {
-   "id": "c-seat-31388f283099",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1009.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-6a2b985cc909",
    "type": "inside-corner",
    "position": [
@@ -5960,66 +7240,6 @@
     1.1102230246251564e-16,
     0,
     1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-5dfee598df3a",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1190.6,
-    -2.2204460492503114e-17
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-8e50d229d9d1",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1209.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-6b066a34bb56",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1190.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -6048,18 +7268,18 @@
    ]
   },
   {
-   "id": "c-seat-790a00140f7f",
+   "id": "c-seat-8e50d229d9d1",
    "type": "inside-corner",
    "position": [
-    590.5,
-    1190.6,
-    -2.442490654175344e-16
+    9.5,
+    1209.4,
+    380
    ],
    "quaternion": [
+    -1.1102230246251564e-16,
     1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
+    0,
+    1
    ],
    "series": 20,
    "mountSeries": [
@@ -6088,26 +7308,6 @@
    ]
   },
   {
-   "id": "c-seat-e834f589761f",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1190.6,
-    380
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-f376af2caeda",
    "type": "inside-corner",
    "position": [
@@ -6120,66 +7320,6 @@
     1.1102230246251564e-16,
     0,
     1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-15486a1bbae5",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1390.6,
-    -2.2204460492503114e-17
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-1dd49da98a56",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1409.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-86bfadd6c0d6",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1390.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -6208,18 +7348,18 @@
    ]
   },
   {
-   "id": "c-seat-6d3ce6ba1d27",
+   "id": "c-seat-1dd49da98a56",
    "type": "inside-corner",
    "position": [
-    590.5,
-    1390.6,
-    -2.442490654175344e-16
+    9.5,
+    1409.4,
+    380
    ],
    "quaternion": [
+    -1.1102230246251564e-16,
     1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
+    0,
+    1
    ],
    "series": 20,
    "mountSeries": [
@@ -6248,26 +7388,6 @@
    ]
   },
   {
-   "id": "c-seat-f16ec1453495",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1390.6,
-    380
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-2c5306257391",
    "type": "inside-corner",
    "position": [
@@ -6280,66 +7400,6 @@
     1.1102230246251564e-16,
     0,
     1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-f56b4be53caa",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1590.6,
-    -2.2204460492503114e-17
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-7bfdd5ea45dc",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1609.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-b5f1d64454c8",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1590.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -6368,18 +7428,18 @@
    ]
   },
   {
-   "id": "c-seat-4ef3b4d650c1",
+   "id": "c-seat-7bfdd5ea45dc",
    "type": "inside-corner",
    "position": [
-    590.5,
-    1590.6,
-    -2.442490654175344e-16
+    9.5,
+    1609.4,
+    380
    ],
    "quaternion": [
+    -1.1102230246251564e-16,
     1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
+    0,
+    1
    ],
    "series": 20,
    "mountSeries": [
@@ -6408,58 +7468,18 @@
    ]
   },
   {
-   "id": "c-seat-6e864eddc0fb",
+   "id": "b-mufvmsye3c-bearing-left-start-joint",
    "type": "inside-corner",
    "position": [
-    590.5,
-    1590.6,
-    380
+    609.5,
+    440.6,
+    -2.2204460492503114e-17
    ],
    "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
     1,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-0b753d78da63",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    459.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
     0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-8542534c3c55",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    459.4,
-    380
-   ],
-   "quaternion": [
     -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
+    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -6488,18 +7508,18 @@
    ]
   },
   {
-   "id": "c-seat-444962bd3cde",
+   "id": "b-mufvmsye3c-bearing-left-end-joint",
    "type": "inside-corner",
    "position": [
-    1190.5,
-    459.4,
-    2.2204460492503114e-17
+    609.5,
+    440.6,
+    380
    ],
    "quaternion": [
-    0,
     1,
+    0,
     -1.1102230246251564e-16,
-    -1.1102230246251564e-16
+    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -6528,26 +7548,6 @@
    ]
   },
   {
-   "id": "c-seat-f2d042b370be",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    459.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-06167788f218",
    "type": "inside-corner",
    "position": [
@@ -6560,66 +7560,6 @@
     0,
     -1.1102230246251564e-16,
     1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-9dbe073c6aa7",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    909.4,
-    2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-1ff6a436848b",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    890.6,
-    380
-   ],
-   "quaternion": [
-    1,
-    0,
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-8099b050ea08",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    909.4,
-    380
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
    ],
    "series": 20,
    "mountSeries": [
@@ -6648,18 +7588,18 @@
    ]
   },
   {
-   "id": "c-seat-1fd8b8334d9f",
+   "id": "c-seat-1ff6a436848b",
    "type": "inside-corner",
    "position": [
-    1190.5,
-    909.4,
-    2.2204460492503114e-17
+    609.5,
+    890.6,
+    380
    ],
    "quaternion": [
-    0,
     1,
+    0,
     -1.1102230246251564e-16,
-    -1.1102230246251564e-16
+    1.1102230246251564e-16
    ],
    "series": 20,
    "mountSeries": [
@@ -6688,52 +7628,12 @@
    ]
   },
   {
-   "id": "c-seat-ac3a97da52c4",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    909.4,
-    380
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-seat-48b230bf7acf",
    "type": "inside-corner",
    "position": [
     609.5,
     1359.4,
     2.442490654175344e-16
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-fc218668ce1c",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    1359.4,
-    380
    ],
    "quaternion": [
     -1.1102230246251564e-16,
@@ -6768,18 +7668,18 @@
    ]
   },
   {
-   "id": "c-seat-82b96eef82ea",
+   "id": "c-seat-fc218668ce1c",
    "type": "inside-corner",
    "position": [
-    1190.5,
-    1340.6,
-    -2.442490654175344e-16
+    609.5,
+    1359.4,
+    380
    ],
    "quaternion": [
+    -1.1102230246251564e-16,
     1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
+    0,
+    1
    ],
    "series": 20,
    "mountSeries": [
@@ -6800,26 +7700,6 @@
     1,
     -1.1102230246251564e-16,
     -1.1102230246251564e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-seat-dd4f20916b4f",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    1340.6,
-    380
-   ],
-   "quaternion": [
-    1.1102230246251564e-16,
-    1.1102230246251564e-16,
-    1,
-    0
    ],
    "series": 20,
    "mountSeries": [

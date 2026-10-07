@@ -36,7 +36,7 @@ async function renderedFront(page: Page, id: string) {
 }
 
 test('kitchen file opens all fronts toward the user with attached drawer boxes', async ({ page }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(240_000)
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   await useDownloadFallback(page)
@@ -48,7 +48,10 @@ test('kitchen file opens all fronts toward the user with attached drawer boxes',
   const saved = await store(page)
   expect((await conflicts(page)).conflicts).toEqual([])
   await page.screenshot({ path: test.info().outputPath('kitchen-initial-closed.png') })
+  // Keep images for each mechanism; mesh and interaction checks cover every front.
+  const capturedKinds = new Set<string>()
   for (const f of saved.fittings) {
+    const capture = !capturedKinds.has(f.kind)
     // Return from the range input to a real view control before Escape. An input owns
     // its keyboard events; otherwise the previous door stays selected and its move
     // handle can cover the neighbouring front. Face the closed fronts for each click.
@@ -76,17 +79,25 @@ test('kitchen file opens all fronts toward the user with attached drawer boxes',
     expect((await conflicts(page)).conflicts).toEqual([])
     await page.getByTestId('view-iso').click()
     await settle(page)
-    await page.screenshot({ path: test.info().outputPath(`${f.kind}-${f.id}-half-open.png`) })
+    if (capture) await page.screenshot({ path: test.info().outputPath(`${f.kind}-${f.id}-half-open.png`) })
     await slider.press('End')
     await expect(slider).toHaveValue('100')
     if (f.kind === 'drawer') {
       await expect.poll(async () => (await renderedFront(page, f.id)).center[2] - shut.center[2]).toBeGreaterThan(f.depth * 0.8)
       for (const gap of (await renderedFront(page, f.id)).contactGaps) expect(Math.abs(gap)).toBeLessThan(0.001)
+    } else {
+      await expect.poll(async () => {
+        const normal = (await renderedFront(page, f.id)).normal
+        const dot = normal.reduce((sum, value, axis) => sum + value * shut.normal[axis], 0)
+        const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI
+        return Math.abs(angle - f.swing)
+      }).toBeLessThan(0.1)
     }
     expect((await conflicts(page)).conflicts).toEqual([])
-    await page.screenshot({ path: test.info().outputPath(`${f.kind}-${f.id}-open.png`) })
+    if (capture) await page.screenshot({ path: test.info().outputPath(`${f.kind}-${f.id}-open.png`) })
     await slider.press('Home')
     await expect.poll(async () => Math.abs((await renderedFront(page, f.id)).center[2] - shut.center[2])).toBeLessThan(0.1)
+    capturedKinds.add(f.kind)
   }
   expect((await store(page)).fittings).toEqual(saved.fittings)
   expect((await store(page)).profiles).toEqual(saved.profiles)

@@ -125,6 +125,36 @@ function surfaceInterfaceCandidate(
     alignmentFace: { profileId: contact.sideFace.profileId, axis: contact.sideFace.axis, side: contact.sideFace.side }, px, mm }
 }
 
+function branchSurfaceCandidate(
+  contact: TInterface, profiles: ProfileData[], ray: THREE.Ray, hit: MeshHit, cursor: THREE.Vector2,
+  camera: THREE.Camera, size: ScreenSize, resolveTrims: TrimResolver,
+): Candidate | null {
+  const branch = profiles.find((profile) => profile.id === contact.cap.profileId)!
+  const trims = resolveTrims(branch), dir = getProfileDir(branch)
+  const ends = profileBodyEndpoints(branch, trims)
+  const point = contact.cap.side < 0 ? ends.start : ends.end
+  for (const axis of [0, 1] as const) for (const side of [-1, 1] as const) {
+    const face = { profileId: branch.id, axis, side }
+    const surface = profileFace(branch, face, trims), normal = new THREE.Vector3(...surface.normal)
+    if (Math.abs(normal.y) < 1 - 1e-6 || normal.dot(ray.direction) >= -1e-6) continue
+    if (surface.center[1] < contact.bottom - FACE_EPS || surface.center[1] > contact.top + FACE_EPS) continue
+    if (Math.abs(surface.center[1] - hit.point.y) > EDGE_MM + FACE_EPS) continue
+    const onSurface = ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(normal,
+      new THREE.Vector3(...surface.center)), new THREE.Vector3())
+    if (!onSurface || ray.origin.distanceTo(onSurface) > ray.origin.distanceTo(hit.point) + FACE_EPS) continue
+    const corners = surface.corners.map((corner) => new THREE.Vector3(...corner))
+    if (!new THREE.Box3().setFromPoints(corners).expandByScalar(FACE_EPS).containsPoint(onSurface)) continue
+    const mm = Math.abs(onSurface.clone().sub(point).dot(dir))
+    if (mm > EDGE_MM) continue
+    const edge = corners.filter((corner) => Math.abs(corner.clone().sub(point).dot(dir)) < FACE_EPS)
+    if (edge.length !== 2) continue
+    const px = distanceToEdge(cursor, toScreen(edge[0], camera, size), toScreen(edge[1], camera, size))
+    if (px <= EDGE_PX) return { point, face,
+      alignmentFace: { profileId: branch.id, axis: 2, side: contact.cap.side }, px, mm }
+  }
+  return null
+}
+
 /**
  * First-click edge placement has two independent references: the horizontal surface
  * receiving the new end and the physical cap its outer side should align with. Keep
@@ -134,9 +164,12 @@ function surfaceInterfaceCandidate(
 export function pickDrawingStart(
   ray: THREE.Ray, cursor: THREE.Vector2, camera: THREE.Camera, size: ScreenSize, profiles: ProfileData[],
   meshHit?: MeshHit | null, planeY = 0, previousFace?: ProfileFaceRef | null,
+  visibleProfileIds?: ReadonlySet<string>,
 ): DrawingStartPick {
-  const fallback = () => pickPoint(ray, cursor, camera, size, profiles, meshHit, planeY, previousFace)
-  const target = meshHit && profiles.find((profile) => profile.id === meshHit.profileId)
+  const candidates = visibleProfileIds ? profiles.filter((profile) => visibleProfileIds.has(profile.id)) : profiles
+  if (meshHit && visibleProfileIds && !visibleProfileIds.has(meshHit.profileId)) meshHit = null
+  const fallback = () => pickPoint(ray, cursor, camera, size, candidates, meshHit, planeY, previousFace)
+  const target = meshHit && candidates.find((profile) => profile.id === meshHit.profileId)
   if (!target || !meshHit) return fallback()
   const dir = getProfileDir(target)
   // Drawing remains world-axis constrained. A vertical member cannot put one of its
@@ -146,6 +179,7 @@ export function pickDrawingStart(
   // A groove wall can face sideways while belonging to the top. Classify its owning
   // outer face before checking its world normal, and retain the actual triangle normal.
   const face = referenceFaceFromHit(target, meshHit)
+  // Hidden members remain part of the structure and still determine physical cuts.
   const resolveTrims = createTrimResolver(profiles)
   const trims = resolveTrims(target)
   const surface = profileFace(target, face, trims)
@@ -168,14 +202,14 @@ export function pickDrawingStart(
       if (px > EDGE_PX) continue
       consider({ point, face, alignmentFace: { profileId: target.id, axis: 2, side }, px, mm })
     }
-    for (const contact of tInterfaces(target, profiles, resolveTrims)) {
+    for (const contact of tInterfaces(target, candidates, resolveTrims)) {
       const candidate = surfaceInterfaceCandidate(contact, surface, meshHit, cursor, camera, size, resolveTrims)
       if (candidate) consider(candidate)
     }
     if (!best) {
       const ordinary = fallback()
-      const capTarget = ordinary.face?.axis === 2 && profiles.find((profile) => profile.id === ordinary.face!.profileId)
-      const covered = capTarget && capInterfaces(capTarget, ordinary.face!.side, profiles, resolveTrims)
+      const capTarget = ordinary.face?.axis === 2 && candidates.find((profile) => profile.id === ordinary.face!.profileId)
+      const covered = capTarget && capInterfaces(capTarget, ordinary.face!.side, candidates, resolveTrims)
         .some((contact) => (contact.target.id === target.id || contact.cap.profileId === target.id)
           && surface.center[1] >= contact.bottom - FACE_EPS && surface.center[1] <= contact.top + FACE_EPS
           && withinContact(contact, new THREE.Vector3(...contact.cap.center)))
@@ -197,12 +231,17 @@ export function pickDrawingStart(
     // or an exposed part of a partially covered cap, and only toward a nearby face
     // facing this ray. The same interfaces and pixel bounds govern ordinary picks.
     const contacts = face.axis === 2
-      ? capInterfaces(target, face.side, profiles, resolveTrims)
-      : tInterfaces(target, profiles, resolveTrims)
+      ? capInterfaces(target, face.side, candidates, resolveTrims)
+      : tInterfaces(target, candidates, resolveTrims)
         .filter((contact) => contact.sideFace.axis === face.axis && contact.sideFace.side === face.side)
     for (const contact of contacts) {
       if (!withinContact(contact, meshHit.point)) continue
       if (planeY !== 0 && Math.abs(contact.target.position[1] - planeY) > PLANE_TOL) continue
+      // A ray through the branch's top slot may first hit the through-member side.
+      // Recover the surface under that ray before considering the opposite side of
+      // the seam; its finite face and the ordinary end-edge bounds still apply.
+      const branch = branchSurfaceCandidate(contact, candidates, ray, meshHit, cursor, camera, size, resolveTrims)
+      if (branch) { consider(branch); continue }
       const surfaces = ([0, 1] as const).flatMap((axis) => ([-1, 1] as const)
         .map((side) => profileFace(contact.target, { profileId: contact.target.id, axis, side }, resolveTrims(contact.target))))
       for (const outer of surfaces) {
