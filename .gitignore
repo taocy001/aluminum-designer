@@ -5,3 +5,12 @@ dist/
 test-results/
 playwright-report/
 blob-report/
+coverage/
+.cache/
+/tmp/
+/temp/
+/examples/checks/
+*.log
+*.tmp
+*.bak
+*.tsbuildinfo

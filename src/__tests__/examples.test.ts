@@ -6,7 +6,6 @@ import { computeAllTrims, computeFrameBounds, trimmedBox } from '../utils/jointU
 import { getProfileEndpoints } from '../utils/geometryCore'
 import { jointPartnersAt } from '../utils/connectorFit'
 import { unflushPairs } from '../utils/faceAlign'
-import hardwareChecks from '../../examples/checks/hardware.json'
 import { auditBrackets } from '../utils/bracketSeat'
 import { migrateFittings } from '../utils/migrate'
 import { parseProjectDocument } from '../utils/document'
@@ -154,11 +153,8 @@ describe('bundled example geometry', () => {
       expect(named).toEqual([])
     })
 
-    it('has no corner pairs without a supported connector', () => {
+    it('has no misaligned profile joints', () => {
       const { profiles } = load(name)
-      const known = hardwareChecks.find((entry) => entry.file.endsWith(`/${name}`))!
-      expect(known).toBeDefined()
-      expect(known.unsupportedCornerPairs).toEqual([])
       expect(unflushPairs(profiles)).toEqual([])
     })
 

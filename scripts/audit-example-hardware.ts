@@ -49,6 +49,4 @@ const report = files.map((file) => {
   return { file, profiles: doc.profiles.length, connectors: doc.connectors.length,
     boards: doc.panels.length, unfastenedBoards, connectedProfiles: connected.size, unsupportedCornerPairs, unfastenedLocalJoints: [...unfastenedLocalJoints] }
 })
-fs.mkdirSync(path.join(root, 'examples/checks'), { recursive: true })
-fs.writeFileSync(path.join(root, 'examples/checks/hardware.json'), JSON.stringify(report, null, 2) + '\n')
 console.log(report.map(({ file, connectors, unsupportedCornerPairs }) => `${file}: ${connectors} connectors, ${unsupportedCornerPairs.length} unsupported corner pairs`).join('\n'))
