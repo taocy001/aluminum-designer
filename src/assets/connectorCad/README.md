@@ -1,12 +1,16 @@
-The project's MIT license applies to its original source code. Manufacturer CAD-derived assets here and in `../profileSections.json` retain their manufacturer attribution and source references; this project does not relicense them as original MIT assets. Rights in the referenced manufacturer material remain with the respective rights holders.
+# Manufacturer CAD assets
+
+The project's MIT license applies to its original source code. Manufacturer CAD-derived assets here and in [profileSections.json](../profileSections.json) retain their manufacturer attribution and source references; this project does not relicense them as original MIT assets. Rights in the referenced manufacturer material remain with the respective rights holders.
+
+## Brackets and slot hardware
 
 The following bracket meshes are tessellated from Motedis' public product STEP files, in physical millimetres:
 
 | Asset | Manufacturer source | Mounting faces / transformation |
 | --- | --- | --- |
-| motedis-s6bbr20.json | https://www.motedis.com/shop/products_files/Motedis_S6BBR20_1.zip | Original X negated, Y preserved, Z negated |
-| motedis-s8bbr30.json | https://www.motedis.com/shop/products_files/Motedis_S8BBR30.zip | Original X negated, Y preserved, Z negated |
-| motedis-s8ibr40.json | https://www.motedis.com/shop/products_files/Motedis_S8IBR40_1.zip | Original X negated, Y preserved, Z negated |
+| motedis-s6bbr20.json | [Motedis STEP](https://www.motedis.com/shop/products_files/Motedis_S6BBR20_1.zip) | Original X negated, Y preserved, Z negated |
+| motedis-s8bbr30.json | [Motedis STEP](https://www.motedis.com/shop/products_files/Motedis_S8BBR30.zip) | Original X negated, Y preserved, Z negated |
+| motedis-s8ibr40.json | [Motedis STEP](https://www.motedis.com/shop/products_files/Motedis_S8IBR40_1.zip) | Original X negated, Y preserved, Z negated |
 
 Retrieved 2026-10-04. OpenCascade tessellation uses 0.1 mm linear deflection and 0.28 radian angular deflection. Positions are rounded to five decimal places. The resulting model retains actual mounting openings, cast ribs, locating tabs, and fillets. The outside mounting planes are X=0 and Y=0; the bracket body extends in +X/+Y. Locating tabs project into negative X/Y.
 
@@ -30,7 +34,7 @@ The two inner castings use six convex collision pieces: two necks, two separate 
 
 The S6BHASNM5 collision body retains the manufacturer's 2 mm bottom chamfers: width 11.5 at Y=−2.7 narrows to 7.5 at Y=−4.7. A separate narrow neck covers Y=−1.5 through −0.5. The S8BHASNM6 body uses 16 supporting directions around the CAD section to retain the shoulder fillets and bottom chamfers; its neck is separate. Both outlines fit their corresponding B6/B8 slot floors without enlarging the slot or relaxing collision tolerance.
 
-The derived closed solids are built offline with OpenCascade. No CAD kernel or runtime boolean operation is needed by the application. Cap and caster assets retain their own source URLs and transformation notes in their JSON records; their complete mounting limitations are recorded in `connectorAccessoryReferences.ts`.
+The derived closed solids are built offline with OpenCascade. No CAD kernel or runtime boolean operation is needed by the application. Cap and caster assets retain their own source URLs and transformation notes in their JSON records; their complete mounting limitations are recorded in [connectorAccessoryReferences.ts](../../utils/connectorAccessoryReferences.ts).
 
 ## Accessory CAD
 
@@ -38,11 +42,11 @@ The following Motedis assets are in physical millimetres. Caps were retrieved on
 
 | Assets | Manufacturer source | Local coordinates |
 | --- | --- | --- |
-| motedis-cap-2020.json | https://www.motedis.com/shop/products_files/Motedis_PTS6B20x20.zip | Profile centre at X=Y=0; contact plane Z=0; cover +Z, retention pins −Z |
-| motedis-cap-2040.json | https://www.motedis.com/shop/products_files/Motedis_PTS6B20x40.zip | Original X/Y swapped to make the section 20 along X and 40 along Y; original Z reversed; origin at the centred contact plane |
-| motedis-cap-3030.json | https://www.motedis.com/shop/products_files/Motedis_PTS8B30x30.zip | Centred contact plane; original X preserved and Y/Z reversed |
-| motedis-cap-4040.json | https://www.motedis.com/shop/products_files/Motedis_PTS8I40x40.zip | Centred contact plane; original X preserved and Y/Z reversed |
-| motedis-caster-10146-14.json through -21.json and -bearings.json | https://www.motedis.com/shop/products_files/Motedis_10146.zip | 22 original solids, including 14 bearing balls grouped in one asset. Source translated by (−122.1992003, −5.2027851, +178.2538749), placing the mounting top at Y=0 and swivel axis on Y; wheel axle on Z |
+| motedis-cap-2020.json | [Motedis STEP](https://www.motedis.com/shop/products_files/Motedis_PTS6B20x20.zip) | Profile centre at X=Y=0; contact plane Z=0; cover +Z, retention pins −Z |
+| motedis-cap-2040.json | [Motedis STEP](https://www.motedis.com/shop/products_files/Motedis_PTS6B20x40.zip) | Original X/Y swapped to make the section 20 along X and 40 along Y; original Z reversed; origin at the centred contact plane |
+| motedis-cap-3030.json | [Motedis STEP](https://www.motedis.com/shop/products_files/Motedis_PTS8B30x30.zip) | Centred contact plane; original X preserved and Y/Z reversed |
+| motedis-cap-4040.json | [Motedis STEP](https://www.motedis.com/shop/products_files/Motedis_PTS8I40x40.zip) | Centred contact plane; original X preserved and Y/Z reversed |
+| motedis-caster-10146-14.json through -21.json and -bearings.json | [Motedis STEP](https://www.motedis.com/shop/products_files/Motedis_10146.zip) | 22 original solids, including 14 bearing balls grouped in one asset. Source translated by (−122.1992003, −5.2027851, +178.2538749), placing the mounting top at Y=0 and swivel axis on Y; wheel axle on Z |
 | din7991-m8x25-caster.json | [Motedis mounting instructions](https://www.motedis.com/shop/products_files/Motedis_Wheels.pdf), [DIN 7991 M8 head dimensions](https://belmetric.com/content/A-PDF_Drawings/SF8X40.pdf) | M8×25 countersunk screw: head Ø16×4.4, AF5 socket, 90° cone, thread flanks omitted. The cone bears on the lower rim of the caster's Ø11 mounting bore; the tip is at Y=+8.3609 |
 | din7991-m6x20.json | [Motedis DIN 7991 M6×20](https://www.motedis.be/fr/Vis-a-tete-fraisee-a-six-pans-creux-selon-DIN-7991/M6x20), [M6×20 drawing](https://belmetric.com/content/1.%20Product%20Assets/SF6X20BLKSS.pdf) | Constructed from published dimensions, not manufacturer CAD. Overall length 20; head Ø12×3.3, comprising a 0.3 mm cylindrical rim and a 90° cone; AF4 socket depth 2.3. Head bottom Y=0, axis +Y. Thread flanks omitted. The B6 foot adapter seats each screw at Y=−7.9, with the tip at +12.1 |
 
@@ -54,4 +58,4 @@ Caster 10146 retains the fork, wheel, bearings, axle, axle nut and swivel assemb
 
 ## 4040 B6 profile section
 
-The `4040-B6` entry in `../profileSections.json` comes from [Motedis 40×40 B-type slot 6](https://www.motedis.com/en/Profile-40x40-B-type-slot-6) and its [original STEP](https://www.motedis.com/shop/products_files/Motedis_profile%2040x40%20B-Type%20slot%206.zip), retrieved 2026-10-05. Its centred section retains the eight B6 slots, four cores at XY=(±10, ±10), and the central void. Curved edges use a maximum 0.05 mm chord error. This section is distinct from the `4040` I8 profile: it has no central core for direct M8 foot or caster installation.
+The `4040-B6` entry in [profileSections.json](../profileSections.json) comes from [Motedis 40×40 B-type slot 6](https://www.motedis.com/en/Profile-40x40-B-type-slot-6) and its [original STEP](https://www.motedis.com/shop/products_files/Motedis_profile%2040x40%20B-Type%20slot%206.zip), retrieved 2026-10-05. Its centred section retains the eight B6 slots, four cores at XY=(±10, ±10), and the central void. Curved edges use a maximum 0.05 mm chord error. This section is distinct from the `4040` I8 profile: it has no central core for direct M8 foot or caster installation.

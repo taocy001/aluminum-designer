@@ -15,13 +15,15 @@ const names = requested.length ? requested : allNames
 // Writing watched example files mid-capture reloads Vite. Publish the completed batch
 // only after the browser has closed, so every screenshot captures the intended document.
 const output = mkdtempSync(join(tmpdir(), 'aluframe-examples-'))
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
+let browser
 let complete = false
 try {
+  browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
   const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } })
   page.setDefaultTimeout(120_000)
   // A static capture must not reload when the dev server broadcasts file changes.
   await page.routeWebSocket('**/*', (socket) => socket.close())
+  await page.addInitScript(() => { delete window.showOpenFilePicker; delete window.showSaveFilePicker })
   await page.goto(baseURL)
   await page.waitForFunction(() => window.__aluframe?.setView)
   // Render changes on demand during static captures to let the GPU finish each frame.
@@ -32,25 +34,25 @@ try {
     const { _roots } = await import(moduleURL)
     for (const root of _roots.values()) root.store.getState().setFrameloop('demand')
   })
+  await page.getByTestId('labels-toggle').click()
+  await page.getByTestId('mode-toggle').click()
   const show = async (source, filename) => {
-    const result = await page.evaluate(async ({ source, filename }) => {
-      const { parseProjectDocument } = await import('/src/utils/document.ts')
+    await page.getByTestId('file-menu').click()
+    const chooser = page.waitForEvent('filechooser')
+    await page.getByTestId('import-project').click()
+    await (await chooser).setFiles({ name: filename ?? 'connector-detail.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)) })
+    await page.waitForFunction(name => window.__aluframe.store.getState().projectName === name, filename ?? 'connector-detail.json')
+    await page.getByTestId('fit-view').click()
+    const result = await page.evaluate(async () => {
       const { buildBom, bomToCsv } = await import('/src/utils/bom.ts')
       const { computeAllTrims, computeFrameBounds } = await import('/src/utils/jointUtils.ts')
-      const doc = parseProjectDocument(source)
-      const { store, tool } = window.__aluframe
-      store.getState().loadDocument(doc)
-      store.setState({ projectName: filename ?? null })
-      tool.getState().setLanguage('zh')
-      tool.getState().setViewMode(true)
-      tool.setState({ showDimensionLabels: false, showFittings: true, buildStep: null })
-      tool.getState().triggerCameraReset('all')
+      const doc = window.__aluframe.store.getState()
       const trims = computeAllTrims(doc.profiles)
       const box = computeFrameBounds(doc.profiles, trims)
       const size = box ? [box.max.x - box.min.x, box.max.z - box.min.z, box.max.y - box.min.y] : []
       const overall = size.map((v) => Math.round(v * 1000) / 1000).join('x')
       return bomToCsv(buildBom(doc.profiles, doc.connectors, trims, 'zh', doc.panels, doc.fittings), overall)
-    }, { source, filename })
+    })
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     await page.mouse.move(1, 1)
     return result
@@ -175,8 +177,7 @@ try {
   }
   complete = true
 } finally {
-  await browser.close()
+  await browser?.close()
   if (complete) for (const name of readdirSync(output)) copyFileSync(join(output, name), join('examples', name))
-  if (complete) rmSync(output, { recursive: true, force: true })
-  else console.error(`Incomplete capture; completed images retained in ${output}`)
+  rmSync(output, { recursive: true, force: true })
 }

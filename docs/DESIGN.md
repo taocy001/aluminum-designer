@@ -1,4 +1,4 @@
-# 设计文档
+# 架构与实现
 
 本页描述当前数据模型、几何算法、状态与模块结构。操作说明见 [功能与操作](FEATURES.md)，未覆盖能力和验证边界见 [范围与限制](ROADMAP.md)。
 
@@ -18,7 +18,7 @@
 
 各类零件都有唯一 ID 和可选的 `locked`。型材规格为 2020、2040、3030、3040、4040、4040-B6（4040 为 I8，4040-B6 为 B6）；板材及构件材质为 `mdf`、`ply`、`acrylic`、`alu`。
 
-板件和构件默认独立，可通过 `openingBinding` 关联明确指定的洞口表面。生成的支撑和角码可分别通过 `runnerBinding`、`supportBinding` 跟随来源部件。`miterCuts` 和 `holes` 可随工程数据保存，当前渲染及实体导出不据此生成加工孔或斜切面。
+板件和构件默认独立，可通过 `openingBinding` 关联明确指定的洞口表面。生成的支撑和角码可分别通过 `runnerBinding`、`supportBinding` 跟随来源部件；`panelMount` 记录板材固定件的板材、型材和安装参数。`miterCuts` 和 `holes` 可随工程数据保存，当前渲染及实体导出不据此生成加工孔或斜切面。
 
 2020 B6、2040 B6、4040 B6、3030 B8、4040 I8 的截面来自 Motedis 厂家 CAD，3040 仍为未核验通用截面。连接件的型号、尺寸来源、紧固件及加工限制集中在 `connectorHardware.ts` 和 `connectorAccessoryReferences.ts`；板件间隙、挠度参数等仍是程序采用的设计参数。
 
@@ -156,7 +156,7 @@ cutLength = length - start.trim - end.trim
 
 杯铰和型材合页按安装边长度取 2/3/4 个，长排合页为一条；该数量规则未包含门重和实际五金承载。
 
-开度通过 `setFittingOpenings` 统一更新，允许操作锁定构件，保留撤销和重做记录。
+开度通过 `setFittingOpenings` 统一更新，允许操作锁定构件和查看模式中的构件。开合不新增撤销快照，也不清空已有重做记录；当前开度随 JSON 和浏览器备份保存。
 
 `fittingSolids` 只生成构件板材的活动 OBB。拉手随前板运动，铰链显示模型位于固定安装边，两者都不加入板材碰撞实体；拉手也不进入 BOM、DXF 或 STEP。BOM 中的滑轨和铰链行由构件参数生成。
 
@@ -201,13 +201,15 @@ cutLength = length - start.trim - end.trim
 
 `useToolStore` 保存手持零件、绘制与拖动态、工作面、查看、测量、剖切、装配步骤、零件编号显示、相机请求及语言等运行时状态，不持久化。查看模式禁用设计编辑和撤销重做；开合仍可模拟。
 
-工程几何与规则通过 `documentPersistence.ts` 写入 localStorage。选择和历史变更不序列化工程，连续变更合并为 180ms 延迟写入；页面隐藏或离开时尝试刷新待写数据。写入成功才更新已保存快照，失败保留最新待写内容。`AutoSaveStatus.tsx` 显示保存状态，并提供重试和下载当前工程的入口。不可解析的原始存档另存恢复副本，由 `RecoveryNotice.tsx` 提供下载和清除入口。
+工程几何与规则通过 `documentPersistence.ts` 写入 localStorage。选择和历史变更不序列化工程，连续变更合并为 180ms 延迟写入；页面隐藏或离开时尝试刷新待写数据。写入成功才更新已保存快照，失败保留最新待写内容。`AutoSaveStatus.tsx` 显示浏览器备份状态，并提供重试和下载当前工程的入口；备份成功不表示本地原文件已经写入。不可解析的原始存档另存恢复副本，由 `RecoveryNotice.tsx` 提供下载和清除入口。
 
 `opLog.ts` 独立持久化最近 400 条设计差异，覆盖零件、设备及规则，排除 `open`。拖动和端面拉伸按手势归并日志；开合不创建设计历史，JSON 和本地工程仍可保存当前开度。
 
 ## 工程文件与导出
 
 `document.ts` 校验及序列化 JSON v10：五类集合、唯一零件 ID、有限坐标、有效四元数、尺寸、机制枚举、会合边及贯通规则。当前工程保存和载入只校验数据，保留既有抽面尺寸与叠抽标记。无版本及 v1–v5 数据导入时，由 `migrate.ts` 为旧构件补框架厚度和相邻抽屉标记；解析结果及本地存档带工程版本，防止重复迁移。缺省贯通规则为横梁贯通。
+
+`EditorHeader.tsx` 显示工程名并提供文件菜单、保存窗口及 Ctrl/Cmd+O、S、Shift+S。文件名随浏览器备份保存，文件句柄只在当前页面会话内有效，刷新后保存须重新选定目标。保存窗口在持有句柄时提供覆盖原文件或另存，文件名拒绝空白、路径分隔符及控制字符。下载副本不改变当前工程名或保存目标。
 
 `projectFile.ts` 根据浏览器文件选择 API 提供打开、保存和另存。打开仅在浏览器不支持原生选择 API 时回退到普通文件输入；取消选择直接结束打开操作，选择或读取失败显示导入错误，均保留当前工程及保存目标。工程验证通过后才替换几何及文件目标。保存 API 不可用时下载工程副本；写入失败会提示错误并保留原保存目标，不转为下载。
 
@@ -238,7 +240,9 @@ BOM 的补件行是按对接端、自由端和已放置数量推算的建议。�
 - `TransformGizmo`、`ResizeHandles`、`QuickMenu`：变换手柄及快捷操作。
 - `Profile`、`Connector`、`Panel`、`Fitting`、`Equipment`：零件与设备渲染。
 - `SnapMarker`、`SnapFaces`、`FrameDimensions`、`PartNumberLabels`、`TextSprite`、`LabelLayout`：吸附面及标注。
-- `EditorHeader`：固定顶栏，集中提供文件打开、保存、分享、撤销重做及语言切换。文件菜单支持方向键、Esc 和文件快捷键；模态保存窗口按原文件或另存方式确认，关闭后恢复焦点。`AutoSaveStatus` 在顶栏显示浏览器备份状态，失败时显示可操作的提示。文件名通过 `documentPersistence.ts` 保存在浏览器，文件句柄只在当前页面会话中保留。`Sidebar`：组件、模板、属性、制造检查、清单与制造文件导出；`Gestures` 处理触屏手势；`RecoveryNotice` 处理存档恢复。
+- `EditorHeader`、`AutoSaveStatus`：工程名、文件操作、撤销重做、分享、语言及浏览器备份状态。
+- `Sidebar`：组件、模板、属性、制造检查、清单与制造文件导出。
+- `Gestures`、`RecoveryNotice`：触屏手势及浏览器存档恢复。
 - `src/utils/`：以上几何、检查、编辑及导出模块，另含 `profileShapes/specUtils` 截面表、`selectionBounds` 范围、`templates` 模板、`measure` 测量、`translations` 中英文文案。
 
 ## 开发、验证与部署
