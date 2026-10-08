@@ -74,6 +74,6 @@ test('unavailable storage is reported on startup and retry can save before any e
   await page.getByTestId('autosave-retry').click()
   await expect(status).toHaveAttribute('data-state', 'saved')
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('aluminum-designer-store')!).state)).toEqual({
-    version: PROJECT_VERSION, profiles: [], connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails',
+    version: PROJECT_VERSION, profiles: [], connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails', projectName: null,
   })
 })

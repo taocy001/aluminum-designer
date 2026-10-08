@@ -170,6 +170,7 @@ test.describe('A drawing in a link', () => {
     await a.getByTestId('template-place').click()
     await a.waitForTimeout(400)
     const sent = await a.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)
+    await a.getByTestId('file-menu').click()
     await a.getByTestId('share-link').click()
     await a.waitForTimeout(400)
     const link = await a.evaluate(() => navigator.clipboard.readText())

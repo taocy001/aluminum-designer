@@ -8,7 +8,7 @@ import OpeningBindingEditor, { SupportBindingEditor } from './OpeningBindingEdit
 import PanelMountControls from './PanelMountControls'
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Trash2, Download, Box, Eraser, Bug, Undo2, Redo2, Upload, Save, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode, Link2, Wrench } from 'lucide-react'
+import { Trash2, Download, Box, Eraser, Bug, Copy, ArrowLeftRight, AlertTriangle, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock, LockOpen, FlipHorizontal2, Rows3, Square, SquareDashed, Zap, Archive, DoorOpen, Scissors, FileCode, Wrench } from 'lucide-react'
 import { useStore, ProfileSpec, type ProfileData, type ConnectorData, type PanelData, HINGE_ANGLES, type FittingData, type PanelMaterial, type HingeSide, type HingeType, type Overlay } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
@@ -29,15 +29,12 @@ import { rollProfile, sectionFacing } from '../utils/faceAlign'
 import { addFittingFromSelection, canSplitDoor, setFittingsOpen, splitSelectedDoors, updateFittings, updateDrawerConfig } from '../utils/fittingOps'
 import { drawerLayout } from '../utils/drawerLayout'
 import { addDrawerSupports } from '../utils/drawerSupports'
-import { downloadText, rememberOpenedFile, openProject } from '../utils/projectFile'
-import { requestProjectSave } from './ProjectFileBar'
-import { parseProjectDocument } from '../utils/document'
+import { downloadText } from '../utils/projectFile'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
 import { buildStep as buildStepFile } from '../utils/step'
 import { TEMPLATES, templateById } from '../utils/templates'
-import { COMFORTABLE_URL, encodeShareLink } from '../utils/shareLink'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { repairJoints } from '../utils/repairJoints'
 import { assemblySteps } from '../utils/assembly'
@@ -82,7 +79,7 @@ const Section: React.FC<{
       data-testid={`section-${id}`}
       aria-expanded={open}
       title={t.hintSection(title)}
-      className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 hover:text-white hover:bg-white/5 shrink-0"
+      className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 shrink-0"
     >
       <ChevronRight size={13} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
       <span className="flex-1 text-left">{title}</span>
@@ -175,7 +172,7 @@ const NumField: React.FC<{
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, panels, fittings, equipment, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, undo, redo, past, future, loadDocument, throughRule, setThroughRule, recalculateJoints } = useStore()
+  const { profiles, connectors, panels, fittings, equipment, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, loadDocument, throughRule, setThroughRule, recalculateJoints } = useStore()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
     workPlaneY, setWorkPlaneY, viewMode, setViewMode,
     section, setSection, buildStep, setBuildStep } = useToolStore()
@@ -183,7 +180,6 @@ const Sidebar: React.FC = () => {
   const [confirmClear, setConfirmClear] = useState(false)
   const [hardwareOpen, setHardwareOpen] = useState(false)
   const hardwareToggle = useRef<HTMLButtonElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -212,8 +208,6 @@ const Sidebar: React.FC = () => {
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [templateParams, setTemplateParams] = useState<Record<string, number>>({})
   const chosenTemplate = templateId ? templateById(templateId) : undefined
-  const savedName = useStore(s => s.projectName)
-  const setSavedName = (projectName: string | null) => useStore.setState({ projectName })
   // the log lives outside React, so the panel listens for it rather than owning it
   const [stockText, setStockText] = useState('6000')
   /** what a shelf is assumed to be carrying, for the sag figure (kg) */
@@ -374,16 +368,6 @@ const Sidebar: React.FC = () => {
       '\ufeff' + nestingCsv(nesting, stockMm), 'text/csv;charset=utf-8')
     notifyExport()
   }
-  // Copy an encoded project link to the clipboard, subject to the link-length limit.
-  const handleShare = async () => {
-    try {
-      const link = await encodeShareLink({ profiles, connectors, panels, fittings, equipment, throughRule })
-      if (link.length > COMFORTABLE_URL * 8) { showToast(t.toastShareTooBig, 'error'); return }
-      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
-      await navigator.clipboard.writeText(link)
-      showToast(t.toastShared(Math.max(1, Math.round(link.length / 1024))), 'success')
-    } catch { showToast(t.toastClipboardFailed, 'error') }
-  }
   const handleExportDxf = () => {
     downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.dxf`,
       buildDxf({ profiles, panels, fittings, connectors, rule: throughRule, trims }), 'application/dxf')
@@ -400,28 +384,6 @@ const Sidebar: React.FC = () => {
       buildAssemblyHtml({ profiles, connectors, panels, fittings, equipment, throughRule }, { language, stockLength: stockMm }),
       'text/html;charset=utf-8')
     notifyExport()
-  }
-  const handleOpenProject = async () => {
-    const picked = await openProject()
-    if (picked.outcome === 'unsupported') { fileRef.current?.click(); return }
-    if (picked.outcome === 'cancelled') return
-    if (picked.outcome === 'failed') { showToast(t.toastImportFailed, 'error'); return }
-    try {
-      applyDocument(JSON.parse(picked.text))
-      picked.accept()
-      setSavedName(picked.name)
-      showToast(t.toastImported, 'success')
-    } catch { showToast(t.toastImportFailed, 'error') }
-  }
-  /** A saved drawing, checked before it replaces the one on screen. Throws if it is not one. */
-  const applyDocument = (doc: unknown) => loadDocument(parseProjectDocument(doc))
-  const handleImportJSON = (file: File) => {
-    file.text().then((txt) => {
-      applyDocument(JSON.parse(txt))
-      rememberOpenedFile(file.name)
-      setSavedName(file.name)
-      showToast(t.toastImported, 'success')
-    }).catch(() => showToast(t.toastImportFailed, 'error'))
   }
   const handleCopyLog = async () => {
     try {
@@ -458,7 +420,7 @@ const Sidebar: React.FC = () => {
       ? 'w-full border-t max-h-[62vh] order-last'
       : 'w-80 border-r'}`} data-testid="sidebar">
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 shrink-0">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{t.components}</span>
+        <span className="text-xs font-medium text-slate-300">{language === 'zh' ? '设计面板' : 'Design panel'}</span>
         <button onClick={() => setCollapsed(true)} title={t.collapsePanel} data-testid="sidebar-collapse"
           className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><PanelLeftClose size={15} /></button>
       </div>
@@ -1134,17 +1096,6 @@ const Sidebar: React.FC = () => {
         )}
       </Section>
 
-      <div className="grid grid-cols-2 gap-2 px-4 py-2 border-b border-white/5 shrink-0">
-        <button onClick={undo} disabled={viewMode || past.length === 0} title={`${t.undo} (Ctrl+Z)`}
-          className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold">
-          <Undo2 size={13} /> {t.undo}
-        </button>
-        <button onClick={redo} disabled={viewMode || future.length === 0} title={`${t.redo} (Ctrl+Y)`}
-          className="flex items-center justify-center gap-1.5 py-2 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 rounded-lg text-[10px] font-bold">
-          <Redo2 size={13} /> {t.redo}
-        </button>
-      </div>
-
       <Section
         id="bom"
         title={t.bomSummary}
@@ -1367,28 +1318,6 @@ const Sidebar: React.FC = () => {
               data-testid="export-assembly" title={t.hintExportAssembly} className={`${FILE_BTN} col-span-2`}>
               <FileCode size={13} className="text-blue-400" /> {t.exportAssembly}
             </button>
-          </div>
-        </div>
-
-        <div className="space-y-1 pt-2 border-t border-white/5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-slate-500 uppercase font-bold">{t.projectGroup}</span>
-            {savedName && (
-              <button onClick={requestProjectSave} data-testid="save-as" title={t.hintSaveAs}
-                className="text-[10px] text-slate-500 hover:text-slate-300">{t.saveAs}</button>
-            )}
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <button onClick={requestProjectSave} data-testid="export-project" title={savedName ? `${t.hintSave} — ${savedName}` : t.hintSave} className={FILE_BTN}>
-              <Save size={13} /> <span className="truncate">{t.exportJSON}</span>
-            </button>
-            <button onClick={handleOpenProject} title={t.hintImport} data-testid="import-project" className={FILE_BTN}>
-              <Upload size={13} /> {t.importJSON}
-            </button>
-            <button onClick={handleShare} title={t.hintShare} data-testid="share-link" className={FILE_BTN}>
-              <Link2 size={13} /> {t.share}
-            </button>
-            <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportJSON(f); e.target.value = '' }} />
           </div>
         </div>
 

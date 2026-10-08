@@ -209,7 +209,7 @@ cutLength = length - start.trim - end.trim
 
 `document.ts` 校验及序列化 JSON v10：五类集合、唯一零件 ID、有限坐标、有效四元数、尺寸、机制枚举、会合边及贯通规则。当前工程保存和载入只校验数据，保留既有抽面尺寸与叠抽标记。无版本及 v1–v5 数据导入时，由 `migrate.ts` 为旧构件补框架厚度和相邻抽屉标记；解析结果及本地存档带工程版本，防止重复迁移。缺省贯通规则为横梁贯通。
 
-`projectFile.ts` 根据浏览器文件选择 API 提供打开、保存和另存。打开仅在浏览器不支持原生选择 API 时回退到普通文件输入；取消选择直接结束打开操作，选择或读取失败显示导入错误，均保留当前工程及保存目标。工程验证通过后才替换几何及文件目标。保存 API 不可用或写入失败时回退为下载文本文件。
+`projectFile.ts` 根据浏览器文件选择 API 提供打开、保存和另存。打开仅在浏览器不支持原生选择 API 时回退到普通文件输入；取消选择直接结束打开操作，选择或读取失败显示导入错误，均保留当前工程及保存目标。工程验证通过后才替换几何及文件目标。保存 API 不可用时下载工程副本；写入失败会提示错误并保留原保存目标，不转为下载。
 
 | 模块 | 输出 |
 |---|---|
@@ -238,7 +238,7 @@ BOM 的补件行是按对接端、自由端和已放置数量推算的建议。�
 - `TransformGizmo`、`ResizeHandles`、`QuickMenu`：变换手柄及快捷操作。
 - `Profile`、`Connector`、`Panel`、`Fitting`、`Equipment`：零件与设备渲染。
 - `SnapMarker`、`SnapFaces`、`FrameDimensions`、`PartNumberLabels`、`TextSprite`、`LabelLayout`：吸附面及标注。
-- `ProjectFileBar`：当前文件名、保存窗口及 Ctrl/⌘ + S；文件名通过 `documentPersistence.ts` 保存在浏览器，文件句柄只在当前页面会话中保留。`Sidebar`：目录、模板、属性、检查与文件操作；`Gestures` 处理触屏手势；`RecoveryNotice` 处理存档恢复。
+- `EditorHeader`：固定顶栏，集中提供文件打开、保存、分享、撤销重做及语言切换。文件菜单支持方向键、Esc 和文件快捷键；模态保存窗口按原文件或另存方式确认，关闭后恢复焦点。`AutoSaveStatus` 在顶栏显示浏览器备份状态，失败时显示可操作的提示。文件名通过 `documentPersistence.ts` 保存在浏览器，文件句柄只在当前页面会话中保留。`Sidebar`：组件、模板、属性、制造检查、清单与制造文件导出；`Gestures` 处理触屏手势；`RecoveryNotice` 处理存档恢复。
 - `src/utils/`：以上几何、检查、编辑及导出模块，另含 `profileShapes/specUtils` 截面表、`selectionBounds` 范围、`templates` 模板、`measure` 测量、`translations` 中英文文案。
 
 ## 开发、验证与部署

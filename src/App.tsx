@@ -1,4 +1,4 @@
-import ProjectFileBar from './components/ProjectFileBar'
+import EditorHeader from './components/EditorHeader'
 import OverlapPicker from './components/OverlapPicker'
 import { reportEditResult } from './utils/editFeedback'
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
@@ -19,7 +19,7 @@ import { nextSuggestion, dismissSuggestion } from './utils/suggestOps'
 import { computeTrims } from './utils/jointUtils'
 import { getProfileEndpoints } from './utils/geometryCore'
 import { profileFace, type ProfileFaceRef } from './utils/profileFaces'
-import { Languages, Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle, DoorOpen, DoorClosed, Lightbulb } from 'lucide-react'
+import { Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle, DoorOpen, DoorClosed, Lightbulb } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
@@ -27,7 +27,7 @@ const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3
 function App() {
   const { profiles, throughRule, clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
   const {
-    language, setLanguage, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace,
+    language, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace,
     drawLengthInput: preciseInput, setDrawLengthInput: setPreciseInput,
     held, putDown, triggerCameraReset, setCameraView, zoomBy, cancelDraw, activeSpec, activeConnectorType,
     isDragging, showDimensionLabels, toggleDimensionLabels, showPartNumbers, togglePartNumbers, showGizmo, toggleGizmo,
@@ -132,8 +132,8 @@ function App() {
         else selectAll()
         return
       }
-      if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return }
-      if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return }
+      if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); useToolStore.getState().cancelDraw(); undo(); return }
+      if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); useToolStore.getState().cancelDraw(); redo(); return }
 
       // Looking, not building: the view keys still work, the ones that change things do not.
       if (viewMode && !['Escape', 'f', 'F', 'F11', ' '].includes(e.key) && e.code !== 'Space') {
@@ -252,12 +252,16 @@ function App() {
   // Frame selection overlay
   const mainRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
+  const [hudLeft, setHudLeft] = useState(8)
   const [hudTop, setHudTop] = useState(124)
   useLayoutEffect(() => {
     const toolbar = toolbarRef.current
     const viewport = mainRef.current
     if (!toolbar || !viewport) return
-    const update = () => setHudTop(Math.ceil(toolbar.getBoundingClientRect().bottom) + 8)
+    const update = () => {
+      setHudTop(Math.ceil(toolbar.getBoundingClientRect().bottom) + 8)
+      setHudLeft(Math.ceil(viewport.getBoundingClientRect().left) + 8)
+    }
     const observer = new ResizeObserver(update)
     observer.observe(toolbar)
     observer.observe(viewport)
@@ -333,13 +337,10 @@ function App() {
 
   return (
     <div className="w-full h-full bg-[#0f172a] flex flex-col overflow-hidden">
-      <header className="h-14 bg-slate-800 border-b border-white/10 flex items-center px-3 md:px-6 gap-2 text-white shadow-2xl z-20 shrink-0">
-        <h1 className="min-w-0 text-sm md:text-lg font-black tracking-tighter flex items-center gap-2 md:gap-3 uppercase">
-          <div className="w-6 h-6 bg-blue-500 rounded-sm rotate-45 flex items-center justify-center text-[10px] text-white font-bold">AL</div>
-          <span className="truncate">{t.title}</span>
-        </h1>
-
-        <div className="ml-auto flex items-center gap-3">
+      <EditorHeader />
+      <RecoveryNotice />
+      <AutoSaveStatus errorsOnly />
+      <>
           {/* which gizmo handle the pointer is on */}
           {gizmoHover && !isDragging && (
             <div data-testid="gizmo-hint"
@@ -405,7 +406,7 @@ function App() {
           )}
 
           {isDrawing && (
-            <div style={{ top: hudTop }} className="absolute left-2 right-2 md:static flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 md:bg-transparent rounded-xl p-2 md:p-0" data-testid="draw-hud" data-keep-draw>
+            <div style={{ top: hudTop, left: hudLeft }} className="absolute right-2 flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 rounded-xl p-2 z-20" data-testid="draw-hud" data-keep-draw>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-bold border"
                 style={drawAxis
                   ? { color: AXIS_COLORS[drawAxis], borderColor: AXIS_COLORS[drawAxis] + '66', background: AXIS_COLORS[drawAxis] + '15' }
@@ -442,7 +443,7 @@ function App() {
           {/* Typing a number mid-gesture finishes it exactly: how far to move, or how long
               the member should be. The mouse gets the direction, the keyboard the size. */}
           {exactGesture && (
-            <div style={{ top: hudTop }} className="absolute left-2 right-2 md:static flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 md:bg-transparent rounded-xl p-2 md:p-0" data-testid="exact-hud" data-keep-draw>
+            <div style={{ top: hudTop, left: hudLeft }} className="absolute right-2 flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 rounded-xl p-2 z-20" data-testid="exact-hud" data-keep-draw>
               <div className="px-3 py-1.5 rounded-full text-xs font-mono font-bold border text-amber-200 border-amber-400/50 bg-amber-500/10">
                 {exactGesture === 'move' ? t.exactMove : t.exactLength}
               </div>
@@ -461,15 +462,7 @@ function App() {
               </div>
             </div>
           )}
-          <button data-keep-draw onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')} title={t.hintLanguage}
-            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-full text-xs font-bold shadow-lg active:scale-95">
-            <Languages size={14} />{language === 'en' ? '中文' : 'English'}
-          </button>
-        </div>
-      </header>
-      <RecoveryNotice />
-      <ProjectFileBar />
-      <AutoSaveStatus />
+      </>
 
       {/* Side by side where there is room, stacked where there is not: on a phone the
           drawing takes the screen and the panel is a sheet along the bottom edge. */}
@@ -498,7 +491,7 @@ function App() {
           {/* Toolbar */}
           {/* Related controls wrap together; short mobile canvases scroll the toolbar
               above the bottom controls. The drawing HUD follows its measured height. */}
-          <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap whitespace-nowrap w-[calc(100%-1rem)] md:w-auto max-w-[calc(100%-1rem)] max-h-[calc(100%-6rem)] md:max-h-none overflow-y-auto md:overflow-visible bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
+          <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap whitespace-nowrap w-[calc(100%-1rem)] md:w-max max-w-[calc(100%-1rem)] max-h-[calc(100%-6rem)] md:max-h-none overflow-y-auto md:overflow-visible bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
             {/* What is in hand, and the way to put it down. Not a mode switch: it only ever
                 empties the hand, because filling it is the sidebar's job. */}
             {/* the label is the part's name, but the accessible name says what the button does,

@@ -150,6 +150,7 @@ test.describe('Editing and focused controls', () => {
   test('clipboard rejection produces a failure instead of copied feedback', async ({ page }) => {
     await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true,
       value: { writeText: () => Promise.reject(new Error('denied')) } }))
+    await page.getByTestId('file-menu').click()
     await page.getByTestId('share-link').click()
     await expect(page.getByTestId('toasts')).toContainText('复制失败')
     await expect(page.getByTestId('toasts')).not.toContainText('已复制')

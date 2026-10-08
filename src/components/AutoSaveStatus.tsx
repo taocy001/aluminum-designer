@@ -6,7 +6,7 @@ import { serializeProjectDocument } from '../utils/document'
 import { downloadText } from '../utils/projectFile'
 
 /** Current saving health, separate from recovery of an unreadable older document. */
-export default function AutoSaveStatus() {
+export default function AutoSaveStatus({ compact = false, errorsOnly = false }: { compact?: boolean; errorsOnly?: boolean }) {
   const status = useSyncExternalStore(documentStorage.subscribe, documentStorage.getStatus)
   const zh = useToolStore((s) => s.language) === 'zh'
   const failed = status === 'error' || status === 'unavailable'
@@ -15,13 +15,15 @@ export default function AutoSaveStatus() {
     : status === 'pending'
       ? (zh ? '最新更改正在等待自动保存。' : 'The latest changes are waiting to be saved.')
       : (zh ? '编辑后将自动保存到此浏览器。' : 'Changes will be saved automatically in this browser.')
+  if (errorsOnly && !failed) return null
+  if (compact && failed) return <span className="text-[10px] text-amber-400">{zh ? '浏览器备份失败' : 'Browser backup failed'}</span>
   if (!failed) {
     // A steady label avoids flashing a saving message during every short edit. The exact
     // state remains available to assistive technology and through the tooltip.
     return <div data-testid="autosave-status" data-state={status} role="status" aria-live="off"
       aria-label={details} title={details}
-      className="shrink-0 bg-slate-900 px-4 py-1 text-[10px] text-slate-400">
-      {zh ? '自动保存到此浏览器' : 'Auto-save in this browser'}
+      className="flex items-center gap-1.5 text-[10px] leading-4 text-slate-500">
+      <span className="h-1 w-1 shrink-0 rounded-full bg-slate-500" />{zh ? '浏览器自动备份 · 文件需手动保存' : 'Browser backup · save file separately'}
     </div>
   }
   const retry = () => {

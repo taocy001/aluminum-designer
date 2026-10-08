@@ -42,6 +42,7 @@ test('native cancellation and failures preserve the project and save target with
     input.click = () => { w.__fallbackCalls++ }
   }, drawing)
 
+  await page.getByTestId('file-menu').click()
   await page.getByTestId('import-project').click()
   await expect(page.getByTestId('current-project-name')).toContainText('original.json')
   await expect.poll(async () => (await store(page)).profiles).toEqual(drawing.profiles)
@@ -52,11 +53,13 @@ test('native cancellation and failures preserve the project and save target with
       ;(window as any).__openMode = mode
       ;(window as any).__aluframe.tool.setState({ toasts: [] })
     }, mode)
+    await page.getByTestId('file-menu').click()
     await page.getByTestId('import-project').click()
     await expect.poll(() => page.evaluate(() => (window as any).__openCalls)).toBe(++calls)
     if (mode === 'cancelled') await expect(page.getByTestId('toasts')).toBeEmpty()
     else await expect(page.getByTestId('toasts')).toContainText('工程文件无法读取')
     expect(await page.evaluate(() => (window as any).__fallbackCalls)).toBe(0)
+    await expect(page.getByTestId('file-menu')).toBeFocused()
     expect(await store(page)).toEqual(original)
     await expect(page.getByTestId('current-project-name')).toContainText('original.json')
   }
@@ -64,15 +67,16 @@ test('native cancellation and failures preserve the project and save target with
   await page.getByTestId('export-project').click()
   await expect(page.getByTestId('project-save-dialog')).toBeVisible()
   expect(await page.evaluate(() => (window as any).__fileWrites)).toHaveLength(0)
-  await page.getByTestId('save-filename').fill('')
-  await expect(page.getByTestId('save-confirm')).toBeDisabled()
   await page.getByTestId('save-overwrite').click()
   const writes = await page.evaluate(() => (window as any).__fileWrites)
   expect(writes).toHaveLength(1)
   expect(writes[0].name).toBe('original.json')
   expect(writes[0].document.profiles).toEqual(drawing.profiles)
   expect(await page.evaluate(() => (window as any).__savePickerCalls)).toBe(0)
-  await page.keyboard.press('Control+s')
+  await page.keyboard.press('Control+Shift+s')
+  await page.getByTestId('save-filename').fill('')
+  await expect(page.getByTestId('save-confirm')).toBeDisabled()
+  await page.getByTestId('save-filename').fill('another.json')
   await page.evaluate(() => {
     ;(window as any).showSaveFilePicker = async () => { throw new DOMException('Cancelled', 'AbortError') }
   })
@@ -87,6 +91,7 @@ test('native cancellation and failures preserve the project and save target with
   await page.getByTestId('save-confirm').click()
   await expect(page.getByRole('alert')).toContainText('保存失败')
   await expect(page.getByTestId('current-project-name')).toContainText('original.json')
+  await page.getByRole('button', { name: '原文件', exact: true }).click()
   await page.getByTestId('save-overwrite').click()
   await expect(page.getByTestId('project-save-dialog')).not.toBeVisible()
   expect((await page.evaluate(() => (window as any).__fileWrites)).map((w: any) => w.name))
@@ -100,6 +105,7 @@ test('a browser without the native open API imports through the ordinary file in
   await page.getByTestId('template-bench').click()
   await page.getByTestId('template-place').click()
   const event = page.waitForEvent('filechooser')
+  await page.getByTestId('file-menu').click()
   await page.getByTestId('import-project').click()
   const chooser = await event
   await chooser.setFiles({ name: 'fallback.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(drawing)) })
