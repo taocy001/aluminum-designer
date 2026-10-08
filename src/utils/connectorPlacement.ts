@@ -1,4 +1,4 @@
-import { panelMountSupports } from './panelMounts'
+import { panelMountSupports, panelMountFrame } from './panelMounts'
 import * as THREE from 'three'
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorEntry, connectorMounts, connectorScale } from './connectorCatalog'
@@ -32,7 +32,11 @@ export interface ConnectorPlacementCandidate extends ConnectorPlacementStatus {
   legs: BracketSeat['legs']
 }
 
-function contacts(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 'series' | 'profileSpec' | 'mountSeries'>) {
+function contacts(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 'series' | 'profileSpec' | 'mountSeries' | 'panelMount'>) {
+  if (c.panelMount?.mode === 'direct') {
+    const frame = panelMountFrame(c as ConnectorData)
+    return [{ point: frame.railHole, normal: frame.normal }]
+  }
   const q = new THREE.Quaternion(...c.quaternion).normalize(), k = connectorScale(c.series ?? 20)
   return connectorMounts(c.type, c.series ?? 20).flatMap((mount) => mount.bolts.map((bolt) => ({
     point: new THREE.Vector3(...bolt).multiplyScalar(k).applyQuaternion(q).add(new THREE.Vector3(...c.position)),
@@ -41,7 +45,7 @@ function contacts(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 's
 }
 
 /** Stable identity from physical mounting holes, including symmetric arm permutations. */
-export function connectorInstallationKey(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 'series' | 'profileSpec' | 'mountSeries'>): string {
+export function connectorInstallationKey(c: Pick<ConnectorData, 'type' | 'position' | 'quaternion' | 'series' | 'profileSpec' | 'mountSeries' | 'panelMount'>): string {
   const rounded = (n: number) => Number(n.toFixed(4))
   const mounts = contacts(c).map(({ point, normal }) => [...point.toArray(), ...normal.toArray()].map(rounded))
   if (mounts.length) return JSON.stringify([c.type, c.series ?? 20, c.profileSpec, mounts.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))])

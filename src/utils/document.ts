@@ -70,8 +70,8 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
   const connectors = ((doc.connectors ?? []) as unknown[]).map((value) => {
     const c = base(value, 'supportBinding')
     if (!optional(c.supportBinding, validSupportBinding)) fail('support binding')
-    if (c.panelMount !== undefined && (!validPanelMount(c.panelMount) || c.type !== 'joining-plate'
-      || (c.series ?? 20) !== 20 || c.supportBinding !== undefined)) fail('panel mount')
+    if (c.panelMount !== undefined && (!validPanelMount(c.panelMount) || c.type !== (c.panelMount.mode === 'direct' ? 't-nut' : 'joining-plate')
+      || ![20, 30].includes((c.series ?? 20) as number) || c.supportBinding !== undefined)) fail('panel mount')
     if (typeof c.type !== 'string' || !connectorTypes.has(c.type)
       || !optional(c.series, (v) => oneOf(v, [20, 30, 40]))
       || !optional(c.mountSeries, (v) => Array.isArray(v) && v.length === 2 && v.every((x) => oneOf(x, [20, 30, 40])))

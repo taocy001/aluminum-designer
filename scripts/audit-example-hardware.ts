@@ -1,3 +1,4 @@
+import { unfastenedPanels } from '../src/utils/panelFastening'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +23,8 @@ const report = files.map((file) => {
   if (invalid.length) throw new Error(`${file}: ${JSON.stringify(invalid)}`)
   const clashes = findConflicts(doc.profiles, trims, doc.connectors, doc.panels, doc.fittings)
   if (clashes.length) throw new Error(`${file}: ${JSON.stringify(clashes)}`)
+  const unfastenedBoards = unfastenedPanels(doc)
+  if (unfastenedBoards.length) throw new Error(`${file}: unfastened boards ${unfastenedBoards}`)
   const reachable = (from: string, at?: THREE.Vector3) => {
     const links = new Map(doc.profiles.map((p) => [p.id, new Set<string>()]))
     for (const c of doc.connectors) {
@@ -44,7 +47,7 @@ const report = files.map((file) => {
   const unsupportedCornerPairs = unflushPairs(doc.profiles).map(({ a, b }) => [a, b].sort().join('|')).sort()
   if (unsupportedCornerPairs.length) throw new Error(`${file}: unsupported joints ${unsupportedCornerPairs}`)
   return { file, profiles: doc.profiles.length, connectors: doc.connectors.length,
-    connectedProfiles: connected.size, unsupportedCornerPairs, unfastenedLocalJoints: [...unfastenedLocalJoints] }
+    boards: doc.panels.length, unfastenedBoards, connectedProfiles: connected.size, unsupportedCornerPairs, unfastenedLocalJoints: [...unfastenedLocalJoints] }
 })
 fs.mkdirSync(path.join(root, 'examples/checks'), { recursive: true })
 fs.writeFileSync(path.join(root, 'examples/checks/hardware.json'), JSON.stringify(report, null, 2) + '\n')

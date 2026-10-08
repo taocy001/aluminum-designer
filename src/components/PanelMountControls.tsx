@@ -22,11 +22,11 @@ export default function PanelMountControls() {
   }
   return <div className="mt-2 space-y-1">
     <button onClick={install} disabled={viewMode} className="w-full rounded border border-white/10 px-2 py-1.5 text-xs hover:bg-white/10 disabled:opacity-40">
-      {zh ? '固定所选层板' : 'Attach selected shelves'}
+      {zh ? '固定所选板材' : 'Attach selected panels'}
     </button>
     <p className="text-[10px] leading-relaxed text-slate-400">
-      {zh ? '适配水平木板与 B6 横梁；连接板安装在下方，按间距配垫套。板材需钻 Ø5.5 通孔，用 M5 穿栓、垫圈及螺母固定。不会移动板材。'
-        : 'Horizontal wood shelves and B6 rails: plates underneath with cut spacers. Drill Ø5.5 through holes for M5 bolts, washers and nuts. Board positions are preserved.'}
+      {zh ? '嵌入层板用下方连接片固定；贴合型材的背板用穿板螺栓固定。20 / 30 系列分别配 M5 / M6，板孔 Ø5.5 / Ø6.6 mm。适配 6–40 mm 木板。'
+        : 'Inset shelves use plates underneath; flush back panels use through-bolts. Series 20 / 30 use M5 / M6 with Ø5.5 / Ø6.6 mm holes. For 6–40 mm wood boards.'}
     </p>
   </div>
 }

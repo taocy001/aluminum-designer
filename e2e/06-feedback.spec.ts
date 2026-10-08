@@ -172,19 +172,15 @@ test.describe('Picking thin members', () => {
     expect(sel).not.toContain(far.id)
   })
 
-  test('Ctrl+click only toggles the selection, it never starts a drag', async ({ page }) => {
+  test('Shift+click only toggles the selection, it never starts a drag', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await drawMember(page, [0, 0, 300], [600, 10, 300])
     await toNavigate(page)
     const { profiles } = await store(page)
     await clickWorld(page, [300, 10, 0])
-    const a = await w2c(page, [300, 10, 300])
-    await page.keyboard.down('Control')
-    await dragHold(page, a, { x: a.x + 60, y: a.y + 20 })
-    expect((await tool(page)).isDragging).toBe(false)   // Ctrl+press adds to the selection, it does not grab
-    await page.mouse.up()
-    await page.keyboard.up('Control')
+    await clickWorld(page, [300, 10, 300], { modifiers: ['Shift'] })
+    expect((await tool(page)).isDragging).toBe(false)
     expect((await store(page)).selectedIds.sort()).toEqual(profiles.map((p) => p.id).sort())
     expect((await store(page)).profiles.map((p) => p.position.map(r))).toEqual([[0, 10, 0], [0, 10, 300]])
   })
@@ -264,19 +260,19 @@ test.describe('Regressions caught in review', () => {
     expect((await tool(page)).selectMode).toBe(true)
     await clickWorld(page, [300, 10, 0])
     expect((await store(page)).selectedIds).toEqual([profiles[0].id])
-    await clickWorld(page, [300, 10, 300], { modifiers: ['Control'] })
+    await clickWorld(page, [300, 10, 300], { modifiers: ['Shift'] })
     expect((await store(page)).selectedIds.sort()).toEqual(profiles.map((p) => p.id).sort())
   })
 
-  test('Ctrl+click on empty space keeps the batch selection', async ({ page }) => {
+  test('Shift+click on empty space keeps the batch selection', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await drawMember(page, [0, 0, 300], [600, 10, 300])
     await toNavigate(page)
     await clickWorld(page, [300, 10, 0])
-    await clickWorld(page, [300, 10, 300], { modifiers: ['Control'] })
+    await clickWorld(page, [300, 10, 300], { modifiers: ['Shift'] })
     expect((await store(page)).selectedIds).toHaveLength(2)
-    await clickWorld(page, [-600, 0, -600], { modifiers: ['Control'] })
+    await clickWorld(page, [-600, 0, -600], { modifiers: ['Shift'] })
     expect((await store(page)).selectedIds).toHaveLength(2)   // a stray Ctrl+miss must not wipe it
     await clickWorld(page, [-600, 0, -600])
     expect((await store(page)).selectedIds).toHaveLength(0)

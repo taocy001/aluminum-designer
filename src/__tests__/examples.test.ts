@@ -1,3 +1,4 @@
+import { unfastenedPanels } from '../utils/panelFastening'
 import { describe, it, expect } from 'vitest'
 import { findConflicts } from '../utils/analysis'
 import * as THREE from 'three'
@@ -104,7 +105,7 @@ describe('bundled example geometry', () => {
     expect(wheels).toHaveLength(4)
     expect(wheels.every((c) => c.series === 30 && c.profileSpec === '3030' && c.position[1] === 99.7)).toBe(true)
     expect(panels.map((p) => [p.width, p.height, p.thickness, p.position[1]])).toEqual([
-      [460, 760, 18, 319], [460, 760, 18, 619],
+      [460, 760, 18, 295], [460, 760, 18, 595],
     ])
     const bounds = computeFrameBounds(profiles, computeAllTrims(profiles))!
     expect(bounds.max.y).toBeCloseTo(900)
@@ -127,6 +128,9 @@ describe('bundled example geometry', () => {
   })
 
   describe.each(files)('%s', (name) => {
+    it('fastens every shelf edge and distributes exterior board fasteners', () => {
+      expect(unfastenedPanels(load(name))).toEqual([])
+    })
     it('loads as a complete validated project', () => {
       const source = docs.get(name)!
       expect(parseProjectDocument(source).profiles).toHaveLength(source.profiles.length)

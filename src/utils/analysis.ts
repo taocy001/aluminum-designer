@@ -71,7 +71,7 @@ export function connectorOBB(c: ConnectorData): OBB {
   const quat = new THREE.Quaternion(...c.quaternion).normalize()
   const scale = connectorScale(c.series ?? 20)
   const bounds = c.panelMount ? new THREE.Box3().setFromPoints(connectorMeshes(c.type, c.series, c.profileSpec, c.mountSeries, c.panelMount).flatMap(({ geometry }) => {
-    geometry.computeBoundingBox()
+    if (!geometry.boundingBox) geometry.computeBoundingBox()
     const b = geometry.boundingBox!
     return [b.min, b.max]
   })) : undefined

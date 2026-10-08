@@ -1,17 +1,17 @@
 import * as THREE from 'three'
 import type { ConnectorData, PanelData } from '../store/useStore'
-import { panelMountBoardFits, panelMountFrame } from './panelMounts'
+import { panelMountBoardFits, panelMountFrame, panelFastenerSizes } from './panelMounts'
 import { panelOBB } from './analysis'
 
-/** Local XY centres, measured from the panel centre; Ø5.5 mm through holes. */
-export function panelDrillCenters(panel: PanelData, connectors: ConnectorData[]): THREE.Vector2[] {
+/** Local XY centres, measured from the panel centre; series-specific through holes. */
+export function panelDrillCenters(panel: PanelData, connectors: ConnectorData[]): (THREE.Vector2 & { diameter: number })[] {
   const inverse = new THREE.Quaternion(...panel.quaternion).normalize().invert()
   const body = panelOBB(panel), at = new THREE.Vector3(...panel.position)
-  const holes: THREE.Vector2[] = []
+  const holes: (THREE.Vector2 & { diameter: number })[] = []
   for (const c of connectors) {
     if (c.panelMount?.panelId !== panel.id || !panelMountBoardFits(c, body)) continue
     const local = panelMountFrame(c).boardHole.sub(at).applyQuaternion(inverse)
-    const hole = new THREE.Vector2(local.x, local.y)
+    const hole = Object.assign(new THREE.Vector2(local.x, local.y), { diameter: panelFastenerSizes(c.series).clearance })
     if (!holes.some((h) => h.distanceTo(hole) < .05)) holes.push(hole)
   }
   return holes
@@ -25,7 +25,7 @@ export function panelShape(panel: PanelData, connectors: ConnectorData[]): THREE
   shape.closePath()
   for (const hole of panelDrillCenters(panel, connectors)) {
     const path = new THREE.Path()
-    path.absarc(hole.x, hole.y, 2.75, 0, Math.PI * 2, true)
+    path.absarc(hole.x, hole.y, hole.diameter / 2, 0, Math.PI * 2, true)
     shape.holes.push(path)
   }
   return shape

@@ -21,14 +21,14 @@ async function scene(page: any) {
 test.describe('Selection', () => {
   test.beforeEach(async ({ page }) => { await openApp(page) })
 
-  test('click selects, Ctrl+click toggles, empty click clears, Esc clears', async ({ page }) => {
+  test('click selects, Shift+click toggles, empty click clears, Esc clears', async ({ page }) => {
     const { A, B } = await scene(page)
     await clickWorld(page, [200, 10, 0])
     expect((await store(page)).selectedIds).toEqual([A.id])
     await expect(page.getByTestId('properties')).toBeVisible()
-    await clickWorld(page, [200, 10, 300], { modifiers: ['Control'] })
+    await clickWorld(page, [200, 10, 300], { modifiers: ['Shift'] })
     expect((await store(page)).selectedIds.sort()).toEqual([A.id, B.id].sort())
-    await clickWorld(page, [200, 10, 300], { modifiers: ['Control'] })
+    await clickWorld(page, [200, 10, 300], { modifiers: ['Shift'] })
     expect((await store(page)).selectedIds).toEqual([A.id])
     await clickWorld(page, [-400, 0, -400]) // empty floor
     expect((await store(page)).selectedIds).toEqual([])
@@ -68,7 +68,7 @@ test.describe('Selection', () => {
   test('Delete removes the selection as one undoable step', async ({ page }) => {
     const { A, B } = await scene(page)
     await clickWorld(page, [200, 10, 0])
-    await clickWorld(page, [200, 10, 300], { modifiers: ['Control'] })
+    await clickWorld(page, [200, 10, 300], { modifiers: ['Shift'] })
     await page.keyboard.press('Delete')
     let s = await store(page)
     expect(s.profiles.map((p) => p.id)).not.toContain(A.id)
@@ -144,7 +144,7 @@ test.describe('Drag', () => {
   test('group drag moves every selected member by the same offset', async ({ page }) => {
     const { A, B } = await scene(page)
     await clickWorld(page, [200, 10, 0])
-    await clickWorld(page, [200, 10, 300], { modifiers: ['Control'] })
+    await clickWorld(page, [200, 10, 300], { modifiers: ['Shift'] })
     await dragWorld(page, [200, 10, 0], [200, 10, -200])
     const s = await store(page)
     const a = s.profiles.find((p) => p.id === A.id)!

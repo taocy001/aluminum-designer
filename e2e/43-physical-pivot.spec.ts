@@ -88,7 +88,7 @@ test('a locked selected reference does not move the gizmo away from the actual r
   await page.keyboard.press('l')
   expect((await store(page)).profiles.find((p) => p.id === lockedId).locked).toBe(true)
   await clickWorld(page, [400, 900, 710])
-  await clickWorld(page, [1500, 450, 700], { modifiers: ['Control'] })
+  await clickWorld(page, [1500, 450, 700], { modifiers: ['Shift'] })
   expect((await store(page)).selectedIds.sort()).toEqual([rail.id, lockedId].sort())
   const before = await solids(page)
   const beforeStore = await store(page)

@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 10,
  "profiles": [
   {
    "id": "p-mueqfcsv31",
@@ -1152,2561 +1152,9 @@
    ],
    "miterCuts": [],
    "holes": []
-  },
-  {
-   "id": "b-mufvmsxt2o-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    200,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxt2o-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    200,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxt2o-bearing-left",
-   "spec": "2020",
-   "position": [
-    35,
-    200,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxt2o-bearing-right",
-   "spec": "2020",
-   "position": [
-    565,
-    200,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxv2r-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    400,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxv2r-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    400,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxv2r-bearing-left",
-   "spec": "2020",
-   "position": [
-    35,
-    400,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxv2r-bearing-right",
-   "spec": "2020",
-   "position": [
-    565,
-    400,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxy2u-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    600,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxy2u-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    600,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxy2u-bearing-left",
-   "spec": "2020",
-   "position": [
-    35,
-    600,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsxy2u-bearing-right",
-   "spec": "2020",
-   "position": [
-    565,
-    600,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy02x-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    800,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy02x-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    800,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy02x-bearing-left",
-   "spec": "2020",
-   "position": [
-    35,
-    800,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy02x-bearing-right",
-   "spec": "2020",
-   "position": [
-    565,
-    800,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy330-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    1000,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy330-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    1000,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy330-bearing-left",
-   "spec": "2020",
-   "position": [
-    35,
-    1000,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy330-bearing-right",
-   "spec": "2020",
-   "position": [
-    565,
-    1000,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy533-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    1200,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy533-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    1200,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy533-bearing-left",
-   "spec": "2020",
-   "position": [
-    35,
-    1200,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy533-bearing-right",
-   "spec": "2020",
-   "position": [
-    565,
-    1200,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy836-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    1400,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy836-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    1400,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy836-bearing-left",
-   "spec": "2020",
-   "position": [
-    35,
-    1400,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsy836-bearing-right",
-   "spec": "2020",
-   "position": [
-    565,
-    1400,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyb39-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    1600,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyb39-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    1600,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyb39-bearing-left",
-   "spec": "2020",
-   "position": [
-    35,
-    1600,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyb39-bearing-right",
-   "spec": "2020",
-   "position": [
-    565,
-    1600,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-front",
-   "spec": "2020",
-   "position": [
-    600,
-    450,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-back",
-   "spec": "2020",
-   "position": [
-    600,
-    450,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-left",
-   "spec": "2020",
-   "position": [
-    635,
-    450,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsye3c-bearing-right",
-   "spec": "2020",
-   "position": [
-    1165,
-    450,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyh3f-bearing-front",
-   "spec": "2020",
-   "position": [
-    600,
-    900,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyh3f-bearing-back",
-   "spec": "2020",
-   "position": [
-    600,
-    900,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyh3f-bearing-left",
-   "spec": "2020",
-   "position": [
-    635,
-    900,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyh3f-bearing-right",
-   "spec": "2020",
-   "position": [
-    1165,
-    900,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-front",
-   "spec": "2020",
-   "position": [
-    600,
-    1350,
-    31
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-back",
-   "spec": "2020",
-   "position": [
-    600,
-    1350,
-    349
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-left",
-   "spec": "2020",
-   "position": [
-    635,
-    1350,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsyk3i-bearing-right",
-   "spec": "2020",
-   "position": [
-    1165,
-    1350,
-    31
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
   }
  ],
  "connectors": [
-  {
-   "id": "c-frame-000",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    200,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-001",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    200,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-002",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    200,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-003",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    200,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-004",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    200,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-005",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    200,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-006",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    200,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-007",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    200,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-008",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    400,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-009",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    400,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-010",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    400,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-011",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    400,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-012",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    400,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-013",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    400,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-014",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    400,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-015",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    400,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-016",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    600,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-017",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    600,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-018",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    600,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-019",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    600,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-020",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    600,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-021",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    600,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-022",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    600,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-023",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    600,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-024",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    800,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-025",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    800,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-026",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    800,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-027",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    800,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-028",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    800,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-029",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    800,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-030",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    800,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-031",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    800,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-032",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1000,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-033",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1000,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-034",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1000,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-035",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1000,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-036",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    1000,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-037",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    1000,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-038",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    1000,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-039",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    1000,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-040",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1200,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-041",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1200,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-042",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1200,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-043",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1200,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-044",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    1200,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-045",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    1200,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-046",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    1200,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-047",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    1200,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-048",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1400,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-049",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1400,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-050",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1400,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-051",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1400,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-052",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    1400,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-053",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    1400,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-054",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    1400,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-055",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    1400,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-056",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1600,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-057",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1600,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-058",
-   "type": "inside-corner",
-   "position": [
-    9.5,
-    1600,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-059",
-   "type": "inside-corner",
-   "position": [
-    590.5,
-    1600,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-060",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    1600,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-061",
-   "type": "inside-corner",
-   "position": [
-    44.4,
-    1600,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-062",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    1600,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-063",
-   "type": "inside-corner",
-   "position": [
-    555.6,
-    1600,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-064",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    450,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-065",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    450,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-066",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    450,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-067",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    450,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-068",
-   "type": "inside-corner",
-   "position": [
-    644.4,
-    450,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-069",
-   "type": "inside-corner",
-   "position": [
-    644.4,
-    450,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-070",
-   "type": "inside-corner",
-   "position": [
-    1155.6,
-    450,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-071",
-   "type": "inside-corner",
-   "position": [
-    1155.6,
-    450,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-072",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    900,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-073",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    900,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-074",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    900,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-075",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    900,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-076",
-   "type": "inside-corner",
-   "position": [
-    644.4,
-    900,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-077",
-   "type": "inside-corner",
-   "position": [
-    644.4,
-    900,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-078",
-   "type": "inside-corner",
-   "position": [
-    1155.6,
-    900,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-079",
-   "type": "inside-corner",
-   "position": [
-    1155.6,
-    900,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-080",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    1350,
-    339.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-081",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    1350,
-    339.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-082",
-   "type": "inside-corner",
-   "position": [
-    609.5,
-    1350,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-083",
-   "type": "inside-corner",
-   "position": [
-    1190.5,
-    1350,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-084",
-   "type": "inside-corner",
-   "position": [
-    644.4,
-    1350,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-085",
-   "type": "inside-corner",
-   "position": [
-    644.4,
-    1350,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-086",
-   "type": "inside-corner",
-   "position": [
-    1155.6,
-    1350,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-087",
-   "type": "inside-corner",
-   "position": [
-    1155.6,
-    1350,
-    339.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
   {
    "id": "c-seat-338c4fbc9bc9",
    "type": "inside-corner",
@@ -7706,6 +5154,2770 @@
     20,
     20
    ]
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-1",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    0,
+    409.4200000000002,
+    -10.000000000000092
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfcsv31",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-2",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    0,
+    1590.5800000000004,
+    -10.000000000000355
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfcsv31",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-3",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    600,
+    409.4200000000002,
+    -10.000000000000092
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfd6i33",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-4",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    600,
+    1590.5800000000004,
+    -10.000000000000355
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfd6i33",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-5",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1200,
+    409.4200000000002,
+    -10.000000000000092
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfdet35",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-6",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1200,
+    1590.5800000000004,
+    -10.000000000000355
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfdet35",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-7",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    20,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfdxi37",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-8",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    20,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfdxi37",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-9",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    735.42,
+    20,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfe7l39",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-10",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1064.58,
+    20,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqfe7l39",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-11",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    1980,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqff333e",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-12",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    1980,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqff333e",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-13",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    735.42,
+    1980,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqffes3g",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-14",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1064.58,
+    1980,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mueqffes3g",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-15",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    200,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsxs2m",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-16",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    200,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsxs2m",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-17",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    400,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsxu2p",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-18",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    400,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsxu2p",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-19",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    600,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsxw2s",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-20",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    600,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsxw2s",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-21",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    800,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsxy2v",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-22",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    800,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsxy2v",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-23",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    1000,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsy02y",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-24",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    1000,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsy02y",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-25",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    1200,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsy331",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-26",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    1200,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsy331",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-27",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    1400,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsy634",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-28",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    1400,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsy634",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-29",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    135.42000000000002,
+    1600,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsy937",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-30",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    464.5800000000001,
+    1600,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsy937",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-31",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    735.42,
+    450,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsyb3a",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-32",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1064.58,
+    450,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsyb3a",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-33",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    735.42,
+    900,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsye3d",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-34",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1064.58,
+    900,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsye3d",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-35",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    735.42,
+    1350,
+    -10.00000000000003
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsyi3g",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-36",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1064.58,
+    1350,
+    -10.000000000000105
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqhsh3b",
+    "profileId": "p-mufvmsyi3g",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-37",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    190,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxt2o",
+    "profileId": "p-mueqp3esr",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-38",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    190,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxt2o",
+    "profileId": "p-mueqp3esr",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-39",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    190,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxt2o",
+    "profileId": "p-mueqp3sps",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-40",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    190,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxt2o",
+    "profileId": "p-mueqp3sps",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-41",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.9999999999999,
+    190,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxt2o",
+    "profileId": "p-mufvmsxs2m",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-42",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.00000000000006,
+    190,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxt2o",
+    "profileId": "p-mufvmsxs2m",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-43",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.99999999999994,
+    190,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxt2o",
+    "profileId": "p-mufvmsxs2n",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-44",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.0000000000001,
+    190,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxt2o",
+    "profileId": "p-mufvmsxs2n",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-45",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    390,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxv2r",
+    "profileId": "p-mueqp4qvu",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-46",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    390,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxv2r",
+    "profileId": "p-mueqp4qvu",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-47",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    390,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxv2r",
+    "profileId": "p-mueqp57wv",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-48",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    390,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxv2r",
+    "profileId": "p-mueqp57wv",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-49",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.9999999999999,
+    390,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxv2r",
+    "profileId": "p-mufvmsxu2p",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-50",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.00000000000006,
+    390,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxv2r",
+    "profileId": "p-mufvmsxu2p",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-51",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.99999999999994,
+    390,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxv2r",
+    "profileId": "p-mufvmsxv2q",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-52",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.0000000000001,
+    390,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxv2r",
+    "profileId": "p-mufvmsxv2q",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-53",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    590,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxy2u",
+    "profileId": "p-mueqp637x",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-54",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    590,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxy2u",
+    "profileId": "p-mueqp637x",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-55",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    590,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxy2u",
+    "profileId": "p-mueqp6g3y",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-56",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    590,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxy2u",
+    "profileId": "p-mueqp6g3y",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-57",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.9999999999999,
+    590,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxy2u",
+    "profileId": "p-mufvmsxw2s",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-58",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.00000000000006,
+    590,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxy2u",
+    "profileId": "p-mufvmsxw2s",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-59",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.99999999999994,
+    590,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxy2u",
+    "profileId": "p-mufvmsxx2t",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-60",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.0000000000001,
+    590,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsxy2u",
+    "profileId": "p-mufvmsxx2t",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-61",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    790,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy02x",
+    "profileId": "p-mueqp7e610",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-62",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    790,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy02x",
+    "profileId": "p-mueqp7e610",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-63",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    790,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy02x",
+    "profileId": "p-mueqp7ut11",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-64",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    790,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy02x",
+    "profileId": "p-mueqp7ut11",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-65",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.9999999999999,
+    790,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy02x",
+    "profileId": "p-mufvmsxy2v",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-66",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.00000000000006,
+    790,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy02x",
+    "profileId": "p-mufvmsxy2v",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-67",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.99999999999994,
+    790,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy02x",
+    "profileId": "p-mufvmsxz2w",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-68",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.0000000000001,
+    790,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy02x",
+    "profileId": "p-mufvmsxz2w",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-69",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    990,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy330",
+    "profileId": "p-mueqp8qd13",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-70",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    990,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy330",
+    "profileId": "p-mueqp8qd13",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-71",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    990,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy330",
+    "profileId": "p-mueqp93i14",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-72",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    990,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy330",
+    "profileId": "p-mueqp93i14",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-73",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.9999999999999,
+    990,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy330",
+    "profileId": "p-mufvmsy02y",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-74",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.00000000000006,
+    990,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy330",
+    "profileId": "p-mufvmsy02y",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-75",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.99999999999994,
+    990,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy330",
+    "profileId": "p-mufvmsy12z",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-76",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.0000000000001,
+    990,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy330",
+    "profileId": "p-mufvmsy12z",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-77",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    1190,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy533",
+    "profileId": "p-mueqpa2i16",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-78",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    1190,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy533",
+    "profileId": "p-mueqpa2i16",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-79",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    1190,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy533",
+    "profileId": "p-mueqpajs17",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-80",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    1190,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy533",
+    "profileId": "p-mueqpajs17",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-81",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.9999999999999,
+    1190,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy533",
+    "profileId": "p-mufvmsy331",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-82",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.00000000000006,
+    1190,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy533",
+    "profileId": "p-mufvmsy331",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-83",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.99999999999994,
+    1190,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy533",
+    "profileId": "p-mufvmsy432",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-84",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.0000000000001,
+    1190,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy533",
+    "profileId": "p-mufvmsy432",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-85",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    1390,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy836",
+    "profileId": "p-mueqpbg219",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-86",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    1390,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy836",
+    "profileId": "p-mueqpbg219",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-87",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    1390,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy836",
+    "profileId": "p-mueqpbtf1a",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-88",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    1390,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy836",
+    "profileId": "p-mueqpbtf1a",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-89",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.9999999999999,
+    1390,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy836",
+    "profileId": "p-mufvmsy634",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-90",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.00000000000006,
+    1390,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy836",
+    "profileId": "p-mufvmsy634",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-91",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.99999999999994,
+    1390,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy836",
+    "profileId": "p-mufvmsy735",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-92",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.0000000000001,
+    1390,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsy836",
+    "profileId": "p-mufvmsy735",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-93",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    1590,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyb39",
+    "profileId": "p-mueqpcqs1c",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-94",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    10,
+    1590,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyb39",
+    "profileId": "p-mueqpcqs1c",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-95",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    1590,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyb39",
+    "profileId": "p-mueqpd5s1d",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-96",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    590,
+    1590,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyb39",
+    "profileId": "p-mueqpd5s1d",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-97",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.9999999999999,
+    1590,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyb39",
+    "profileId": "p-mufvmsy937",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-98",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.00000000000006,
+    1590,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyb39",
+    "profileId": "p-mufvmsy937",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-99",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    154.99999999999994,
+    1590,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyb39",
+    "profileId": "p-mufvmsya38",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-100",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    445.0000000000001,
+    1590,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyb39",
+    "profileId": "p-mufvmsya38",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-101",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    610,
+    440,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsye3c",
+    "profileId": "p-mueqpe131f",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-102",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    610,
+    440,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsye3c",
+    "profileId": "p-mueqpe131f",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-103",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1190,
+    440,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsye3c",
+    "profileId": "p-mueqpeeh1g",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-104",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1190,
+    440,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsye3c",
+    "profileId": "p-mueqpeeh1g",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-105",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    754.9999999999999,
+    440,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsye3c",
+    "profileId": "p-mufvmsyb3a",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-106",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1045,
+    440,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsye3c",
+    "profileId": "p-mufvmsyb3a",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-107",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    755,
+    440,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsye3c",
+    "profileId": "p-mufvmsyd3b",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-108",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1045,
+    440,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsye3c",
+    "profileId": "p-mufvmsyd3b",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-109",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    610,
+    890,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyh3f",
+    "profileId": "p-mueqpfbi1i",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-110",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    610,
+    890,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyh3f",
+    "profileId": "p-mueqpfbi1i",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-111",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1190,
+    890,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyh3f",
+    "profileId": "p-mueqpfqw1j",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-112",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1190,
+    890,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyh3f",
+    "profileId": "p-mueqpfqw1j",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-113",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    754.9999999999999,
+    890,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyh3f",
+    "profileId": "p-mufvmsye3d",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-114",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1045,
+    890,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyh3f",
+    "profileId": "p-mufvmsye3d",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-115",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    755,
+    890,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyh3f",
+    "profileId": "p-mufvmsyg3e",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-116",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1045,
+    890,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyh3f",
+    "profileId": "p-mufvmsyg3e",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-117",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    610,
+    1340,
+    99.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyk3i",
+    "profileId": "p-mueqpgmo1l",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-118",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    610,
+    1340,
+    279.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyk3i",
+    "profileId": "p-mueqpgmo1l",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-119",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1190,
+    1340,
+    99.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyk3i",
+    "profileId": "p-mueqph0h1m",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-120",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1190,
+    1340,
+    279.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyk3i",
+    "profileId": "p-mueqph0h1m",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-121",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    754.9999999999999,
+    1340,
+    9.999999999999968
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyk3i",
+    "profileId": "p-mufvmsyi3g",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-122",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1045,
+    1340,
+    9.999999999999902
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyk3i",
+    "profileId": "p-mufvmsyi3g",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-123",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    755,
+    1340,
+    370
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyk3i",
+    "profileId": "p-mufvmsyj3h",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "04-shoe-cupboard-fastener-124",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1045,
+    1340,
+    369.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsyk3i",
+    "profileId": "p-mufvmsyj3h",
+    "spacer": 1,
+    "boardThickness": 18
+   }
   }
  ],
  "panels": [
@@ -7734,7 +7946,7 @@
    "thickness": 18,
    "position": [
     300,
-    219,
+    200,
     189.99999999999977
    ],
    "quaternion": [
@@ -7752,7 +7964,7 @@
    "thickness": 18,
    "position": [
     300,
-    419,
+    400,
     189.99999999999977
    ],
    "quaternion": [
@@ -7770,7 +7982,7 @@
    "thickness": 18,
    "position": [
     300,
-    619,
+    600,
     189.99999999999977
    ],
    "quaternion": [
@@ -7788,7 +8000,7 @@
    "thickness": 18,
    "position": [
     300,
-    819,
+    800,
     189.99999999999977
    ],
    "quaternion": [
@@ -7806,7 +8018,7 @@
    "thickness": 18,
    "position": [
     300,
-    1019,
+    1000,
     189.99999999999977
    ],
    "quaternion": [
@@ -7824,7 +8036,7 @@
    "thickness": 18,
    "position": [
     300,
-    1219,
+    1200,
     189.99999999999977
    ],
    "quaternion": [
@@ -7842,7 +8054,7 @@
    "thickness": 18,
    "position": [
     300,
-    1419,
+    1400,
     189.99999999999977
    ],
    "quaternion": [
@@ -7860,7 +8072,7 @@
    "thickness": 18,
    "position": [
     300,
-    1619,
+    1600,
     189.99999999999977
    ],
    "quaternion": [
@@ -7878,7 +8090,7 @@
    "thickness": 18,
    "position": [
     900,
-    469,
+    450,
     189.99999999999977
    ],
    "quaternion": [
@@ -7896,7 +8108,7 @@
    "thickness": 18,
    "position": [
     900,
-    919,
+    900,
     189.99999999999977
    ],
    "quaternion": [
@@ -7914,7 +8126,7 @@
    "thickness": 18,
    "position": [
     900,
-    1369,
+    1350,
     189.99999999999977
    ],
    "quaternion": [
@@ -7977,5 +8189,7 @@
    "overlay": "half",
    "swing": 110
   }
- ]
+ ],
+ "equipment": [],
+ "throughRule": "rails"
 }

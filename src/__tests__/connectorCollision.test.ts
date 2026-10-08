@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import type { ConnectorData } from '../store/useStore'
 import { connectorOBB } from '../utils/analysis'
-import { connectorHitsBody } from '../utils/connectorCollision'
+import { connectorHitsBody, connectorsCollide } from '../utils/connectorCollision'
 import { connectorMeshes, connectorSolidTop } from '../utils/connectorGeometry'
 import { makeOBB, obbCorners, type OBB } from '../utils/obb'
 
@@ -21,6 +21,36 @@ function vertexOverlap(a: OBB, b: OBB, tolerance: number): boolean {
 }
 
 describe('modeled connector collision bodies', () => {
+  it('refreshes pair bounds after movement, rotation and panel fastener edits', () => {
+    const a = part('flat-plate'), b = { ...part('flat-plate'), id: 'other' }
+    expect(connectorsCollide(a, b)).toBe(true)
+    b.position[0] = 1000
+    expect(connectorsCollide(a, b)).toBe(false)
+    b.position[0] = 0
+    expect(connectorsCollide(a, b)).toBe(true)
+    a.type = 't-nut'
+    a.panelMount = { panelId: 'board', profileId: 'rail', spacer: 0, boardThickness: 18, mode: 'direct' }
+    const check = () => {
+      for (let y = -20; y <= 60; y += 5) {
+        b.position[1] = y
+        const fresh = structuredClone(a)
+        expect(connectorsCollide(a, b)).toBe(connectorsCollide(fresh, structuredClone(b)))
+        const body = makeOBB(V(0, y, 0), V(3, 3, 3), Q)
+        expect(connectorHitsBody(a, body, 1, false, 'board'))
+          .toBe(connectorHitsBody(fresh, body, 1, false, 'board'))
+      }
+    }
+    check()
+    a.panelMount.boardThickness = 30; check()
+    a.panelMount.panelId = 'other-board'; check()
+    a.panelMount.profileId = 'other-rail'; check()
+    delete a.panelMount.mode
+    a.type = 'joining-plate'; a.panelMount.spacer = 10; check()
+    a.series = 30; check()
+    a.quaternion = new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), Math.PI / 2).toArray(); check()
+    delete a.panelMount; check()
+  })
+
   it('matches vertex SAT for rotated boxes, containment and contact at each tolerance', () => {
     let seed = 48271
     const random = () => { seed = Math.imul(seed, 1664525) + 1013904223 | 0; return (seed >>> 0) / 0x100000000 }

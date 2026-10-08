@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 10,
  "profiles": [
   {
    "id": "p-mufs898l7q",
@@ -432,705 +432,9 @@
    ],
    "miterCuts": [],
    "holes": []
-  },
-  {
-   "id": "b-mufvmswfs-bearing-front",
-   "spec": "2020",
-   "position": [
-    10,
-    420,
-    41
-   ],
-   "length": 1180,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswfs-bearing-back",
-   "spec": "2020",
-   "position": [
-    10,
-    420,
-    359
-   ],
-   "length": 1180,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswfs-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    420,
-    41
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswfs-bearing-right",
-   "spec": "2020",
-   "position": [
-    1155,
-    420,
-    41
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswgv-bearing-front",
-   "spec": "2020",
-   "position": [
-    10,
-    820,
-    41
-   ],
-   "length": 1180,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswgv-bearing-back",
-   "spec": "2020",
-   "position": [
-    10,
-    820,
-    359
-   ],
-   "length": 1180,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswgv-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    820,
-    41
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswgv-bearing-right",
-   "spec": "2020",
-   "position": [
-    1155,
-    820,
-    41
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswhy-bearing-front",
-   "spec": "2020",
-   "position": [
-    10,
-    1220,
-    41
-   ],
-   "length": 1180,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswhy-bearing-back",
-   "spec": "2020",
-   "position": [
-    10,
-    1220,
-    359
-   ],
-   "length": 1180,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswhy-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    1220,
-    41
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmswhy-bearing-right",
-   "spec": "2020",
-   "position": [
-    1155,
-    1220,
-    41
-   ],
-   "length": 318,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
   }
  ],
  "connectors": [
-  {
-   "id": "c-frame-000",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    420,
-    349.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-001",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    420,
-    349.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-002",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    420,
-    50.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-003",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    420,
-    50.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-004",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    420,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-005",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    420,
-    349.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-006",
-   "type": "inside-corner",
-   "position": [
-    1145.6,
-    420,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-007",
-   "type": "inside-corner",
-   "position": [
-    1145.6,
-    420,
-    349.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-008",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    820,
-    349.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-009",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    820,
-    349.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-010",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    820,
-    50.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-011",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    820,
-    50.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-012",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    820,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-013",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    820,
-    349.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-014",
-   "type": "inside-corner",
-   "position": [
-    1145.6,
-    820,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-015",
-   "type": "inside-corner",
-   "position": [
-    1145.6,
-    820,
-    349.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-016",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1220,
-    349.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-017",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    1220,
-    349.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-018",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1220,
-    50.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-019",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    1220,
-    50.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-020",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1220,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-021",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1220,
-    349.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-022",
-   "type": "inside-corner",
-   "position": [
-    1145.6,
-    1220,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-023",
-   "type": "inside-corner",
-   "position": [
-    1145.6,
-    1220,
-    349.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
   {
    "id": "c-mufs8vwu8n",
    "type": "inside-corner",
@@ -2410,6 +1714,534 @@
     20,
     20
    ]
+  },
+  {
+   "id": "display-shelf-open-fastener-1",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    20,
+    410,
+    109.99999999999983
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswfs",
+    "profileId": "p-mufs8qya8a",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-2",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    20,
+    410,
+    289.99999999999983
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswfs",
+    "profileId": "p-mufs8qya8a",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-3",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1180,
+    410,
+    109.99999999999983
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswfs",
+    "profileId": "p-mufs8rat8b",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-4",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1180,
+    410,
+    289.99999999999983
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswfs",
+    "profileId": "p-mufs8rat8b",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-5",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    309.99999999999983,
+    410,
+    19.999999999999936
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswfs",
+    "profileId": "p-mufvmsweq",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-6",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    890,
+    410,
+    19.999999999999808
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswfs",
+    "profileId": "p-mufvmsweq",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-7",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    309.99999999999994,
+    410,
+    379.99999999999994
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswfs",
+    "profileId": "p-mufvmswer",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-8",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    890.0000000000002,
+    410,
+    379.99999999999983
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswfs",
+    "profileId": "p-mufvmswer",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-9",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    20,
+    810,
+    109.99999999999983
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswgv",
+    "profileId": "p-mufs8snh8d",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-10",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    20,
+    810,
+    289.99999999999983
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswgv",
+    "profileId": "p-mufs8snh8d",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-11",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1180,
+    810,
+    109.99999999999983
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswgv",
+    "profileId": "p-mufs8t0p8e",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-12",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1180,
+    810,
+    289.99999999999983
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswgv",
+    "profileId": "p-mufs8t0p8e",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-13",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    309.99999999999983,
+    810,
+    19.999999999999936
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswgv",
+    "profileId": "p-mufvmswft",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-14",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    890,
+    810,
+    19.999999999999808
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswgv",
+    "profileId": "p-mufvmswft",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-15",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    309.99999999999994,
+    810,
+    379.99999999999994
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswgv",
+    "profileId": "p-mufvmswfu",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-16",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    890.0000000000002,
+    810,
+    379.99999999999983
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswgv",
+    "profileId": "p-mufvmswfu",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-17",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    20,
+    1210,
+    109.99999999999983
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswhy",
+    "profileId": "p-mufs8uhv8g",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-18",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    20,
+    1210,
+    289.99999999999983
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswhy",
+    "profileId": "p-mufs8uhv8g",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-19",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1180,
+    1210,
+    109.99999999999983
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswhy",
+    "profileId": "p-mufs8uud8h",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-20",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1180,
+    1210,
+    289.99999999999983
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswhy",
+    "profileId": "p-mufs8uud8h",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-21",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    309.99999999999983,
+    1210,
+    19.999999999999936
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswhy",
+    "profileId": "p-mufvmswgw",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-22",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    890,
+    1210,
+    19.999999999999808
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswhy",
+    "profileId": "p-mufvmswgw",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-23",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    309.99999999999994,
+    1210,
+    379.99999999999994
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswhy",
+    "profileId": "p-mufvmswhx",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "display-shelf-open-fastener-24",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    890.0000000000002,
+    1210,
+    379.99999999999983
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmswhy",
+    "profileId": "p-mufvmswhx",
+    "spacer": 1,
+    "boardThickness": 18
+   }
   }
  ],
  "panels": [
@@ -2420,7 +2252,7 @@
    "thickness": 18,
    "position": [
     600,
-    439,
+    420,
     199.99999999999983
    ],
    "quaternion": [
@@ -2438,7 +2270,7 @@
    "thickness": 18,
    "position": [
     600,
-    839,
+    820,
     199.99999999999983
    ],
    "quaternion": [
@@ -2456,7 +2288,7 @@
    "thickness": 18,
    "position": [
     600,
-    1239,
+    1220,
     199.99999999999983
    ],
    "quaternion": [
@@ -2468,5 +2300,7 @@
    "material": "mdf"
   }
  ],
- "fittings": []
+ "fittings": [],
+ "equipment": [],
+ "throughRule": "rails"
 }

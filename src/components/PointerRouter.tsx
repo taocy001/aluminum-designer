@@ -244,7 +244,7 @@ const PointerRouter: React.FC = () => {
       const pointer = resolvePointer(e, !busy)
       // A visible selected end, or a deliberate Tab choice, wins over the gizmo. Other
       // explicit gizmo handles keep their normal precedence over member bodies.
-      let handle = selectedEndAt(pointer.pick) || pointer.index > 0 || e.ctrlKey || e.metaKey || e.altKey
+      let handle = selectedEndAt(pointer.pick) || pointer.index > 0 || e.altKey
         ? null : gizmoHandleAt(rayOf(pointer.cursor, pointer.rect))
       if (e.shiftKey && pointer.pick && handle?.kind === 'rotate') handle = null
       ts.setGizmoHover(handle)
@@ -354,11 +354,11 @@ const PointerRouter: React.FC = () => {
       }
 
       // a press on a move arrow slides the selection along that axis, in either mode.
-      // Ctrl/Cmd and Alt pass through handles. Shift clicks still toggle a part beneath
+      // Alt passes through handles. Shift clicks still toggle a part beneath
       // an arrow, while a Shift drag keeps that arrow's axis and disables snapping.
       // Shift on an exposed rotation arc keeps its reverse-turn action.
       const pointer = resolvePointer(e)
-      const modifierHeld = e.ctrlKey || e.metaKey || e.altKey
+      const modifierHeld = e.altKey
       {
         const ray = rayOf(pointer.cursor, pointer.rect)
         const part = modifierHeld || pointer.index > 0 || selectedEndAt(pointer.pick) ? null : gizmoHandleAt(ray)
@@ -393,7 +393,7 @@ const PointerRouter: React.FC = () => {
         return
       }
       if (gizmoState.busy) return   // a gizmo handle owns this press (checked above)
-      const multi = e.ctrlKey || e.metaKey || e.shiftKey
+      const multi = e.shiftKey
       const pick = pointer.pick
 
       // Box-select mode: a press that turns into a drag draws the box (handled in App),
@@ -417,8 +417,7 @@ const PointerRouter: React.FC = () => {
       const store = useStore.getState()
       const alreadySelected = store.selectedIds.includes(pick.id)
 
-      // Ctrl/Cmd stays selection-only. Shift waits to distinguish a click from a free drag.
-      if (e.ctrlKey || e.metaKey) { store.selectItem(pick.id, true); return }
+      // Shift waits to distinguish a selection click from a free drag.
       if (e.shiftKey) {
         pendingShift.current = { pick: { ...pick, point: pick.point.clone() }, down: e }
         if (orbit) orbit.enabled = false
@@ -515,7 +514,7 @@ const PointerRouter: React.FC = () => {
       const { x, y, keepSelection } = pendingClear.current
       pendingClear.current = null
       // A drag of the empty background is an orbit, not a click: keep the selection.
-      // Ctrl/Cmd is an additive gesture, so a stray miss must not wipe the batch either.
+      // Shift preserves the selection when clicking empty space.
       if (!keepSelection && Math.hypot(e.clientX - x, e.clientY - y) <= CLICK_SLOP_PX) useStore.getState().clearSelection()
     }
 

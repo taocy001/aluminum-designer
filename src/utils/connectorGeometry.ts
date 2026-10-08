@@ -92,14 +92,19 @@ function cornerMeshes(): ConnectorMesh[] {
 const meshCache = new Map<string, readonly ConnectorMesh[]>()
 export function connectorMeshes(type: string, series: ConnectorSeries = 20, profileSpec?: ProfileSpec,
   mountSeries?: readonly [ConnectorSeries, ConnectorSeries], panelMount?: ConnectorData['panelMount']): readonly ConnectorMesh[] {
-  const key = `${type}:${series}:${profileSpec ?? ''}:${mountSeries?.join(',') ?? ''}:${panelMount ? `${panelMount.spacer}:${panelMount.boardThickness}` : ''}`
+  const key = `${type}:${series}:${profileSpec ?? ''}:${mountSeries?.join(',') ?? ''}:${panelMount ? `${panelMount.mode}:${panelMount.spacer}:${panelMount.boardThickness}` : ''}`
   if (!meshCache.has(key)) {
     let physical: ConnectorMesh[] | undefined
     if (type === 'inside-corner') physical = insideMeshes(series, mountSeries)
     if (type === 'bracket') physical = bracketMeshes(series)
     if (type === 'gusset') physical = gussetMeshes()
     if (type === 'corner-3way') physical = cornerMeshes()
-    if (type === 'joining-plate' && panelMount && series === 20) physical = [...(accessoryMeshes(type, series) ?? []), ...panelMountMeshes(panelMount)]
+    if (panelMount && (series === 20 || series === 30)) {
+      // Accessory meshes are already normalized; fasteners are built in physical mm.
+      const hardware = normalized(panelMountMeshes(panelMount, series), series)
+      meshCache.set(key, panelMount.mode === 'direct' ? hardware : [...(accessoryMeshes(type, series) ?? []), ...hardware])
+      return meshCache.get(key)!
+    }
     meshCache.set(key, physical ? normalized(physical, series) : accessoryMeshes(type, series, profileSpec) ?? [])
   }
   return meshCache.get(key)!

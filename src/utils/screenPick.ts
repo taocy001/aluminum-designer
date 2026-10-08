@@ -100,7 +100,7 @@ function solidProjection(geometry: THREE.BufferGeometry): SolidProjection {
 }
 
 function connectorBoundCorners(type: string, series: ConnectorData['series'], profileSpec?: ConnectorData['profileSpec'], mountSeries?: ConnectorData['mountSeries'], panelMount?: ConnectorData['panelMount']): readonly THREE.Vector3[] {
-  const key = `${type}:${series ?? 20}:${profileSpec ?? ''}:${mountSeries ?? ''}:${panelMount ? `${panelMount.spacer}:${panelMount.boardThickness}` : ''}`
+  const key = `${type}:${series ?? 20}:${profileSpec ?? ''}:${mountSeries ?? ''}:${panelMount ? `${panelMount.mode}:${panelMount.spacer}:${panelMount.boardThickness}` : ''}`
   let corners = connectorBounds.get(key)
   if (!corners) {
     const box = new THREE.Box3().setFromPoints(connectorMeshes(type, series, profileSpec, mountSeries, panelMount).flatMap(({ geometry }) => [...solidProjection(geometry).vertices]))

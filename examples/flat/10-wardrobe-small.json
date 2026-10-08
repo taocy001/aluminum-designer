@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 10,
  "profiles": [
   {
    "id": "p-mueqg8276s",
@@ -524,150 +524,6 @@
    "holes": []
   },
   {
-   "id": "b-mufvmsz040-bearing-front",
-   "spec": "2020",
-   "position": [
-    0,
-    1750,
-    41
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz040-bearing-back",
-   "spec": "2020",
-   "position": [
-    0,
-    1750,
-    559
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz040-bearing-left",
-   "spec": "2020",
-   "position": [
-    45,
-    1750,
-    41
-   ],
-   "length": 518,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz040-bearing-right",
-   "spec": "2020",
-   "position": [
-    555,
-    1750,
-    41
-   ],
-   "length": 518,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz143-bearing-front",
-   "spec": "2020",
-   "position": [
-    600,
-    1000,
-    41
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz143-bearing-back",
-   "spec": "2020",
-   "position": [
-    600,
-    1000,
-    559
-   ],
-   "length": 600,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz143-bearing-left",
-   "spec": "2020",
-   "position": [
-    645,
-    1000,
-    41
-   ],
-   "length": 518,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz143-bearing-right",
-   "spec": "2020",
-   "position": [
-    1155,
-    1000,
-    41
-   ],
-   "length": 518,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
    "id": "f-mueqq7ul2p-runner-left",
    "spec": "2040",
    "position": [
@@ -878,326 +734,6 @@
     1
    ],
    "profileSpec": "4040-B6"
-  },
-  {
-   "id": "c-frame-000",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1750,
-    549.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-001",
-   "type": "inside-corner",
-   "position": [
-    580.5,
-    1750,
-    549.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-002",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    1750,
-    50.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-003",
-   "type": "inside-corner",
-   "position": [
-    580.5,
-    1750,
-    50.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-004",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1750,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-005",
-   "type": "inside-corner",
-   "position": [
-    54.4,
-    1750,
-    549.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-006",
-   "type": "inside-corner",
-   "position": [
-    545.6,
-    1750,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-007",
-   "type": "inside-corner",
-   "position": [
-    545.6,
-    1750,
-    549.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-008",
-   "type": "inside-corner",
-   "position": [
-    619.5,
-    1000,
-    549.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-009",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    1000,
-    549.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-010",
-   "type": "inside-corner",
-   "position": [
-    619.5,
-    1000,
-    50.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-011",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    1000,
-    50.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-012",
-   "type": "inside-corner",
-   "position": [
-    654.4,
-    1000,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-013",
-   "type": "inside-corner",
-   "position": [
-    654.4,
-    1000,
-    549.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-014",
-   "type": "inside-corner",
-   "position": [
-    1145.6,
-    1000,
-    50.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-015",
-   "type": "inside-corner",
-   "position": [
-    1145.6,
-    1000,
-    549.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
   },
   {
    "id": "c-frame-016",
@@ -3878,6 +3414,1094 @@
     20,
     20
    ]
+  },
+  {
+   "id": "10-wardrobe-small-fastener-1",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    -10,
+    441.4200000000002,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg8276s",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-2",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    -10,
+    1718.5800000000004,
+    -20.000000000000384
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg8276s",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-3",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    10,
+    441.4200000000002,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg8276s",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-4",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    10,
+    1718.5800000000004,
+    -20.000000000000384
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg8276s",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-5",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    590,
+    441.4200000000002,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg8rf6u",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-6",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    590,
+    1718.5800000000004,
+    -20.000000000000384
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg8rf6u",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-7",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    610,
+    441.4200000000002,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg8rf6u",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-8",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    610,
+    1718.5800000000004,
+    -20.000000000000384
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg8rf6u",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-9",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1190,
+    441.4200000000002,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg9gr6w",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-10",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1190,
+    1718.5800000000004,
+    -20.000000000000384
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg9gr6w",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-11",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1210,
+    441.4200000000002,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg9gr6w",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-12",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1210,
+    1718.5800000000004,
+    -20.000000000000384
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    0.7071067811865475,
+    -7.850462293418875e-17,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqg9gr6w",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-13",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    141.42,
+    29.99999999999998,
+    -20.00000000000003
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5,
+    0.5000000000000001,
+    -0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgad66y",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-14",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    458.58000000000004,
+    29.99999999999993,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5,
+    0.5000000000000001,
+    -0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgad66y",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-15",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    141.42,
+    9.999999999999979,
+    -20.00000000000003
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5,
+    0.5000000000000001,
+    -0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgad66y",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-16",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    458.58000000000004,
+    9.999999999999929,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5,
+    0.5000000000000001,
+    -0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgad66y",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-17",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    741.42,
+    9.999999999999972,
+    -20.000000000000036
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000002,
+    0.5000000000000002,
+    0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgb4i70",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-18",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1058.58,
+    9.9999999999999,
+    -20.000000000000107
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000002,
+    0.5000000000000002,
+    0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgb4i70",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-19",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    741.42,
+    29.99999999999997,
+    -20.00000000000003
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000002,
+    0.5000000000000002,
+    0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgb4i70",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-20",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1058.58,
+    29.9999999999999,
+    -20.0000000000001
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000002,
+    0.5000000000000002,
+    0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgb4i70",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-21",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    113.41999999999999,
+    2190,
+    -20.000000000000025
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5,
+    0.5000000000000001,
+    -0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgd4975",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-22",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    466.58000000000004,
+    2190,
+    -20.000000000000103
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5,
+    0.5000000000000001,
+    -0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgd4975",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-23",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    113.41999999999999,
+    2170,
+    -20.000000000000025
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5,
+    0.5000000000000001,
+    -0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgd4975",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-24",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    466.58000000000004,
+    2170,
+    -20.000000000000103
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5,
+    0.5000000000000001,
+    -0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgd4975",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-25",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    733.42,
+    2170,
+    -20.000000000000032
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgdvj77",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-26",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1086.58,
+    2170,
+    -20.00000000000011
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgdvj77",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-27",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    733.42,
+    2190,
+    -20.000000000000032
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgdvj77",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-28",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1086.58,
+    2190,
+    -20.00000000000011
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    0.5000000000000001,
+    0.5,
+    0.5000000000000001
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mueqgdvj77",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-29",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    141.42,
+    1750,
+    -20.000000000000032
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mufvmsyz3y",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-30",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    458.58000000000004,
+    1750,
+    -20.000000000000103
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mufvmsyz3y",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-31",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    741.42,
+    999.9999999999999,
+    -20.000000000000032
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mufvmsz041",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-32",
+   "type": "t-nut",
+   "series": 20,
+   "position": [
+    1058.58,
+    999.9999999999999,
+    -20.000000000000103
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "panelMount": {
+    "mode": "direct",
+    "panelId": "b-mueqqinx3d",
+    "profileId": "p-mufvmsz041",
+    "spacer": 0,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-33",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    20,
+    1740,
+    159.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz040",
+    "profileId": "p-mueqplwn1x",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-34",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    20,
+    1740,
+    439.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz040",
+    "profileId": "p-mueqplwn1x",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-35",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    580,
+    1740,
+    159.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz040",
+    "profileId": "p-mueqpmay1y",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-36",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    580,
+    1740,
+    439.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz040",
+    "profileId": "p-mueqpmay1y",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-37",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    159.99999999999991,
+    1740,
+    19.999999999999964
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz040",
+    "profileId": "p-mufvmsyz3y",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-38",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    440,
+    1740,
+    19.9999999999999
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz040",
+    "profileId": "p-mufvmsyz3y",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-39",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    160.00000000000003,
+    1740,
+    579.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz040",
+    "profileId": "p-mufvmsyz3z",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-40",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    440.0000000000001,
+    1740,
+    579.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz040",
+    "profileId": "p-mufvmsyz3z",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-41",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    620,
+    990,
+    159.99999999999977
+   ],
+   "quaternion": [
+    0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz143",
+    "profileId": "p-mueqpn8420",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-42",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    620,
+    990,
+    439.9999999999998
+   ],
+   "quaternion": [
+    0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz143",
+    "profileId": "p-mueqpn8420",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-43",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1180,
+    990,
+    159.99999999999977
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz143",
+    "profileId": "p-mueqpno121",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-44",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1180,
+    990,
+    439.9999999999998
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz143",
+    "profileId": "p-mueqpno121",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-45",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    759.9999999999999,
+    989.9999999999999,
+    19.999999999999964
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz143",
+    "profileId": "p-mufvmsz041",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-46",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1040,
+    989.9999999999999,
+    19.9999999999999
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz143",
+    "profileId": "p-mufvmsz041",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-47",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    760,
+    989.9999999999999,
+    579.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz143",
+    "profileId": "p-mufvmsz042",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "10-wardrobe-small-fastener-48",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    1040,
+    989.9999999999999,
+    579.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz143",
+    "profileId": "p-mufvmsz042",
+    "spacer": 1,
+    "boardThickness": 18
+   }
   }
  ],
  "panels": [
@@ -3906,7 +4530,7 @@
    "thickness": 18,
    "position": [
     300,
-    1769,
+    1750,
     299.9999999999998
    ],
    "quaternion": [
@@ -3924,7 +4548,7 @@
    "thickness": 18,
    "position": [
     900,
-    1019,
+    1000,
     299.9999999999998
    ],
    "quaternion": [
@@ -4039,5 +4663,7 @@
    "overlay": "full",
    "swing": 110
   }
- ]
+ ],
+ "equipment": [],
+ "throughRule": "rails"
 }

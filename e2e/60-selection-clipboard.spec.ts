@@ -34,8 +34,8 @@ test('Shift click toggles members, boards and locked references without dragging
   expect((await store(page)).selectedIds.sort()).toEqual(['panel', 'post-0', 'post-1', 'post-2'])
   await clickWorld(page, [200, 170, 10], { modifiers: ['Shift'] })
   expect((await store(page)).selectedIds.sort()).toEqual(['panel', 'post-0', 'post-2'])
-  await clickWorld(page, [650, 200, 9], { modifiers: ['Control'] })
-  await clickWorld(page, [400, 170, 10], { modifiers: ['Meta'] })
+  await clickWorld(page, [650, 200, 9], { modifiers: ['Shift'] })
+  await clickWorld(page, [400, 170, 10], { modifiers: ['Shift'] })
   expect((await store(page)).selectedIds).toEqual(['post-0'])
   // A Shift click on the selected endpoint toggles instead of starting a resize.
   await clickWorld(page, [0, 397, 10], { modifiers: ['Shift'] })
@@ -44,6 +44,20 @@ test('Shift click toggles members, boards and locked references without dragging
   expect(result.profiles.map(p => p.length)).toEqual([400, 400, 400])
   expect(result.past).toBe(0)
   expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().isDragging)).toBe(false)
+})
+
+test('Ctrl and Cmd clicks replace selection and empty clicks clear it', async ({ page }) => {
+  await selectionFixture(page)
+  for (const modifier of ['Control', 'Meta'] as const) {
+    await clickWorld(page, [0, 170, 10])
+    await clickWorld(page, [200, 170, 10], { modifiers: [modifier] })
+    expect((await store(page)).selectedIds).toEqual(['post-1'])
+    await clickWorld(page, [650, 200, 9], { modifiers: [modifier] })
+    expect((await store(page)).selectedIds).toEqual(['panel'])
+    await clickWorld(page, [850, 200, 9], { modifiers: [modifier] })
+    expect((await store(page)).selectedIds).toEqual([])
+  }
+  expect((await store(page)).past).toBe(0)
 })
 
 test('Shift dragging a selected group preserves free placement and commits a single undo step', async ({ page }) => {

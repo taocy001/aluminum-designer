@@ -10,7 +10,7 @@ import { orientationDegrees, setConnectorSeries } from '../utils/editOps'
 import { hardwareReference } from '../utils/connectorHardware'
 import { accessoryCapReference } from '../utils/connectorAccessoryReferences'
 import { hardwareFastenerLabel } from '../utils/connectorFasteners'
-import { panelMountFasteners } from '../utils/panelMounts'
+import { panelMountFasteners, panelFastenerSizes } from '../utils/panelMounts'
 import { partNumber } from '../utils/partNumbers'
 import { translations } from '../utils/translations'
 import { SupportBindingEditor } from './OpeningBindingEditor'
@@ -64,7 +64,7 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
   const entry = connectorEntry(connector.type)
   const series = connector.series ?? 20
   const reference = connector.type === 'end-cap' ? accessoryCapReference(connector.profileSpec ?? `${series}${series}` as '2020' | '3030' | '4040') : hardwareReference(connector.type, series, connector.profileSpec)
-  const fasteners = connector.panelMount ? panelMountFasteners(connector.panelMount) : reference?.fasteners ?? []
+  const fasteners = connector.panelMount ? panelMountFasteners(connector.panelMount, connector.series) : reference?.fasteners ?? []
   const disabled = viewMode || connector.locked
   const euler = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(...connector.quaternion).normalize(), 'YXZ')
   const angles = [euler.x, euler.y, euler.z].map(THREE.MathUtils.radToDeg) as [number, number, number]
@@ -117,8 +117,8 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
     {reference && <div className="space-y-1 text-[10px] text-slate-400" data-testid="connector-reference">
       <a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="text-cyan-400 underline">{reference.sku}</a>
       <p>{connector.panelMount ? (language === 'zh'
-        ? `板材固定：连接片一孔通过 M5 螺钉和 B6 槽螺母固定型材，另一孔通过 M5 螺栓贯穿 ${connector.panelMount.boardThickness} mm 板材，配垫圈和螺母。垫套长度 ${connector.panelMount.spacer} mm。板材需要钻孔。`
-        : `Panel mount: one plate hole uses an M5 screw and B6 slot nut; the other uses an M5 through-bolt, washers and nut through the ${connector.panelMount.boardThickness} mm panel. Spacer length: ${connector.panelMount.spacer} mm. The panel requires drilling.`)
+        ? `${connector.panelMount.mode === 'direct' ? '穿板螺栓连接槽内螺母' : '连接片跨接板边与型材槽'}；${panelFastenerSizes(series).thread}，板厚 ${connector.panelMount.boardThickness} mm，板孔 Ø${panelFastenerSizes(series).clearance} mm，板下垫套 ${connector.panelMount.spacer} mm。`
+        : `${connector.panelMount.mode === 'direct' ? 'Through-bolt into slot nut' : 'Plate joining panel edge to slot'}; ${panelFastenerSizes(series).thread}, board ${connector.panelMount.boardThickness} mm, hole Ø${panelFastenerSizes(series).clearance} mm, under-board spacer ${connector.panelMount.spacer} mm.`)
         : language === 'zh' ? reference.descriptionZh : reference.descriptionEn}</p>
       {connector.panelMount && <p>{partNumber('panel', connector.panelMount.panelId)} + {partNumber('profile', connector.panelMount.profileId)}</p>}
       {!reference.verified && <p className="text-amber-400">{language === 'zh' ? '当前型号在此规格上尚无已核验的安装方案，不能安装。' : 'This model has no verified installation for the current specification and cannot be installed.'}</p>}

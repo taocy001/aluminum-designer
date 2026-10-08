@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 10,
  "profiles": [
   {
    "id": "p-mueqgo9a7w",
@@ -432,241 +432,9 @@
    ],
    "miterCuts": [],
    "holes": []
-  },
-  {
-   "id": "b-mufvmsz94k-bearing-front",
-   "spec": "2020",
-   "position": [
-    400,
-    280,
-    31
-   ],
-   "length": 400,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz94k-bearing-back",
-   "spec": "2020",
-   "position": [
-    400,
-    280,
-    419
-   ],
-   "length": 400,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz94k-bearing-left",
-   "spec": "2020",
-   "position": [
-    435,
-    280,
-    31
-   ],
-   "length": 388,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsz94k-bearing-right",
-   "spec": "2020",
-   "position": [
-    765,
-    280,
-    31
-   ],
-   "length": 388,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
   }
  ],
  "connectors": [
-  {
-   "id": "c-frame-000",
-   "type": "inside-corner",
-   "position": [
-    409.5,
-    280,
-    409.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-001",
-   "type": "inside-corner",
-   "position": [
-    790.5,
-    280,
-    409.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-002",
-   "type": "inside-corner",
-   "position": [
-    409.5,
-    280,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-003",
-   "type": "inside-corner",
-   "position": [
-    790.5,
-    280,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-004",
-   "type": "inside-corner",
-   "position": [
-    444.4,
-    280,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-005",
-   "type": "inside-corner",
-   "position": [
-    444.4,
-    280,
-    409.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-006",
-   "type": "inside-corner",
-   "position": [
-    755.6,
-    280,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-007",
-   "type": "inside-corner",
-   "position": [
-    755.6,
-    280,
-    409.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
   {
    "id": "c-mueqr38rhe",
    "type": "inside-corner",
@@ -1546,6 +1314,182 @@
     20,
     20
    ]
+  },
+  {
+   "id": "12-vanity-fastener-1",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    410,
+    270,
+    117.49999999999994
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz94k",
+    "profileId": "p-mueqpsna2c",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "12-vanity-fastener-2",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    410,
+    270,
+    332.49999999999994
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz94k",
+    "profileId": "p-mueqpsna2c",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "12-vanity-fastener-3",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    790,
+    270,
+    117.49999999999994
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz94k",
+    "profileId": "p-mueqpt4d2d",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "12-vanity-fastener-4",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    790,
+    270,
+    332.49999999999994
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz94k",
+    "profileId": "p-mueqpt4d2d",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "12-vanity-fastener-5",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    504.9999999999999,
+    270,
+    9.999999999999979
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz94k",
+    "profileId": "p-mufvmsz94i",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "12-vanity-fastener-6",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    695,
+    270,
+    9.999999999999936
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz94k",
+    "profileId": "p-mufvmsz94i",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "12-vanity-fastener-7",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    505,
+    270,
+    439.99999999999994
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz94k",
+    "profileId": "p-mufvmsz94j",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "12-vanity-fastener-8",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    695.0000000000001,
+    270,
+    439.99999999999994
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsz94k",
+    "profileId": "p-mufvmsz94j",
+    "spacer": 1,
+    "boardThickness": 18
+   }
   }
  ],
  "panels": [
@@ -1556,7 +1500,7 @@
    "thickness": 18,
    "position": [
     600,
-    299,
+    280,
     224.99999999999994
    ],
    "quaternion": [
@@ -1619,5 +1563,7 @@
    "overlay": "half",
    "swing": 110
   }
- ]
+ ],
+ "equipment": [],
+ "throughRule": "rails"
 }

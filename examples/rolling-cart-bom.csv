@@ -1,18 +1,24 @@
 ﻿Category,Item,Spec,Cut length (mm),Quantity,Part numbers
 Profile,3030,3030,820,2,"P-p-mufs930k9j; P-p-mufs93e29k"
 Profile,3030,3030,770.3,4,"P-p-mufs8zlu9b; P-p-mufs90699c; P-p-mufs90ki9d; P-p-mufs90vh9e"
-Profile,3030,3030,760,10,"P-b-mufvmswr14-bearing-back; P-b-mufvmswr14-bearing-front; P-b-mufvmsws17-bearing-back; P-b-mufvmsws17-bearing-front; P-p-mufs91if9f; P-p-mufs91t69g; P-p-mufvmswq12; P-p-mufvmswq13; P-p-mufvmswr15; P-p-mufvmswr16"
+Profile,3030,3030,760,6,"P-p-mufs91if9f; P-p-mufs91t69g; P-p-mufvmswq12; P-p-mufvmswq13; P-p-mufvmswr15; P-p-mufvmswr16"
 Profile,3030,3030,460,8,"P-p-mufs922g9h; P-p-mufs92ec9i; P-p-mufs93oi9l; P-p-mufs941n9m; P-p-mufs9hqq9v; P-p-mufs9i3v9w; P-p-mufs9je19y; P-p-mufs9jro9z"
-Profile,3030,3030,370,4,"P-b-mufvmswr14-bearing-left; P-b-mufvmswr14-bearing-right; P-b-mufvmsws17-bearing-left; P-b-mufvmsws17-bearing-right"
 Connector,"L型角码","Motedis S8BBR30",,8,"C-c-frame-072; C-c-frame-073; C-c-frame-074; C-c-frame-075; C-c-frame-076; C-c-frame-077; C-c-frame-078; C-c-frame-079"
-Connector,"内角码","Motedis S8IBIBM6",,72,"C-c-frame-000; C-c-frame-001; C-c-frame-002; C-c-frame-003; C-c-frame-004; C-c-frame-005; C-c-frame-006; C-c-frame-007; C-c-frame-008; C-c-frame-009; C-c-frame-010; C-c-frame-011; C-c-frame-012; C-c-frame-013; C-c-frame-014; C-c-frame-015; C-c-frame-016; C-c-frame-017; C-c-frame-018; C-c-frame-019; C-c-frame-020; C-c-frame-021; C-c-frame-022; C-c-frame-023; C-c-frame-024; C-c-frame-025; C-c-frame-026; C-c-frame-027; C-c-frame-028; C-c-frame-029; C-c-frame-030; C-c-frame-031; C-c-frame-032; C-c-frame-033; C-c-frame-034; C-c-frame-035; C-c-frame-036; C-c-frame-037; C-c-frame-038; C-c-frame-039; C-c-frame-040; C-c-frame-041; C-c-frame-042; C-c-frame-043; C-c-frame-044; C-c-frame-045; C-c-frame-046; C-c-frame-047; C-c-frame-048; C-c-frame-049; C-c-frame-050; C-c-frame-051; C-c-frame-052; C-c-frame-053; C-c-frame-054; C-c-frame-055; C-c-frame-056; C-c-frame-057; C-c-frame-058; C-c-frame-059; C-c-frame-060; C-c-frame-061; C-c-frame-062; C-c-frame-063; C-c-frame-064; C-c-frame-065; C-c-frame-066; C-c-frame-067; C-c-frame-068; C-c-frame-069; C-c-frame-070; C-c-frame-071"
+Connector,"内角码","Motedis S8IBIBM6",,56,"C-c-frame-016; C-c-frame-017; C-c-frame-018; C-c-frame-019; C-c-frame-020; C-c-frame-021; C-c-frame-022; C-c-frame-023; C-c-frame-024; C-c-frame-025; C-c-frame-026; C-c-frame-027; C-c-frame-028; C-c-frame-029; C-c-frame-030; C-c-frame-031; C-c-frame-032; C-c-frame-033; C-c-frame-034; C-c-frame-035; C-c-frame-036; C-c-frame-037; C-c-frame-038; C-c-frame-039; C-c-frame-040; C-c-frame-041; C-c-frame-042; C-c-frame-043; C-c-frame-044; C-c-frame-045; C-c-frame-046; C-c-frame-047; C-c-frame-048; C-c-frame-049; C-c-frame-050; C-c-frame-051; C-c-frame-052; C-c-frame-053; C-c-frame-054; C-c-frame-055; C-c-frame-056; C-c-frame-057; C-c-frame-058; C-c-frame-059; C-c-frame-060; C-c-frame-061; C-c-frame-062; C-c-frame-063; C-c-frame-064; C-c-frame-065; C-c-frame-066; C-c-frame-067; C-c-frame-068; C-c-frame-069; C-c-frame-070; C-c-frame-071"
+Connector,"对接板","80/20 30-4307",,16,"C-rolling-cart-fastener-1; C-rolling-cart-fastener-10; C-rolling-cart-fastener-11; C-rolling-cart-fastener-12; C-rolling-cart-fastener-13; C-rolling-cart-fastener-14; C-rolling-cart-fastener-15; C-rolling-cart-fastener-16; C-rolling-cart-fastener-2; C-rolling-cart-fastener-3; C-rolling-cart-fastener-4; C-rolling-cart-fastener-5; C-rolling-cart-fastener-6; C-rolling-cart-fastener-7; C-rolling-cart-fastener-8; C-rolling-cart-fastener-9"
 Connector,"脚轮","Motedis 10146",,4,"C-caster-0; C-caster-1; C-caster-2; C-caster-3"
 Fastener,"M6×12 DIN 7984 螺钉","",,16,""
+Fastener,"M6×12 DIN 912 螺钉","",,16,""
+Fastener,"M6×40 DIN 912 螺钉","",,16,""
 Fastener,"M8×25 DIN 7991 螺钉 (脚轮芯孔安装)","",,4,""
-Fastener,"M6×8 DIN 913 紧定螺钉","",,144,""
+Fastener,"M6 DIN 934 螺母","",,16,""
+Fastener,"长 6 mm 配件 (定长垫套，外径 12 / 内径 6.6 mm)","",,16,""
+Fastener,"M6×8 DIN 913 紧定螺钉","",,112,""
 Fastener,"M6 T 槽螺母","30 系列槽用",,16,""
+Fastener,"M6 T 槽螺母 (B 型槽 8)","30 系列槽用",,16,""
+Fastener,"M6 ISO 7089 垫圈 (厚 1.6 mm)","",,48,""
 Board,"760 × 460 mm","密度板 18mm",,2,"B-b-mufvmswr14; B-b-mufvmsws17"
 Suggested,"端盖 3030（按自由端推算）","3030",,4,""
 Summary,Overall WxDxH,820x520x800.3,,,
-Summary,Total cut length (mm),,17481.2,,
+Summary,Total cut length (mm),,12961.2,,
 Summary,Board area (m2),,0.70,,

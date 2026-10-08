@@ -1,5 +1,5 @@
 {
- "version": 6,
+ "version": 10,
  "profiles": [
   {
    "id": "p-mueqez441",
@@ -848,78 +848,6 @@
    "holes": []
   },
   {
-   "id": "b-mufvmsx41l-bearing-front",
-   "spec": "2020",
-   "position": [
-    2680,
-    440,
-    31
-   ],
-   "length": 700,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsx41l-bearing-back",
-   "spec": "2020",
-   "position": [
-    2680,
-    440,
-    619
-   ],
-   "length": 700,
-   "quaternion": [
-    0,
-    0.7071067811865475,
-    0,
-    0.7071067811865475
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsx41l-bearing-left",
-   "spec": "2020",
-   "position": [
-    2715,
-    440,
-    31
-   ],
-   "length": 588,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
-   "id": "b-mufvmsx41l-bearing-right",
-   "spec": "2020",
-   "position": [
-    3345,
-    440,
-    31
-   ],
-   "length": 588,
-   "quaternion": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "miterCuts": [],
-   "holes": []
-  },
-  {
    "id": "kitchen-drawer-runner-1430-195",
    "spec": "2020",
    "position": [
@@ -993,166 +921,6 @@
   }
  ],
  "connectors": [
-  {
-   "id": "c-frame-000",
-   "type": "inside-corner",
-   "position": [
-    2689.5,
-    440,
-    609.6
-   ],
-   "quaternion": [
-    -0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-001",
-   "type": "inside-corner",
-   "position": [
-    3370.5,
-    440,
-    609.6
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    -0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-002",
-   "type": "inside-corner",
-   "position": [
-    2689.5,
-    440,
-    40.4
-   ],
-   "quaternion": [
-    0.7071067811865475,
-    7.850462293418875e-17,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-003",
-   "type": "inside-corner",
-   "position": [
-    3370.5,
-    440,
-    40.4
-   ],
-   "quaternion": [
-    7.850462293418875e-17,
-    0.7071067811865475,
-    0.7071067811865476,
-    0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-004",
-   "type": "inside-corner",
-   "position": [
-    2724.4,
-    440,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    0.4999999999999999,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-005",
-   "type": "inside-corner",
-   "position": [
-    2724.4,
-    440,
-    609.5
-   ],
-   "quaternion": [
-    -0.5,
-    -0.5000000000000001,
-    0.5,
-    -0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-006",
-   "type": "inside-corner",
-   "position": [
-    3335.6,
-    440,
-    40.5
-   ],
-   "quaternion": [
-    0.5,
-    -0.4999999999999999,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-007",
-   "type": "inside-corner",
-   "position": [
-    3335.6,
-    440,
-    609.5
-   ],
-   "quaternion": [
-    -0.5,
-    0.5000000000000001,
-    0.5,
-    0.5000000000000001
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
   {
    "id": "kitchen-drawer-corner-4",
    "type": "inside-corner",
@@ -3592,6 +3360,182 @@
     20,
     20
    ]
+  },
+  {
+   "id": "01-kitchen-base-fastener-1",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    2690,
+    430,
+    167.4999999999999
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsx41l",
+    "profileId": "p-mueqou9w7",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "01-kitchen-base-fastener-2",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    2690,
+    430,
+    482.4999999999999
+   ],
+   "quaternion": [
+    0.5,
+    -0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsx41l",
+    "profileId": "p-mueqou9w7",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "01-kitchen-base-fastener-3",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    3370,
+    430,
+    167.4999999999999
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsx41l",
+    "profileId": "p-mueqouo08",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "01-kitchen-base-fastener-4",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    3370,
+    430,
+    482.4999999999999
+   ],
+   "quaternion": [
+    -0.5,
+    0.5,
+    0.5,
+    -0.5
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsx41l",
+    "profileId": "p-mueqouo08",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "01-kitchen-base-fastener-5",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    2860,
+    430,
+    9.999999999999963
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsx41l",
+    "profileId": "p-mufvmsx11j",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "01-kitchen-base-fastener-6",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    3200,
+    430,
+    9.999999999999886
+   ],
+   "quaternion": [
+    -7.850462293418875e-17,
+    7.850462293418875e-17,
+    -0.7071067811865475,
+    0.7071067811865476
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsx41l",
+    "profileId": "p-mufvmsx11j",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "01-kitchen-base-fastener-7",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    2860,
+    430,
+    639.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsx41l",
+    "profileId": "p-mufvmsx21k",
+    "spacer": 1,
+    "boardThickness": 18
+   }
+  },
+  {
+   "id": "01-kitchen-base-fastener-8",
+   "type": "joining-plate",
+   "series": 20,
+   "position": [
+    3200,
+    430,
+    639.9999999999999
+   ],
+   "quaternion": [
+    -0.7071067811865475,
+    0.7071067811865476,
+    7.850462293418875e-17,
+    -7.850462293418875e-17
+   ],
+   "panelMount": {
+    "panelId": "b-mufvmsx41l",
+    "profileId": "p-mufvmsx21k",
+    "spacer": 1,
+    "boardThickness": 18
+   }
   }
  ],
  "panels": [
@@ -3602,7 +3546,7 @@
    "thickness": 18,
    "position": [
     3030,
-    459,
+    440,
     324.9999999999999
    ],
    "quaternion": [
@@ -3796,5 +3740,7 @@
    "swing": 110,
    "meeting": "left"
   }
- ]
+ ],
+ "equipment": [],
+ "throughRule": "rails"
 }

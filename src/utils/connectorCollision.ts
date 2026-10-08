@@ -81,7 +81,7 @@ function buildSolids(c: ConnectorData): Solid[] {
     }))
     if (mesh.collisionVertices) return [transformedPoly(mesh.collisionVertices, k, q, position)]
     if (mesh.collisionBoxes) return mesh.collisionBoxes.map((b) => box(b.centre, b.half))
-    mesh.geometry.computeBoundingBox()
+    if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox()
     const bounds = mesh.geometry.boundingBox!
     return [{ ...box(bounds.getCenter(new THREE.Vector3()).toArray(), bounds.getSize(new THREE.Vector3()).multiplyScalar(0.5).toArray()), panelShaft: mesh.panelShaft }]
   })
@@ -89,7 +89,8 @@ function buildSolids(c: ConnectorData): Solid[] {
 
 interface ShapeGeometry {
   type: string; series: ConnectorData['series']; profileSpec: ConnectorData['profileSpec']; mountSeries: string; position: number[]; quaternion: number[]; full: Solid[]; metal: Solid[]
-  panelMount?: string
+  panelMount?: ConnectorData['panelMount']
+  bounds: THREE.Box3
   mounts?: { axis: THREE.Vector3; normal: THREE.Vector3; point: THREE.Vector3 }[]
   bodyHits: Map<string, boolean>
 }
@@ -97,23 +98,24 @@ const shapeCache = new WeakMap<ConnectorData, ShapeGeometry>()
 function shapeGeometry(c: ConnectorData): ShapeGeometry {
   let cached = shapeCache.get(c)
   if (!cached || cached.type !== c.type || cached.series !== c.series || cached.profileSpec !== c.profileSpec
-    || cached.panelMount !== JSON.stringify(c.panelMount)
+    || !!cached.panelMount !== !!c.panelMount
+    || cached.panelMount?.mode !== c.panelMount?.mode
+    || cached.panelMount?.spacer !== c.panelMount?.spacer
+    || cached.panelMount?.boardThickness !== c.panelMount?.boardThickness
+    || cached.panelMount?.panelId !== c.panelMount?.panelId
+    || cached.panelMount?.profileId !== c.panelMount?.profileId
     || cached.mountSeries !== (c.mountSeries?.join(':') ?? '')
     || cached.position[0] !== c.position[0] || cached.position[1] !== c.position[1] || cached.position[2] !== c.position[2]
     || cached.quaternion[0] !== c.quaternion[0] || cached.quaternion[1] !== c.quaternion[1]
     || cached.quaternion[2] !== c.quaternion[2] || cached.quaternion[3] !== c.quaternion[3]) {
     const full = buildSolids(c)
     cached = { type: c.type, series: c.series, profileSpec: c.profileSpec, mountSeries: c.mountSeries?.join(':') ?? '', position: [...c.position], quaternion: [...c.quaternion],
-      panelMount: JSON.stringify(c.panelMount), full, metal: full, bodyHits: new Map() }
+      panelMount: c.panelMount ? { ...c.panelMount } : undefined, full, metal: full, bodyHits: new Map(),
+      bounds: full.reduce((bounds, part) => bounds.union(part.bounds), new THREE.Box3()) }
     shapeCache.set(c, cached)
   }
   return cached
 }
-function solids(c: ConnectorData, againstMetal = false): Solid[] {
-  const geometry = shapeGeometry(c)
-  return againstMetal ? geometry.metal : geometry.full
-}
-
 interface BodyGeometry {
   profileSpec?: ProfileSpec
   pose: number[]
@@ -194,7 +196,11 @@ function overlap(a: Solid, b: Solid, tolerance: number): boolean {
 }
 
 export function connectorsCollide(a: ConnectorData, b: ConnectorData): boolean {
-  return solids(a).some((x) => solids(b).some((y) => overlap(x, y, 1)))
+  const first = shapeGeometry(a), second = shapeGeometry(b)
+  // Most fasteners are far apart. Reject disjoint whole-part bounds before
+  // visiting their convex pieces; overlapping bounds still use the same SAT.
+  return first.bounds.intersectsBox(second.bounds)
+    && first.full.some((x) => second.full.some((y) => overlap(x, y, 1)))
 }
 
 const sectionTriangles = new Map<ProfileSpec, THREE.Vector2[][]>()

@@ -68,7 +68,7 @@ test.describe('Free rotation about any axis', () => {
     await drawMember(page, [0, 0, 400], [600, 10, 400])
     await toNavigate(page)
     await clickWorld(page, [300, 10, 0])
-    await clickWorld(page, [300, 10, 400], { modifiers: ['Control'] })
+    await clickWorld(page, [300, 10, 400], { modifiers: ['Shift'] })
     const before = (await store(page)).profiles.map((p) => p.position.map(r))
     await page.getByTestId('rot-y-plus').click()
     const after = (await store(page)).profiles.map((p) => p.position.map(r))
@@ -300,7 +300,7 @@ test.describe('Floor and group rules after the rule change', () => {
     await drawMember(page, [0, 0, 300], [600, 10, 300])  // rail at y=10
     await toNavigate(page)
     await clickWorld(page, [0, 250, 0])
-    await clickWorld(page, [300, 10, 300], { modifiers: ['Control'] })
+    await clickWorld(page, [300, 10, 300], { modifiers: ['Shift'] })
     const before = (await store(page)).profiles.map((p) => p.position.map(r))
     const gap = before[1][1] - before[0][1]
     await page.keyboard.press('PageDown')               // the upright is already on the floor
@@ -318,7 +318,7 @@ test.describe('Floor and group rules after the rule change', () => {
     await drawMember(page, [0, 0, 300], [600, 10, 300])
     await toNavigate(page)
     await clickWorld(page, [300, 10, 0])
-    await clickWorld(page, [300, 10, 300], { modifiers: ['Control'] })
+    await clickWorld(page, [300, 10, 300], { modifiers: ['Shift'] })
     await dragWorld(page, [300, 10, 0], [300, -400, 0], ['Alt'])
     const ys = (await store(page)).profiles.map((p) => r(p.position[1]))
     expect(ys).toEqual([10, 10])

@@ -58,7 +58,7 @@ describe.each(cases)('$name drawer bays', ({ name, prefix, width, count, centres
   it('fastens both ends of every drawer support to a touching frame member', () => {
     const doc = load(name)
     const trims = computeAllTrims(doc.profiles)
-    expect(auditBrackets(doc.profiles, doc.connectors, trims)).toEqual([])
+    expect(auditBrackets(doc.profiles, doc.connectors, trims, undefined, doc.panels)).toEqual([])
     const supports = doc.profiles.filter((p) => p.id.startsWith(prefix))
     expect(supports.length).toBeGreaterThan(2)
     for (const p of supports) {

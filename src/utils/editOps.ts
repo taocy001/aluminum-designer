@@ -725,7 +725,7 @@ export function setProfileSpec(id: string, spec: ProfileSpec): boolean {
 /** Change which extrusion series a connector is made for */
 export function setConnectorSeries(id: string, series: 20 | 30 | 40): boolean {
   const c = useStore.getState().connectors.find((q) => q.id === id)
-  if (!c || c.locked || ![20, 30, 40].includes(series) || (c.panelMount && series !== 20)) return false
+  if (!c || c.locked || ![20, 30, 40].includes(series) || (c.panelMount && series !== (c.series ?? 20))) return false
   return reportEditResult(useStore.getState().commitTransform({ connectors: [{ id, updates: { series } }] }))
 }
 

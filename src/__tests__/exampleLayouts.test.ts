@@ -79,7 +79,7 @@ describe('example cabinet layouts', () => {
       && box.min.z <= rear && box.max.z >= rear)).toBe(true)
     const bounds = computeFrameBounds(doc.profiles, trims)!.getSize(new THREE.Vector3())
     bounds.toArray().forEach((v, i) => expect(v).toBeCloseTo(size[i], 6))
-    expect(auditBrackets(doc.profiles, doc.connectors, trims)).toEqual([])
+    expect(auditBrackets(doc.profiles, doc.connectors, trims, undefined, doc.panels)).toEqual([])
   })
 
   it('the kitchen drawers close on the same front as its doors and pull towards the user', () => {
@@ -219,7 +219,7 @@ describe('example cabinet layouts', () => {
   it('bolts both ends of the kitchen cupboard shelf rails to their posts', () => {
     const doc = load('01-kitchen-base')
     const supports = new Map<string, string[]>()
-    expect(auditBrackets(doc.profiles, doc.connectors, computeAllTrims(doc.profiles), supports)).toEqual([])
+    expect(auditBrackets(doc.profiles, doc.connectors, computeAllTrims(doc.profiles), supports, doc.panels)).toEqual([])
     for (const z of [0, 650]) for (const x of [2680, 3380]) {
       const rail = doc.profiles.find((p) => p.position[0] === 2680 && p.position[1] === 440
         && p.position[2] === z && getProfileDir(p).x > 0.999)!
