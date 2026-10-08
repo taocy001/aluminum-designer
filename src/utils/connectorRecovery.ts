@@ -7,14 +7,14 @@ import { computeAllTrims } from './jointUtils'
 
 const sameRotation = (a: ConnectorData['quaternion'], b: ConnectorData['quaternion']) =>
   Math.abs(new THREE.Quaternion(...a).normalize().dot(new THREE.Quaternion(...b).normalize())) > 1 - 1e-8
-const sameModel = (part: ConnectorData, seat: Partial<ConnectorData>) =>
+export const sameConnectorModel = (part: ConnectorData, seat: Partial<ConnectorData>) =>
   seat.series === (part.series ?? 20) && (part.type !== 'end-cap'
     || seat.profileSpec === (part.profileSpec ?? `${part.series ?? 20}${part.series ?? 20}`))
 
 type RecoveryCandidate = Omit<ConnectorPlacementCandidate, 'seat' | 'legs'> & {
   seat: ReturnType<typeof resolveConnectorPlacement>['seat']; legs: string[]
 }
-function nearbySeats(type: string, point: THREE.Vector3, profiles: ProfileData[], connectors: ConnectorData[], options: ConnectorPlacementOptions): RecoveryCandidate[] {
+export function nearbyConnectorSeats(type: string, point: THREE.Vector3, profiles: ProfileData[], connectors: ConnectorData[], options: ConnectorPlacementOptions): RecoveryCandidate[] {
   if (connectorEntry(type)?.fit !== 'inline') return connectorPlacementCandidates(type, point, profiles, connectors, undefined, undefined, options)
   const trims = computeAllTrims(profiles), seats = new Map<string, RecoveryCandidate>()
   for (const profile of profiles) for (const side of [-1, 1] as const) {
@@ -41,8 +41,8 @@ export function repairConnectorSeats(type: string, profiles: ProfileData[], conn
     const others = result.filter((_, other) => other !== index)
     if (validate(part, others).reason !== 'no-joint') continue
     const point = new THREE.Vector3(...part.position)
-    const candidates = nearbySeats(type, point, profiles, others, options)
-      .filter((candidate) => candidate.allowed && sameModel(part, candidate.seat)
+    const candidates = nearbyConnectorSeats(type, point, profiles, others, options)
+      .filter((candidate) => candidate.allowed && sameConnectorModel(part, candidate.seat)
         && sameRotation(part.quaternion, candidate.seat.quaternion)
         && point.distanceTo(new THREE.Vector3(...candidate.seat.position)) <= 20)
     // A changed frame can have several plausible destinations. Leave that decision to the editor.
@@ -63,9 +63,9 @@ export function snapDraggedConnector(
   options: ConnectorPlacementOptions = {}, previousKey?: string | null,
 ) {
   if (part.panelMount) return null
-  const candidates = nearbySeats(part.type, proposed, profiles, connectors,
+  const candidates = nearbyConnectorSeats(part.type, proposed, profiles, connectors,
     { ...options, excludeConnectorId: part.id }).filter((candidate) => candidate.allowed
-      && sameModel(part, candidate.seat)
+      && sameConnectorModel(part, candidate.seat)
       && candidate.seat.position.every((value, axis) => allowedAxes.includes(axis) || Math.abs(value - origin.getComponent(axis)) < .05)
       && (allowedAxes.length !== 1 || sameRotation(part.quaternion, candidate.seat.quaternion)))
     .map((candidate) => ({ candidate, distance: proposed.distanceTo(new THREE.Vector3(...candidate.seat.position)) }))

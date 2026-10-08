@@ -15,6 +15,8 @@ import { partNumber } from '../utils/partNumbers'
 import { translations } from '../utils/translations'
 import { SupportBindingEditor } from './OpeningBindingEditor'
 
+import ConnectorSlideEditor from './ConnectorSlideEditor'
+
 const AXES = ['X', 'Y', 'Z'] as const
 const COLORS = ['#ef4444', '#22c55e', '#3b82f6']
 const display = (value: number) => String(Math.round(value * 1000) / 1000)
@@ -96,6 +98,7 @@ export default function ConnectorEditor({ connector }: { connector: ConnectorDat
   }
   return <fieldset disabled={disabled} className="space-y-3" data-testid="connector-editor">
     <SupportBindingEditor part={connector} />
+    {!anchor && <ConnectorSlideEditor key={connector.id} connector={connector} />}
     <div className="flex justify-between items-center text-xs">
       <span className="text-slate-500">{t.connectorProps}</span>
       <span className="text-emerald-400 font-mono">{connectorLabel(connector.type, language)}</span>

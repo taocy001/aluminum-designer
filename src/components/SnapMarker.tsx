@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
 
-const COLORS: Record<string, string> = { endpoint: '#facc15', joint: '#22d3ee', align: '#a78bfa', segment: '#22d3ee', grid: '#94a3b8', start: '#f8fafc', seat: '#34d399', loose: '#94a3b8' }
+const COLORS: Record<string, string> = { issue: '#fb7185', endpoint: '#facc15', joint: '#22d3ee', align: '#a78bfa', segment: '#22d3ee', grid: '#94a3b8', start: '#f8fafc', seat: '#34d399', loose: '#94a3b8' }
 
 /** Screen-size-constant marker (stays visible at any zoom): disc for endpoints, diamond for centerline joints */
 const SnapMarker: React.FC<{ position: THREE.Vector3 | [number, number, number]; kind: string; size?: number }> = ({ position, kind, size = 0.032 }) => {
@@ -23,7 +23,7 @@ const SnapMarker: React.FC<{ position: THREE.Vector3 | [number, number, number];
     ctx.lineWidth = 6; ctx.strokeStyle = color; ctx.fillStyle = color + 'aa'
     ctx.beginPath()
     // Outline the connector seat without covering its preview.
-    if (kind === 'seat' || kind === 'loose') {
+    if (kind === 'seat' || kind === 'loose' || kind === 'issue') {
       ctx.lineWidth = 5
       ctx.arc(32, 32, 26, 0, Math.PI * 2)
       ctx.stroke()

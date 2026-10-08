@@ -1,3 +1,4 @@
+import OverlapPicker from './components/OverlapPicker'
 import { reportEditResult } from './utils/editFeedback'
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Viewport from './components/Viewport'
@@ -644,6 +645,7 @@ function App() {
         </main>
       </div>
       <QuickMenu />
+      <OverlapPicker />
       <Tooltip />
     </div>
   )

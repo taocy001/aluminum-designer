@@ -21,6 +21,7 @@ const QuickMenu: React.FC = () => {
   const panels = useStore((s) => s.panels)
   const fittings = useStore((s) => s.fittings)
   const equipment = useStore((s) => s.equipment)
+  const canInspect = useToolStore(s => !s.held && !s.isDrawing && !s.isDragging && !s.measuring)
   const viewMode = useToolStore((s) => s.viewMode)
   const toggleLockSelected = useStore((s) => s.toggleLockSelected)
   const removeSelected = useStore((s) => s.removeSelected)
@@ -74,6 +75,9 @@ const QuickMenu: React.FC = () => {
         {t.quickMenu}{hasSelection ? ` · ${selectedIds.length}` : ''}
       </div>
 
+      {canInspect && <Item testId="quick-overlap" onClick={run(() => window.dispatchEvent(new CustomEvent('aluframe:overlap', { detail: at })))}>
+        <BoxSelect size={12} />{language === 'zh' ? '选择重叠零件' : 'Choose overlapping part'}
+      </Item>}
       {!hasSelection && (
         <>
           <Item testId="quick-select-all" tip={t.hintSelectAll} onClick={run(selectAll)}><BoxSelect size={12} />{t.selectAll}</Item>

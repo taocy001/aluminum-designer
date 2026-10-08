@@ -1,3 +1,4 @@
+import AutoConnectReport from './AutoConnectReport'
 import { reportEditResult } from '../utils/editFeedback'
 import EquipmentEditor, { EquipmentCreator } from './EquipmentEditor'
 import ConnectorEditor from './ConnectorEditor'
@@ -765,6 +766,7 @@ const Sidebar: React.FC = () => {
             )}
 
             <EquipmentCreator />
+            <AutoConnectReport />
 
             {/* Add compatible connectors at detected joints. */}
             {held === 'connector' && activeConnectorType && (

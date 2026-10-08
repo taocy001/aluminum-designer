@@ -1,3 +1,4 @@
+import { useInspectionStore } from '../store/useInspectionStore'
 import React, { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, Line } from '@react-three/drei'
@@ -52,6 +53,19 @@ const CameraController: React.FC = () => {
   const zoomStep = useToolStore((s) => s.zoomStep)
   const zoomAt = useToolStore((s) => s.zoomAt)
   const clearZoom = useToolStore((s) => s.clearZoom)
+  const focus = useInspectionStore(s => s.focus)
+  useEffect(() => {
+    if (!focus) return
+    const orbit = controls as any
+    const target = new THREE.Vector3(...focus.position)
+    const direction = camera.position.clone().sub(orbit?.target ?? new THREE.Vector3()).normalize()
+    if (direction.lengthSq() < 0.5) direction.copy(DEFAULT_CAM).normalize()
+    const persp = camera as THREE.PerspectiveCamera
+    const halfFov = Math.min(THREE.MathUtils.degToRad(persp.fov) / 2,
+      Math.atan(Math.tan(THREE.MathUtils.degToRad(persp.fov) / 2) * persp.aspect))
+    camera.position.copy(target).addScaledVector(direction, 120 / Math.sin(halfFov))
+    if (orbit) { orbit.target.copy(target); orbit.update() } else camera.lookAt(target)
+  }, [focus, camera, controls])
   const prevTrigger = useRef(0)
 
   useEffect(() => {
@@ -506,6 +520,11 @@ const ConflictMarkers: React.FC<{ conflicts: Conflict[] }> = ({ conflicts }) => 
   </>
 )
 
+function InspectionMarker() {
+  const focus = useInspectionStore(s => s.focus)
+  return focus ? <SnapMarker position={focus.position} kind="issue" size={.05} /> : null
+}
+
 const Viewport: React.FC = () => {
   const { profiles, connectors, panels, fittings, equipment, selectedIds, throughRule } = useStore()
   const { isDragging, showDimensionLabels, showPartNumbers, selectMode, showFittings, buildStep } = useToolStore()
@@ -590,6 +609,7 @@ const Viewport: React.FC = () => {
       <OrbitControls makeDefault enabled={orbitEnabled} mouseButtons={mouseButtons}
         enableDamping={false} minDistance={50} maxDistance={30000} />
       <CameraController />
+      <InspectionMarker />
       <Gestures />
       <DevHook />
       </Suspense>

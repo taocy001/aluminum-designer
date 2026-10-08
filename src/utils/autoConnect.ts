@@ -1,5 +1,6 @@
+import { useInspectionStore, type ConnectionIssue } from '../store/useInspectionStore'
 import { noteNext } from './opLog'
-import { repairConnectorSeats } from './connectorRecovery'
+import { nearbyConnectorSeats, sameConnectorModel, repairConnectorSeats } from './connectorRecovery'
 import { reportEditResult } from './editFeedback'
 import * as THREE from 'three'
 import { useStore, type ConnectorData } from '../store/useStore'
@@ -27,7 +28,7 @@ export interface AutoConnectResult {
   /** Candidates obstructed by an equipment body or its reserved space. */
   blocked?: number
   /** why nothing was placed, when nothing was */
-  reason?: 'no-frame' | 'needs-a-surface' | 'nothing-open' | 'edit-rejected'
+  reason?: 'no-frame' | 'needs-a-surface' | 'nothing-open' | 'edit-rejected' | 'view-only'
 }
 
 /**
@@ -35,6 +36,9 @@ export interface AutoConnectResult {
  * Corner seats follow each member pair and shared slot line. Face-mounted types require explicit placement.
  */
 export function autoConnect(type: string): AutoConnectResult {
+  if (useToolStore.getState().viewMode) return { placed: 0, skipped: 0, reason: 'view-only' }
+  useInspectionStore.getState().setReport(null)
+  const issues: ConnectionIssue[] = []
   const entry = connectorEntry(type)
   const store = useStore.getState()
   const t = translations[useToolStore.getState().language]
@@ -57,11 +61,12 @@ export function autoConnect(type: string): AutoConnectResult {
   let blocked = 0
   const visitedPairs = new Set<string>()
   const visitedSeats = new Set<string>()
-  const consider = (part: ConnectorData) => {
+  const consider = (part: ConnectorData, hosts: string[]) => {
     const key = connectorInstallationKey(part)
     if (visitedSeats.has(key)) return
     visitedSeats.add(key)
     const status = validate(part, [...connectors, ...made])
+    if (!status.allowed && !status.occupied) issues.push({ position: part.position, hosts, reason: status.reason!, candidate: part })
     if (status.occupied) skipped++
     else if (status.reason === 'equipment') blocked++
     else if (!status.allowed) unbolted++
@@ -73,7 +78,7 @@ export function autoConnect(type: string): AutoConnectResult {
     const { start, end } = getProfileEndpoints(p)
     for (const [where, at] of [[tr.start, start], [tr.end, end]] as const) {
       if (type === 'corner-3way') {
-        for (const seat of endCornerSeats(at, profiles)) consider({ id: 'candidate', type, ...seat })
+        for (const seat of endCornerSeats(at, profiles)) consider({ id: 'candidate', type, ...seat }, seat.legs)
         continue
       }
       if (entry.fit === 'corner') {
@@ -83,7 +88,11 @@ export function autoConnect(type: string): AutoConnectResult {
           visitedPairs.add(key)
           const candidates = seatsFor(type, a, b, joint)
             .filter((s) => auditBrackets(profiles, [{ id: 'candidate', type, ...s }], trims).length === 0)
-          if (!candidates.length) { unbolted++; continue }
+          if (!candidates.length) {
+            unbolted++
+            issues.push({ position: joint.toArray() as [number, number, number], hosts: [a.id, b.id], reason: 'no-joint' })
+            continue
+          }
           // Reversing an asymmetric inner bracket is an alternative at the same slot.
           const slots: Array<typeof candidates> = []
           for (const seat of candidates) {
@@ -95,7 +104,7 @@ export function autoConnect(type: string): AutoConnectResult {
           for (const alternatives of slots) {
             const available = alternatives.map(seat => ({ id: 'candidate', type, ...seat }))
             const selected = available.find(c => { const status = validate(c, [...connectors, ...made]); return status.allowed || status.occupied }) ?? available[0]
-            consider(selected)
+            consider(selected, [...alternatives[0].legs])
           }
         }
         continue
@@ -129,11 +138,24 @@ export function autoConnect(type: string): AutoConnectResult {
         quaternion = placement.quaternion
         series = placement.series ?? seriesOf(p.spec)
       }
-      consider({ id: 'candidate', type, series, position, quaternion, profileSpec: p.spec })
+      consider({ id: 'candidate', type, series, position, quaternion, profileSpec: p.spec }, [p.id])
     }
   }
 
+  for (const part of connectors.filter(c => c.type === type)) {
+    const status = validate(part, [...connectors.filter(c => c.id !== part.id), ...made])
+    if (!status.allowed) {
+      const point = new THREE.Vector3(...part.position)
+      const nearest = nearbyConnectorSeats(type, point, profiles, connectors, { ...options, excludeConnectorId: part.id })
+        .filter(c => sameConnectorModel(part, c.seat))
+        .map(c => ({ c, distance: point.distanceTo(new THREE.Vector3(...c.seat.position)) }))
+        .filter(c => c.distance <= 100).sort((a, b) => a.distance - b.distance)[0]
+      issues.push({ position: part.position, hosts: nearest?.c.legs ?? [], reason: status.reason!, connectorId: part.id, candidate: part })
+    }
+  }
+  const publish = (placed: number, fixed: number) => useInspectionStore.getState().setReport({ type, placed, skipped, repaired: fixed, issues })
   if (made.length === 0 && repaired === 0) {
+    publish(0, 0)
     useToolStore.getState().showToast([blocked ? t.toastAutoEquipmentBlocked(blocked)
       : unbolted ? t.toastAutoUnbolted(unbolted) : t.toastAutoNothingOpen, repairFeedback].filter(Boolean).join(' · '), 'info')
     return { placed: 0, skipped, removed: 0, unbolted, blocked, repaired, unresolved, reason: 'nothing-open' }
@@ -142,6 +164,7 @@ export function autoConnect(type: string): AutoConnectResult {
   if (!reportEditResult(store.commitDocument({ connectors: [...connectors, ...made] }))) {
     return { placed: 0, skipped, removed: 0, unbolted, blocked, repaired: 0, unresolved, reason: 'edit-rejected' }
   }
+  publish(made.length, repaired)
   useToolStore.getState().showToast([t.toastAutoConnected(made.length, skipped, 0, unbolted, blocked), repairFeedback].filter(Boolean).join(' · '), unbolted || blocked || unresolved ? 'info' : 'success')
   return { placed: made.length, skipped, removed: 0, unbolted, blocked, repaired, unresolved }
 }

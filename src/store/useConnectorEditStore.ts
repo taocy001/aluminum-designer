@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 import type { ConnectorData } from './useStore'
 
-export type ConnectorEditPreview = Pick<ConnectorData, 'type' | 'series' | 'position' | 'quaternion'> & {
+export type ConnectorEditPreview = Pick<ConnectorData, 'type' | 'series' | 'position' | 'quaternion' | 'panelMount' | 'profileSpec' | 'mountSeries'> & {
   legs: string[]
   allowed: boolean
+  conflicts?: string[]
 }
 
 /** A temporary installation choice; applying it is a separate document transaction. */

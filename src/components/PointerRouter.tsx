@@ -1,3 +1,5 @@
+import { assemblySteps, shownAt } from '../utils/assembly'
+import { useInspectionStore } from '../store/useInspectionStore'
 import React, { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
@@ -152,6 +154,7 @@ const PointerRouter: React.FC = () => {
       return hit.point.distanceTo(start) < zone ? 'start' : hit.point.distanceTo(end) < zone ? 'end' : null
     }
 
+    let shownCache: { store: StoreLike; step: number; on: ReturnType<typeof shownAt> } | null = null
     /** Everything under the pointer, with whatever is actually drawn there put first */
     const candidatesFor = (cursor: THREE.Vector2, rect: DOMRect) => {
       const ray = rayOf(cursor, rect)
@@ -161,6 +164,16 @@ const PointerRouter: React.FC = () => {
       const visible = useToolStore.getState().showFittings ? fittings : []
       const list = pickCandidatesAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
         profiles, connectors, panels, visible, trimsFor(store), equipment)
+      const step = useToolStore.getState().buildStep
+      if (step !== null) {
+        const old = shownCache?.store
+        if (!shownCache || shownCache.step !== step || old?.profiles !== profiles || old?.connectors !== connectors
+          || old?.panels !== panels || old?.fittings !== fittings || old?.throughRule !== store.throughRule) {
+          shownCache = { store, step, on: shownAt(assemblySteps(profiles, connectors, panels, fittings, store.throughRule), step) }
+        }
+        const on = shownCache.on
+        return promoteFrontmost(list.filter(p => p.kind === 'equipment' || on[`${p.kind}s`].has(p.id)), frontmostId(scene, ray, camera))
+      }
       return promoteFrontmost(list, frontmostId(scene, ray, camera))
     }
     /** Reuse the same visible/Tab target for hover, handle precedence and pointerdown. */
@@ -542,6 +555,16 @@ const PointerRouter: React.FC = () => {
       ts.setGizmoHover(null)
       showPointerTarget(pick)
     }
+    const onOverlap = (event: Event) => {
+      const ts = useToolStore.getState()
+      if (ts.held || ts.isDrawing || ts.isDragging || ts.measuring) return
+      const { x, y } = (event as CustomEvent<{ x: number; y: number }>).detail
+      const rect = canvas.getBoundingClientRect()
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return
+      const list = candidatesFor(new THREE.Vector2(x - rect.left, y - rect.top), rect)
+      useInspectionStore.getState().setOverlap({ x, y, picks: list.map(({ id, kind }) => ({ id, kind })) })
+    }
+    window.addEventListener('aluframe:overlap', onOverlap)
     window.addEventListener('keydown', onKey)
 
     const consumePointer = () => {
@@ -574,6 +597,7 @@ const PointerRouter: React.FC = () => {
     window.addEventListener('blur', onPointerCancel)
     return () => {
       unsubscribe()
+      window.removeEventListener('aluframe:overlap', onOverlap)
       window.removeEventListener('keydown', onKey)
       canvas.removeEventListener('aluframe:consume-pointer', consumePointer)
       canvas.removeEventListener('dblclick', onDoubleClick)
