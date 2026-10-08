@@ -9,7 +9,7 @@ const ConnectorThumbnail: React.FC<{ type: string; series?: ConnectorSeries }> =
   const image = images[`${type}:${series}`]
   const source = image ? `${import.meta.env.BASE_URL}connector-thumbnails/${image.file}` : undefined
   return <img src={source} alt="" aria-hidden="true" data-connector-model={type}
-    width={168} height={168} className="h-full w-full drop-shadow-md" draggable={false} />
+    width={168} height={168} className="h-6 w-6 object-contain" draggable={false} />
 }
 
 export default React.memo(ConnectorThumbnail)

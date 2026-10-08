@@ -666,14 +666,14 @@ const Sidebar: React.FC = () => {
                   aria-label={language === 'zh' ? currentHardware.labelZh : currentHardware.labelEn}
                   aria-pressed={held === 'connector' && activeConnectorType === currentHardware.type}
                   title={hardwareTitle(currentHardware.type)}
-                  className={`w-11 h-11 rounded-lg border focus-visible:outline-2 focus-visible:outline-cyan-300 ${held === 'connector'
-                    ? 'border-emerald-400 bg-emerald-900' : 'border-white/5 bg-slate-800/70 hover:bg-slate-700'}`}>
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-blue-400 ${held === 'connector'
+                    ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
                   <ConnectorThumbnail type={currentHardware.type} />
                 </button>
                 <button ref={hardwareToggle} data-testid="connector-picker-toggle" onClick={() => setHardwareOpen(!hardwareOpen)}
                   aria-label={t.hintSection(t.connectors)} title={t.hintSection(t.connectors)}
                   aria-expanded={hardwareOpen} aria-controls="connector-chooser"
-                  className="h-11 w-9 flex items-center justify-center rounded-lg bg-slate-800/70 hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-cyan-300">
+                  className="h-8 w-6 flex items-center justify-center rounded-lg bg-slate-700/50 hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-blue-400">
                   <ChevronRight size={16} className={hardwareOpen ? 'rotate-90' : ''} />
                 </button>
               </div>
@@ -685,9 +685,9 @@ const Sidebar: React.FC = () => {
                   aria-label={language === 'zh' ? labelZh : labelEn}
                   aria-pressed={held === 'connector' && activeConnectorType === type}
                   title={hardwareTitle(type)}
-                  className={`aspect-square min-h-10 rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-cyan-300 ${
+                  className={`h-8 flex items-center justify-center rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-blue-400 ${
                     held === 'connector' && activeConnectorType === type
-                      ? 'border-emerald-400 bg-emerald-900 shadow-lg' : 'border-white/5 bg-slate-800/70 hover:bg-slate-700'}`}>
+                      ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
                   <ConnectorThumbnail type={type} />
                 </button>
               ))}
