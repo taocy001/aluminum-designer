@@ -72,3 +72,40 @@ describe('native project opening outcomes', () => {
     expect(savedFileName()).toBe('next.json')
   })
 })
+
+describe('saving a project', () => {
+  it.each(['write', 'close'])('reports %s AbortError as a failure and preserves the original target', async phase => {
+    const chosen = fileHandle('copy.json')
+    const write = vi.fn(), close = vi.fn()
+    ;(phase === 'write' ? write : close).mockRejectedValue(new DOMException('Write aborted', 'AbortError'))
+    chosen.createWritable.mockResolvedValue({ write, close })
+    vi.stubGlobal('window', { showSaveFilePicker: async () => chosen })
+    expect(await saveProject('contents', 'copy.json', true)).toEqual({ outcome: 'failed' })
+    expect(savedFileName()).toBe('original.json')
+    expect((await saveProject('contents', 'original.json')).outcome).toBe('overwritten')
+  })
+
+  it('keeps the original target when Save as is cancelled or writing fails', async () => {
+    const picker = vi.fn(async (): Promise<ReturnType<typeof fileHandle>> => { throw new DOMException('Cancelled', 'AbortError') })
+    vi.stubGlobal('window', { showSaveFilePicker: picker })
+    expect(await saveProject('data', 'copy.json', true)).toEqual({ outcome: 'cancelled' })
+    expect(savedFileName()).toBe('original.json')
+    const broken = fileHandle('broken.json')
+    broken.createWritable.mockRejectedValue(new Error('permission denied'))
+    picker.mockResolvedValue(broken)
+    expect(await saveProject('data', 'copy.json', true)).toEqual({ outcome: 'failed' })
+    expect(savedFileName()).toBe('original.json')
+    expect((await saveProject('data', 'copy.json')).outcome).toBe('overwritten')
+  })
+
+  it('adopts the chosen file only after writing and closing it successfully', async () => {
+    const chosen = fileHandle('chosen.json')
+    const write = vi.fn(), close = vi.fn()
+    chosen.createWritable.mockResolvedValue({ write, close })
+    vi.stubGlobal('window', { showSaveFilePicker: async () => chosen })
+    expect(await saveProject('contents', 'suggested.json', true)).toEqual({ outcome: 'saved', name: 'chosen.json' })
+    expect(write).toHaveBeenCalledWith('contents')
+    expect(close).toHaveBeenCalledTimes(1)
+    expect(savedFileName()).toBe('chosen.json')
+  })
+})

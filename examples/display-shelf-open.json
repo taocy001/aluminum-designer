@@ -4,10 +4,10 @@
   {
    "id": "p-mufs898l7q",
    "spec": "2020",
-   "length": 1580,
+   "length": 1570,
    "position": [
     10,
-    0,
+    10,
     10
    ],
    "quaternion": [
@@ -22,10 +22,10 @@
   {
    "id": "p-mufs89n87r",
    "spec": "2020",
-   "length": 1580,
+   "length": 1570,
    "position": [
     10,
-    0,
+    10,
     390
    ],
    "quaternion": [
@@ -40,10 +40,10 @@
   {
    "id": "p-mufs8a9j7s",
    "spec": "2020",
-   "length": 1580,
+   "length": 1570,
    "position": [
     1190,
-    0,
+    10,
     10
    ],
    "quaternion": [
@@ -58,10 +58,10 @@
   {
    "id": "p-mufs8anb7t",
    "spec": "2020",
-   "length": 1580,
+   "length": 1570,
    "position": [
     1190,
-    0,
+    10,
     390
    ],
    "quaternion": [
@@ -436,46 +436,6 @@
  ],
  "connectors": [
   {
-   "id": "c-mufs8vwu8n",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    19.4,
-    10
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufs8vwu8r",
-   "type": "inside-corner",
-   "position": [
-    10,
-    19.4,
-    19.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-mufs8vwu8j",
    "type": "inside-corner",
    "position": [
@@ -487,46 +447,6 @@
     -1.5700924586837747e-16,
     0,
     -0.7071067811865475,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufs8vwu8p",
-   "type": "inside-corner",
-   "position": [
-    19.5,
-    19.4,
-    390
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    0,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufs8vwu8s",
-   "type": "inside-corner",
-   "position": [
-    10,
-    19.4,
-    380.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
     0.7071067811865476
    ],
    "series": 20,
@@ -556,46 +476,6 @@
    ]
   },
   {
-   "id": "c-mufs8vwu8o",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    19.4,
-    10
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufs8vwu8t",
-   "type": "inside-corner",
-   "position": [
-    1190,
-    19.4,
-    19.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-mufs8vwu8l",
    "type": "inside-corner",
    "position": [
@@ -608,46 +488,6 @@
     0.7071067811865476,
     1.7431527984210492e-32,
     -1.570092458683775e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufs8vwu8q",
-   "type": "inside-corner",
-   "position": [
-    1180.5,
-    19.4,
-    390
-   ],
-   "quaternion": [
-    0,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-mufs8vwu8u",
-   "type": "inside-corner",
-   "position": [
-    1190,
-    19.4,
-    380.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
    ],
    "series": 20,
    "mountSeries": [
@@ -2242,6 +2082,230 @@
     "spacer": 1,
     "boardThickness": 18
    }
+  },
+  {
+   "id": "display-shelf-open-base-1",
+   "type": "inside-corner",
+   "position": [
+    19.4,
+    19.5,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs898l7q",
+    "p-mufs8ba07u"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "display-shelf-open-base-2",
+   "type": "inside-corner",
+   "position": [
+    19.4,
+    19.5,
+    390
+   ],
+   "quaternion": [
+    0.7071067811865475,
+    0.7071067811865476,
+    -1.5700924586837747e-16,
+    0
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs89n87r",
+    "p-mufs8bl27v"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "display-shelf-open-base-3",
+   "type": "inside-corner",
+   "position": [
+    1180.6,
+    19.5,
+    10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs8a9j7s",
+    "p-mufs8ba07u"
+   ],
+   "slotOffsets": [
+    -1.3145040611561853e-13,
+    1.3322676295501878e-13
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "display-shelf-open-base-4",
+   "type": "inside-corner",
+   "position": [
+    1180.6,
+    19.5,
+    390
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs8anb7t",
+    "p-mufs8bl27v"
+   ],
+   "slotOffsets": [
+    -1.7053025658242404e-13,
+    1.1368683772161603e-13
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "display-shelf-open-base-5",
+   "type": "inside-corner",
+   "position": [
+    19.4,
+    10,
+    19.5
+   ],
+   "quaternion": [
+    0.5,
+    0.4999999999999999,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs8bxd7w",
+    "p-mufs8ba07u"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "display-shelf-open-base-6",
+   "type": "inside-corner",
+   "position": [
+    1180.6,
+    10,
+    19.5
+   ],
+   "quaternion": [
+    0.5,
+    -0.4999999999999999,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs8c707x",
+    "p-mufs8ba07u"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "display-shelf-open-base-7",
+   "type": "inside-corner",
+   "position": [
+    19.4,
+    10,
+    380.5
+   ],
+   "quaternion": [
+    -0.5,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs8bxd7w",
+    "p-mufs8bl27v"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "display-shelf-open-base-8",
+   "type": "inside-corner",
+   "position": [
+    1180.6,
+    10,
+    380.5
+   ],
+   "quaternion": [
+    -0.5,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs8c707x",
+    "p-mufs8bl27v"
+   ],
+   "slotOffsets": [
+    0,
+    0
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
   }
  ],
  "panels": [

@@ -4,16 +4,18 @@ import { parseProjectDocument } from './document'
 
 interface StorageLike { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void; removeItem: (key: string) => void }
 export type AutoSaveState = 'idle' | 'pending' | 'saved' | 'error' | 'unavailable'
-interface ProjectStorage extends PersistStorage<ProjectDocument> {
+type StoredProject = ProjectDocument & { projectName?: string | null }
+interface ProjectStorage extends PersistStorage<StoredProject> {
   flush: () => void
   getStatus: () => AutoSaveState
   subscribe: (listener: () => void) => () => void
 }
-type Save = { name: string; value: StorageValue<ProjectDocument> }
+type Save = { name: string; value: StorageValue<StoredProject> }
 const sameSave = (a: Save | null, b: Save) => a !== null && a.name === b.name && a.value.version === b.value.version
   && a.value.state.profiles === b.value.state.profiles && a.value.state.connectors === b.value.state.connectors
   && a.value.state.panels === b.value.state.panels && a.value.state.fittings === b.value.state.fittings
   && a.value.state.equipment === b.value.state.equipment
+  && a.value.state.projectName === b.value.state.projectName
   && a.value.state.throughRule === b.value.state.throughRule
 let rejectedProject: string | null = null
 export const rejectedLocalProject = () => rejectedProject
@@ -70,7 +72,10 @@ export function projectStorage(getStorage: () => StorageLike | null): ProjectSto
       if (!raw) { report('idle'); return null }
       try {
         const value = JSON.parse(raw) as StorageValue<unknown>
-        const state = parseProjectDocument(value.state)
+        const parsed = parseProjectDocument(value.state)
+        const projectName = (value.state as StoredProject).projectName
+        const state: StoredProject = { ...parsed, ...(typeof projectName === 'string' && projectName.length <= 255
+          && !/[\\/\u0000-\u001f]/.test(projectName) ? { projectName } : {}) }
         saved = { name, value: { state, version: value.version } }
         report('saved')
         return { state, version: value.version }

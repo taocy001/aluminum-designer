@@ -13,7 +13,7 @@ export function downloadText(filename: string, text: string, mime: string) {
 
 /**
  * Save through the File System Access API and reuse the selected file handle.
- * Fall back to a download when the API is unavailable or cannot write the file.
+ * Fall back to a download only when the API is unavailable.
  */
 
 interface FileHandleLike {
@@ -34,13 +34,22 @@ type PickerWindow = Window & {
 
 /** Accepted target for subsequent saves. */
 let handle: FileHandleLike | null = null
+let openedName: string | null = null
+
+export const canOverwriteProject = () => handle !== null
+
+export function rememberOpenedFile(name: string): void {
+  handle = null
+  openedName = name
+}
 
 export function savedFileName(): string | null {
-  return handle?.name ?? null
+  return openedName
 }
 
 export function forgetSavedFile(): void {
   handle = null
+  openedName = null
 }
 
 export function canPickFiles(): boolean {
@@ -58,32 +67,39 @@ async function writable(h: FileHandleLike, text: string): Promise<void> {
   await w.close()
 }
 
-export type SaveOutcome = 'saved' | 'overwritten' | 'downloaded' | 'cancelled'
+export type SaveOutcome = 'saved' | 'overwritten' | 'downloaded' | 'cancelled' | 'failed'
 
 /** asNew opens the save picker; otherwise reuse the selected handle. */
 export async function saveProject(text: string, suggested: string, asNew = false): Promise<{ outcome: SaveOutcome; name?: string }> {
   const w = window as PickerWindow
-  if (!w.showSaveFilePicker) {
+  if (!canPickFiles()) {
     downloadText(suggested, text, 'application/json')
     return { outcome: 'downloaded', name: suggested }
   }
-  try {
-    if (!handle || asNew) {
-      handle = await w.showSaveFilePicker({
+  if (!handle || asNew) {
+    let chosen: FileHandleLike
+    try {
+      chosen = await w.showSaveFilePicker!({
         suggestedName: suggested,
         types: [{ description: 'Aluminium frame project', accept: { 'application/json': ['.json'] } }],
       })
-      await writable(handle!, text)
-      return { outcome: 'saved', name: handle!.name }
+    } catch (e) {
+      return { outcome: (e as DOMException)?.name === 'AbortError' ? 'cancelled' : 'failed' }
     }
+    try {
+      await writable(chosen, text)
+      handle = chosen
+      openedName = chosen.name
+      return { outcome: 'saved', name: chosen.name }
+    } catch {
+      return { outcome: 'failed' }
+    }
+  }
+  try {
     await writable(handle, text)
     return { outcome: 'overwritten', name: handle.name }
-  } catch (e) {
-    // Treat a dismissed picker as cancellation.
-    if ((e as DOMException)?.name === 'AbortError') return { outcome: 'cancelled' }
-    handle = null
-    downloadText(suggested, text, 'application/json')
-    return { outcome: 'downloaded', name: suggested }
+  } catch {
+    return { outcome: 'failed' }
   }
 }
 
@@ -110,7 +126,7 @@ export async function openProject(): Promise<OpenProjectResult> {
   const chosen = h
   try {
     const file = await chosen.getFile()
-    return { outcome: 'opened', text: await file.text(), name: chosen.name, accept: () => { handle = chosen } }
+    return { outcome: 'opened', text: await file.text(), name: chosen.name, accept: () => { handle = chosen; openedName = chosen.name } }
   } catch {
     // A failed read, including AbortError, is not a dismissed picker.
     return { outcome: 'failed' }

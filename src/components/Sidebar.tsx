@@ -29,8 +29,9 @@ import { rollProfile, sectionFacing } from '../utils/faceAlign'
 import { addFittingFromSelection, canSplitDoor, setFittingsOpen, splitSelectedDoors, updateFittings, updateDrawerConfig } from '../utils/fittingOps'
 import { drawerLayout } from '../utils/drawerLayout'
 import { addDrawerSupports } from '../utils/drawerSupports'
-import { downloadText, forgetSavedFile, openProject, saveProject, savedFileName } from '../utils/projectFile'
-import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
+import { downloadText, rememberOpenedFile, openProject } from '../utils/projectFile'
+import { requestProjectSave } from './ProjectFileBar'
+import { parseProjectDocument } from '../utils/document'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
@@ -211,7 +212,8 @@ const Sidebar: React.FC = () => {
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [templateParams, setTemplateParams] = useState<Record<string, number>>({})
   const chosenTemplate = templateId ? templateById(templateId) : undefined
-  const [savedName, setSavedName] = useState<string | null>(savedFileName())
+  const savedName = useStore(s => s.projectName)
+  const setSavedName = (projectName: string | null) => useStore.setState({ projectName })
   // the log lives outside React, so the panel listens for it rather than owning it
   const [stockText, setStockText] = useState('6000')
   /** what a shelf is assumed to be carrying, for the sag figure (kg) */
@@ -399,19 +401,6 @@ const Sidebar: React.FC = () => {
       'text/html;charset=utf-8')
     notifyExport()
   }
-  const handleSaveProject = async (asNew = false) => {
-    const doc = { profiles, connectors, panels, fittings, equipment, throughRule }
-    const suggested = savedFileName() ?? `aluframe-${new Date().toISOString().slice(0, 10)}.json`
-    const r = await saveProject(serializeProjectDocument(doc), suggested, asNew)
-    if (r.outcome === 'cancelled') return
-    setSavedName(savedFileName())
-    showToast(
-      r.outcome === 'overwritten' ? t.toastSavedOver(r.name ?? '')
-      : r.outcome === 'saved' ? t.toastSavedAs(r.name ?? '')
-      : t.toastDownloaded(r.name ?? ''),
-      'success',
-    )
-  }
   const handleOpenProject = async () => {
     const picked = await openProject()
     if (picked.outcome === 'unsupported') { fileRef.current?.click(); return }
@@ -420,7 +409,7 @@ const Sidebar: React.FC = () => {
     try {
       applyDocument(JSON.parse(picked.text))
       picked.accept()
-      setSavedName(savedFileName())
+      setSavedName(picked.name)
       showToast(t.toastImported, 'success')
     } catch { showToast(t.toastImportFailed, 'error') }
   }
@@ -429,8 +418,8 @@ const Sidebar: React.FC = () => {
   const handleImportJSON = (file: File) => {
     file.text().then((txt) => {
       applyDocument(JSON.parse(txt))
-      forgetSavedFile()
-      setSavedName(null)
+      rememberOpenedFile(file.name)
+      setSavedName(file.name)
       showToast(t.toastImported, 'success')
     }).catch(() => showToast(t.toastImportFailed, 'error'))
   }
@@ -1385,13 +1374,13 @@ const Sidebar: React.FC = () => {
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-500 uppercase font-bold">{t.projectGroup}</span>
             {savedName && (
-              <button onClick={() => handleSaveProject(true)} data-testid="save-as" title={t.hintSaveAs}
+              <button onClick={requestProjectSave} data-testid="save-as" title={t.hintSaveAs}
                 className="text-[10px] text-slate-500 hover:text-slate-300">{t.saveAs}</button>
             )}
           </div>
           <div className="grid grid-cols-3 gap-1.5">
-            <button onClick={() => handleSaveProject(false)} data-testid="export-project" title={savedName ? `${t.hintSave} — ${savedName}` : t.hintSave} className={FILE_BTN}>
-              <Save size={13} /> <span className="truncate">{savedName ?? t.exportJSON}</span>
+            <button onClick={requestProjectSave} data-testid="export-project" title={savedName ? `${t.hintSave} — ${savedName}` : t.hintSave} className={FILE_BTN}>
+              <Save size={13} /> <span className="truncate">{t.exportJSON}</span>
             </button>
             <button onClick={handleOpenProject} title={t.hintImport} data-testid="import-project" className={FILE_BTN}>
               <Upload size={13} /> {t.importJSON}

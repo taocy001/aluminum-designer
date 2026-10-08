@@ -4,10 +4,10 @@
   {
    "id": "p-mufs5qqx3x",
    "spec": "4040-B6",
-   "length": 2180,
+   "length": 2170,
    "position": [
     20,
-    0,
+    10,
     20
    ],
    "quaternion": [
@@ -22,10 +22,10 @@
   {
    "id": "p-mufs5rfu3y",
    "spec": "4040-B6",
-   "length": 2180,
+   "length": 2170,
    "position": [
     20,
-    0,
+    10,
     580
    ],
    "quaternion": [
@@ -40,10 +40,10 @@
   {
    "id": "p-mufs5s483z",
    "spec": "4040-B6",
-   "length": 2180,
+   "length": 2170,
    "position": [
     900,
-    0,
+    10,
     20
    ],
    "quaternion": [
@@ -58,10 +58,10 @@
   {
    "id": "p-mufs5stz40",
    "spec": "4040-B6",
-   "length": 2180,
+   "length": 2170,
    "position": [
     900,
-    0,
+    10,
     580
    ],
    "quaternion": [
@@ -76,10 +76,10 @@
   {
    "id": "p-mufs5tie41",
    "spec": "4040-B6",
-   "length": 2180,
+   "length": 2170,
    "position": [
     1780,
-    0,
+    10,
     20
    ],
    "quaternion": [
@@ -94,10 +94,10 @@
   {
    "id": "p-mufs5tvd42",
    "spec": "4040-B6",
-   "length": 2180,
+   "length": 2170,
    "position": [
     1780,
-    0,
+    10,
     580
    ],
    "quaternion": [
@@ -706,46 +706,6 @@
  ],
  "connectors": [
   {
-   "id": "c-frame-024",
-   "type": "inside-corner",
-   "position": [
-    39.5,
-    19.4,
-    10
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-025",
-   "type": "inside-corner",
-   "position": [
-    10,
-    19.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-frame-026",
    "type": "inside-corner",
    "position": [
@@ -757,46 +717,6 @@
     1.7431527984210492e-32,
     -1.570092458683775e-16,
     -0.7071067811865475,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-027",
-   "type": "inside-corner",
-   "position": [
-    39.5,
-    19.4,
-    570
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-028",
-   "type": "inside-corner",
-   "position": [
-    10,
-    19.4,
-    560.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
     0.7071067811865476
    ],
    "series": 20,
@@ -826,66 +746,6 @@
    ]
   },
   {
-   "id": "c-frame-030",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    19.4,
-    10
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-031",
-   "type": "inside-corner",
-   "position": [
-    919.5,
-    19.4,
-    10
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-032",
-   "type": "inside-corner",
-   "position": [
-    890,
-    19.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-frame-033",
    "type": "inside-corner",
    "position": [
@@ -897,66 +757,6 @@
     1.7431527984210492e-32,
     -1.570092458683775e-16,
     -0.7071067811865475,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-034",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    19.4,
-    570
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-035",
-   "type": "inside-corner",
-   "position": [
-    919.5,
-    19.4,
-    570
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-036",
-   "type": "inside-corner",
-   "position": [
-    890,
-    19.4,
-    560.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
     0.7071067811865476
    ],
    "series": 20,
@@ -986,46 +786,6 @@
    ]
   },
   {
-   "id": "c-frame-038",
-   "type": "inside-corner",
-   "position": [
-    1760.5,
-    19.4,
-    10
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-039",
-   "type": "inside-corner",
-   "position": [
-    1770,
-    19.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-frame-040",
    "type": "inside-corner",
    "position": [
@@ -1038,46 +798,6 @@
     0.7071067811865476,
     -1.5700924586837747e-16,
     0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-041",
-   "type": "inside-corner",
-   "position": [
-    1760.5,
-    19.4,
-    570
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-042",
-   "type": "inside-corner",
-   "position": [
-    1770,
-    19.4,
-    560.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
    ],
    "series": 20,
    "mountSeries": [
@@ -2066,46 +1786,6 @@
    ]
   },
   {
-   "id": "c-frame-092",
-   "type": "inside-corner",
-   "position": [
-    39.5,
-    19.4,
-    30
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-093",
-   "type": "inside-corner",
-   "position": [
-    30,
-    19.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-frame-094",
    "type": "inside-corner",
    "position": [
@@ -2117,46 +1797,6 @@
     1.7431527984210492e-32,
     -1.570092458683775e-16,
     -0.7071067811865475,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-095",
-   "type": "inside-corner",
-   "position": [
-    39.5,
-    19.4,
-    590
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-096",
-   "type": "inside-corner",
-   "position": [
-    30,
-    19.4,
-    560.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
     0.7071067811865476
    ],
    "series": 20,
@@ -2186,66 +1826,6 @@
    ]
   },
   {
-   "id": "c-frame-098",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    19.4,
-    30
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-099",
-   "type": "inside-corner",
-   "position": [
-    919.5,
-    19.4,
-    30
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-100",
-   "type": "inside-corner",
-   "position": [
-    910,
-    19.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-frame-101",
    "type": "inside-corner",
    "position": [
@@ -2257,66 +1837,6 @@
     1.7431527984210492e-32,
     -1.570092458683775e-16,
     -0.7071067811865475,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-102",
-   "type": "inside-corner",
-   "position": [
-    880.5,
-    19.4,
-    590
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-103",
-   "type": "inside-corner",
-   "position": [
-    919.5,
-    19.4,
-    590
-   ],
-   "quaternion": [
-    -1.1102230246251564e-16,
-    1.1102230246251565e-16,
-    -5.551115123125783e-17,
-    1
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-104",
-   "type": "inside-corner",
-   "position": [
-    910,
-    19.4,
-    560.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
     0.7071067811865476
    ],
    "series": 20,
@@ -2346,46 +1866,6 @@
    ]
   },
   {
-   "id": "c-frame-106",
-   "type": "inside-corner",
-   "position": [
-    1760.5,
-    19.4,
-    30
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-107",
-   "type": "inside-corner",
-   "position": [
-    1790,
-    19.4,
-    39.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    -0.7071067811865475,
-    0,
-    0.7071067811865476
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
    "id": "c-frame-108",
    "type": "inside-corner",
    "position": [
@@ -2398,46 +1878,6 @@
     0.7071067811865476,
     -1.5700924586837747e-16,
     0
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-109",
-   "type": "inside-corner",
-   "position": [
-    1760.5,
-    19.4,
-    590
-   ],
-   "quaternion": [
-    5.551115123125783e-17,
-    1,
-    -1.1102230246251564e-16,
-    -1.1102230246251565e-16
-   ],
-   "series": 20,
-   "mountSeries": [
-    20,
-    20
-   ]
-  },
-  {
-   "id": "c-frame-110",
-   "type": "inside-corner",
-   "position": [
-    1790,
-    19.4,
-    560.5
-   ],
-   "quaternion": [
-    -7.850462293418875e-17,
-    0.7071067811865475,
-    0,
-    0.7071067811865476
    ],
    "series": 20,
    "mountSeries": [
@@ -5472,6 +4912,678 @@
     "spacer": 1,
     "boardThickness": 18
    }
+  },
+  {
+   "id": "wardrobe-2-door-base-1",
+   "type": "inside-corner",
+   "position": [
+    39.4,
+    19.5,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5qqx3x",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    10.000000000000002,
+    9.999999999999998
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-2",
+   "type": "inside-corner",
+   "position": [
+    39.4,
+    19.5,
+    30
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5qqx3x",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    -10,
+    -10.000000000000004
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-3",
+   "type": "inside-corner",
+   "position": [
+    39.4,
+    19.5,
+    570
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5rfu3y",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    10,
+    10
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-4",
+   "type": "inside-corner",
+   "position": [
+    39.4,
+    19.5,
+    590
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5rfu3y",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    -10,
+    -10
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-5",
+   "type": "inside-corner",
+   "position": [
+    880.6,
+    19.5,
+    10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5s483z",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    -10.0000000000001,
+    -9.9999999999999
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-6",
+   "type": "inside-corner",
+   "position": [
+    880.6,
+    19.5,
+    30
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5s483z",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    9.9999999999999,
+    10.0000000000001
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-7",
+   "type": "inside-corner",
+   "position": [
+    919.4,
+    19.5,
+    10
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5s483z",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    10.0000000000001,
+    9.9999999999999
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-8",
+   "type": "inside-corner",
+   "position": [
+    919.4,
+    19.5,
+    30
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5s483z",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    -9.9999999999999,
+    -10.0000000000001
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-9",
+   "type": "inside-corner",
+   "position": [
+    880.6,
+    19.5,
+    570
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5stz40",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    -10.000000000000114,
+    -9.999999999999886
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-10",
+   "type": "inside-corner",
+   "position": [
+    880.6,
+    19.5,
+    590
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5stz40",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    9.999999999999886,
+    10.000000000000114
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-11",
+   "type": "inside-corner",
+   "position": [
+    919.4,
+    19.5,
+    570
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5stz40",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    10.000000000000114,
+    9.999999999999886
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-12",
+   "type": "inside-corner",
+   "position": [
+    919.4,
+    19.5,
+    590
+   ],
+   "quaternion": [
+    0.7071067811865476,
+    0.7071067811865475,
+    -1.570092458683775e-16,
+    -1.7431527984210492e-32
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5stz40",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    -9.999999999999886,
+    -10.000000000000114
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-13",
+   "type": "inside-corner",
+   "position": [
+    1760.6,
+    19.5,
+    10
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5tie41",
+    "p-mufs5v5y44"
+   ],
+   "slotOffsets": [
+    -10.000000000000098,
+    -9.999999999999902
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-14",
+   "type": "inside-corner",
+   "position": [
+    1760.6,
+    19.5,
+    30
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5tie41",
+    "p-mufs5v5y44"
+   ],
+   "slotOffsets": [
+    9.9999999999999,
+    10.000000000000096
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-15",
+   "type": "inside-corner",
+   "position": [
+    1760.6,
+    19.5,
+    570
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5tvd42",
+    "p-mufs5vuo46"
+   ],
+   "slotOffsets": [
+    -10.000000000000114,
+    -9.999999999999886
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-16",
+   "type": "inside-corner",
+   "position": [
+    1760.6,
+    19.5,
+    590
+   ],
+   "quaternion": [
+    1.7431527984210492e-32,
+    1.570092458683775e-16,
+    0.7071067811865475,
+    0.7071067811865476
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5tvd42",
+    "p-mufs5vuo46"
+   ],
+   "slotOffsets": [
+    9.999999999999886,
+    10.000000000000114
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-17",
+   "type": "inside-corner",
+   "position": [
+    39.4,
+    10,
+    39.5
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.4999999999999999,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5wdg47",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    -1.7763568394002505e-15,
+    1.7763568394002505e-15
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-18",
+   "type": "inside-corner",
+   "position": [
+    880.6,
+    10,
+    39.5
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5ws648",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    9.947598300641403e-14,
+    -9.947598300641403e-14
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-19",
+   "type": "inside-corner",
+   "position": [
+    919.4,
+    10,
+    39.5
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    0.4999999999999999,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5ws648",
+    "p-mufs5urf43"
+   ],
+   "slotOffsets": [
+    -9.947598300641403e-14,
+    9.947598300641403e-14
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-20",
+   "type": "inside-corner",
+   "position": [
+    1760.6,
+    10,
+    39.5
+   ],
+   "quaternion": [
+    0.5000000000000001,
+    -0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5xb749",
+    "p-mufs5v5y44"
+   ],
+   "slotOffsets": [
+    9.592326932761353e-14,
+    -9.769962616701378e-14
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-21",
+   "type": "inside-corner",
+   "position": [
+    39.4,
+    10,
+    560.5
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5wdg47",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    1.7763568394002505e-15,
+    -1.7763568394002505e-15
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-22",
+   "type": "inside-corner",
+   "position": [
+    880.6,
+    10,
+    560.5
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5ws648",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    -9.947598300641403e-14,
+    9.947598300641403e-14
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-23",
+   "type": "inside-corner",
+   "position": [
+    919.4,
+    10,
+    560.5
+   ],
+   "quaternion": [
+    -0.5000000000000001,
+    -0.5000000000000001,
+    0.5,
+    -0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5ws648",
+    "p-mufs5vix45"
+   ],
+   "slotOffsets": [
+    9.947598300641403e-14,
+    -9.947598300641403e-14
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
+  },
+  {
+   "id": "wardrobe-2-door-base-24",
+   "type": "inside-corner",
+   "position": [
+    1760.6,
+    10,
+    560.5
+   ],
+   "quaternion": [
+    -0.4999999999999999,
+    0.5000000000000001,
+    0.5,
+    0.5
+   ],
+   "series": 20,
+   "legs": [
+    "p-mufs5xb749",
+    "p-mufs5vuo46"
+   ],
+   "slotOffsets": [
+    -9.592326932761353e-14,
+    9.769962616701378e-14
+   ],
+   "mountSeries": [
+    20,
+    20
+   ]
   }
  ],
  "panels": [

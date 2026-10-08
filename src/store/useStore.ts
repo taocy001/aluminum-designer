@@ -1,3 +1,4 @@
+import { forgetSavedFile } from '../utils/projectFile'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { parseProjectDocument, PROJECT_VERSION, type ProjectDocument, type ProjectGeometry } from '../utils/document'
@@ -217,6 +218,7 @@ export interface PartUpdates {
 }
 export interface LiveEditOptions { history?: boolean }
 interface State {
+  projectName: string | null
   profiles: ProfileData[]
   connectors: ConnectorData[]
   panels: PanelData[]
@@ -323,7 +325,7 @@ export const useStore = create<State>()(
       }
       const edit = (updates: PartUpdates, history = true) => transact((state) => updatedParts(state, updates), history)
       return {
-        profiles: [], connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails', selectedIds: [], past: [], future: [],
+        projectName: null, profiles: [], connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails', selectedIds: [], past: [], future: [],
         setThroughRule: (throughRule) => transact((state) => state.throughRule === throughRule ? {} : {
           throughRule, profiles: automaticUnlockedCuts(state.profiles, state.throughRule),
         }),
@@ -349,7 +351,8 @@ export const useStore = create<State>()(
         }),
         loadDocument: (doc) => {
           const checked = parseProjectDocument(doc)
-          set((state) => ({ ...checked, past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [], selectedIds: [] }))
+          forgetSavedFile()
+          set((state) => ({ ...checked, projectName: null, past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [], selectedIds: [] }))
         },
         removeProfile: (id) => transact((state) => state.profiles.some((p) => p.id === id && !p.locked)
           ? { profiles: withFixedProfileCuts(state.profiles, undefined, state.throughRule).filter((p) => p.id !== id) } : {}, true,
@@ -401,7 +404,7 @@ export const useStore = create<State>()(
     },
     {
       name: 'aluminum-designer-store', storage: documentStorage,
-      partialize: (state) => ({ version: PROJECT_VERSION, profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, equipment: state.equipment, throughRule: state.throughRule }),
+      partialize: (state) => ({ projectName: state.projectName, version: PROJECT_VERSION, profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, equipment: state.equipment, throughRule: state.throughRule }),
     },
   ),
 )

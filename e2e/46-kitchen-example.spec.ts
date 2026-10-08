@@ -111,7 +111,7 @@ test('kitchen file opens all fronts toward the user with attached drawer boxes',
   expect(csv).toContain('942 × 314.5 mm')
   expect(csv).toContain('942 × 334.5 mm')
   expect(csv).toContain('875 × 600 mm')
-  const [project] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click()])
+  const [project] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())])
   await project.saveAs(test.info().outputPath('kitchen-roundtrip.json'))
   const path = (await project.path())!
   await page.getByTestId('clear-all').click()

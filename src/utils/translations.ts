@@ -417,6 +417,7 @@ const en = {
     'X/Y/Z keys lock the axis · Right-drag pans · Esc puts the part down',
   ],
   guideNavigate: [
+    'Ctrl/Cmd+S opens the save dialog',
     'Click to select · Shift+Click toggles selection · pick a part in the panel to draw',
     'Drag a member to move it (snaps flush) · drag the green arrow to move it vertically',
     'Shift+Drag places freely · end handles stretch · arcs rotate',
@@ -855,6 +856,7 @@ const zh: typeof en = {
     'X/Y/Z 键锁定方向 · 右键拖动平移视角 · Esc 放下零件',
   ],
   guideNavigate: [
+    'Ctrl/Cmd+S 打开保存窗口',
     '点击选中 · Shift+点击 多选 · 在左侧选规格即可开画',
     '拖动型材移动（自动贴合）· 拖绿色箭头即垂直移动',
     'Shift+拖动 自由摆放（不吸附）· 端面手柄拉伸 · 弧线旋转',

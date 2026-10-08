@@ -238,7 +238,7 @@ BOM 的补件行是按对接端、自由端和已放置数量推算的建议。�
 - `TransformGizmo`、`ResizeHandles`、`QuickMenu`：变换手柄及快捷操作。
 - `Profile`、`Connector`、`Panel`、`Fitting`、`Equipment`：零件与设备渲染。
 - `SnapMarker`、`SnapFaces`、`FrameDimensions`、`PartNumberLabels`、`TextSprite`、`LabelLayout`：吸附面及标注。
-- `Sidebar`：目录、模板、属性、检查与文件操作；`Gestures` 处理触屏手势；`RecoveryNotice` 处理存档恢复。
+- `ProjectFileBar`：当前文件名、保存窗口及 Ctrl/⌘ + S；文件名通过 `documentPersistence.ts` 保存在浏览器，文件句柄只在当前页面会话中保留。`Sidebar`：目录、模板、属性、检查与文件操作；`Gestures` 处理触屏手势；`RecoveryNotice` 处理存档恢复。
 - `src/utils/`：以上几何、检查、编辑及导出模块，另含 `profileShapes/specUtils` 截面表、`selectionBounds` 范围、`templates` 模板、`measure` 测量、`translations` 中英文文案。
 
 ## 开发、验证与部署

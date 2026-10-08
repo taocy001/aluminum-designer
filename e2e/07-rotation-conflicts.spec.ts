@@ -265,7 +265,7 @@ test.describe('Rotated parts survive a save/open round trip', () => {
     const before = (await store(page)).profiles.map((p) => [p.position.map(r), p.quaternion.map((v: number) => Math.round(v * 1000))])
     const conflictsBefore = (await conflicts(page)).conflicts.length
 
-    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click()])
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())])
     const path = await dl.path()
     await page.getByTestId('clear-all').click()
     await page.getByTestId('clear-all').click()

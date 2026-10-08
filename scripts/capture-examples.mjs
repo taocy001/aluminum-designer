@@ -19,6 +19,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 let complete = false
 try {
   const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } })
+  page.setDefaultTimeout(120_000)
   // A static capture must not reload when the dev server broadcasts file changes.
   await page.routeWebSocket('**/*', (socket) => socket.close())
   await page.goto(baseURL)
@@ -31,14 +32,15 @@ try {
     const { _roots } = await import(moduleURL)
     for (const root of _roots.values()) root.store.getState().setFrameloop('demand')
   })
-  const show = async (source) => {
-    const result = await page.evaluate(async (source) => {
+  const show = async (source, filename) => {
+    const result = await page.evaluate(async ({ source, filename }) => {
       const { parseProjectDocument } = await import('/src/utils/document.ts')
       const { buildBom, bomToCsv } = await import('/src/utils/bom.ts')
       const { computeAllTrims, computeFrameBounds } = await import('/src/utils/jointUtils.ts')
       const doc = parseProjectDocument(source)
       const { store, tool } = window.__aluframe
       store.getState().loadDocument(doc)
+      store.setState({ projectName: filename ?? null })
       tool.getState().setLanguage('zh')
       tool.getState().setViewMode(true)
       tool.setState({ showDimensionLabels: false, showFittings: true, buildStep: null })
@@ -48,14 +50,14 @@ try {
       const size = box ? [box.max.x - box.min.x, box.max.z - box.min.z, box.max.y - box.min.y] : []
       const overall = size.map((v) => Math.round(v * 1000) / 1000).join('x')
       return bomToCsv(buildBom(doc.profiles, doc.connectors, trims, 'zh', doc.panels, doc.fittings), overall)
-    }, source)
+    }, { source, filename })
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     await page.mouse.move(1, 1)
     return result
   }
   for (const name of names) {
     const source = JSON.parse(readFileSync(`examples/${name}.json`, 'utf8'))
-    const csv = await show(source)
+    const csv = await show(source, `${name}.json`)
     await page.screenshot({ path: join(output, `${name}.png`) })
     writeFileSync(join(output, `${name}-bom.csv`), '\ufeff' + csv + '\n')
     console.log(`Refreshed ${name}`)
@@ -136,7 +138,7 @@ try {
   await page.setViewportSize({ width: 1000, height: 700 })
   const flatImages = []
   for (const name of readdirSync('examples/flat').filter((name) => name.endsWith('.json')).sort()) {
-    await show(JSON.parse(readFileSync(`examples/flat/${name}`, 'utf8')))
+    await show(JSON.parse(readFileSync(`examples/flat/${name}`, 'utf8')), name)
     const src = await page.evaluate(async () => {
       const viewport = await (await fetch('/src/components/Viewport.tsx')).text()
       const moduleURL = viewport.match(/from "([^"]*react-three_fiber[^"]*)"/)?.[1]

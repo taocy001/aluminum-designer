@@ -39,7 +39,7 @@ test('equipment creation, editing, lock, rotation and persistence use the displa
   expect(final.quaternion[3]).toBeCloseTo(Math.SQRT1_2)
 
   const downloadEvent = page.waitForEvent('download')
-  await page.getByTestId('export-project').click()
+  await page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())
   const download = await downloadEvent
   const stream = await download.createReadStream(), chunks: Buffer[] = []
   for await (const chunk of stream!) chunks.push(chunk)

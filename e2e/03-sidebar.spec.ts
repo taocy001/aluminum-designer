@@ -131,7 +131,7 @@ test.describe('BOM, project files, clear', () => {
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await drawExact(page, [0, 10, 0], [0, 300, 0], 700)
     const before = (await store(page)).profiles
-    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click()])
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())])
     const path = await dl.path()
     const doc = JSON.parse(fs.readFileSync(path!, 'utf8'))
     expect(doc.profiles).toHaveLength(2)

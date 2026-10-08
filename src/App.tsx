@@ -1,3 +1,4 @@
+import ProjectFileBar from './components/ProjectFileBar'
 import OverlapPicker from './components/OverlapPicker'
 import { reportEditResult } from './utils/editFeedback'
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
@@ -467,6 +468,7 @@ function App() {
         </div>
       </header>
       <RecoveryNotice />
+      <ProjectFileBar />
       <AutoSaveStatus />
 
       {/* Side by side where there is room, stacked where there is not: on a phone the

@@ -196,3 +196,23 @@ describe('successful save tracking', () => {
     expect(disk.data.has('project')).toBe(false)
   })
 })
+
+describe('current project file name', () => {
+  it('persists a name change without geometry changes and restores only the name, not a disk handle', () => {
+    const disk = backing()
+    const storage = projectStorage(() => disk)
+    const doc = drawing()
+    storage.setItem('project', value({ ...doc, projectName: 'first.json' } as ProjectDocument))
+    storage.flush()
+    storage.setItem('project', value({ ...doc, projectName: 'second.json' } as ProjectDocument))
+    storage.flush()
+    expect(disk.setItem).toHaveBeenCalledTimes(2)
+    expect(storage.getItem('project')).toMatchObject({ state: { projectName: 'second.json', profiles: doc.profiles } })
+  })
+
+  it('does not restore a path as a file name', () => {
+    const disk = backing()
+    disk.data.set('project', JSON.stringify(value({ ...drawing(), projectName: '/private/file.json' } as ProjectDocument)))
+    expect(projectStorage(() => disk).getItem('project')).not.toHaveProperty('state.projectName')
+  })
+})

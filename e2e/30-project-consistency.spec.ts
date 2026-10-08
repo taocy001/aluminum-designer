@@ -24,7 +24,7 @@ test('贯通规则、显示、导出、保存恢复与撤销使用同一个工�
   await page.getByTestId('through-posts').click()
   await expect(page.getByTestId('section-bom-body')).toContainText('580')
   const downloadEvent = page.waitForEvent('download')
-  await page.getByTestId('export-project').click()
+  await page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())
   const download = await downloadEvent
   const stream = await download.createReadStream()
   const chunks: Buffer[] = []

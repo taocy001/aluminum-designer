@@ -54,7 +54,7 @@ test('split a wide door, undo, reopen and export the two actual leaf sizes', asy
   await expect.poll(async () => (await store(page)).fittings).toEqual(after.fittings)
   const [bom] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-bom').click()])
   expect(readFileSync((await bom.path())!, 'utf8')).toContain('870 × 478.5 mm')
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click()])
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())])
   const path = (await download.path())!
   expect(JSON.parse(readFileSync(path, 'utf8')).fittings).toEqual(after.fittings)
   await page.locator('input[type=file][accept="application/json,.json"]').setInputFiles(path)

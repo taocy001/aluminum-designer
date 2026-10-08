@@ -71,7 +71,7 @@ test('explicit door boundaries follow source edits, undo, save and reload', asyn
   expect((await store(page)).fittings).toEqual(resized.fittings)
 
   const downloadEvent = page.waitForEvent('download')
-  await page.getByTestId('export-project').click()
+  await page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())
   const download = await downloadEvent
   const stream = await download.createReadStream(), chunks: Buffer[] = []
   for await (const chunk of stream!) chunks.push(chunk)

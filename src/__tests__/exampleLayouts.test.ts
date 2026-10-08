@@ -138,7 +138,7 @@ describe('example cabinet layouts', () => {
     const left = Math.max(...posts.filter(({ p }) => p.position[0] === columns[0]).map(({ box }) => box.max.x))
     const right = Math.min(...posts.filter(({ p }) => p.position[0] === columns[1]).map(({ box }) => box.min.x))
     expect(right - left).toBeCloseTo(width, 6)
-    const floor = Math.min(...posts.map(({ box }) => box.min.y))
+    const floor = Math.min(...bodies.map(({ box }) => box.min.y))
     const front = frontSign > 0 ? Math.max(...posts.map(({ box }) => box.max.z)) : Math.min(...posts.map(({ box }) => box.min.z))
     const rear = frontSign > 0 ? Math.min(...posts.map(({ p }) => p.position[2])) : Math.max(...posts.map(({ p }) => p.position[2]))
     const crossRails = bodies.filter(({ p, box }) => Math.abs(getProfileDir(p).x) > 0.999
