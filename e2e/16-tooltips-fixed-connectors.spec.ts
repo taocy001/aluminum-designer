@@ -62,6 +62,7 @@ test.describe('Every control says what it does', () => {
     await page.getByTestId('spec-2040').hover()
     await expect(page.getByTestId('tooltip')).toContainText('2040', { timeout: 2000 })
     await page.mouse.move(900, 600)
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('section-bom').hover()
     await expect(page.getByTestId('tooltip')).toBeVisible({ timeout: 2000 })
   })

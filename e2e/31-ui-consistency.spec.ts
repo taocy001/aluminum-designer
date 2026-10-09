@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, store, tool, setView, w2c, dragHold } from './helpers'
+import { configureFitting, openApp, store, tool, setView, w2c, dragHold } from './helpers'
 
 async function beam(page: Page) {
   await page.evaluate(() => {
@@ -135,6 +135,7 @@ test.describe('Editing and focused controls', () => {
       s.selectItems(['a'])
     })
     const before = await store(page)
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('stock-length').focus()
     await page.keyboard.press('Control+a')
     expect((await store(page)).selectedIds).toEqual(['a'])
@@ -161,7 +162,8 @@ test.describe('Editing and focused controls', () => {
     const from = await w2c(page, [300, 10, 0])
     await dragHold(page, from, { x: from.x + 90, y: from.y })
     expect((await tool(page)).isDragging).toBe(true)
-    await page.keyboard.press('v')
+    // A UI mode change cancels the gesture; keyboard mode shortcuts wait until it ends.
+    await page.evaluate(() => (window as any).__aluframe.tool.getState().setViewMode(true))
     expect((await tool(page)).isDragging).toBe(false)
     const stopped = await store(page)
     await page.mouse.move(from.x + 160, from.y + 30)
@@ -174,7 +176,7 @@ test.describe('Editing and focused controls', () => {
     await beam(page)
     const from = await w2c(page, [300, 10, 0])
     await dragHold(page, from, { x: from.x + 90, y: from.y })
-    await page.keyboard.press('l')
+    await page.evaluate(() => (window as any).__aluframe.store.getState().toggleLockSelected())
     const locked = await store(page)
     expect(locked.profiles[0].locked).toBe(true)
     await page.mouse.move(from.x + 180, from.y + 30)
@@ -204,7 +206,7 @@ test.describe('Editing and focused controls', () => {
     const before = await store(page)
     await page.mouse.move(from.x, from.y)
     await page.mouse.down()
-    await page.keyboard.press('v')
+    await page.evaluate(() => (window as any).__aluframe.tool.getState().setViewMode(true))
     await page.mouse.up()
     expect((await store(page)).profiles).toEqual(before.profiles)
     expect((await store(page)).past).toBe(before.past)
@@ -218,15 +220,19 @@ test.describe('Editing and focused controls', () => {
       s.selectItems(s.profiles.map((p: any) => p.id))
     })
     const before = await store(page)
+    await configureFitting(page, 'drawer')
     await page.getByTestId('drawer-height').fill('')
     await expect(page.getByTestId('add-drawer')).toBeDisabled()
+    await configureFitting(page, 'drawer')
     await page.getByTestId('drawer-height').fill('200')
     await page.getByTestId('drawer-count').fill('1.5')
     await expect(page.getByTestId('add-drawer')).toBeDisabled()
     expect((await store(page)).fittings).toEqual(before.fittings)
     expect((await store(page)).past).toBe(before.past)
+    await configureFitting(page, 'drawer')
     await page.getByTestId('drawer-count').fill('1')
     await expect(page.getByTestId('add-drawer')).toBeEnabled()
+    await configureFitting(page, 'drawer')
     await page.getByTestId('add-drawer').click()
     expect((await store(page)).fittings).toHaveLength(1)
   })

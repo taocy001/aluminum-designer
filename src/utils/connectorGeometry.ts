@@ -110,6 +110,25 @@ export function connectorMeshes(type: string, series: ConnectorSeries = 20, prof
   return meshCache.get(key)!
 }
 
+// Translation does not change local support height. Bound orientations per geometry
+// so rotating a part cannot retain an unlimited number of cached directions.
+const supportHeights = new WeakMap<THREE.BufferGeometry, Map<string, number>>()
+function supportHeight(geometry: THREE.BufferGeometry, up: THREE.Vector3): number {
+  let heights = supportHeights.get(geometry)
+  if (!heights) { heights = new Map(); supportHeights.set(geometry, heights) }
+  const key = `${up.x},${up.y},${up.z}`
+  const cached = heights.get(key)
+  if (cached !== undefined) return cached
+  const positions = geometry.getAttribute('position')
+  let top = -Infinity
+  for (let i = 0; i < positions.count; i++) {
+    top = Math.max(top, positions.getX(i) * up.x + positions.getY(i) * up.y + positions.getZ(i) * up.z)
+  }
+  if (heights.size >= 32) heights.delete(heights.keys().next().value!)
+  heights.set(key, top)
+  return top
+}
+
 /** Maximum world Y of rendered vertices, including curved parts, rotation and series. */
 export function connectorSolidTop(connector: ConnectorData): number {
   const quat = new THREE.Quaternion(...connector.quaternion).normalize()
@@ -117,11 +136,7 @@ export function connectorSolidTop(connector: ConnectorData): number {
   const scale = connectorScale(connector.series ?? 20)
   let top = -Infinity
   for (const { geometry } of connectorMeshes(connector.type, connector.series, connector.profileSpec, connector.mountSeries, connector.panelMount)) {
-    const positions = geometry.getAttribute('position')
-    for (let i = 0; i < positions.count; i++) {
-      const y = positions.getX(i) * up.x + positions.getY(i) * up.y + positions.getZ(i) * up.z
-      top = Math.max(top, connector.position[1] + y * scale)
-    }
+    top = Math.max(top, connector.position[1] + supportHeight(geometry, up) * scale)
   }
   return top
 }

@@ -50,14 +50,16 @@ test('split a wide door, undo, reopen and export the two actual leaf sizes', asy
 
   await page.getByTitle('撤销 (Ctrl+Z)', { exact: true }).click()
   await expect.poll(async () => (await store(page)).fittings).toEqual([original])
-  await page.getByTitle('重做 (Ctrl+Y)', { exact: true }).click()
+  await page.getByRole('button', { name: '重做', exact: true }).click()
   await expect.poll(async () => (await store(page)).fittings).toEqual(after.fittings)
+  await page.getByTestId('sidebar-tab-inspect').click()
   const [bom] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-bom').click()])
   expect(readFileSync((await bom.path())!, 'utf8')).toContain('870 × 478.5 mm')
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())])
   const path = (await download.path())!
   expect(JSON.parse(readFileSync(path, 'utf8')).fittings).toEqual(after.fittings)
   await page.locator('input[type=file][accept="application/json,.json"]').setInputFiles(path)
+  await page.getByTestId('switch-keep-draft').click()
   await expect.poll(async () => (await store(page)).fittings).toEqual(after.fittings)
   expect(errors).toEqual([])
   await page.screenshot({ path: test.info().outputPath('double-door.png') })

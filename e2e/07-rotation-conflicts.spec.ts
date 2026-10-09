@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
+import { Vector3 } from 'three'
+import { buildProfile } from '../src/utils/profileFactory'
+import { deriveSupport } from '../src/utils/openingBindings'
 import { chooseConnector, openApp, setView, enterDraw, drawMember, drawExact, clickWorld, dragWorld, settle, store, tool, conflicts, w2c, r , useDownloadFallback } from './helpers'
 
 async function toNavigate(page: Page) {
@@ -134,29 +137,21 @@ test.describe('Free rotation about any axis', () => {
   })
 
   test('connector fine dragging keeps rounded no-ops and records 0.1 mm edits atomically', async ({ page }) => {
-    await page.evaluate(async () => {
-      const threePath = '/node_modules/three/build/three.module.js'
-      const factoryPath = '/src/utils/profileFactory.ts'
-      const bindingPath = '/src/utils/openingBindings.ts'
-      const [T, { buildProfile }, { deriveSupport }] = await Promise.all([
-        import(threePath), import(factoryPath), import(bindingPath),
-      ])
+    const p = { ...buildProfile(new Vector3(0, 100, 0), new Vector3(0, 600, 0), '2020')!, id: 'p' }
+    const c = deriveSupport({ id: 'c', type: 'bracket', series: 20, position: [0, 0, 0], quaternion: [0, 0, 0, 1],
+      supportBinding: { profileId: 'p', end: 'start', localPosition: [10, 10, 10], localQuaternion: [0, 0, 0, 1] } }, p)!
+    await page.evaluate(({ p, c }) => {
       const app = (window as any).__aluframe
-      const p = { ...buildProfile(new T.Vector3(0, 100, 0), new T.Vector3(0, 600, 0), '2020'), id: 'p' }
-      const c = deriveSupport({ id: 'c', type: 'bracket', series: 20, position: [0, 0, 0], quaternion: [0, 0, 0, 1],
-        supportBinding: { profileId: 'p', end: 'start', localPosition: [10, 10, 10], localQuaternion: [0, 0, 0, 1] } }, p)
       app.tool.getState().putDown()
       app.store.setState({ profiles: [p], connectors: [c], panels: [], fittings: [], equipment: [],
         selectedIds: ['c'], past: [], future: [], throughRule: 'rails' })
       app.setView([150, 350, 350], c.position)
-    })
+    }, { p, c })
     await settle(page)
     const before = (await store(page)).connectors[0]
     const move = async (offset: number) => {
       const target = await page.evaluate(async (dx) => {
-        const threePath = '/node_modules/three/build/three.module.js'
-        const T = await import(threePath)
-        const app = (window as any).__aluframe, c = app.store.getState().connectors[0]
+        const app = (window as any).__aluframe, T = app.THREE, c = app.store.getState().connectors[0]
         const p = new T.Vector3(...c.position)
         app.tool.getState().startDrag({ id: c.id, kind: 'connector', hit: p, origin: p, groupOrigins: { [c.id]: c.position },
           plane: new T.Plane(new T.Vector3(0, 1, 0), -p.y), vertical: false, free: false, axis: 'x' })
@@ -223,6 +218,7 @@ test.describe('Interference is reported, never blocked', () => {
     expect(c.conflicts[0].depth).toBeGreaterThan(0)
     await expect(page.getByTestId('toasts')).toContainText('干涉')
     await expect(page.getByTestId('bom-penetrations')).toHaveText('1 处')
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('bom-penetrations').click()
     expect((await store(page)).selectedIds.sort()).toEqual(c.ids.sort())
   })
@@ -267,6 +263,7 @@ test.describe('Rotated parts survive a save/open round trip', () => {
 
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click().then(() => page.getByTestId('save-confirm').click())])
     const path = await dl.path()
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('clear-all').click()
     await page.getByTestId('clear-all').click()
     expect((await store(page)).profiles).toHaveLength(0)
@@ -421,6 +418,7 @@ test.describe('The panel counts what the canvas paints', () => {
     const c = await conflicts(page)
     expect(c.ids).toContain('b-through')
     await expect(page.getByTestId('bom-penetrations')).toHaveText('1 处')
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('bom-penetrations').click()
     expect((await store(page)).selectedIds).toContain('b-through')
   })

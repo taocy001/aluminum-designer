@@ -1,6 +1,7 @@
 import { cancelActiveTransformGesture } from '../utils/transformGesture'
+import { commands, commandReason, commandShortcut, keyCommand, runCommand } from '../utils/commands'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Box, ChevronDown, FileJson, FolderOpen, Languages, Link2, Save, Undo2, Redo2, X, Download, HardDrive } from 'lucide-react'
+import { Box, ChevronDown, FileJson, FolderOpen, Languages, Link2, Save, Undo2, Redo2, X, Download, HardDrive, Search } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
@@ -22,9 +23,10 @@ export default function EditorHeader() {
   const switchDialog = useRef<HTMLDialogElement>(null)
   const draftsDialog = useRef<HTMLDialogElement>(null)
   const name = useStore(s => s.projectName)
-  const canUndo = useStore(s => s.past.length > 0)
-  const canRedo = useStore(s => s.future.length > 0)
-  const { language, setLanguage, viewMode, showToast } = useToolStore()
+  useStore(s => [s.past.length, s.future.length].join(','))
+  const undoReason = commandReason(commands.find(c => c.id === 'undo')!)
+  const redoReason = commandReason(commands.find(c => c.id === 'redo')!)
+  const { language, setLanguage, showToast } = useToolStore()
   const zh = language === 'zh'
   const t = translations[language]
   const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -103,13 +105,23 @@ export default function EditorHeader() {
     } catch { showToast(t.toastClipboardFailed, 'error') }
   }
   useEffect(() => {
-    const keydown = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.repeat || document.querySelector('dialog[open]')) return
-      if (e.key.toLowerCase() === 's') { e.preventDefault(); request(e.shiftKey) }
-      if (e.key.toLowerCase() === 'o') { e.preventDefault(); void openFile() }
+    const projectCommand = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail
+      if (document.querySelector('dialog[open]')) return
+      if (id === 'open') void openFile()
+      if (id === 'save' || id === 'save-as') request(id === 'save-as')
     }
+    const keydown = (event: KeyboardEvent) => {
+      if (event.repeat || event.isComposing || document.querySelector('dialog[open]')) return
+      const id = keyCommand(event)
+      if (id && ['open', 'save', 'save-as'].includes(id)) { event.preventDefault(); runCommand(id) }
+    }
+    window.addEventListener('aluframe:project-command', projectCommand)
     window.addEventListener('keydown', keydown)
-    return () => window.removeEventListener('keydown', keydown)
+    return () => {
+      window.removeEventListener('aluframe:project-command', projectCommand)
+      window.removeEventListener('keydown', keydown)
+    }
   })
   useEffect(() => {
     if (!menuOpen) return
@@ -168,8 +180,8 @@ export default function EditorHeader() {
         {menuOpen && <div id="project-file-menu" role="menu" aria-label={zh ? '文件' : 'File'} className="file-menu"
           onKeyDown={e => {
             e.stopPropagation()
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); request(e.shiftKey); return }
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); void openFile(); return }
+            const command = keyCommand(e.nativeEvent)
+            if (command && ['open', 'save', 'save-as'].includes(command)) { e.preventDefault(); if (!e.repeat) runCommand(command); return }
             const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')]
             const index = items.indexOf(document.activeElement as HTMLButtonElement)
             if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
@@ -180,11 +192,11 @@ export default function EditorHeader() {
             if (e.key === 'Escape') { e.preventDefault(); closeMenu() }
             if (e.key === 'Tab') setMenuOpen(false)
           }}>
-          <button role="menuitem" className={item} data-testid="import-project" onClick={() => void openFile()}><FolderOpen size={16} /><span>{zh ? '打开工程…' : 'Open project…'}</span><kbd>{mod}O</kbd></button>
+          <button role="menuitem" className={item} data-testid="import-project" onClick={() => runCommand("open")}><FolderOpen size={16} /><span>{zh ? '打开工程…' : 'Open project…'}</span><kbd>{commandShortcut('open')}</kbd></button>
           <button role="menuitem" className={item} data-testid="restore-drafts" onClick={() => { closeMenu(); setDrafts(projectSession.listDrafts()); setDraftsOpen(true) }}><HardDrive size={16} /><span>{zh ? '恢复草稿…' : 'Restore draft…'}</span></button>
           <div className="file-menu-divider" />
-          <button role="menuitem" className={item} onClick={() => request()}><Save size={16} /><span>{zh ? '保存…' : 'Save…'}</span><kbd>{mod}S</kbd></button>
-          <button role="menuitem" className={item} data-testid="save-as" onClick={() => request(true)}><FileJson size={16} /><span>{zh ? '另存为…' : 'Save as…'}</span><kbd>{mod}⇧S</kbd></button>
+          <button role="menuitem" className={item} onClick={() => runCommand("save")}><Save size={16} /><span>{zh ? '保存…' : 'Save…'}</span><kbd>{commandShortcut('save')}</kbd></button>
+          <button role="menuitem" className={item} data-testid="save-as" onClick={() => runCommand("save-as")}><FileJson size={16} /><span>{zh ? '另存为…' : 'Save as…'}</span><kbd>{commandShortcut('save-as')}</kbd></button>
           <div className="file-menu-divider" />
           {(['bom', 'cutting', 'dxf', 'step', 'assembly'] as const).map((kind, index) => <button key={kind} role="menuitem" className={item} data-testid={`export-${kind}`}
             disabled={kind === 'cutting' ? !counts[0] : kind === 'dxf' || kind === 'step' ? !counts.slice(0, 4).some(Boolean) : !hasParts}
@@ -196,15 +208,17 @@ export default function EditorHeader() {
         </div>}
       </div>
       <div className="header-history" role="group" aria-label={zh ? '编辑历史' : 'Edit history'}>
-        <button className="header-control header-icon" disabled={viewMode || !canUndo} onClick={() => { cancelActiveTransformGesture(); useToolStore.getState().cancelDraw(); useStore.getState().undo() }} aria-label={t.undo} title={`${t.undo} (${mod}Z)`}><Undo2 size={16} /></button>
-        <button className="header-control header-icon" disabled={viewMode || !canRedo} onClick={() => { cancelActiveTransformGesture(); useToolStore.getState().cancelDraw(); useStore.getState().redo() }} aria-label={t.redo} title={`${t.redo} (${mod}⇧Z)`}><Redo2 size={16} /></button>
+        <button className="header-control header-icon" disabled={!!undoReason} onClick={() => runCommand('undo')} aria-label={t.undo} title={undoReason ?? `${t.undo} (${commandShortcut('undo')})`}><Undo2 size={16} /></button>
+        <button className="header-control header-icon" disabled={!!redoReason} onClick={() => runCommand('redo')} aria-label={t.redo} title={redoReason ?? `${t.redo} (${commandShortcut('redo')})`}><Redo2 size={16} /></button>
       </div>
       <div className="project-identity">
         <span className="project-name" title={name ?? undefined} data-testid="current-project-name">{name ?? (zh ? '未命名工程' : 'Untitled project')}</span>
         <span data-testid="project-dirty" className="text-xs text-slate-400">{session.dirty ? (zh ? '有未保存更改' : 'Unsaved changes') : (zh ? '无未保存更改' : 'No unsaved changes')}</span>
         <AutoSaveStatus compact />
       </div>
-      <button data-keep-draw className="header-control header-save" data-testid="export-project" onClick={() => request()} title={`${zh ? '保存工程' : 'Save project'} (${mod}S)`}><Save size={15} /><span>{zh ? '保存' : 'Save'}</span></button>
+      <button className="header-control header-icon" data-testid="command-search-toggle" aria-label={zh ? '查找命令' : 'Find a command'}
+        title={zh ? '查找命令 (Ctrl/⌘+K)' : 'Find a command (Ctrl/⌘+K)'} onClick={() => window.dispatchEvent(new Event('aluframe:command-search'))}><Search size={16} /></button>
+      <button data-keep-draw className="header-control header-save" data-testid="export-project" onClick={() => runCommand("save")} title={`${zh ? '保存工程' : 'Save project'} (${mod}S)`}><Save size={15} /><span>{zh ? '保存' : 'Save'}</span></button>
       <button data-keep-draw className="header-control header-icon language-control" onClick={() => setLanguage(zh ? 'en' : 'zh')} title={t.hintLanguage} aria-label={zh ? 'English' : '中文'}><Languages size={17} /></button>
     </header>
     {session.storageError && <div role="alert" className="px-4 py-2 text-xs bg-amber-950 text-amber-100">{zh ? '工程草稿未能保存到浏览器。请保存文件后再切换或关闭页面。' : 'The project draft could not be saved in this browser. Save the file before switching or closing.'}<button className="underline ml-3" onClick={() => projectSession.keepDraft()}>{zh ? '重试' : 'Retry'}</button></div>}

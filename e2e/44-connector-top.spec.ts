@@ -1,3 +1,4 @@
+import { selectedSolidTop } from '../src/utils/selectionBounds'
 import { test, expect } from '@playwright/test'
 import { openApp, setView, settle } from './helpers'
 
@@ -45,6 +46,7 @@ test('selection work planes coincide with the real connector solids across serie
     // B6 plate screws project 12.1 mm; 40-4332 reaches 40 mm, or 40/√2 after a 45° turn.
     // The fixed foot radius is 19.7 mm; its tilted M8 stud reaches (10 + 4)/√2.
     expect(actualTop.top).toBeCloseTo(definitions[index].top, 3)
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('work-plane-from-selection').click()
     await expect(page.getByTestId('work-plane')).toHaveValue(String(actualTop.top))
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().workPlaneY)).toBe(actualTop.top)
@@ -66,27 +68,32 @@ test('every connector keeps the same shared solid after another instance is remo
     w.store.getState().loadDocument({ profiles: [], panels: [], fittings: [], connectors, throughRule: 'rails' })
   }, types)
   await settle(page)
-  const measure = () => page.evaluate(async () => {
-    const w = (window as any).__aluframe, v = new w.THREE.Vector3()
-    const helper = await import('/src/utils/selectionBounds.ts' as string)
-    const results: Array<{ id: string; actual: number; computed: number }> = []
-    w.sceneRoot.updateMatrixWorld(true)
-    for (const connector of w.store.getState().connectors) {
-      let actual = -Infinity
-      w.sceneRoot.traverse((group: any) => {
-        if (group.userData.connectorId !== connector.id) return
-        group.traverse((mesh: any) => {
-          if (!mesh.isMesh) return
-          const vertices = mesh.geometry.getAttribute('position')
-          for (let i = 0; i < vertices.count; i++) actual = Math.max(actual,
-            v.fromBufferAttribute(vertices, i).applyMatrix4(mesh.matrixWorld).y)
+  const measure = async () => {
+    const document = await page.evaluate(() => {
+      const s = (window as any).__aluframe.store.getState()
+      return { profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings, equipment: s.equipment }
+    })
+    const actual = await page.evaluate(() => {
+      const w = (window as any).__aluframe, v = new w.THREE.Vector3()
+      const results: Array<{ id: string; actual: number }> = []
+      w.sceneRoot.updateMatrixWorld(true)
+      for (const connector of w.store.getState().connectors) {
+        let actual = -Infinity
+        w.sceneRoot.traverse((group: any) => {
+          if (group.userData.connectorId !== connector.id) return
+          group.traverse((mesh: any) => {
+            if (!mesh.isMesh) return
+            const vertices = mesh.geometry.getAttribute('position')
+            for (let i = 0; i < vertices.count; i++) actual = Math.max(actual,
+              v.fromBufferAttribute(vertices, i).applyMatrix4(mesh.matrixWorld).y)
+          })
         })
-      })
-      results.push({ id: connector.id, actual: Math.round(actual * 1000) / 1000,
-        computed: helper.selectedSolidTop(w.store.getState(), [connector.id]) })
-    }
-    return results
-  })
+        results.push({ id: connector.id, actual: Math.round(actual * 1000) / 1000 })
+      }
+      return results
+    })
+    return actual.map(result => ({ ...result, computed: selectedSolidTop(document, [result.id]) }))
+  }
   const original = await measure()
   expect(original).toHaveLength(28)
   for (const result of original) expect(result.computed, result.id).toBe(result.actual)

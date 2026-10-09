@@ -1,3 +1,5 @@
+import { boardBlank, DEFAULT_FABRICATION } from './boardFabrication'
+import { documentBoards } from './panelNesting'
 import * as THREE from 'three'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { computeAllTrims, type ProfileTrims, type ThroughRule } from './jointUtils'
@@ -28,6 +30,11 @@ class Dxf {
     this.layers.add(layer)
     this.out.push('0\nLINE\n8\n' + layer
       + `\n10\n${n(a[0])}\n20\n${n(a[1])}\n30\n0\n11\n${n(b[0])}\n21\n${n(b[1])}\n31\n0`)
+  }
+
+  circle(layer: string, at: Pt, radius: number): void {
+    this.layers.add(layer)
+    this.out.push(`0\nCIRCLE\n8\n${layer}\n10\n${n(at[0])}\n20\n${n(at[1])}\n30\n0\n40\n${n(radius)}`)
   }
 
   rect(layer: string, min: Pt, max: Pt): void {
@@ -185,12 +192,10 @@ export function buildDxf({ profiles, panels, fittings, connectors = [], rule, tr
   }
 
   // Lay out and label each board outline.
-  const sheet: Array<{ w: number; h: number; label: string }> = [
-    ...panels.map((b) => ({ w: b.width, h: b.height, label: `${partNumber('panel', b.id)} ${n(b.width)}x${n(b.height)}x${b.thickness} ${b.material}` })),
-    ...fittings.flatMap((f) => fittingParts(f).boards.map((b) => ({
-      w: b.width, h: b.height, label: `${fittingBoardNumber(f.id, b.key)} ${n(b.width)}x${n(b.height)}x${b.thickness} ${f.kind}/${b.role}`,
-    }))),
-  ]
+  const sheet = documentBoards({ profiles, panels, fittings, connectors, throughRule: rule ?? 'rails' }).map(b => ({
+    ...b, w: b.width, h: b.height, blank: boardBlank(b.width, b.height, b.fabrication),
+    label: `${b.id} ${n(b.width)}x${n(b.height)}x${b.thickness} ${b.material}`,
+  }))
   if (sheet.length > 0) {
     // Keep the cut sheet below the projection dimensions.
     const belowViews = -(DIM_OFF + TEXT_H * 2 + 40)
@@ -200,13 +205,24 @@ export function buildDxf({ profiles, panels, fittings, connectors = [], rule, tr
     y -= TEXT_H * 2
     const labelH = TEXT_H * 0.6
     for (const b of sheet) {
-      const slotWidth = Math.max(b.w, b.label.length * labelH * 0.75)
+      const fabrication = b.fabrication ?? DEFAULT_FABRICATION
+      const notes = b.fabrication ? `BLANK ${n(b.blank.width)}x${n(b.blank.height)}; GRAIN ${fabrication.grain}; BAND L/R/B/T ${fabrication.bands.map(n).join('/')}` : ''
+      const slotWidth = Math.max(b.w, Math.max(b.label.length, notes.length) * labelH * 0.75)
       if (x > 0 && x + slotWidth > maxRow) { x = 0; y -= rowH + labelH + GAP / 2; rowH = 0 }
       d.rect('CUTSHEET', [x, y - b.h], [x + b.w, y])
+      const [left, right, bottom, top] = fabrication.bands
+      if (fabrication.bands.some(v => v > 0)) d.rect('BLANK', [x + left, y - b.h + bottom], [x + b.w - right, y - top])
+      for (const h of b.holes) d.circle('BOARD_HOLES', [x + h.x, y - b.h + h.y], h.diameter / 2)
+      if (fabrication.grain !== 'none') {
+        const cx = x + b.w / 2, cy = y - b.h / 2
+        const dx = fabrication.grain === 'x' ? b.w / 4 : 0, dy = fabrication.grain === 'y' ? b.h / 4 : 0
+        d.line('GRAIN', [cx - dx, cy - dy], [cx + dx, cy + dy])
+      }
+      if (notes) d.text('TEXT', [x, y - b.h - labelH * 2 - 20], notes, labelH)
       // Place labels below the outline.
       d.text('TEXT', [x, y - b.h - labelH - 10], b.label, labelH)
       x += slotWidth + GAP / 2
-      rowH = Math.max(rowH, b.h)
+      rowH = Math.max(rowH, b.h + (notes ? labelH + 10 : 0))
     }
   }
 

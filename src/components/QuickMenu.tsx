@@ -1,10 +1,10 @@
-import { reportEditResult } from '../utils/editFeedback'
+import { commands, commandLabel, commandReason, runCommand, type CommandId } from '../utils/commands'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { RotateCcw, RotateCw, Copy, FlipHorizontal2, Lock, LockOpen, Trash2, Crosshair, BoxSelect, Maximize, Ruler, Waypoints } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
-import { duplicateSelected, mirrorSelected, rotateSelected, selectAll, selectConnected, selectionLocked, type RotAxis } from '../utils/editOps'
+import { selectionLocked, type RotAxis } from '../utils/editOps'
 
 const AXIS_COLORS: Record<RotAxis, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 const MIN_WIDTH = 190
@@ -23,8 +23,6 @@ const QuickMenu: React.FC = () => {
   const equipment = useStore((s) => s.equipment)
   const canInspect = useToolStore(s => !s.held && !s.isDrawing && !s.isDragging && !s.measuring)
   const viewMode = useToolStore((s) => s.viewMode)
-  const toggleLockSelected = useStore((s) => s.toggleLockSelected)
-  const removeSelected = useStore((s) => s.removeSelected)
   const ref = useRef<HTMLDivElement>(null)
   // Measure the rendered menu to keep it within the viewport.
   const [place, setPlace] = useState<{ x: number; y: number } | null>(null)
@@ -82,9 +80,11 @@ const QuickMenu: React.FC = () => {
   const hasSelection = selectedIds.length > 0
 
   const run = (fn: () => void) => () => { fn(); closeQuickMenu() }
-  const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; danger?: boolean; tip?: string; edit?: boolean }> =
-    ({ onClick, children, testId, danger, tip, edit }) => (
-      <button role="menuitem" onClick={onClick} data-testid={testId} title={tip} disabled={viewMode && edit}
+  const action = (id: CommandId) => run(() => { runCommand(id) })
+  const reason = (id: CommandId) => commandReason(commands.find(c => c.id === id)!)
+  const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; command?: CommandId; danger?: boolean; tip?: string; edit?: boolean }> =
+    ({ onClick, children, testId, danger, tip, edit, command }) => (
+      <button role="menuitem" onClick={onClick} data-testid={testId} aria-label={command ? commandLabel(commands.find(c => c.id === command)!) : undefined} title={(command && reason(command)) || tip} disabled={command ? !!reason(command) : viewMode && edit}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap ${
           danger ? 'text-red-400 hover:bg-red-400/10' : 'text-slate-200 hover:bg-white/10'}`}>
         {children}
@@ -107,19 +107,19 @@ const QuickMenu: React.FC = () => {
       </Item>}
       {!hasSelection && (
         <>
-          <Item testId="quick-select-all" tip={t.hintSelectAll} onClick={run(selectAll)}><BoxSelect size={12} />{t.selectAll}</Item>
-          <Item testId="quick-fit-view" tip={t.hintFitView} onClick={run(() => useToolStore.getState().triggerCameraReset('all'))}><Maximize size={12} />{t.fitView}</Item>
-          <Item testId="quick-labels" tip={t.hintLabels} onClick={run(useToolStore.getState().toggleDimensionLabels)}><Ruler size={12} />{t.labels}</Item>
-          <Item testId="quick-part-numbers" tip={t.partNumbersHint} onClick={run(useToolStore.getState().togglePartNumbers)}><span className="font-mono">#</span>{t.partNumbers}</Item>
+          <Item testId="quick-select-all" tip={t.hintSelectAll} command="select-all" onClick={action("select-all")}><BoxSelect size={12} />{t.selectAll}</Item>
+          <Item testId="quick-fit-view" tip={t.hintFitView} command="fit-all" onClick={action("fit-all")}><Maximize size={12} />{t.fitView}</Item>
+          <Item testId="quick-labels" tip={t.hintLabels} command="labels" onClick={action("labels")}><Ruler size={12} />{t.labels}</Item>
+          <Item testId="quick-part-numbers" tip={t.partNumbersHint} command="part-numbers" onClick={action("part-numbers")}><span className="font-mono">#</span>{t.partNumbers}</Item>
         </>
       )}
       {hasSelection && (['x', 'y', 'z'] as RotAxis[]).map((ax) => (
         <div key={ax} className="flex items-center">
-          <Item edit testId={`quick-rot-${ax}`} tip={t.hintRotateFwd(ax.toUpperCase())} onClick={run(() => rotateSelected(ax, 90))}>
+          <Item edit testId={`quick-rot-${ax}`} tip={t.hintRotateFwd(ax.toUpperCase())} command={`rotate-${ax}`} onClick={action(`rotate-${ax}`)}>
             <RotateCw size={12} style={{ color: AXIS_COLORS[ax] }} />{t.gizmoRotate(ax.toUpperCase())}
           </Item>
-          <button role="menuitem" onClick={run(() => rotateSelected(ax, -90))} data-testid={`quick-rot-${ax}-back`}
-            disabled={viewMode} aria-label={t.hintRotateBack(ax.toUpperCase())}
+          <button role="menuitem" onClick={action(`rotate-${ax}-back`)} data-testid={`quick-rot-${ax}-back`}
+            disabled={!!reason(`rotate-${ax}-back`)} aria-label={t.hintRotateBack(ax.toUpperCase())}
             title={t.hintRotateBack(ax.toUpperCase())}
             className="ml-auto mr-1 p-1.5 rounded-lg text-slate-400 hover:bg-white/10"><RotateCcw size={12} /></button>
         </div>
@@ -127,15 +127,15 @@ const QuickMenu: React.FC = () => {
       {hasSelection && <div className="h-px bg-white/10 my-1" />}
       {/* Select profiles connected to the current selection. */}
       {hasSelection && <Item testId="quick-connected" tip={t.hintSelectConnected}
-        onClick={run(() => { const id = selectedIds[0]; if (id) selectConnected(id) })}>
+        command="connected" onClick={action("connected")}>
         <Waypoints size={12} />{t.selectConnected}
       </Item>}
-      {hasSelection && <Item edit testId="quick-duplicate" tip={t.hintDuplicate} onClick={run(duplicateSelected)}><Copy size={12} />{t.duplicate}</Item>}
+      {hasSelection && <Item edit testId="quick-duplicate" tip={t.hintDuplicate} command="duplicate" onClick={action("duplicate")}><Copy size={12} />{t.duplicate}</Item>}
       {hasSelection && <div className="flex items-center gap-0.5 px-1.5 pb-0.5">
         <FlipHorizontal2 size={12} className="text-slate-400 mx-1.5" />
         {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
-          <button role="menuitem" key={ax} onClick={run(() => mirrorSelected(ax))} data-testid={`quick-mirror-${ax}`}
-            disabled={viewMode} aria-label={t.hintMirror(ax.toUpperCase())}
+          <button role="menuitem" key={ax} onClick={action(`mirror-${ax}`)} data-testid={`quick-mirror-${ax}`}
+            disabled={!!reason(`mirror-${ax}`)} aria-label={t.hintMirror(ax.toUpperCase())}
             title={t.hintMirror(ax.toUpperCase())}
             className="flex-1 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold font-mono text-slate-200">
             {ax.toUpperCase()}
@@ -143,13 +143,13 @@ const QuickMenu: React.FC = () => {
         ))}
       </div>}
       {hasSelection && <div className="h-px bg-white/10 my-1" />}
-      {hasSelection && <Item testId="quick-pivot" tip={t.hintPivot} onClick={run(useToolStore.getState().cyclePivotMode)}>
+      {hasSelection && <Item testId="quick-pivot" tip={t.hintPivot} command="pivot" onClick={action("pivot")}>
         <Crosshair size={12} />{t.pivotCenter}/{t.pivotStart}/{t.pivotEnd}
       </Item>}
-      {hasSelection && <Item edit testId="quick-lock" tip={t.lockHint} onClick={run(toggleLockSelected)}>
+      {hasSelection && <Item edit testId="quick-lock" tip={t.lockHint} command="lock" onClick={action("lock")}>
         {locked ? <Lock size={12} className="text-amber-400" /> : <LockOpen size={12} />}{locked ? t.unlock : t.lock}
       </Item>}
-      {hasSelection && <Item edit testId="quick-delete" danger tip={t.hintDelete} onClick={run(() => { reportEditResult(removeSelected()) })}><Trash2 size={12} />{t.delete}</Item>}
+      {hasSelection && <Item edit testId="quick-delete" danger tip={t.hintDelete} command="delete" onClick={action("delete")}><Trash2 size={12} />{t.delete}</Item>}
     </div>
   )
 }

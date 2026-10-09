@@ -418,13 +418,12 @@ const en = {
     'X/Y/Z keys lock the axis · Right-drag pans · Esc puts the part down',
   ],
   guideNavigate: [
-    'Ctrl/Cmd+O opens a project · Ctrl/Cmd+S saves · Ctrl/Cmd+Shift+S saves as',
     'Click to select · Shift+Click toggles selection · pick a part in the panel to draw',
     'Drag a member to move it (snaps flush) · drag the green arrow to move it vertically',
     'Shift+Drag places freely · end handles stretch · arcs rotate',
     'Arrow keys nudge 5 mm (Shift: 50) · PgUp/PgDn vertical',
-    'Ctrl/Cmd+C/V copies and pastes parts · Ctrl+D duplicates · R then X/Y/Z turns 90° · Delete removes',
-    'F frames the selection · F11 fullscreen · V switches building and looking',
+    'R then X/Y/Z turns 90° · Shift+R reverses',
+    'F11 fullscreen · Ctrl/Cmd+K finds a command',
     'Double click comes in on whatever is under the pointer',
     'Trackpad: pinch to zoom · two-finger scroll zooms · right-drag pans',
     'Touch: one finger orbits · two pan and zoom · two-finger tap undoes · hold for the menu',
@@ -434,7 +433,7 @@ const en = {
   guideSelect: [
     'Drag a box to select several members',
     'Shift+Click toggles a part',
-    'Delete removes selection · Esc exits',
+    'Esc exits',
   ],
   bomHeader: 'Category,Spec,Cut length (mm),Quantity',
 }
@@ -858,13 +857,12 @@ const zh: typeof en = {
     'X/Y/Z 键锁定方向 · 右键拖动平移视角 · Esc 放下零件',
   ],
   guideNavigate: [
-    'Ctrl/Cmd+O 打开工程 · Ctrl/Cmd+S 保存 · Ctrl/Cmd+Shift+S 另存为',
     '点击选中 · Shift+点击 多选 · 在左侧选规格即可开画',
     '拖动型材移动（自动贴合）· 拖绿色箭头即垂直移动',
     'Shift+拖动 自由摆放（不吸附）· 端面手柄拉伸 · 弧线旋转',
     '方向键微调 5 mm（Shift 50）· PgUp/PgDn 上下',
-    'Ctrl/Cmd+C/V 复制粘贴构件 · Ctrl+D 立即复制 · R 再按 X/Y/Z 转 90° · Delete 删除',
-    'F 框住选中项 · F11 全屏 · V 在编辑与查看之间切换',
+    'R 再按 X/Y/Z 转 90° · Shift+R 反向',
+    'F11 全屏 · Ctrl/Cmd+K 查找命令',
     '双击以光标下的位置为中心拉近',
     '触摸板：双指捏合缩放 · 双指滚动缩放 · 右键拖动平移',
     '触摸屏：单指转视角 · 双指平移与缩放 · 双指轻点撤销 · 长按呼出菜单',
@@ -874,7 +872,7 @@ const zh: typeof en = {
   guideSelect: [
     '拖出矩形框选多根型材',
     'Shift+点击 切换选中',
-    'Delete 删除选中 · Esc 退出',
+    'Esc 退出',
   ],
   bomHeader: '类别,规格,下料长度(mm),数量',
 }

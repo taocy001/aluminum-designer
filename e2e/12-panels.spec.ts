@@ -117,6 +117,7 @@ test.describe('Editing a board', () => {
   test('the material can be changed and reaches the cut list', async ({ page }) => {
     await page.getByTestId('panel-material').selectOption('acrylic')
     expect((await panels(page))[0].material).toBe('acrylic')
+    await page.getByTestId('sidebar-tab-inspect').click()
     await expect(page.getByTestId('bom-panels')).toBeVisible()
   })
 
@@ -152,6 +153,7 @@ test.describe('Board cut list', () => {
     await page.getByTestId('array-spacing').fill('400')
     await page.getByTestId('array-z').click()
     expect((await panels(page)).length).toBe(3)
+    await page.getByTestId('sidebar-tab-inspect').click()
     await expect(page.getByTestId('bom-panels')).toBeVisible()
     const text = await page.getByTestId('section-bom-body').innerText()
     expect(text).toContain('810 × 620 mm')

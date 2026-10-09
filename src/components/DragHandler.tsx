@@ -295,30 +295,30 @@ const DragHandler: React.FC = () => {
       }
 
       const updates: Array<{ id: string; updates: Partial<ProfileData> }> = []
-      for (const pid of dragIds) {
-        const p = all.find((q) => q.id === pid)
-        if (!p || p.locked) continue
+      for (const p of dragged) {
+        const pid = p.id
         const origin = new THREE.Vector3(...(dragGroupOrigins[pid] ?? p.position))
         const np = origin.clone().add(groupDelta)
         updates.push({ id: pid, updates: { position: [np.x, np.y, np.z] } })
       }
+      const movedProfileIds = new Set(dragged.map((p) => p.id))
       const connectorUpdates: Array<{ id: string; updates: Partial<ConnectorData> }> = []
-      for (const cid of dragIds) {
-        const c = store.connectors.find((q) => q.id === cid)
-        if (!c || c.locked) continue
+      for (const c of store.connectors) {
+        if (!dragIds.has(c.id) || c.locked) continue
+        const cid = c.id
         const origin = new THREE.Vector3(...(dragGroupOrigins[cid] ?? c.position))
         const np = origin.clone().add(groupDelta)
         const pose = { position: [np.x, np.y, np.z] as ConnectorData['position'],
           ...(connectorSnap ? { quaternion: connectorSnap.seat.quaternion } : {}) }
         connectorUpdates.push({ id: cid,
-          updates: { ...connectorTransformUpdates(c, pose, new Set(dragged.map((p) => p.id))),
+          updates: { ...connectorTransformUpdates(c, pose, movedProfileIds),
             ...(connectorSnap ? { series: connectorSnap.seat.series, profileSpec: connectorSnap.seat.profileSpec,
               mountSeries: connectorSnap.seat.mountSeries } : {}) } })
       }
       const panelUpdates: Array<{ id: string; updates: Partial<PanelData> }> = []
-      for (const bid of dragIds) {
-        const b = store.panels.find((q) => q.id === bid)
-        if (!b || b.locked) continue
+      for (const b of store.panels) {
+        if (!dragIds.has(b.id) || b.locked) continue
+        const bid = b.id
         const origin = new THREE.Vector3(...(dragGroupOrigins[bid] ?? b.position))
         const np = origin.clone().add(groupDelta)
         panelUpdates.push({ id: bid, updates: { position: [np.x, np.y, np.z] } })
@@ -326,9 +326,9 @@ const DragHandler: React.FC = () => {
 
       // Apply the same group translation to fittings.
       const fittingUpdates: Array<{ id: string; updates: Partial<FittingData> }> = []
-      for (const fid of dragIds) {
-        const f = store.fittings.find((q) => q.id === fid)
-        if (!f || f.locked) continue
+      for (const f of store.fittings) {
+        if (!dragIds.has(f.id) || f.locked) continue
+        const fid = f.id
         const origin = new THREE.Vector3(...(dragGroupOrigins[fid] ?? f.position))
         const np = origin.clone().add(groupDelta)
         fittingUpdates.push({ id: fid, updates: { position: [np.x, np.y, np.z] } })

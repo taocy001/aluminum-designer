@@ -109,6 +109,7 @@ test.describe('A bracket goes where it can be bolted', () => {
     await page.getByTestId('auto-connect').click()
     await settle(page)
     await page.waitForTimeout(300)
+    await page.getByTestId('sidebar-tab-inspect').click()
     await expect(page.getByTestId('bom-bracket-seating')).toBeVisible()
     const text = await page.getByTestId('bom-bracket-seating').textContent()
     expect(text).not.toMatch(/\d/)          // a count only appears when something is wrong

@@ -85,6 +85,7 @@ test.describe('Dragging a member preserves existing physical lengths', () => {
     await moveB(page)
     const before = await store(page)
     const original = await bodies(page)
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('recalculate-joints').click()
     await expect.poll(async () => (await bodies(page)).meshes.B.length).toBe(600)
     expect((await bodies(page)).meshes.A).toEqual(original.meshes.A)

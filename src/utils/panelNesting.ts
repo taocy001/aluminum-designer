@@ -1,3 +1,4 @@
+import { boardBlank, DEFAULT_FABRICATION, type BoardFabrication } from './boardFabrication'
 import type { ProjectDocument } from './document'
 import type { PanelMaterial } from '../store/useStore'
 import { fittingParts } from './fittingGeometry'
@@ -7,6 +8,8 @@ import { panelDrillCenters } from './panelDrilling'
 export interface CutBoard {
   id: string
   sourceId: string
+  boardKey?: string
+  fabrication?: BoardFabrication
   width: number
   height: number
   thickness: number
@@ -14,7 +17,7 @@ export interface CutBoard {
   /** Coordinates from the lower-left corner of the board's local XY face. */
   holes: { x: number; y: number; diameter: number }[]
 }
-export interface SheetOptions { width: number; height: number; kerf: number; margin: number; rotate: boolean }
+export interface SheetOptions { width: number; height: number; kerf: number; margin: number; rotate: boolean; grain?: 'x' | 'y' }
 interface Rectangle { x: number; y: number; width: number; height: number }
 /** Stock-sheet XY coordinates start at the upper-left, matching the preview. */
 export interface PlacedBoard extends Rectangle { board: CutBoard; rotated: boolean }
@@ -24,10 +27,10 @@ export interface PanelNest { sheets: CutSheet[]; oversized: CutBoard[]; utilizat
 export function documentBoards(doc: ProjectDocument): CutBoard[] {
   return [
     ...doc.panels.map(p => ({ id: partNumber('panel', p.id), sourceId: p.id, width: p.width, height: p.height,
-      thickness: p.thickness, material: p.material,
+      thickness: p.thickness, material: p.material, fabrication: p.fabrication,
       holes: panelDrillCenters(p, doc.connectors).map(h => ({ x: h.x + p.width / 2, y: h.y + p.height / 2, diameter: h.diameter })) })),
     ...doc.fittings.flatMap(f => fittingParts(f).boards.map(b => ({ id: fittingBoardNumber(f.id, b.key), sourceId: f.id,
-      width: b.width, height: b.height, thickness: b.thickness, material: f.material, holes: [] }))),
+      width: b.width, height: b.height, thickness: b.thickness, material: f.material, boardKey: b.key, fabrication: f.fabrication?.[b.key], holes: [] }))),
   ]
 }
 
@@ -42,8 +45,12 @@ export function nestPanels(boards: CutBoard[], options: SheetOptions): PanelNest
   const ordered = [...boards].sort((a, b) => Math.max(b.width, b.height) - Math.max(a.width, a.height)
     || b.width * b.height - a.width * a.height || a.id.localeCompare(b.id))
   for (const board of ordered) {
-    const orientations = [{ width: board.width, height: board.height, rotated: false },
-      ...(rotate && board.width !== board.height ? [{ width: board.height, height: board.width, rotated: true }] : [])]
+    const blank = boardBlank(board.width, board.height, board.fabrication)
+    const grain = board.fabrication?.grain ?? 'none'
+    const stockGrain = options.grain ?? 'x'
+    const orientations = [{ ...blank, rotated: false },
+      ...(rotate ? [{ width: blank.height, height: blank.width, rotated: true }] : [])]
+      .filter(o => grain === 'none' || (o.rotated ? grain !== stockGrain : grain === stockGrain))
     if (!orientations.some(o => o.width <= usable.width && o.height <= usable.height)) { oversized.push(board); continue }
     type Fit = { sheet: number; index: number; score: number; width: number; height: number; rotated: boolean }
     let fit: Fit | undefined
@@ -79,17 +86,25 @@ export function nestPanels(boards: CutBoard[], options: SheetOptions): PanelNest
 }
 
 const csv = (rows: (string | number)[][]) => rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n')
+const fabricationColumns = (b: CutBoard) => [b.width, b.height, b.fabrication?.grain ?? 'none', ...(b.fabrication?.bands ?? DEFAULT_FABRICATION.bands)]
 export function panelLayoutCsv(result: PanelNest, options: SheetOptions): string {
   return csv([
-    ['status', 'sheet', 'part', 'material', 'thickness_mm', 'x_mm', 'y_mm', 'cut_width_mm', 'cut_height_mm', 'rotated_90', 'stock_width_mm', 'stock_height_mm', 'kerf_mm', 'margin_mm'],
+    ['status', 'sheet', 'part', 'material', 'thickness_mm', 'x_mm', 'y_mm', 'cut_width_mm', 'cut_height_mm', 'rotated_90', 'stock_width_mm', 'stock_height_mm', 'kerf_mm', 'margin_mm', 'stock_grain', 'finished_width_mm', 'finished_height_mm', 'local_grain', 'band_left_mm', 'band_right_mm', 'band_bottom_mm', 'band_top_mm'],
     ...result.sheets.flatMap((s, i) => s.placements.map(p => ['placed', i + 1, p.board.id, s.material, s.thickness,
-      p.x, p.y, p.width, p.height, p.rotated ? 1 : 0, options.width, options.height, options.kerf, options.margin])),
-    ...result.oversized.map(b => ['exceeds-stock', '', b.id, b.material, b.thickness, '', '', b.width, b.height, '', options.width, options.height, options.kerf, options.margin]),
+      p.x, p.y, p.width, p.height, p.rotated ? 1 : 0, options.width, options.height, options.kerf, options.margin, options.grain ?? 'x', ...fabricationColumns(p.board)])),
+    ...result.oversized.map(b => ['size-or-grain-mismatch', '', b.id, b.material, b.thickness, '', '', boardBlank(b.width, b.height, b.fabrication).width, boardBlank(b.width, b.height, b.fabrication).height, '', options.width, options.height, options.kerf, options.margin, options.grain ?? 'x', ...fabricationColumns(b)]),
   ])
+}
+/** The whole bore must remain inside the blank after edge bands are deducted. */
+export function holeFitsBlank(b: CutBoard, h: CutBoard['holes'][number]): boolean {
+  const blank = boardBlank(b.width, b.height, b.fabrication)
+  const x = h.x - (b.fabrication?.bands[0] ?? 0), y = h.y - (b.fabrication?.bands[2] ?? 0)
+  const radius = h.diameter / 2
+  return x >= radius && y >= radius && x + radius <= blank.width && y + radius <= blank.height
 }
 export function panelHolesCsv(boards: CutBoard[]): string {
   return csv([
-    ['part', 'hole', 'local_x_mm_from_left', 'local_y_mm_from_bottom', 'through_diameter_mm', 'board_thickness_mm'],
-    ...boards.flatMap(b => b.holes.map((h, i) => [b.id, i + 1, h.x, h.y, h.diameter, b.thickness])),
+    ['part', 'hole', 'local_x_mm_from_left', 'local_y_mm_from_bottom', 'through_diameter_mm', 'board_thickness_mm', 'blank_x_mm_from_left', 'blank_y_mm_from_bottom', 'blank_hole_status'],
+    ...boards.flatMap(b => b.holes.map((h, i) => [b.id, i + 1, h.x, h.y, h.diameter, b.thickness, h.x - (b.fabrication?.bands[0] ?? 0), h.y - (b.fabrication?.bands[2] ?? 0), holeFitsBlank(b, h) ? 'inside-blank' : 'crosses-blank-edge'])),
   ])
 }

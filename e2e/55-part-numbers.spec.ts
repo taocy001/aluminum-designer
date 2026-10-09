@@ -16,6 +16,7 @@ const drawing = {
 }
 
 async function exported(page: Page, format: string) {
+  await page.getByTestId('sidebar-tab-inspect').click()
   const event = page.waitForEvent('download')
   await page.getByTestId(`export-${format}`).click()
   const download = await event
@@ -39,6 +40,7 @@ test('part numbers match the UI, cutting list, CAD and offline printable assembl
   await expect(page.getByTestId('selected-part-numbers')).toContainText('F-drawer')
   await page.getByTestId('selected-part-numbers').locator('summary').click()
   await expect(page.getByTestId('selected-part-numbers')).toContainText('F-drawer.B-front')
+  await page.getByTestId('sidebar-tab-inspect').click()
   await page.getByTestId('bom-table').locator('summary').first().click()
   await expect(page.getByTestId('bom-part-numbers').first()).toHaveText('P-rail')
 

@@ -117,6 +117,7 @@ test('changing the joint rule refreshes both physical endpoint pivots while sele
     return at ? distance(at, initial.start) : Infinity
   }).toBeLessThan(0.01)
 
+  await page.getByTestId('sidebar-tab-add').click()
   await page.getByTestId('through-posts').click()
   await settle(page)
   expect((await store(page)).selectedIds).toEqual([rail.id])

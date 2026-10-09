@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, settle, store, setView, w2c, enterDraw, drawMember } from './helpers'
+import { configureFitting, openApp, settle, store, setView, w2c, enterDraw, drawMember } from './helpers'
 
 const log = (page: import('@playwright/test').Page) =>
   page.evaluate(() => (window as any).__aluframe.opLog() as Array<{ label: string; detail: string }>)
@@ -86,6 +86,7 @@ test.describe('What happened', () => {
       s.selectItems(['u1', 'u2', 'u3', 'u4'])
     })
     await settle(page)
+    await configureFitting(page, 'drawer')
     await page.getByTestId('add-drawer').click()
     await settle(page)
     await page.waitForTimeout(250)
@@ -112,6 +113,7 @@ test.describe('What happened', () => {
     await drawMember(page, [0, 0, 0], [600, 0, 0])
     await page.keyboard.press('Escape')
     await settle(page)
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('section-log').click()
     await expect(page.getByTestId('op-log')).toContainText('add')
     await page.getByTestId('op-log-clear').click()

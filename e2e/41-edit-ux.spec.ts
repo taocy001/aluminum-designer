@@ -78,13 +78,16 @@ test.describe('Editing preserves context and makes field behavior predictable', 
   })
 
   test('the selection work plane uses the real upper surface before and after section rotation', async ({ page }) => {
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('work-plane-from-selection').click()
     await expect(page.getByTestId('work-plane')).toHaveValue('40')
+    await page.getByTestId('sidebar-tab-properties').click()
     await page.getByTestId('rotate-angle').fill('45')
     await page.getByTestId('rot-x-plus').click()
     await settle(page)
     const part = (await store(page)).profiles[0]
     const expected = Math.round((part.position[1] + 20 * Math.sqrt(2)) * 1000) / 1000
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('work-plane-from-selection').click()
     await expect(page.getByTestId('work-plane')).toHaveValue(String(expected))
     expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().workPlaneY)).toBe(expected)

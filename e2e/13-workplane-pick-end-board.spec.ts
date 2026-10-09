@@ -50,6 +50,7 @@ test.describe('Work plane: a click that finds nothing lands somewhere you chose'
     await emptyHand(page)
     await clickWorld(page, [0, 400, 0])
     expect((await store(page)).selectedIds.length).toBe(1)
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('work-plane-from-selection').click()
     await expect(page.getByTestId('work-plane')).toHaveValue('880')
   })

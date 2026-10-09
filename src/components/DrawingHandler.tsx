@@ -30,6 +30,17 @@ const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3
 /** a left press that travels this far orbits the camera instead of placing a point */
 const ORBIT_SLOP_PX = 5
 
+// Triangle edges on the transparent catcher can miss exact front/right-view rays.
+// Intersect its sphere analytically so placement does not depend on tessellation.
+const catcherRaycast: THREE.Mesh['raycast'] = function (this: THREE.Mesh, raycaster, hits) {
+  const sphere = new THREE.Sphere(new THREE.Vector3(), 50000).applyMatrix4(this.matrixWorld)
+  const point = raycaster.ray.intersectSphere(sphere, new THREE.Vector3())
+  if (!point) return
+  const distance = point.distanceTo(raycaster.ray.origin)
+  if (distance < raycaster.near || distance > raycaster.far) return
+  hits.push({ distance, point, object: this })
+}
+
 interface ConnectorTarget {
   type: string
   point: THREE.Vector3
@@ -563,7 +574,7 @@ const DrawingHandler: React.FC = () => {
     <>
       {/* Invisible catcher sphere — receives pointer events regardless of camera angle */}
       {held !== null && (
-        <mesh onPointerDown={onPointerDown} onPointerMove={onPointerMove}>
+        <mesh raycast={catcherRaycast} onPointerDown={onPointerDown} onPointerMove={onPointerMove}>
           <sphereGeometry args={[50000, 8, 6]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.BackSide} />
         </mesh>

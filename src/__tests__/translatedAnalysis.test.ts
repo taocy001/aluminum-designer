@@ -27,6 +27,22 @@ describe('analysis during whole-document translation', () => {
     expect(before.conflicts[0].region).toEqual(oldBox)
   })
 
+  it('retains mixed-document analysis when dimension overlays analyze profiles separately', () => {
+    const profiles = fixture()
+    const panels = [{ id: 'panel', material: 'ply' as const, width: 400, height: 200, thickness: 18,
+      position: [100, 100, 0] as [number, number, number], quaternion: [0, 0, 0, 1] as [number, number, number, number] }]
+    const before = analyzeFrame(profiles, [], panels)
+    const dimensions = analyzeFrame(profiles)
+    expect(analyzeFrame(profiles)).toBe(dimensions)
+    const offset = new THREE.Vector3(150, 25, -80), moved = move(profiles, offset)
+    const movedPanels = panels.map(p => ({ ...p, position: new THREE.Vector3(...p.position).add(offset).toArray() }))
+    const after = analyzeFrame(moved, [], movedPanels)
+    expect(after.trims).toBe(before.trims)
+    expect(after.conflicts).toEqual(findConflicts(moved, computeAllTrims(moved), [], movedPanels))
+    analyzeFrame(moved)
+    expect(analyzeFrame(moved, [], movedPanels).trims).toBe(before.trims)
+  })
+
   it('rechecks moving a subset, changed sections, and rotation', () => {
     const profiles = fixture()
     for (const changed of [

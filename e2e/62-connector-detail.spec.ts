@@ -1,18 +1,21 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, store, setView, w2c } from './helpers'
+import { Vector3 } from 'three'
+import { resolveConnectorPlacement } from '../src/utils/connectorPlacement'
+import { nearbyConnectorSeats } from '../src/utils/connectorRecovery'
+import type { ProfileData } from '../src/store/useStore'
+import { chooseConnector, openApp, store, setView, w2c } from './helpers'
 
 async function seedNut(page: Page) {
   await openApp(page)
-  await page.evaluate(async () => {
+  const p: ProfileData = { id: 'host', position: [0, 100, 0], quaternion: [0, 0, 0, 1], length: 400, spec: '2020', miterCuts: [], holes: [] }
+  const seat = resolveConnectorPlacement('t-nut', new Vector3(0, 110, 200), [p], [], new Vector3(0, 1, 0))
+  if (!seat.allowed) throw Error('Invalid test fixture')
+  await page.evaluate(({ p, seat }) => {
     const api = (window as any).__aluframe
-    const { resolveConnectorPlacement } = await import('/src/utils/connectorPlacement.ts' as string)
-    const p = { id: 'host', position: [0, 100, 0], quaternion: [0, 0, 0, 1], length: 400, spec: '2020', miterCuts: [], holes: [] }
-    const seat = resolveConnectorPlacement('t-nut', new api.THREE.Vector3(0, 110, 200), [p], [], new api.THREE.Vector3(0, 1, 0))
-    if (!seat.allowed) throw Error('Invalid test fixture')
     api.tool.getState().putDown()
     api.store.getState().loadDocument({ profiles: [p], connectors: [{ id: 'nut', type: 't-nut', ...seat.seat }], panels: [], fittings: [], equipment: [], throughRule: 'rails' })
     api.store.getState().selectItems(['nut'])
-  })
+  }, { p, seat })
   await setView(page, [300, 400, 600], [0, 100, 200])
 }
 
@@ -71,17 +74,16 @@ test('overlap menu lists shapes and hosts, filters by keyboard, selects and clos
 
 test('auto-connect failure focuses the location and reseats an existing end cap in one undoable edit', async ({ page }) => {
   await openApp(page)
-  await page.evaluate(async () => {
+  const host: ProfileData = { id: 'host', position: [0, 100, 0], quaternion: [0, 0, 0, 1], length: 400, spec: '2040', miterCuts: [], holes: [] }
+  const seat = nearbyConnectorSeats('end-cap', new Vector3(), [host], [], {})[0].seat
+  await page.evaluate(({ host, seat }) => {
     const api = (window as any).__aluframe
-    const { nearbyConnectorSeats } = await import('/src/utils/connectorRecovery.ts' as string)
-    const { autoConnect } = await import('/src/utils/autoConnect.ts' as string)
-    const host = { id: 'host', position: [0, 100, 0], quaternion: [0, 0, 0, 1], length: 400, spec: '2040', miterCuts: [], holes: [] }
-    const seat = nearbyConnectorSeats('end-cap', new api.THREE.Vector3(), [host], [], {})[0].seat
     api.tool.getState().putDown()
     // Rotation prevents automatic recovery; the result lets the user choose explicitly.
     api.store.getState().loadDocument({ profiles: [host], connectors: [{ id: 'bad', type: 'end-cap', ...seat, quaternion: [0, 0, 0, 1], position: seat.position.map((n: number, i: number) => n + (i === 2 ? 5 : 0)) }], panels: [], fittings: [], equipment: [], throughRule: 'rails' })
-    autoConnect('end-cap')
-  })
+  }, { host, seat })
+  await chooseConnector(page, 'end-cap')
+  await page.getByTestId('auto-connect').click()
   const report = page.getByTestId('auto-connect-report')
   await expect(report).toBeVisible()
   await report.getByTestId('connection-issue').last().click()
@@ -95,7 +97,9 @@ test('auto-connect failure focuses the location and reseats an existing end cap 
   await report.getByTestId('report-seat-apply').click()
   expect((await store(page)).past).toBe(before.past + 1)
   expect((await store(page)).connectors.find(c => c.id === 'bad').position).not.toEqual(bad.position)
-  await expect(report).toBeHidden()
+  await expect(report.getByTestId('connection-issue')).toHaveCount(0)
+  await expect(report).toContainText('待处理 0')
   await page.keyboard.press('Control+z')
   expect((await store(page)).connectors.find(c => c.id === 'bad')).toEqual(bad)
+  await expect(report.getByTestId('connection-issue')).not.toHaveCount(0)
 })

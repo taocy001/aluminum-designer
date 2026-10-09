@@ -145,7 +145,7 @@ test.describe('End faces mean different things in each hand', () => {
   test('with a part in hand the same end offers nothing to stretch', async ({ page }) => {
     await emptyHand(page)
     await clickWorld(page, [300, 10, 0])
-    await page.getByTestId('spec-2020').click()
+    await enterDraw(page, '2020')
     await hoverWorld(page, [595, 10, 0])
     expect((await tool(page)).hoverEnd).toBe(null)
   })
@@ -182,7 +182,7 @@ test.describe('Selecting and editing never needed an empty hand', () => {
     await emptyHand(page)
     await clickWorld(page, [300, 10, 0])
     expect((await store(page)).selectedIds.length).toBe(1)
-    await page.getByTestId('spec-2020').click()      // hand filled again
+    await enterDraw(page, '2020')
     await page.waitForTimeout(150)
     const handles = await page.evaluate(() => ((window as any).__aluframe.gizmoHandles?.() ?? []).length)
     expect(handles).toBe(6)

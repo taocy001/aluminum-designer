@@ -1,10 +1,11 @@
+import BoardFabricationEditor from './BoardFabricationEditor'
 import { useMemo, useState } from 'react'
 import type { ProjectDocument } from '../utils/document'
-import { documentBoards, nestPanels, panelHolesCsv, panelLayoutCsv, type SheetOptions } from '../utils/panelNesting'
+import { documentBoards, holeFitsBlank, nestPanels, panelHolesCsv, panelLayoutCsv, type SheetOptions } from '../utils/panelNesting'
 import { downloadText } from '../utils/projectFile'
 
 export default function ManufacturingPanel({ document, zh }: { document: ProjectDocument; zh: boolean }) {
-  const [options, setOptions] = useState<SheetOptions>({ width: 2440, height: 1220, kerf: 3, margin: 10, rotate: false })
+  const [options, setOptions] = useState<SheetOptions>({ width: 2440, height: 1220, kerf: 3, margin: 10, rotate: false, grain: 'x' })
   const [selected, setSelected] = useState(0)
   const boards = useMemo(() => documentBoards(document), [document.panels, document.fittings, document.connectors])
   const result = useMemo(() => {
@@ -13,6 +14,7 @@ export default function ManufacturingPanel({ document, zh }: { document: Project
   const sheetIndex = Math.min(selected, Math.max(0, (result?.sheets.length ?? 1) - 1))
   const sheet = result?.sheets[sheetIndex]
   const holeCount = boards.reduce((n, b) => n + b.holes.length, 0)
+  const edgeHoles = boards.filter(b => b.holes.some(h => !holeFitsBlank(b, h)))
   if (!boards.length) return null
   const fields = [
     ['width', zh ? '原板宽' : 'Stock width'], ['height', zh ? '原板高' : 'Stock height'],
@@ -27,8 +29,15 @@ export default function ManufacturingPanel({ document, zh }: { document: Project
           className="mt-1 block w-full rounded bg-slate-800 p-1.5" />
       </label>)}
     </div>
+    <BoardFabricationEditor boards={boards} zh={zh} />
+    <label className="block">{zh ? '原板纹理' : 'Stock grain'}
+      <select aria-label={zh ? '原板纹理' : 'Stock grain'} value={options.grain} onChange={e => setOptions({ ...options, grain: e.target.value as 'x' | 'y' })} className="mt-1 w-full rounded bg-slate-800 p-1.5">
+        <option value="x">{zh ? '沿原板宽 X' : 'Along stock width X'}</option>
+        <option value="y">{zh ? '沿原板高 Y' : 'Along stock height Y'}</option>
+      </select>
+    </label>
     <label className="my-3 flex items-center gap-2"><input type="checkbox" checked={options.rotate} onChange={e => setOptions({ ...options, rotate: e.target.checked })} />
-      {zh ? '允许板材旋转 90°（确认纹理方向后开启）' : 'Allow 90° rotation (check grain direction first)'}</label>
+      {zh ? '允许板材旋转 90°（遵守已设纹理）' : 'Allow 90° rotation (respect board grain)'}</label>
     {!result && <p role="alert" className="text-amber-300">{zh ? '请输入有效尺寸，边距不能超过原板短边的一半。' : 'Enter valid dimensions; margins must leave usable sheet area.'}</p>}
     {result && <>
       <p className="my-2 text-slate-300">{zh ? '分材质、厚度排版' : 'Grouped by material and thickness'} · {result.sheets.length} {zh ? '张' : 'sheets'} · {Math.round(result.utilization * 100)}%</p>
@@ -44,11 +53,12 @@ export default function ManufacturingPanel({ document, zh }: { document: Project
         </svg>
         <ol className="my-2 space-y-1 text-slate-400">{sheet.placements.map((p, i) => <li key={p.board.id} className="break-all">{i + 1}. {p.board.id} · {p.width} × {p.height}{p.rotated ? ' ↻90°' : ''}</li>)}</ol>
       </>}
-      {result.oversized.length > 0 && <p role="alert" className="my-2 break-words text-amber-300">{zh ? '超出原板，未排入：' : 'Too large for stock: '}{result.oversized.map(b => b.id).join(', ')}</p>}
+      {result.oversized.length > 0 && <p role="alert" className="my-2 break-words text-amber-300">{zh ? '尺寸或纹理方向不符合原板，未排入：' : 'Size or grain does not fit stock: '}{result.oversized.map(b => b.id).join(', ')}</p>}
       <p className="my-2 text-slate-400">{zh ? '直切排版草案；排版坐标从原板左上角计量。锯缝和边距按输入值计算，不保证用料最少。' : 'Guillotine layout measured from the stock sheet’s upper-left corner, with the entered kerf and margins; not guaranteed optimal.'}</p>
       <button className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600" onClick={() => downloadText('panel-layout.csv', '\uFEFF' + panelLayoutCsv(result, options), 'text/csv;charset=utf-8;')}>{zh ? '导出板材排版 CSV' : 'Export panel layout CSV'}</button>
     </>}
-    <p className="my-2 text-slate-400">{zh ? `已有板材固定通孔 ${holeCount} 个。孔坐标从各板局部左下角计量；不包含铰链、滑轨等尚未定义的加工孔。` : `${holeCount} defined panel mounting through-holes. Coordinates start at each board’s local lower-left corner; undefined hinge and runner holes are excluded.`}</p>
+    <p className="my-2 text-slate-400">{zh ? `已有板材固定通孔 ${holeCount} 个。孔表包含成品及扣除封边后的毛坯坐标，均从板件局部左下角计量；不包含铰链、滑轨等尚未定义的加工孔。` : `${holeCount} defined panel mounting through-holes. Finished and blank coordinates start at each board’s local lower-left corner; undefined hinge and runner holes are excluded.`}</p>
+    {edgeHoles.length > 0 && <p role="alert" className="my-2 text-amber-300">{zh ? '通孔超出扣除封边后的毛坯，请调整孔位或封边：' : 'Holes cross the blank edge; adjust mounting positions or edge bands: '}{edgeHoles.map(b => b.id).join(', ')}</p>}
     <button disabled={!holeCount} className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 disabled:opacity-40" onClick={() => downloadText('panel-holes.csv', '\uFEFF' + panelHolesCsv(boards), 'text/csv;charset=utf-8;')}>{zh ? '导出已有板孔 CSV' : 'Export defined panel holes CSV'}</button>
   </details>
 }

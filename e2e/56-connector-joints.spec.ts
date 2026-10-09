@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
+import { parseProjectDocument } from '../src/utils/document'
+import { specDims } from '../src/utils/specUtils'
 import { readFileSync } from 'node:fs'
 import { chooseConnector, openApp, setView, settle, store, w2c, type V3 } from './helpers'
 
@@ -71,10 +73,7 @@ test('the actual B6 desk front-left corner fits five inner brackets across all t
     const [x, y, z] = part.position
     return Math.hypot(x - joint[0], y - joint[1], z - joint[2]) > 80
   })
-  await page.evaluate(async (source) => {
-    const { parseProjectDocument } = await import('/src/utils/document.ts')
-    ;(window as any).__aluframe.store.getState().loadDocument(parseProjectDocument(source))
-  }, source)
+  await page.evaluate(document => (window as any).__aluframe.store.getState().loadDocument(document), parseProjectDocument(source))
   await setView(page, [-200, 870, 840], [25, 700, 575])
   await chooseConnector(page, 'inside-corner')
   const pointer = await w2c(page, joint)
@@ -128,8 +127,7 @@ test('both slots on a 2040 joint can be chosen and placed without duplicate part
   const pointer = await loadJoint(page, true)
   const hud = page.getByTestId('connector-seat-hud')
   await expect(hud).toHaveAttribute('data-seat-count', '4')
-  const guideErrors = await page.evaluate(async () => {
-    const { specDims } = await import('/src/utils/specUtils.ts')
+  const guideErrors = await page.evaluate(({ hw, hh }) => {
     const { THREE, sceneRoot, store } = (window as any).__aluframe
     const errors: number[] = []
     sceneRoot.traverse((object: any) => {
@@ -137,11 +135,10 @@ test('both slots on a 2040 joint can be chosen and placed without duplicate part
       const profile = store.getState().profiles.find((part: any) => part.id === object.userData.profileId)
       const local = new THREE.Vector3(...object.userData.point).sub(new THREE.Vector3(...profile.position))
         .applyQuaternion(new THREE.Quaternion(...profile.quaternion).normalize().invert())
-      const { hw, hh } = specDims(profile.spec)
       errors.push(Math.min(Math.abs(Math.abs(local.x) - hw), Math.abs(Math.abs(local.y) - hh)))
     })
     return errors
-  })
+  }, specDims('2040'))
   expect(guideErrors).toHaveLength(2)
   for (const error of guideErrors) expect(error).toBeLessThan(1e-5)
   const firstIndex = Number(await hud.getAttribute('data-seat-index'))

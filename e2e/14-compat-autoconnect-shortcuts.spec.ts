@@ -45,6 +45,7 @@ test.describe('Joint compatibility', () => {
   test('matching outside faces do not hide unsupported B6/I8 slot systems', async ({ page }) => {
     await postAndRail(page, '4040', '2040')
     await expect(page.getByTestId('bom-mismatches')).toContainText('缺少可用连接件')
+    await page.getByTestId('sidebar-tab-inspect').click()
     await expect(page.getByTestId('bom-cross-series')).toBeVisible()
     await chooseConnector(page, 'inside-corner')
     await page.getByTestId('auto-connect').click()
@@ -74,6 +75,7 @@ test.describe('Joint compatibility', () => {
 
   test('the readout selects the members it is complaining about', async ({ page }) => {
     await postAndRail(page, '4040', '2020')
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('bom-mismatches').click()
     expect((await store(page)).selectedIds.length).toBe(2)
   })

@@ -51,16 +51,24 @@ function reach(all: Map<number, string>, root: number): Set<number> {
 /** every solid in the file with the corners it reaches */
 function solidsOf(step: string) {
   const all = entities(step)
-  return [...all].filter(([, b]) => b.startsWith('MANIFOLD_SOLID_BREP(')).map(([id, body]) => {
+  return [...all].filter(([, b]) => /^(MANIFOLD_SOLID_BREP|FACETED_BREP)\(/.test(b)).map(([id, body]) => {
     const ids = reach(all, id)
     const points: THREE.Vector3[] = []
-    const uses = new Map<number, string[]>()
+    const uses = new Map<string, string[]>()
     for (const i of ids) {
       const b = all.get(i)!
       const pt = b.match(/^CARTESIAN_POINT\('',\(([-\d.eE]+),([-\d.eE]+),([-\d.eE]+)\)\)/)
       if (pt) points.push(new THREE.Vector3(+pt[1], +pt[2], +pt[3]))
       const oe = b.match(/^ORIENTED_EDGE\('',\*,\*,#(\d+),\.(T|F)\.\)/)
-      if (oe) uses.set(+oe[1], [...(uses.get(+oe[1]) ?? []), oe[2]])
+      if (b.startsWith('POLY_LOOP(')) {
+        const loop = [...b.matchAll(/#(\d+)/g)].map(match => Number(match[1]))
+        for (let j = 0; j < loop.length; j++) {
+          const a = loop[j], next = loop[(j + 1) % loop.length]
+          const edge = a < next ? `${a}/${next}` : `${next}/${a}`
+          uses.set(edge, [...(uses.get(edge) ?? []), a < next ? 'T' : 'F'])
+        }
+      }
+      if (oe) uses.set(oe[1], [...(uses.get(oe[1]) ?? []), oe[2]])
     }
     return { name: body.match(/'([^']*)'/)![1], points, uses }
   })
@@ -68,6 +76,11 @@ function solidsOf(step: string) {
 
 /** Validate exported AP214 solid topology and part dimensions. */
 describe('STEP export', () => {
+  it('preserves Unicode names and escapes literal delimiters', () => {
+    const out = buildStep({ profiles: [], name: "柜 'A' \\ 装配" })
+    expect(out).toContain("\\X2\\67DC\\X0\\ ''A'' \\\\ \\X2\\88C5914D\\X0\\")
+    expect(out).not.toMatch(/[^\x00-\x7f]/)
+  })
   const frame = () => [
     P(0, 0, 0, 0, 800, 0),
     P(600, 0, 0, 600, 800, 0),
@@ -201,6 +214,8 @@ describe('STEP export', () => {
     expect([...used].filter((id) => !defined.has(id)), `${entry.type}: unresolved references`).toEqual([])
     const solids = solidsOf(output)
     expect(solids.length, entry.type).toBeGreaterThan(0)
+    // Fourteen bearing balls are separate solids, not one disconnected shell.
+    if (entry.type === 'caster-mount') expect(solids).toHaveLength(23)
     const badEdges = solids.flatMap((solid) => [...solid.uses]
       .filter(([, directions]) => directions.length !== 2 || directions[0] === directions[1])
       .map(([edge, directions]) => ({ solid: solid.name, edge, directions })))

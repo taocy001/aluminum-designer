@@ -115,6 +115,7 @@ test.describe('BOM, project files, clear', () => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await drawMember(page, [0, 0, 400], [600, 10, 400])
+    await page.getByTestId('sidebar-tab-inspect').click()
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-bom').click()])
     const path = await dl.path()
     const csv = fs.readFileSync(path!, 'utf8')
@@ -136,6 +137,7 @@ test.describe('BOM, project files, clear', () => {
     const doc = JSON.parse(fs.readFileSync(path!, 'utf8'))
     expect(doc.profiles).toHaveLength(2)
     // clear, then import
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('clear-all').click()
     await expect(page.getByTestId('clear-all')).toContainText('再点一次')
     await page.getByTestId('clear-all').click()
@@ -145,7 +147,8 @@ test.describe('BOM, project files, clear', () => {
     const after = (await store(page)).profiles
     expect(after.map((p) => [p.id, p.length, p.position])).toEqual(before.map((p) => [p.id, p.length, p.position]))
     await page.keyboard.press('Control+z')
-    expect((await store(page)).profiles).toHaveLength(0)
+    expect((await store(page)).profiles).toHaveLength(2)
+    expect((await store(page)).past).toBe(0)
   })
 
   test('bad project file shows an error and leaves the document intact', async ({ page }) => {
@@ -159,6 +162,7 @@ test.describe('BOM, project files, clear', () => {
   test('clear needs a second click and times out otherwise', async ({ page }) => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('clear-all').click()
     await page.waitForTimeout(3300)
     await expect(page.getByTestId('clear-all')).not.toContainText('再点一次')
@@ -166,12 +170,12 @@ test.describe('BOM, project files, clear', () => {
   })
 
   test('language toggle switches labels', async ({ page }) => {
-    await page.getByText('English').click()
-    await expect(page.getByText('ALUFRAME DESIGNER')).toBeVisible()
+    await page.getByRole('button', { name: 'English', exact: true }).click()
+    await expect(page.getByTestId('file-menu')).toHaveText('File')
     // the empty hand is an icon now, so its language shows in the accessible name
     await expect(page.getByTestId('held-chip')).toHaveAttribute('aria-label', 'Empty hand')
-    await page.getByText('中文').click()
-    await expect(page.getByText('铝型材框架设计器')).toBeVisible()
+    await page.getByRole('button', { name: '中文', exact: true }).click()
+    await expect(page.getByTestId('file-menu')).toHaveText('文件')
   })
 
   test('document persists across reload', async ({ page }) => {

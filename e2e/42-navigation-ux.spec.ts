@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, settle, store, tool, setView, w2c, enterDraw, drawExact, clickWorld, hoverWorld } from './helpers'
+import { openApp, settle, store, tool, setView, w2c, enterDraw, drawExact, clickWorld, hoverWorld, type V3 } from './helpers'
 
 const camera = (page: Page) => page.evaluate(() => {
   const w = (window as any).__aluframe
@@ -67,6 +67,28 @@ test('standard views preserve the target and fit respects the narrow canvas and 
     expect(projected.x).toBeLessThan(bounds!.x + bounds!.width)
     expect(projected.y).toBeGreaterThan(bounds!.y)
     expect(projected.y).toBeLessThan(bounds!.y + bounds!.height)
+  }
+})
+
+test('fitting a tall member leaves its upper joint clear of the drawing readout', async ({ page }) => {
+  await setView(page, [1900, 1500, 2300], [300, 400, 200])
+  await enterDraw(page, '2040')
+  await drawExact(page, [0, 0, 0], [0, 800, 0], 800)
+  await enterDraw(page, '2020')
+  await page.getByTestId('view-right').click()
+  await page.getByTestId('fit-view').click()
+  await settle(page)
+  const post = (await store(page)).profiles[0]
+  const [x, y, z] = post.position
+  await clickWorld(page, [x + 10, y + post.length, z])
+  await expect(page.getByTestId('draw-hud')).toBeVisible()
+  const readout = await page.getByTestId('draw-hud').boundingBox()
+  const canvas = await page.locator('canvas').boundingBox()
+  for (const p of [[x, y, z], [x, y + post.length, z]] as V3[]) {
+    const point = await w2c(page, p)
+    expect(point.y).toBeGreaterThan(readout!.y + readout!.height)
+    expect(point.y).toBeLessThan(canvas!.y + canvas!.height)
+    expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, point)).toBe('CANVAS')
   }
 })
 

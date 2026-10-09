@@ -6,6 +6,7 @@ import { updateTemplateInstance, templateEditMessage } from '../utils/templateIn
 import { reportEditResult } from '../utils/editFeedback'
 import { cancelActiveTransformGesture } from '../utils/transformGesture'
 import type { TemplateInstance } from '../utils/templateMetadata'
+import { partNumber } from '../utils/partNumbers'
 
 function InstanceForm({ instance, zh }: { instance: TemplateInstance; zh: boolean }) {
   const viewMode = useToolStore(state => state.viewMode)
@@ -18,12 +19,21 @@ function InstanceForm({ instance, zh }: { instance: TemplateInstance; zh: boolea
     if (viewMode) return
     cancelActiveTransformGesture()
     const result = updateTemplateInstance(instance.id, values)
-    if (result.status === 'blocked') { setError(templateEditMessage(result, zh)); return }
+    if (result.status === 'blocked') {
+      const doc = useStore.getState()
+      const numbers = result.partIds.map(id => {
+        const kind = doc.connectors.some(c => c.id === id) ? 'connector' : doc.panels.some(p => p.id === id) ? 'panel'
+          : doc.fittings.some(f => f.id === id) ? 'fitting' : 'profile'
+        return partNumber(kind, id)
+      })
+      setError(`${templateEditMessage(result, zh)}${numbers.length ? ` (${numbers.join(', ')})` : ''}`)
+      return
+    }
     if (!reportEditResult(result)) return
     setError('')
   }}>
     <h3 className="text-xs font-semibold">{zh ? `${template.labelZh}参数` : `${template.labelEn} parameters`}</h3>
-    <p className="text-[11px] text-slate-400">{zh ? '保持成员数量时可更新尺寸及关联部件。手动修改或锁定的模板成员不能重建；未关联零件和现有板材固定件也会阻止应用。' : 'Dimension updates keep the member count and update bound parts. Edited or locked members, unbound parts and existing panel fasteners prevent regeneration.'}</p>
+    <p className="text-[11px] text-slate-400">{zh ? '尺寸更新会带动关联板材、支撑和板材固定件。成员数量变化、成员手动修改或锁定、未关联零件、固定件安装失效会阻止应用。' : 'Dimensions update bound boards, supports and panel fasteners. Changes to member count, edited or locked members, unbound parts and invalid fastener seats prevent regeneration.'}</p>
     <div className="grid grid-cols-2 gap-2">{template.params.map(param => <label className="text-xs" key={param.key}>
       {zh ? param.labelZh : param.labelEn}
       <input type="number" disabled={viewMode} required min={param.min} max={param.max} step={['shelves', 'u'].includes(param.key) ? 1 : 'any'}

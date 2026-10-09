@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, settle, store, setView } from './helpers'
+import { configureFitting, openApp, settle, store, setView } from './helpers'
 
 /** a 600 × 600 × 800 bay, which is a kitchen cabinet */
 async function bay(page: import('@playwright/test').Page) {
@@ -38,6 +38,7 @@ test.describe('A drawer is one component', () => {
 
   test('fitting one adds a drawer, not a pile of board', async ({ page }) => {
     await pick(page, ['u1', 'u2', 'u3', 'u4'])
+    await configureFitting(page, 'drawer')
     await page.getByTestId('drawer-height').fill('250')
     await page.getByTestId('add-drawer').click()
     await settle(page)
@@ -50,6 +51,7 @@ test.describe('A drawer is one component', () => {
 
   test('it knows its own opening, less the frame', async ({ page }) => {
     await pick(page, ['u1', 'u2', 'u3', 'u4'])
+    await configureFitting(page, 'drawer')
     await page.getByTestId('drawer-height').fill('250')
     await page.getByTestId('add-drawer').click()
     await settle(page)
@@ -62,6 +64,7 @@ test.describe('A drawer is one component', () => {
 
   test('two of them stack, and neither overlaps the other', async ({ page }) => {
     await pick(page, ['u1', 'u2', 'u3', 'u4'])
+    await configureFitting(page, 'drawer')
     await page.getByTestId('drawer-height').fill('250')
     await page.getByTestId('drawer-count').fill('2')
     await page.getByTestId('add-drawer').click()
@@ -74,6 +77,7 @@ test.describe('A drawer is one component', () => {
 
   test('deleting it takes the whole drawer', async ({ page }) => {
     await pick(page, ['u1', 'u2', 'u3', 'u4'])
+    await configureFitting(page, 'drawer')
     await page.getByTestId('add-drawer').click()
     await settle(page)
     await page.waitForTimeout(250)
@@ -86,9 +90,11 @@ test.describe('A drawer is one component', () => {
 
   test('its boards and its runners reach the cut list', async ({ page }) => {
     await pick(page, ['u1', 'u2', 'u3', 'u4'])
+    await configureFitting(page, 'drawer')
     await page.getByTestId('add-drawer').click()
     await settle(page)
     await page.waitForTimeout(300)
+    await page.getByTestId('sidebar-tab-inspect').click()
     const csv = await page.evaluate(() => document.body.innerText)
     expect(csv).toContain('滑轨')
   })
@@ -100,6 +106,7 @@ test.describe('A door hangs on a hinge', () => {
 
   test('two uprights are enough to say where it goes', async ({ page }) => {
     await pick(page, ['u1', 'u2'])
+    await configureFitting(page, 'door')
     await page.getByTestId('add-door').click()
     await settle(page)
     await page.waitForTimeout(250)
@@ -111,6 +118,7 @@ test.describe('A door hangs on a hinge', () => {
 
   test('the hinge side and kind are what was chosen', async ({ page }) => {
     await pick(page, ['u1', 'u2'])
+    await configureFitting(page, 'door')
     await page.getByTestId('hinge-right').click()
     await page.getByTestId('hingetype-slot').click()
     await page.getByTestId('overlay-half').click()
@@ -130,10 +138,12 @@ test.describe('A door hangs on a hinge', () => {
     })
     void swing
     await pick(page, ['u1', 'u2'])
+    await configureFitting(page, 'door')
     await page.getByTestId('hingetype-cup').click()
     await page.getByTestId('add-door').click()
     await settle(page)
     await pick(page, ['u3', 'u4'])
+    await configureFitting(page, 'door')
     await page.getByTestId('hingetype-slot').click()
     await page.getByTestId('add-door').click()
     await settle(page)
@@ -145,9 +155,11 @@ test.describe('A door hangs on a hinge', () => {
 
   test('its hinges reach the cut list, counted by height', async ({ page }) => {
     await pick(page, ['u1', 'u2'])
+    await configureFitting(page, 'door')
     await page.getByTestId('add-door').click()
     await settle(page)
     await page.waitForTimeout(300)
+    await page.getByTestId('sidebar-tab-inspect').click()
     expect(await page.evaluate(() => document.body.innerText)).toContain('杯铰')
   })
 })
@@ -158,6 +170,7 @@ test.describe('Looking at it instead of building it', () => {
     await openApp(page)
     await bay(page)
     await pick(page, ['u1', 'u2', 'u3', 'u4'])
+    await configureFitting(page, 'drawer')
     await page.getByTestId('drawer-height').fill('250')
     await page.getByTestId('add-drawer').click()
     await settle(page)
@@ -237,6 +250,7 @@ test.describe('Looking at it instead of building it', () => {
   test('picking up a part goes back to building rather than doing nothing', async ({ page }) => {
     await page.getByTestId('mode-toggle').click()
     await settle(page)
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('spec-2040').click()
     await settle(page)
     const t = await page.evaluate(() => (window as any).__aluframe.tool.getState())
@@ -264,6 +278,7 @@ test.describe('The corner of the canvas', () => {
   })
 
   test('the line follows what is in hand', async ({ page }) => {
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('spec-2040').click()
     await settle(page)
     await expect(page.getByTestId('mode-line')).toContainText('2040')

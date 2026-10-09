@@ -1,3 +1,4 @@
+import { validFabricatedBoard, type BoardFabrication } from '../utils/boardFabrication'
 import type { PartGroup } from '../utils/groupMetadata'
 import type { TemplateInstance } from '../utils/templateMetadata'
 import { projectSession, type ProjectDraft } from '../utils/projectSession'
@@ -60,6 +61,7 @@ export interface ConnectorData {
 export type PanelMaterial = 'mdf' | 'ply' | 'acrylic' | 'alu'
 
 export interface PanelData {
+  fabrication?: BoardFabrication
   openingBinding?: PanelOpeningBinding
   id: string
   width: number
@@ -115,6 +117,8 @@ export interface DrawerConfig {
 }
 
 export interface FittingData {
+  /** Manufacturing settings keyed by the generated board key. */
+  fabrication?: Record<string, BoardFabrication>
   openingBinding?: FittingOpeningBinding
   /** Frame depth between the opening front and the front board (mm); defaults to zero. */
   frame?: number
@@ -309,12 +313,14 @@ export const useStore = create<State>()(
           const otherIds = new Set([...candidate.profiles, ...candidate.connectors, ...candidate.panels, ...candidate.fittings].map((p) => p.id))
           if (candidate.equipment.some((e) => otherIds.has(e.id))) { result = rejectEdit('invalid-equipment', candidate.equipment.filter((e) => otherIds.has(e.id)).map((e) => e.id)); return state }
           if (!validFittings(candidate.fittings)) { result = rejectEdit('invalid-fitting', candidate.fittings.map((f) => f.id)); return state }
-          if (candidate.panels.some((p) => ![p.width, p.height, p.thickness].every((n) => Number.isFinite(n) && n > 0))) {
+          if (candidate.panels.some((p) => ![p.width, p.height, p.thickness].every((n) => Number.isFinite(n) && n > 0) || !validFabricatedBoard(p))) {
             result = rejectEdit('invalid-opening', candidate.panels.map((p) => p.id)); return state
           }
           const resolved = reconcileBindings(before, candidate)
           if (resolved.status === 'rejected') { result = resolved; return state }
           const doc = { ...resolved.document, equipment: candidate.equipment, templateInstances: candidate.templateInstances ?? [], groups: candidate.groups ?? [] }
+          if (doc.panels.some(p => !validFabricatedBoard(p))) { result = rejectEdit('invalid-opening', doc.panels.map(p => p.id)); return state }
+          if (!validFittings(doc.fittings)) { result = rejectEdit('invalid-fitting', doc.fittings.map(f => f.id)); return state }
           const memberIds = new Set(partKinds.flatMap(kind => doc[kind].map(part => part.id)))
           doc.groups = doc.groups.flatMap(group => {
             const surviving = group.memberIds.filter(id => memberIds.has(id))

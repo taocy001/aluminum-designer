@@ -213,9 +213,8 @@ export function fittingParts(f: FittingData): FittingParts {
 }
 
 /** The transform the moving part takes at `open` (0…1), in the fitting's own frame */
-export function openTransform(f: FittingData): { position: THREE.Vector3; quaternion: THREE.Quaternion } {
+export function openTransform(f: FittingData, parts = fittingParts(f)): { position: THREE.Vector3; quaternion: THREE.Quaternion } {
   const t = Math.max(0, Math.min(1, f.open ?? 0))
-  const parts = fittingParts(f)
   if (f.kind === 'drawer') {
     return { position: new THREE.Vector3(0, 0, parts.travel * t), quaternion: new THREE.Quaternion() }
   }

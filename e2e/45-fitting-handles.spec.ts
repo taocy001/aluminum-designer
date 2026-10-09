@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openApp, settle, store } from './helpers'
+import { configureFitting, openApp, settle, store } from './helpers'
 
 /** Inspect rendered boxes in the actual front mesh's frame, including its animated transform. */
 async function rendered(page: Page, id: string) {
@@ -63,6 +63,7 @@ async function cabinet(page: Page, template = 'cabinet') {
 async function selectFront(page: Page, id: string) {
   const { screen } = await rendered(page, id)
   await page.mouse.click(screen.x, screen.y)
+  await page.getByTestId('sidebar-tab-properties').click()
   await expect(page.getByTestId('fitting-open')).toBeVisible()
   expect((await store(page)).selectedIds).toEqual([id])
 }
@@ -80,6 +81,7 @@ test.beforeEach(async ({ page }) => openApp(page))
 for (const [hinge, template] of [['left', 'cabinet'], ['right', 'rack'], ['top', 'cabinet'], ['bottom', 'rack']] as const) {
   test(`${hinge}-hung door has an exterior pull and opens toward it`, async ({ page }) => {
     await cabinet(page, template)
+    await configureFitting(page, 'door')
     await page.getByTestId(`hinge-${hinge}`).click()
     await page.getByTestId('add-door').click()
     await settle(page)
@@ -108,6 +110,7 @@ for (const [hinge, template] of [['left', 'cabinet'], ['right', 'rack'], ['top',
 
 test('two drawers keep centred exterior pulls while each slides out and back', async ({ page }) => {
   await cabinet(page, 'bench')
+  await configureFitting(page, 'drawer')
   await page.getByTestId('drawer-count').fill('2')
   await page.getByTestId('add-drawer').click()
   await settle(page)

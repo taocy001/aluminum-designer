@@ -88,6 +88,12 @@ export async function enterDraw(page: Page, spec = '2020') {
   expect((await tool(page)).held).not.toBe(null)
 }
 
+export async function configureFitting(page: Page, kind: 'door' | 'drawer') {
+  await page.getByTestId('sidebar-tab-add').click()
+  const entry = page.getByTestId(`configure-${kind}`)
+  if (await entry.getAttribute('aria-expanded') !== 'true') await entry.click()
+}
+
 /** Wait two animation frames for pointer state to reach the scene render. */
 export async function settle(page: Page) {
   await page.evaluate(() => new Promise<void>((resolve) => {

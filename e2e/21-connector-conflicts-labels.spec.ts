@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { chooseConnector, openApp, settle, store, setView } from './helpers'
+import { configureFitting, chooseConnector, openApp, settle, store, setView } from './helpers'
 
 const UP = [-0.7071067811865475, 0, 0, 0.7071067811865476]
 const ALONG_X = [0, 0.7071067811865475, 0, 0.7071067811865476]
@@ -82,6 +82,7 @@ test.describe('A connector in the way is reported', () => {
     })
     await settle(page)
     await page.waitForTimeout(300)
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('bom-penetrations').click()
     await settle(page)
     expect((await store(page)).selectedIds).toContain('buried')
@@ -120,6 +121,7 @@ test.describe('A board and a drawer say their size on the drawing', () => {
   test('a drawer has fields of its own, in the same order', async ({ page }) => {
     await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['u1', 'u2', 'u3', 'u4']))
     await settle(page)
+    await configureFitting(page, 'drawer')
     await page.getByTestId('drawer-height').fill('250')
     await page.getByTestId('add-drawer').click()
     await settle(page)
@@ -127,6 +129,7 @@ test.describe('A board and a drawer say their size on the drawing', () => {
     const f = (await store(page)).fittings[0]
     await page.evaluate((id) => (window as any).__aluframe.store.getState().selectItem(id, false), f.id)
     await settle(page)
+    await page.getByTestId('sidebar-tab-properties').click()
     await expect(page.getByTestId('fitting-props')).toBeVisible()
     const fields = await page.getByTestId('fitting-props').getByRole('spinbutton', { name: /^(宽度|高度|深度)（mm）$/ })
       .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))
@@ -145,12 +148,14 @@ test.describe('A board and a drawer say their size on the drawing', () => {
   test('a drawer can be opened from its own panel while looking', async ({ page }) => {
     await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['u1', 'u2', 'u3', 'u4']))
     await settle(page)
+    await configureFitting(page, 'drawer')
     await page.getByTestId('add-drawer').click()
     await settle(page)
     await page.waitForTimeout(300)
     const f = (await store(page)).fittings[0]
     await page.evaluate((id) => (window as any).__aluframe.store.getState().selectItem(id, false), f.id)
     await settle(page)
+    await page.getByTestId('sidebar-tab-properties').click()
     await page.getByTestId('fitting-open').fill('100')
     await settle(page)
     await page.waitForTimeout(200)
@@ -286,6 +291,7 @@ test.describe('A door opens outward', () => {
   test('a base door swings out into the room', async ({ page }) => {
     await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['b0_600', 'b600_600']))
     await settle(page)
+    await configureFitting(page, 'door')
     await page.getByTestId('add-door').click()
     await settle(page)
     await page.waitForTimeout(250)
@@ -295,6 +301,7 @@ test.describe('A door opens outward', () => {
   test('a wall door above it swings out too, not back into the shelves', async ({ page }) => {
     await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['w0_350', 'w600_350']))
     await settle(page)
+    await configureFitting(page, 'door')
     await page.getByTestId('add-door').click()
     await settle(page)
     await page.waitForTimeout(250)
@@ -304,6 +311,7 @@ test.describe('A door opens outward', () => {
   test('a wall door is as deep as its own cabinet, not as the run below it', async ({ page }) => {
     await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['w0_350', 'w600_350']))
     await settle(page)
+    await configureFitting(page, 'door')
     await page.getByTestId('add-door').click()
     await settle(page)
     await page.waitForTimeout(250)

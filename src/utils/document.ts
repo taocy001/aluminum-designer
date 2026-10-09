@@ -1,3 +1,4 @@
+import { validFabricatedBoard } from './boardFabrication'
 import { validPartGroups, type PartGroup } from './groupMetadata'
 import { validTemplateInstances, type TemplateInstance } from './templateMetadata'
 import { validPanelMount } from './panelMounts'
@@ -87,7 +88,7 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
   const panels = ((doc.panels ?? []) as unknown[]).map((value) => {
     const b = base(value, 'openingBinding')
     if (!optional(b.openingBinding, validPanelOpeningBinding)) fail('panel opening binding')
-    if (![b.width, b.height, b.thickness].every(positive) || !oneOf(b.material, materials)) fail('panel size or material')
+    if (![b.width, b.height, b.thickness].every(positive) || !oneOf(b.material, materials) || !validFabricatedBoard(b as unknown as PanelData)) fail('panel size or material')
     return { ...b } as unknown as PanelData
   })
   const fittings = ((doc.fittings ?? []) as unknown[]).map((value) => {

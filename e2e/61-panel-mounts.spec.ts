@@ -39,17 +39,17 @@ test('fasten an inset shelf in place, preserve mounts on reload and undo the ass
 
 test('panel meshes survive rigid moves, but change when fastening holes are removed', async ({ page }) => {
   await openApp(page)
-  await page.evaluate(async () => {
-    const { attachPanels } = await import('/src/utils/attachPanels.ts' as string)
+  await page.evaluate(() => {
     const s = (window as any).__aluframe.store.getState()
     const panel = { id: 'board', width: 860, height: 240, thickness: 18, position: [450, 350, 160],
       quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2], material: 'ply' }
     const rail = (id: string, z: number) => ({ id, position: [0, 350, z], length: 900, spec: '2040',
       quaternion: [.5, .5, .5, .5], miterCuts: [], holes: [] })
     const doc = { profiles: [rail('front', 20), rail('back', 300)], panels: [panel], connectors: [], fittings: [], equipment: [] }
-    let i = 0
-    s.loadDocument({ ...doc, connectors: attachPanels(doc, ['board'], () => `mount-${i++}`).made })
+    s.loadDocument(doc)
+    s.selectItems(['board'])
   })
+  await page.getByRole('button', { name: '固定所选板材', exact: true }).click()
   const mesh = () => page.evaluate(() => {
     let result: { uuid: string; vertices: number } | null = null
     ;(window as any).__aluframe.sceneRoot.traverse((o: any) => {

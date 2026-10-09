@@ -41,9 +41,9 @@ Shift 单击和拖动按移动距离区分：超过 5 px 后进入拖动。Shift
 | [SketchUp 移动](https://help.sketchup.com/en/sketchup/moving-entities-around) | 选择移动基点，通过推断参照和轴向约束定位 | 提供吸附、轴向拖动和精确距离输入；连接件另按安装面、槽线及完整孔组定位 |
 | [Onshape 选择](https://cad.onshape.com/help/Content/Home/selection.htm) | 画布单击累加或取消，空白或空格清空；列表支持 Shift 连续选择 | 普通单击替换选择，Shift 单击切换，空格打开动作菜单 |
 | [Onshape Select Other](https://cad.onshape.com/help/Content/Home/select_other.htm) | 菜单列出重叠对象，用反引号及 Shift+反引号轮选，Enter 确认 | Tab / Shift+Tab 轮选；另提供带筛选和悬停高亮的候选列表 |
-| [Blender 默认键位](https://github.com/blender/blender/blob/main/scripts/presets/keyconfig/keymap_data/blender_default.py) | 按编辑器上下文组织键位，F3 搜索命令，空格行为可配置 | 空格菜单按状态提供操作；尚无命令搜索和可配置键位 |
+| [Blender 默认键位](https://github.com/blender/blender/blob/main/scripts/presets/keyconfig/keymap_data/blender_default.py) | 按编辑器上下文组织键位，F3 搜索命令，空格行为可配置 | 空格菜单按状态提供操作，Ctrl/Cmd+K 搜索命令；键位尚不可配置 |
 | [FreeCAD CAD 导航](https://github.com/FreeCAD/FreeCAD/blob/main/src/Gui/Navigation/CADNavigationStyle.cpp) | 区分选择、平移和旋转状态，按鼠标按钮及修饰键切换 | 左键兼作选择、绘制及拖动，空白左拖或任意位置中拖旋转；当前没有导航预设 |
 
-命令处理、菜单文案和帮助分别维护，尚未共用一个命令定义表。侧栏不同控件仍有字号与提示样式差异。
+文件、历史、选择和视图命令共用定义表，菜单、命令搜索、帮助与对应快捷键使用同一组名称、执行函数和可用性规则。连续移动、锁轴等操作仍按当前工具状态处理。侧栏不同控件仍有字号与提示样式差异。
 
 实现位置：[顶栏与保存](../src/components/EditorHeader.tsx)、[文件读写](../src/utils/projectFile.ts)、[全局按键](../src/App.tsx)、[画布选择](../src/components/PointerRouter.tsx)、[视角](../src/components/Viewport.tsx)、[动作菜单](../src/components/QuickMenu.tsx)、[侧栏](../src/components/Sidebar.tsx)。

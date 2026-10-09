@@ -31,6 +31,7 @@ test.describe('Starting from something', () => {
     await page.waitForTimeout(300)
     const withSeven = (await store(page)).profiles.length
     await page.evaluate(() => (window as any).__aluframe.store.getState().clearAll())
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('template-shelving').click()
     await settle(page)
     await page.getByTestId('template-place').click()

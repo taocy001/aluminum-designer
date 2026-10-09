@@ -8,7 +8,7 @@ import { jointPartnersAt } from '../utils/connectorFit'
 import { unflushPairs } from '../utils/faceAlign'
 import { auditBrackets } from '../utils/bracketSeat'
 import { migrateFittings } from '../utils/migrate'
-import { parseProjectDocument } from '../utils/document'
+import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
 import { panelMountFrame, panelMountSupports } from '../utils/panelMounts'
 import { runnerFaults } from '../utils/runnerMount'
 import { leafObb } from '../utils/fittingGeometry'
@@ -133,6 +133,12 @@ describe('bundled example geometry', () => {
     it('loads as a complete validated project', () => {
       const source = docs.get(name)!
       expect(parseProjectDocument(source).profiles).toHaveLength(source.profiles.length)
+    })
+
+    it('preserves geometry, hardware bindings and project metadata through save and reopen', () => {
+      const opened = parseProjectDocument(docs.get(name)!)
+      const reopened = parseProjectDocument(JSON.parse(serializeProjectDocument(opened)))
+      expect(reopened).toEqual(opened)
     })
     it('has no interference reported between modelled parts', () => {
       const { profiles, connectors, panels, fittings } = load(name)

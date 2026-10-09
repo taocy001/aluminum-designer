@@ -38,7 +38,7 @@ describe('panel sheet layout', () => {
     const result = nestPanels(parts, stock)
     expect(result.sheets).toHaveLength(3)
     expect(result.oversized.map(p => p.id)).toEqual(['B-too-wide'])
-    expect(panelLayoutCsv(result, stock)).toContain('"exceeds-stock","","B-too-wide"')
+    expect(panelLayoutCsv(result, stock)).toContain('"size-or-grain-mismatch","","B-too-wide"')
   })
   it('does not consume a kerf beyond a full-sheet part', () => {
     const piece = board('B-full', 2420, 1200)

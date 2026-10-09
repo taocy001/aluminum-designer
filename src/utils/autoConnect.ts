@@ -5,6 +5,7 @@ import { reportEditResult } from './editFeedback'
 import * as THREE from 'three'
 import { useStore, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
+import { useViewStore } from '../store/useViewStore'
 import { analyzeFrame } from './analysis'
 import { connectorEntry, connectorLabel, seriesOf, type ConnectorSeries } from './connectorCatalog'
 import { endCornerSeats } from './connectorMounting'
@@ -153,7 +154,10 @@ export function autoConnect(type: string): AutoConnectResult {
       issues.push({ position: part.position, hosts: nearest?.c.legs ?? [], reason: status.reason!, connectorId: part.id, candidate: part })
     }
   }
-  const publish = (placed: number, fixed: number) => useInspectionStore.getState().setReport({ type, placed, skipped, repaired: fixed, issues })
+  const publish = (placed: number, fixed: number) => {
+    useInspectionStore.getState().setReport({ type, placed, skipped, repaired: fixed, issues })
+    if (issues.length) useViewStore.getState().setSidebarTab('inspect')
+  }
   if (made.length === 0 && repaired === 0) {
     publish(0, 0)
     useToolStore.getState().showToast([blocked ? t.toastAutoEquipmentBlocked(blocked)

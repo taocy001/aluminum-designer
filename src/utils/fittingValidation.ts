@@ -1,3 +1,5 @@
+import { validBoardFabrication, validFabricatedBoard } from './boardFabrication'
+import { fittingParts } from './fittingGeometry'
 import type { FittingData } from '../store/useStore'
 import { drawerLayout } from './drawerLayout'
 
@@ -27,6 +29,7 @@ export function validFittingFields(value: unknown): boolean {
     || !tuple(value.position, 3) || !tuple(value.quaternion, 4)) return false
   const norm = value.quaternion.reduce((sum, v) => sum + v * v, 0)
   return finite(norm) && norm >= 1e-12
+    && optional(value.fabrication, v => record(v) && Object.values(v).every(validBoardFabrication))
     && optional(value.locked, (v) => typeof v === 'boolean')
     && oneOf(value.kind, ['door', 'drawer'])
     && [value.width, value.height, value.depth].every((v) => finite(v) && v > 0)
@@ -46,6 +49,11 @@ export function validFittingFields(value: unknown): boolean {
 /** Every accepted drawer includes its front, two sides, back, inner front and base. */
 export function validFittingDimensions(f: FittingData): boolean {
   if (![f.width, f.height, f.depth].every((v) => finite(v) && v >= MIN_FITTING_OPENING)) return false
+  if (f.fabrication) {
+    const boards = fittingParts(f).boards
+    if (Object.keys(f.fabrication).some(key => !['panel', 'front', 'side-left', 'side-right', 'back', 'inner-front', 'base', 'reinforcement-1', 'reinforcement-2', 'reinforcement-3', 'reinforcement-4'].includes(key))
+      || boards.some(b => !validFabricatedBoard({ ...b, fabrication: f.fabrication?.[b.key] }))) return false
+  }
   if (f.kind !== 'drawer') return true
   if (!optional(f.drawer, validDrawerConfig)) return false
   const d = drawerLayout(f)

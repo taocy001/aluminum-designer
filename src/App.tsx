@@ -1,8 +1,9 @@
 import { ScanLine } from 'lucide-react'
 import { cancelActiveTransformGesture, transformGestureActive } from './utils/transformGesture'
 import EditorHeader from './components/EditorHeader'
+import CommandSearch from './components/CommandSearch'
+import { commands, commandLabel, commandShortcut, keyCommand, runCommand } from './utils/commands'
 import OverlapPicker from './components/OverlapPicker'
-import { reportEditResult } from './utils/editFeedback'
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Viewport from './components/Viewport'
 import Sidebar from './components/Sidebar'
@@ -15,7 +16,7 @@ import { useToolStore } from './store/useToolStore'
 import { translations } from './utils/translations'
 import { tryAddProfile } from './utils/profileFactory'
 import { drawingInput, prepareDrawingPreview } from './utils/drawPreview'
-import { copySelected, pasteCopied, duplicateSelected, nudgeSelected, rotateSelected, commitExactMove, commitExactLength, selectAll } from './utils/editOps'
+import { nudgeSelected, rotateSelected, commitExactMove, commitExactLength } from './utils/editOps'
 import { connectorLabel } from './utils/connectorCatalog'
 import { nextSuggestion, dismissSuggestion } from './utils/suggestOps'
 import { computeTrims } from './utils/jointUtils'
@@ -27,7 +28,7 @@ import type { Axis } from './utils/jointUtils'
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 
 function App() {
-  const { profiles, throughRule, clearSelection, removeSelected, undo, redo, toggleLockSelected } = useStore()
+  const { profiles, throughRule, clearSelection } = useStore()
   const {
     language, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace,
     drawLengthInput: preciseInput, setDrawLengthInput: setPreciseInput,
@@ -118,6 +119,7 @@ function App() {
       )
       if (isInInput || nativeButtonKey) return
       if (quickMenuOpenRef.current) return
+      if (document.querySelector('dialog[open]') || e.isComposing || e.altKey) return
       if (transformGestureActive()) {
         if (e.key === 'Escape') {
           e.preventDefault()
@@ -129,32 +131,17 @@ function App() {
           return
         }
       }
-      // Part copies use an in-app snapshot. Inputs retain their native text clipboard.
-      if (mod && ['c', 'v'].includes(e.key.toLowerCase())) {
-        e.preventDefault()
-        const tool = useToolStore.getState()
-        if (tool.isDrawing || tool.isDragging || tool.resize || tool.pendingRotate) return
-        if (e.key.toLowerCase() === 'c') copySelected()
-        else if (!tool.viewMode) pasteCopied()
-        return
-      }
-      if (viewMode && mod && ['z', 'y'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
-
-      if (mod && e.key.toLowerCase() === 'a') {
-        e.preventDefault()
-        if (e.shiftKey) clearSelection()
-        else selectAll()
-        return
-      }
-      if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); useToolStore.getState().cancelDraw(); undo(); return }
-      if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); useToolStore.getState().cancelDraw(); redo(); return }
+      const command = keyCommand(e)
+      // File shortcuts have their own native picker lifecycle in EditorHeader.
+      if (command && ['open', 'save', 'save-as'].includes(command)) return
+      if (command && mod) { e.preventDefault(); if (!e.repeat) runCommand(command); return }
 
       // Looking, not building: the view keys still work, the ones that change things do not.
       if (viewMode && !['Escape', 'f', 'F', 'F11', ' '].includes(e.key) && e.code !== 'Space') {
-        if (e.key.toLowerCase() === 'v' && !mod) { setViewMode(false); return }
+        if (command === 'view-mode') { if (!e.repeat) runCommand(command); return }
         return
       }
-      if (e.key.toLowerCase() === 'v' && !mod) { setViewMode(!viewMode); return }
+      if (command === 'view-mode') { if (!e.repeat) runCommand(command); return }
 
       // Space opens selection actions or whole-document actions when nothing is selected.
       if (e.key === ' ' || e.code === 'Space') {
@@ -188,8 +175,8 @@ function App() {
         return
       }
 
-      if (e.key.toLowerCase() === 'f' && !mod) {
-        triggerCameraReset(useStore.getState().selectedIds.length > 0 ? 'selection' : 'all')
+      if (command === 'fit') {
+        runCommand(command)
         return
       }
 
@@ -215,8 +202,7 @@ function App() {
         return
       }
 
-      if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return }
-      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); reportEditResult(removeSelected()); return }
+      if (command) { e.preventDefault(); if (!e.repeat) runCommand(command); return }
       // R requests a rotation axis; X/Y/Z supplies it.
       if (pendingRotate) {
         const k = e.key.toLowerCase()
@@ -234,8 +220,6 @@ function App() {
         return
       }
       if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return }
-      if (e.key.toLowerCase() === 'p' && !mod) { cyclePivotMode(); return }
-      if (e.key.toLowerCase() === 'l' && !mod) { toggleLockSelected(); return }
 
       const step = e.shiftKey ? 50 : 5
       const nudge: Record<string, [number, number, number]> = {
@@ -247,7 +231,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, viewMode, setViewMode, measuring, stopMeasuring, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, removeSelected, undo, redo, clearSelection, triggerCameraReset, cyclePivotMode, toggleLockSelected, openQuickMenu, closeQuickMenu, toggleFullscreen, mobileToolsOpen, helpOpen, toggleHelp])
+  }, [isDrawing, held, selectMode, lockedAxis, pendingRotate, setPendingRotate, viewMode, measuring, stopMeasuring, showToast, t, cancelDraw, putDown, setSelectMode, setLockedAxis, clearSelection, openQuickMenu, closeQuickMenu, toggleFullscreen, mobileToolsOpen, helpOpen, toggleHelp])
 
   // A press outside the 3D canvas while drawing cancels it — otherwise the draw hangs with no way out
   useEffect(() => {
@@ -420,7 +404,7 @@ function App() {
           )}
 
           {isDrawing && (
-            <div style={{ top: hudTop, left: hudLeft }} className="absolute right-2 flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 rounded-xl p-2 z-20" data-testid="draw-hud" data-keep-draw>
+            <div style={{ top: hudTop, left: hudLeft }} className="absolute right-2 flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 rounded-xl p-2 z-20" data-testid="draw-hud" data-viewport-readout data-keep-draw>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-bold border"
                 style={drawAxis
                   ? { color: AXIS_COLORS[drawAxis], borderColor: AXIS_COLORS[drawAxis] + '66', background: AXIS_COLORS[drawAxis] + '15' }
@@ -457,7 +441,7 @@ function App() {
           {/* Typing a number mid-gesture finishes it exactly: how far to move, or how long
               the member should be. The mouse gets the direction, the keyboard the size. */}
           {exactGesture && (
-            <div style={{ top: hudTop, left: hudLeft }} className="absolute right-2 flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 rounded-xl p-2 z-20" data-testid="exact-hud" data-keep-draw>
+            <div style={{ top: hudTop, left: hudLeft }} className="absolute right-2 flex flex-wrap justify-center items-center gap-2 bg-slate-900/95 rounded-xl p-2 z-20" data-testid="exact-hud" data-viewport-readout data-keep-draw>
               <div className="px-3 py-1.5 rounded-full text-xs font-mono font-bold border text-amber-200 border-amber-400/50 bg-amber-500/10">
                 {exactGesture === 'move' ? t.exactMove : t.exactLength}
               </div>
@@ -508,7 +492,7 @@ function App() {
           {/* Toolbar */}
           {/* Related controls wrap together; short mobile canvases scroll the toolbar
               above the bottom controls. The drawing HUD follows its measured height. */}
-          <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap whitespace-nowrap w-[calc(100%-1rem)] md:w-max max-w-[calc(100%-1rem)] max-h-[calc(100%-6rem)] md:max-h-none overflow-y-auto md:overflow-visible bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
+          <div ref={toolbarRef} data-testid="viewport-toolbar" data-viewport-toolbar className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap whitespace-nowrap w-[calc(100%-1rem)] md:w-max max-w-[calc(100%-1rem)] max-h-[calc(100%-6rem)] overflow-y-auto bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
             <div className="viewport-tool-group" role="group" aria-label={language === 'zh' ? '编辑' : 'Edit'}>
               <span className="viewport-tool-caption">{language === 'zh' ? '编辑' : 'Edit'}</span>
               <button data-testid="held-chip" onClick={() => { if (held !== null) putDown() }}
@@ -621,12 +605,17 @@ function App() {
 
           {helpOpen && (
             <div data-keep-draw data-testid="help-panel"
-              className="absolute bottom-20 md:bottom-16 left-6 z-20 bg-slate-900/95 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 shadow-2xl max-w-sm max-h-[calc(100%-6rem)] md:max-h-none overflow-y-auto md:overflow-visible text-[10px] text-slate-400 space-y-1">
+              className="absolute bottom-20 md:bottom-16 left-6 z-20 bg-slate-900/95 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 shadow-2xl max-w-sm max-h-[calc(100%-6rem)] overflow-y-auto text-[10px] text-slate-400 space-y-1">
               <div className="flex items-center justify-between pb-1.5 mb-1 border-b border-white/10">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t.help}</span>
                 <button onClick={toggleHelp} aria-label={t.help} className="text-slate-500 hover:text-white"><X size={12} /></button>
               </div>
               {[...t.guideNavigate, ...t.guideDraw, ...t.guideSelect].map((line, i) => <p key={i}>{line}</p>)}
+              <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
+                {commands.filter(command => command.keys).map(command => <div key={command.id} className="flex justify-between gap-3">
+                  <span>{commandLabel(command)}</span><kbd>{commandShortcut(command.id)}</kbd>
+                </div>)}
+              </div>
             </div>
           )}
 
@@ -644,6 +633,7 @@ function App() {
         </main>
       </div>
       <QuickMenu />
+      <CommandSearch />
       <OverlapPicker />
       <Tooltip />
     </div>

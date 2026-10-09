@@ -6,6 +6,12 @@ import { encodeShareLink, decodeShare } from '../utils/shareLink'
 import { createProjectSession } from '../utils/projectSession'
 import { templateById } from '../utils/templates'
 import { openingFaceOptions, resolveOpening, deriveOpeningPanel, type OpeningRef } from '../utils/openingBindings'
+import { attachPanels } from '../utils/attachPanels'
+import { panelMountFrame, panelMountSupports } from '../utils/panelMounts'
+import { panelOBB } from '../utils/analysis'
+import { Vector3, Quaternion } from 'three'
+import { panelDrillCenters } from '../utils/panelDrilling'
+import { createConnectorPlacementValidator } from '../utils/connectorPlacement'
 
 const defaults = (id: string) => Object.fromEntries(templateById(id)!.params.map(p => [p.key, p.value]))
 const empty = () => ({ profiles: [], connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails' as const, templateInstances: [] })
@@ -13,6 +19,26 @@ beforeEach(() => useStore.getState().loadDocument(empty()))
 function add(id = 'cabinet') {
   expect(addTemplateInstance(id, defaults(id)).status).toBe('applied')
   return useStore.getState().templateInstances[0]
+}
+
+function mountedPanel(mode: 'top' | 'front') {
+  const instance = add(), state = useStore.getState()
+  const identity: [number, number, number, number] = [0, 0, 0, 1]
+  const options = openingFaceOptions(state.profiles, instance.profileIds, identity, 'rails')
+  const coordinates = { left: 10, right: 590, bottom: 10, top: 790, front: 590, back: 10 }
+  const ref = Object.fromEntries(Object.entries(coordinates).map(([role, coordinate]) => [role,
+    options[role as keyof typeof options].find(o => Math.abs(o.coordinate - coordinate) < .001)!.ref])) as unknown as OpeningRef
+  const resolved = resolveOpening(ref, state.profiles, 'rails')
+  if (resolved.status !== 'resolved') throw new Error('fixture opening')
+  const margin = mode === 'top' ? 0 : -20
+  const panel = deriveOpeningPanel({ id: 'board', width: 1, height: 1, thickness: 18, material: 'ply', position: [0, 0, 0], quaternion: identity,
+    openingBinding: { opening: ref, mode, margins: { left: margin, right: margin, top: margin, bottom: margin }, normalOffset: mode === 'top' ? 11 : 29 } }, resolved.opening)!
+  expect(state.addPanels([panel]).status).toBe('applied')
+  let n = 0
+  const mounts = attachPanels(useStore.getState(), [panel.id], () => `mount-${n++}`).made
+  expect(mounts.length).toBeGreaterThanOrEqual(4)
+  expect(useStore.getState().commitDocument({ connectors: mounts }).status).toBe('applied')
+  return instance
 }
 
 describe('editable template instances', () => {
@@ -82,13 +108,74 @@ describe('editable template instances', () => {
     expect(useStore.getState()).toBe(before)
   })
 
-  it('refuses panel fasteners until they can be reinstalled without losing the current assembly', () => {
+  it('refuses invalid panel fasteners without changing the current assembly', () => {
     const instance = add()
     useStore.getState().addConnector({ id: 'fastener', type: 'bracket', position: [0,0,0], quaternion: [0,0,0,1],
       panelMount: { panelId: 'board', profileId: instance.profileIds[0], spacer: 0, boardThickness: 18 } })
     const before = useStore.getState()
     expect(updateTemplateInstance(instance.id, { ...instance.parameters, h: 900 })).toMatchObject({ status: 'blocked', reason: 'panel-mount' })
     expect(useStore.getState()).toBe(before)
+  })
+
+  it.each(['top', 'front'] as const)('resizes a mounted %s board with valid holes, preserved IDs and one undo after reopening', mode => {
+    const instance = mountedPanel(mode)
+    // A user's fine adjustment must survive; regeneration must not replace it with a default seat.
+    const c = useStore.getState().connectors[0], host = useStore.getState().profiles.find(p => p.id === c.panelMount!.profileId)!
+    const axis = new Vector3(0, 0, 1).applyQuaternion(new Quaternion(...host.quaternion))
+    useStore.getState().commitTransform({ connectors: [{ id: c.id, updates: { position: new Vector3(...c.position).addScaledVector(axis, 7.5).toArray() } }] })
+    useStore.getState().loadDocument(parseProjectDocument(serializeProjectDocument(useStore.getState())))
+    const before = useStore.getState(), oldBoard = panelOBB(before.panels[0])
+    const fraction = panelMountFrame(before.connectors[0]).boardHole.sub(oldBoard.center).dot(axis)
+      / (Math.abs(axis.dot(oldBoard.axes[0])) * oldBoard.half.x + Math.abs(axis.dot(oldBoard.axes[1])) * oldBoard.half.y)
+    expect(updateTemplateInstance(instance.id, { ...instance.parameters, w: 850, d: 750, h: 1100 })).toMatchObject({ status: 'applied' })
+    const after = useStore.getState(), board = panelOBB(after.panels[0])
+    expect(after.connectors.map(c => c.id)).toEqual(before.connectors.map(c => c.id))
+    expect(after.past).toHaveLength(1)
+    expect(panelMountFrame(after.connectors[0]).boardHole.sub(board.center).dot(axis)
+      / (Math.abs(axis.dot(board.axes[0])) * board.half.x + Math.abs(axis.dot(board.axes[1])) * board.half.y)).toBeCloseTo(fraction, 6)
+    const validate = createConnectorPlacementValidator(after.profiles, after)
+    for (const mount of after.connectors) {
+      expect(panelMountSupports(mount, after.profiles, after.panels)).toEqual([mount.panelMount!.profileId])
+      expect(validate(mount, after.connectors.filter(c => c.id !== mount.id)).allowed).toBe(true)
+    }
+    expect(panelDrillCenters(after.panels[0], after.connectors).length).toBe(after.connectors.length)
+    after.undo()
+    expect(useStore.getState().connectors).toEqual(before.connectors)
+    expect(useStore.getState().panels).toEqual(before.panels)
+    expect(useStore.getState().templateInstances).toEqual(before.templateInstances)
+    useStore.getState().redo()
+    expect(useStore.getState().connectors).toEqual(after.connectors)
+  })
+
+  it('rejects a resize that moves a locked fastener without partially updating the frame', () => {
+    const instance = mountedPanel('top')
+    useStore.getState().commitDocument({ connectors: useStore.getState().connectors.map(c => ({ ...c, locked: true })) })
+    const before = useStore.getState()
+    expect(updateTemplateInstance(instance.id, { ...instance.parameters, w: 800 })).toMatchObject({ status: 'rejected', reason: 'locked-dependent' })
+    expect(useStore.getState()).toBe(before)
+  })
+
+  it('rejects new fastener obstructions without moving any part or changing parameters', () => {
+    const instance = mountedPanel('top'), parameters = { ...instance.parameters, w: 900 }
+    expect(updateTemplateInstance(instance.id, parameters).status).toBe('applied')
+    const target = useStore.getState().connectors[0].position
+    useStore.getState().undo()
+    expect(useStore.getState().commitDocument({ equipment: [{ id: 'obstacle', name: 'Obstruction', position: target,
+      quaternion: [0, 0, 0, 1], width: 50, height: 50, depth: 50,
+      clearance: { left: 0, right: 0, top: 0, bottom: 0, front: 0, back: 0 } }] }).status).toBe('applied')
+    const before = useStore.getState()
+    expect(updateTemplateInstance(instance.id, parameters)).toMatchObject({ status: 'blocked', reason: 'panel-mount', partIds: expect.arrayContaining([before.connectors[0].id]) })
+    expect(useStore.getState()).toBe(before)
+  })
+
+  it('keeps another instance and its locked mounts unchanged', () => {
+    const mounted = mountedPanel('front')
+    useStore.getState().commitDocument({ connectors: useStore.getState().connectors.map(c => ({ ...c, locked: true })) })
+    expect(addTemplateInstance('cabinet', defaults('cabinet')).status).toBe('applied')
+    const state = useStore.getState(), other = state.templateInstances.find(i => i.id !== mounted.id)!
+    expect(updateTemplateInstance(other.id, { ...other.parameters, w: 800 }).status).toBe('applied')
+    expect(useStore.getState().connectors).toEqual(state.connectors)
+    expect(useStore.getState().panels).toEqual(state.panels)
   })
 
   it('updates opening-bound panels and end-bound supports with the frame', () => {

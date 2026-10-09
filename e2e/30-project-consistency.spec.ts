@@ -8,6 +8,7 @@ test('坏操作日志缓存不会导致白屏或阻止后续设计', async ({ pa
   await page.getByTestId('template-bench').click()
   await page.getByTestId('template-place').click()
   await expect.poll(() => page.evaluate(() => (window as any).__aluframe.store.getState().profiles.length)).toBeGreaterThan(0)
+  await page.getByTestId('sidebar-tab-inspect').click()
   await page.getByTestId('section-log').click()
   await expect(page.getByTestId('op-log')).toContainText('member')
 })

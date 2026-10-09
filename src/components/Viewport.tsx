@@ -47,7 +47,7 @@ const ZOOM_STEP = 0.2
 
 // Fits the camera to the whole frame when triggered (or resets when empty)
 const CameraController: React.FC = () => {
-  const { camera, controls } = useThree()
+  const { camera, controls, gl, size } = useThree()
   const cameraResetTrigger = useToolStore((s) => s.cameraResetTrigger)
   const cameraFitScope = useToolStore((s) => s.cameraFitScope)
   const cameraViewRequest = useToolStore((s) => s.cameraViewRequest)
@@ -149,13 +149,25 @@ const CameraController: React.FC = () => {
       const persp = camera as THREE.PerspectiveCamera
       const verticalHalfFov = THREE.MathUtils.degToRad(persp.fov) / 2
       const horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * persp.aspect)
-      const dist = radius / Math.sin(Math.min(verticalHalfFov, horizontalHalfFov)) * 1.1
+      // Leave room for canvas controls and for the drawing readout that appears
+      // after the first click. Fitting to the raw canvas can hide the next joint.
+      const canvasRect = gl.domElement.getBoundingClientRect()
+      const toolbar = document.querySelector('[data-viewport-toolbar]')?.getBoundingClientRect()
+      const hud = document.querySelector('[data-viewport-readout]')?.getBoundingClientRect()
+      const drawingSpace = useToolStore.getState().held === 'profile' ? 80 : 0
+      const top = Math.max(24, (toolbar?.bottom ?? canvasRect.top) - canvasRect.top + 16 + drawingSpace,
+        (hud?.bottom ?? canvasRect.top) - canvasRect.top + 16)
+      const heightRatio = Math.max(0.25, 1 - 2 * top / size.height)
+      const widthRatio = Math.max(0.25, 1 - 48 / size.width)
+      const fitHalfFov = Math.min(Math.atan(Math.tan(verticalHalfFov) * heightRatio),
+        Math.atan(Math.tan(horizontalHalfFov) * widthRatio))
+      const dist = radius / Math.sin(fitHalfFov) * 1.1
       const direction = camera.position.clone().sub(orbit?.target ?? new THREE.Vector3()).normalize()
       pos = target.clone().addScaledVector(direction, dist)
     }
     camera.position.copy(pos)
     if (orbit) { orbit.target.copy(target); orbit.update() } else camera.lookAt(target)
-  }, [cameraResetTrigger, cameraFitScope, camera, controls])
+  }, [cameraResetTrigger, cameraFitScope, camera, controls, gl, size])
 
   return null
 }

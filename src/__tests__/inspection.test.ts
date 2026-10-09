@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { useInspectionStore } from '../store/useInspectionStore'
+import { useViewStore } from '../store/useViewStore'
 import { buildProfile } from '../utils/profileFactory'
 import { remainingConnectionIssues } from '../utils/connectionReport'
 import { inspectDocument } from '../utils/inspectionIssues'
@@ -13,6 +14,7 @@ beforeEach(() => {
   useStore.setState({ profiles: [], connectors: [], panels: [], fittings: [], equipment: [], past: [], future: [], selectedIds: [], throughRule: 'rails' })
   useToolStore.setState({ viewMode: false, buildStep: null })
   useInspectionStore.setState({ report: null, overlap: null, focus: null })
+  useViewStore.getState().setSidebarTab('add')
 })
 it('reports failed end seats with real hosts and offers same-model replacements', () => {
   const host = buildProfile(new THREE.Vector3(0, 100, 0), new THREE.Vector3(0, 100, 400), '2040', 'host')!
@@ -22,6 +24,7 @@ it('reports failed end seats with real hosts and offers same-model replacements'
   autoConnect('end-cap')
   const report = useInspectionStore.getState().report!
   expect(report.issues.some(i => i.connectorId === 'bad')).toBe(true)
+  expect(useViewStore.getState().sidebarTab).toBe('inspect')
   expect(report.issues.filter(i => !i.connectorId).every(i => i.hosts.includes('host'))).toBe(true)
   const next = nearbyConnectorSeats('end-cap', new THREE.Vector3(...bad.position), [host], useStore.getState().connectors, { excludeConnectorId: bad.id })
   expect(next.some(c => c.allowed && sameConnectorModel(bad, c.seat))).toBe(true)

@@ -1,3 +1,4 @@
+import { mirrorBoardFabrication, mirrorFittingFabrication } from './mirrorFabrication'
 import { notifyLockedSelection, type TransformSource } from './transformGesture'
 import * as THREE from 'three'
 import { noteNext } from './opLog'
@@ -197,6 +198,8 @@ function selectedCopyDocument(): CopyDocument {
 
 let partClipboard: { document: CopyDocument; pasted: number } | null = null
 
+export function hasCopiedParts(): boolean { return partClipboard !== null }
+
 /** Copying changes neither the document nor undo history. Locked references can be copied. */
 export function copySelected(): boolean {
   const document = selectedCopyDocument()
@@ -339,15 +342,17 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
   })
   const panelCopies: PanelData[] = panels.map((b) => {
     return { ...b, id: nextId('b'), locked: false, position: positionAt(b.position),
-      quaternion: reflectedQuaternion(b.quaternion, axis) }
+      quaternion: reflectedQuaternion(b.quaternion, axis), fabrication: mirrorBoardFabrication(b.fabrication) }
   })
   const fittingCopies: FittingData[] = fittings.map((f) => {
     const hinge = f.hinge ?? 'left'
-    return { ...f, id: nextId('f'), locked: false, position: positionAt(f.position),
+    const copy: FittingData = { ...f, id: nextId('f'), locked: false, position: positionAt(f.position),
       quaternion: reflectedQuaternion(f.quaternion, axis),
       ...(f.kind === 'door' ? { hinge: hinge === 'left' ? 'right' : hinge === 'right' ? 'left' : hinge } : {}),
       ...(f.meeting ? { meeting: f.meeting === 'left' ? 'right' : 'left' } : {}),
     }
+    copy.fabrication = mirrorFittingFabrication(f, copy)
+    return copy
   })
   const equipmentCopies: EquipmentData[] = equipment.map((e) => ({ ...e, id: nextId('e'), locked: false,
     position: positionAt(e.position), quaternion: reflectedQuaternion(e.quaternion, axis),

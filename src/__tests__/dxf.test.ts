@@ -126,9 +126,9 @@ describe('the drawing as a file', () => {
     }
     const e = parse(buildDxf({ ...empty, fittings: [drawer] }))
     const labels = e.map((x) => x.text ?? '')
-    expect(labels.some((s) => s.includes('drawer/side'))).toBe(true)
-    expect(labels.some((s) => s.includes('drawer/front'))).toBe(true)
-    expect(labels.some((s) => s.includes('drawer/base'))).toBe(true)
+    expect(labels.some((s) => s.includes('F-f1.B-side-left'))).toBe(true)
+    expect(labels.some((s) => s.includes('F-f1.B-front'))).toBe(true)
+    expect(labels.some((s) => s.includes('F-f1.B-base'))).toBe(true)
   })
 
   it('the cut sheet is below the views, not through them', () => {

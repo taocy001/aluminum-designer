@@ -28,8 +28,9 @@ export interface StepInput {
 }
 
 /** Write integer-valued reals with a decimal point. */
-function num(v: number): string {
-  const r = Math.abs(v) < 1e-9 ? 0 : Math.round(v * 1e6) / 1e6
+function num(v: number, precision = 6): string {
+  const scale = 10 ** precision
+  const r = Math.round(v * scale) / scale
   return Number.isInteger(r) ? `${r}.` : String(r)
 }
 
@@ -56,7 +57,7 @@ class Step {
   }
 
   point(v: THREE.Vector3): number { return this.add(`CARTESIAN_POINT('',(${num(v.x)},${num(v.y)},${num(v.z)}))`) }
-  direction(v: THREE.Vector3): number { return this.add(`DIRECTION('',(${num(v.x)},${num(v.y)},${num(v.z)}))`) }
+  direction(v: THREE.Vector3): number { return this.add(`DIRECTION('',(${num(v.x, 12)},${num(v.y, 12)},${num(v.z, 12)}))`) }
 
   placement(at: THREE.Vector3, z: THREE.Vector3, x: THREE.Vector3): number {
     return this.add(`AXIS2_PLACEMENT_3D('',#${this.point(at)},#${this.direction(z)},#${this.direction(x)})`)
@@ -77,9 +78,10 @@ function frameFor(quat: THREE.Quaternion): { z: THREE.Vector3; x: THREE.Vector3 
   }
 }
 
-/** STEP strings are ASCII with the quote doubled; anything else would need \X2\ escapes */
+/** Part 21 strings: doubled quotes/backslashes and UTF-16 X2 escapes. */
 function str(v: string): string {
-  return v.replace(/[^\x20-\x7e]/g, '').replace(/'/g, "''")
+  return v.replace(/\\/g, '\\\\').replace(/'/g, "''").replace(/[^\x20-\x7e]+/g, run =>
+    '\\X2\\' + run.split('').map(c => c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')).join('') + '\\X0\\')
 }
 
 /** the section with repeated points dropped and wound anticlockwise, so every cap faces out */
@@ -166,8 +168,8 @@ function slab(w: number, h: number): THREE.Vector2[] {
   ]
 }
 
-/** Export a display body as a closed, faceted BREP. Weld face-normal seams before creating edges. */
-function meshSolid(s: Step, geometry: THREE.BufferGeometry, label: string, transform: THREE.Matrix4): number {
+/** Export a display body as a closed, faceted BREP. Weld face-normal seams before creating polygon loops. */
+function meshSolids(s: Step, geometry: THREE.BufferGeometry, label: string, transform: THREE.Matrix4): number[] {
   const positions = geometry.getAttribute('position')
   const indices = geometry.getIndex()
   const points: THREE.Vector3[] = []
@@ -175,31 +177,22 @@ function meshSolid(s: Step, geometry: THREE.BufferGeometry, label: string, trans
   const byPosition = new Map<string, number>()
   const pointIndex = (source: number) => {
     const point = new THREE.Vector3().fromBufferAttribute(positions, source).applyMatrix4(transform)
-    const key = [point.x, point.y, point.z].map(num).join(',')
+    const key = [point.x, point.y, point.z].map(value => num(value)).join(',')
     let index = byPosition.get(key)
     if (index === undefined) {
       index = points.length
       byPosition.set(key, index)
+      // Build planes and edges from the same coordinates written to STEP.
+      point.set(...key.split(',').map(Number) as [number, number, number])
       points.push(point)
-      vertices.push(s.addUnique(`VERTEX_POINT('',#${s.point(point)})`))
+      vertices.push(s.point(point))
     }
     return index
   }
-  const edges = new Map<string, { id: number; from: number }>()
-  const use = (a: number, b: number) => {
-    const key = a < b ? `${a}/${b}` : `${b}/${a}`
-    let edge = edges.get(key)
-    if (!edge) {
-      const direction = points[b].clone().sub(points[a])
-      const length = direction.length()
-      const vector = s.add(`VECTOR('',#${s.direction(direction.normalize())},${num(length)})`)
-      const line = s.addUnique(`LINE('',#${s.point(points[a])},#${vector})`)
-      edge = { id: s.addUnique(`EDGE_CURVE('',#${vertices[a]},#${vertices[b]},#${line},.T.)`), from: a }
-      edges.set(key, edge)
-    }
-    return s.addUnique(`ORIENTED_EDGE('',*,*,#${edge.id},.${edge.from === a ? 'T' : 'F'}.)`)
-  }
   const faces: number[] = []
+  const parents: number[] = []
+  const edgeFaces = new Map<string, number>()
+  const root = (i: number): number => parents[i] === i ? i : (parents[i] = root(parents[i]))
   for (let i = 0; i < (indices?.count ?? positions.count); i += 3) {
     const triangle = [0, 1, 2].map((offset) => pointIndex(indices ? indices.getX(i + offset) : i + offset))
     if (new Set(triangle).size < 3) continue
@@ -207,13 +200,32 @@ function meshSolid(s: Step, geometry: THREE.BufferGeometry, label: string, trans
     const along = b.clone().sub(a).normalize()
     const normal = along.clone().cross(c.clone().sub(a)).normalize()
     if (normal.lengthSq() < 1e-12) continue
-    const loop = s.addUnique(`EDGE_LOOP('',(${triangle.map((index, j) => `#${use(index, triangle[(j + 1) % 3])}`).join(',')}))`)
+    const loop = s.addUnique(`POLY_LOOP('',(${triangle.map(index => `#${vertices[index]}`).join(',')}))`)
     const bound = s.addUnique(`FACE_OUTER_BOUND('',#${loop},.T.)`)
     const plane = s.addUnique(`PLANE('',#${s.placement(a, normal, along)})`)
-    faces.push(s.addUnique(`ADVANCED_FACE('',(#${bound}),#${plane},.T.)`))
+    const faceIndex = faces.length
+    parents.push(faceIndex)
+    for (let j = 0; j < 3; j++) {
+      const a = triangle[j], b = triangle[(j + 1) % 3]
+      const edge = a < b ? `${a}/${b}` : `${b}/${a}`
+      const neighbor = edgeFaces.get(edge)
+      if (neighbor !== undefined) parents[root(faceIndex)] = root(neighbor)
+      else edgeFaces.set(edge, faceIndex)
+    }
+    faces.push(s.addUnique(`FACE_SURFACE('',(#${bound}),#${plane},.T.)`))
   }
-  const shell = s.addUnique(`CLOSED_SHELL('',(${faces.map((face) => `#${face}`).join(',')}))`)
-  return s.addUnique(`MANIFOLD_SOLID_BREP('${str(label)}',#${shell})`)
+  // A display mesh can batch separate solids, such as the caster's bearing balls.
+  // Each connected shell must be a separate BREP within the same assembly part.
+  const shells = new Map<number, number[]>()
+  faces.forEach((face, i) => {
+    const key = root(i), group = shells.get(key) ?? []
+    group.push(face)
+    shells.set(key, group)
+  })
+  return [...shells.values()].map(group => {
+    const shell = s.addUnique(`CLOSED_SHELL('',(${group.map(face => `#${face}`).join(',')}))`)
+    return s.addUnique(`FACETED_BREP('${str(label)}',#${shell})`)
+  })
 }
 
 const mm = (v: number) => Math.round(v * 10) / 10
@@ -249,10 +261,10 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
   const asm = product(name, asmRep)
 
   // World-space geometry uses an identity assembly placement.
-  const part = (label: string, description: string, solid: number | number[]) => {
+  const part = (label: string, description: string, solid: number | number[], faceted = false) => {
     const own = origin()
     const bodies = (Array.isArray(solid) ? solid : [solid]).map((body) => `#${body}`).join(',')
-    const rep = s.addUnique(`ADVANCED_BREP_SHAPE_REPRESENTATION('${str(label)}',(${bodies},#${own}),#${ctx})`)
+    const rep = s.addUnique(`${faceted ? 'FACETED_BREP' : 'ADVANCED_BREP'}_SHAPE_REPRESENTATION('${str(label)}',(${bodies},#${own}),#${ctx})`)
     const pd = product(label, rep, description)
     const nauo = s.addUnique(`NEXT_ASSEMBLY_USAGE_OCCURRENCE('${str(label)}','${str(label)}','${str(description)}',#${asm},#${pd},$)`)
     const pds = s.addUnique(`PRODUCT_DEFINITION_SHAPE('','',#${nauo})`)
@@ -312,8 +324,8 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const description = `${c.type} ${series}${c.profileSpec ? ` ${c.profileSpec}` : ''}`
     const transform = new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
     const bodies = connectorMeshes(c.type, series, c.profileSpec, c.mountSeries, c.panelMount).filter((mesh) => !mesh.visualOnly)
-      .map(({ geometry }, index) => meshSolid(s, geometry, `${label}-${index + 1}`, transform))
-    part(label, description, bodies)
+      .flatMap(({ geometry }, index) => meshSolids(s, geometry, `${label}-${index + 1}`, transform))
+    part(label, description, bodies, true)
   }
 
   const stamp = new Date().toISOString().replace(/\.\d+Z$/, '')

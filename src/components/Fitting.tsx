@@ -1,9 +1,9 @@
-import React, { useMemo, useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import type { FittingData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { fittingHandle, fittingParts, openTransform } from '../utils/fittingGeometry'
+import { fittingHandle, fittingParts, openTransform, type Board } from '../utils/fittingGeometry'
 
 const LOOK: Record<string, { color: string; opacity: number; metalness: number; roughness: number }> = {
   mdf: { color: '#d6bb96', opacity: 1, metalness: 0.02, roughness: 0.85 },
@@ -15,12 +15,40 @@ const LOOK: Record<string, { color: string; opacity: number; metalness: number; 
 /** how fast a drawer or a door catches up with where it has been asked to go (per second) */
 const EASE = 6
 
+const BoardView = React.memo(({ board, color, look, selected }: {
+  board: Board; color: string; look: typeof LOOK[string]; selected?: boolean
+}) => {
+  const quaternion = useMemo(() => new THREE.Quaternion(...board.quaternion), [board.quaternion])
+  const edges = useMemo(() => {
+    const box = new THREE.BoxGeometry(board.width, board.height, board.thickness)
+    const outline = new THREE.EdgesGeometry(box)
+    box.dispose()
+    return outline
+  }, [board.width, board.height, board.thickness])
+  useEffect(() => () => edges.dispose(), [edges])
+  return <group position={board.position} quaternion={quaternion}>
+    <mesh userData={{ fittingBoard: board.role }}>
+      <boxGeometry args={[board.width, board.height, board.thickness]} />
+      <meshStandardMaterial color={color} transparent={look.opacity < 1} opacity={look.opacity}
+        metalness={look.metalness} roughness={look.roughness} />
+    </mesh>
+    <lineSegments raycast={() => null}>
+      <primitive object={edges} attach="geometry" />
+      <lineBasicMaterial color={selected ? '#93c5fd' : '#475569'} transparent opacity={0.8} />
+    </lineSegments>
+  </group>
+})
+
 /** Render fitting boards from the geometry shared with the cut list, interpolating the open amount. */
 const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
   const { id, material, isSelected, locked } = f
   const hovered = useToolStore((s) => !s.isDragging && s.hoverPartId === id)
-  const parts = useMemo(() => fittingParts(f), [f])
-  const handle = useMemo(() => fittingHandle(f), [f])
+  // Moving or selecting an assembly does not change its local boards or handles.
+  const shape = useMemo(() => f, [f.kind, f.width, f.height, f.depth, f.frame, f.overlay,
+    f.hinge, f.hingeType, f.swing, f.meeting, f.stacked, f.drawer])
+  const parts = useMemo(() => fittingParts(shape), [shape])
+  const handle = useMemo(() => fittingHandle(shape), [shape])
+  const applied = useRef<{ shape: FittingData; open: number } | null>(null)
   const moving = useRef<THREE.Group>(null)
   /** how far open it looks right now, which chases how far open it is */
   const shown = useRef(f.open ?? 0)
@@ -32,7 +60,9 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
     const want = Math.max(0, Math.min(1, f.open ?? 0))
     if (Math.abs(shown.current - want) < 0.0005) shown.current = want
     else shown.current += (want - shown.current) * (1 - Math.exp(-EASE * dt))
-    const at = openTransform({ ...f, open: shown.current })
+    if (applied.current?.shape === shape && applied.current.open === shown.current) return
+    const at = openTransform({ ...shape, open: shown.current }, parts)
+    applied.current = { shape, open: shown.current }
     g.position.copy(at.position)
     g.quaternion.copy(at.quaternion)
   })
@@ -52,20 +82,7 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
       ))}
 
       <group ref={moving}>
-        {parts.boards.map((b, i) => (
-          <group key={i} position={b.position} quaternion={new THREE.Quaternion(...b.quaternion)}>
-            <mesh userData={{ fittingBoard: b.role }}>
-              <boxGeometry args={[b.width, b.height, b.thickness]} />
-              <meshStandardMaterial
-                color={color} transparent={look.opacity < 1} opacity={look.opacity}
-                metalness={look.metalness} roughness={look.roughness} />
-            </mesh>
-            <lineSegments raycast={() => null}>
-              <edgesGeometry args={[new THREE.BoxGeometry(b.width, b.height, b.thickness)]} />
-              <lineBasicMaterial color={isSelected ? '#93c5fd' : '#475569'} transparent opacity={0.8} />
-            </lineSegments>
-          </group>
-        ))}
+        {parts.boards.map(b => <BoardView key={b.key} board={b} color={color} look={look} selected={isSelected} />)}
         {/* The pull is mounted on the actual outer face and moves with that front. */}
         <group name="fitting-handle">
           {handle.mounts.map((mount, i) => (

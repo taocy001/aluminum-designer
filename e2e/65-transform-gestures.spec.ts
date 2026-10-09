@@ -39,6 +39,20 @@ test('Escape cancels a stretched end without keeping an undo entry', async ({ pa
   expect(await store(page)).toEqual(before)
 })
 
+test('view and lock shortcuts wait until an active drag ends', async ({ page }) => {
+  const before = await store(page)
+  await dragHold(page, await w2c(page, [150, 110, 0]), await w2c(page, [220, 110, 90]))
+  const moved = await store(page)
+  expect(moved.profiles).not.toEqual(before.profiles)
+  await page.keyboard.press('v')
+  await page.keyboard.press('l')
+  expect(await page.evaluate(() => (window as any).__aluframe.tool.getState().viewMode)).toBe(false)
+  expect(await store(page)).toEqual(moved)
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  expect(await store(page)).toEqual(before)
+})
+
 test('rotation drag shows snapped angles and Escape restores the full document', async ({ page }) => {
   const arc = await page.evaluate(() => (window as any).__aluframe.gizmoHandles().find((h: any) => h.kind === 'rotate' && h.axis === 'y').position)
   const start = await w2c(page, arc), before = await store(page)

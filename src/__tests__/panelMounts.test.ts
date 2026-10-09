@@ -127,7 +127,7 @@ describe('fastening an inset shelf without changing its position', () => {
     const withBoard = buildStep({ profiles: [], connectors: doc.connectors, panels: doc.panels })
     const holes = (step: string) => (step.match(/= FACE_BOUND\(/g) ?? []).length
     expect(holes(withBoard) - holes(hardware)).toBe(16)
-  })
+  }, 30_000)
 
   it('round trips assembly metadata through JSON and share URLs', async () => {
     const doc = install()

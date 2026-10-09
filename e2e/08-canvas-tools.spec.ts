@@ -226,7 +226,9 @@ test.describe('Sidebar panels', () => {
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
     await toNavigate(page)
+    await page.getByTestId('sidebar-tab-properties').click()
     await page.getByTestId('section-properties').click()
+    await page.getByTestId('sidebar-tab-add').click()
     await expect(page.getByTestId('section-properties-body')).toBeHidden()
     await clickWorld(page, [300, 10, 0])
     await expect(page.getByTestId('section-properties-body')).toBeVisible()
@@ -234,7 +236,7 @@ test.describe('Sidebar panels', () => {
     await expect(page.getByTestId('cut-length')).toBeVisible()
   })
 
-  test('the properties section stays usable with the BOM open on a short window', async ({ page }) => {
+  test('properties stay reachable after switching tasks on a short window', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 })
     await enterDraw(page, '2020')
     await drawMember(page, [0, 0, 0], [600, 10, 0])
@@ -245,8 +247,9 @@ test.describe('Sidebar panels', () => {
     expect(box).not.toBeNull()
     expect(box!.height).toBeGreaterThan(20)                       // not squeezed to nothing
     expect(box!.y + box!.height).toBeLessThanOrEqual(720)         // reachable inside the window
-    // collapsing the parts library frees enough space to see it without scrolling at all
-    await page.getByTestId('section-components').click()
+    await page.getByTestId('sidebar-tab-inspect').click()
+    await expect(page.getByTestId('bom-count')).toBeVisible()
+    await page.getByTestId('sidebar-tab-properties').click()
     await page.getByTestId('sidebar-scroll').evaluate((el) => { el.scrollTop = 0 })
     const box2 = await page.getByTestId('rotate-block').boundingBox()
     expect(box2!.y + box2!.height).toBeLessThanOrEqual(720)
@@ -267,7 +270,7 @@ test.describe('Sidebar panels', () => {
       })
       s.selectItems([id])
     }, profileId)
-    await page.getByTestId('section-components').click()
+    await expect(page.getByTestId('sidebar-tab-properties')).toHaveAttribute('aria-selected', 'true')
     await page.getByTestId('sidebar-scroll').evaluate((el) => { el.scrollTop = 0 })
     const number = page.getByTestId('selected-part-numbers').locator('code').first()
     await expect(number).toHaveText(`P-${profileId}`)
@@ -533,15 +536,18 @@ test.describe('Rotate buttons hold up under camera motion', () => {
     expect(dirOf((await store(page)).profiles[0]).map(round2)).toEqual([0, 0, -1])
   })
 
-  test('deselecting mid-press leaves the pointer working', async ({ page }) => {
+  test('cancelling a rotation press preserves selection and leaves the pointer working', async ({ page }) => {
     const y = await rotateButton(page, 'y')
     await page.mouse.move(y!.x, y!.y)
     await page.mouse.down()
-    await page.keyboard.press('Escape')               // selection gone while the button is held
+    const before = await store(page)
+    await page.keyboard.press('Escape')               // cancel the active gesture first
     await page.mouse.up()
     await page.waitForTimeout(120)
-    expect((await store(page)).selectedIds).toEqual([])
+    expect(await store(page)).toEqual(before)
     expect(await page.evaluate(() => (window as any).__aluframe.gizmoBusy())).toBe(false)
+    await page.keyboard.press('Escape')
+    expect((await store(page)).selectedIds).toEqual([])
     // the pointer must still work: select the member again
     await page.mouse.move(700, 700)          // leave the spot the button occupied
     await clickWorld(page, [300, 10, 0])
@@ -708,7 +714,8 @@ test.describe('Move arrows', () => {
     const arc = await gizmoHandle(page, 'rotate', 'z')
     await page.mouse.move(arc!.x, arc!.y)
     await page.waitForTimeout(80)
-    await expect(page.getByTestId('gizmo-hint')).toContainText('绕 Z 轴转 90°')
+    await expect(page.getByTestId('gizmo-hint')).toContainText('拖动绕 Z 轴旋转：15° 吸附')
+    await expect(page.getByTestId('gizmo-hint')).toContainText('单击 90°，Shift 反向 · Esc 取消')
   })
 
   test('the arrows are available while drawing too', async ({ page }) => {

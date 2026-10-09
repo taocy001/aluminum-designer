@@ -20,7 +20,7 @@ async function frame(page: import('@playwright/test').Page) {
  * order, and that is the number that goes on the purchase order.
  */
 test.describe('How much stock to buy', () => {
-  test.beforeEach(async ({ page }) => { await openApp(page); await frame(page) })
+  test.beforeEach(async ({ page }) => { await openApp(page); await frame(page); await page.getByTestId('sidebar-tab-inspect').click() })
 
   test('it says how many bars each section needs', async ({ page }) => {
     await expect(page.getByTestId('nesting-summary')).toContainText('2020')
@@ -36,6 +36,7 @@ test.describe('How much stock to buy', () => {
 
   test('changing the stock length changes the answer', async ({ page }) => {
     const before = await page.getByTestId('nesting-yield').textContent()
+    await page.getByTestId('sidebar-tab-inspect').click()
     await page.getByTestId('stock-length').fill('4000')
     await settle(page)
     await page.waitForTimeout(200)
@@ -47,6 +48,7 @@ test.describe('How much stock to buy', () => {
 
   test('the cutting list downloads with a line per bar', async ({ page }) => {
     await useDownloadFallback(page)
+    await page.getByTestId('sidebar-tab-inspect').click()
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-cutting').click()])
     expect(dl.suggestedFilename()).toMatch(/cutting.*\.csv$/)
   })
@@ -63,14 +65,16 @@ test.describe('How much stock to buy', () => {
  * cannot put it on a machine.
  */
 test.describe('The drawing as a file', () => {
-  test.beforeEach(async ({ page }) => { await openApp(page); await frame(page); await useDownloadFallback(page) })
+  test.beforeEach(async ({ page }) => { await openApp(page); await frame(page); await page.getByTestId('sidebar-tab-inspect').click(); await useDownloadFallback(page) })
 
   test('it downloads as DXF', async ({ page }) => {
+    await page.getByTestId('sidebar-tab-inspect').click()
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-dxf').click()])
     expect(dl.suggestedFilename()).toMatch(/\.dxf$/)
   })
 
   test('it carries three elevations with their sizes on them', async ({ page }) => {
+    await page.getByTestId('sidebar-tab-inspect').click()
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-dxf').click()])
     const fs = await import('node:fs')
     const text = fs.readFileSync((await dl.path())!, 'utf8')
@@ -97,6 +101,7 @@ test.describe('The drawing as a file', () => {
     }))
     await settle(page)
     await expect(page.getByTestId('export-dxf')).toBeEnabled()
+    await page.getByTestId('sidebar-tab-inspect').click()
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-dxf').click()])
     const fs = await import('node:fs')
     expect(fs.readFileSync((await dl.path())!, 'utf8')).toContain('560x350x18')

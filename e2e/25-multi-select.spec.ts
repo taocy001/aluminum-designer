@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openApp, settle, setView, store } from './helpers'
+import { configureFitting, openApp, settle, setView, store } from './helpers'
 
 /** a two-bay cabinet, with a door on each bay and a shelf in each */
 async function cabinet(page: import('@playwright/test').Page) {
@@ -23,6 +23,7 @@ async function cabinet(page: import('@playwright/test').Page) {
   for (const [x1, x2] of [[0, 600], [600, 1200]]) {
     await page.evaluate(([a, b]) => (window as any).__aluframe.store.getState().selectItems([`p${a}_0`, `p${b}_0`]), [x1, x2])
     await settle(page)
+    await configureFitting(page, 'door')
     await page.getByTestId('add-door').click()
     await page.waitForTimeout(150)
   }
@@ -71,6 +72,7 @@ test.describe('Doors, boards and brackets select together', () => {
     const ids = (await store(page)).fittings.map((f) => f.id)
     await page.evaluate((x) => (window as any).__aluframe.store.getState().selectItems(x), ids)
     await settle(page)
+    await page.getByTestId('sidebar-tab-properties').click()
     await expect(page.getByTestId('fitting-multi')).toBeVisible()
     await page.getByTestId('fitting-angle-165').click()
     await page.waitForTimeout(200)
@@ -81,6 +83,7 @@ test.describe('Doors, boards and brackets select together', () => {
     const ids = (await store(page)).fittings.map((f) => f.id)
     await page.evaluate((x) => (window as any).__aluframe.store.getState().selectItems(x), ids)
     await settle(page)
+    await page.getByTestId('sidebar-tab-properties').click()
     await page.getByTestId('fitting-angle-165').click()
     await page.waitForTimeout(200)
     await page.keyboard.press('Control+z')

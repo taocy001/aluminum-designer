@@ -128,6 +128,7 @@ test('Ctrl and Cmd copy/paste retain assembly relationships, use one undo per pa
   await page.keyboard.press('Control+z')
   for (const kind of ['profiles', 'connectors', 'panels', 'fittings'] as const) expect((await store(page))[kind]).toEqual(original[kind])
 
+  await page.getByTestId('sidebar-tab-add').click()
   const input = page.getByTestId('work-plane')
   await input.fill('735')
   await page.keyboard.press('Control+c')

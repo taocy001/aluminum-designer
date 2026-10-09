@@ -281,14 +281,17 @@ function findConflictsWithGeometry(
   return out
 }
 
-let cacheKey: ProfileData[] | null = null
-let cacheParts: ConnectorData[] | null = null
-let cacheBoards: PanelData[] | null = null
-let cacheFittings: FittingData[] | null = null
-let cacheEquipment: EquipmentData[] | null = null
+const EMPTY_CONNECTORS: ConnectorData[] = []
+const EMPTY_PANELS: PanelData[] = []
+const EMPTY_FITTINGS: FittingData[] = []
 const EMPTY_EQUIPMENT: EquipmentData[] = []
-let cacheRule: string | null = null
-let cacheValue: FrameAnalysis | null = null
+type AnalysisLists = [ProfileData[], ConnectorData[], PanelData[], FittingData[], EquipmentData[]]
+const analysisCache: { lists: AnalysisLists; rule: string; value: FrameAnalysis }[] = []
+function rememberAnalysis(lists: AnalysisLists, rule: string, value: FrameAnalysis): FrameAnalysis {
+  analysisCache.unshift({ lists, rule, value })
+  if (analysisCache.length > 8) analysisCache.pop()
+  return value
+}
 
 /**
  * Do the moving members interfere with anything? Used while dragging, where re-running the
@@ -313,40 +316,37 @@ export function movingPartsConflict(all: ProfileData[], movingIds: Set<string>):
 
 /** Trims + interference for the current document, memoised on the arrays' identity */
 export function analyzeFrame(
-  profiles: ProfileData[], connectors: ConnectorData[] = [],
-  panels: PanelData[] = [], fittings: FittingData[] = [], equipment: EquipmentData[] = EMPTY_EQUIPMENT,
+  profiles: ProfileData[], connectors: ConnectorData[] = EMPTY_CONNECTORS,
+  panels: PanelData[] = EMPTY_PANELS, fittings: FittingData[] = EMPTY_FITTINGS, equipment: EquipmentData[] = EMPTY_EQUIPMENT,
 ): FrameAnalysis {
   // the through rule changes every trim in the document, so it belongs in the cache key
   const rule = getThroughRule()
-  if (cacheKey === profiles && cacheParts === connectors && cacheBoards === panels
-    && cacheFittings === fittings && cacheEquipment === equipment && cacheRule === rule && cacheValue) return cacheValue
-  // Translating every part together leaves joints and interference unchanged.
-  // Move the cached markers as well; any other edit takes the full analysis path.
-  const oldLists = [cacheKey, cacheParts, cacheBoards, cacheFittings, cacheEquipment]
-  const newLists = [profiles, connectors, panels, fittings, equipment]
-  let translation: THREE.Vector3 | undefined
-  const translated = cacheValue && cacheRule === rule && newLists.every((list, kind) => {
-    const old = oldLists[kind]
-    return old?.length === list.length && list.every((part, i) => {
-      const previous = old[i]
-      const { position, ...rest } = part
-      const { position: before, ...oldRest } = previous
-      if (JSON.stringify(rest) !== JSON.stringify(oldRest)) return false
-      const delta = new THREE.Vector3(...position).sub(new THREE.Vector3(...before))
-      translation ??= delta
-      return delta.distanceToSquared(translation) < 1e-16
+  const lists: AnalysisLists = [profiles, connectors, panels, fittings, equipment]
+  const exact = analysisCache.find(entry => entry.rule === rule && entry.lists.every((list, i) => list === lists[i]))
+  if (exact) return exact.value
+  // Dimensions and the inspector analyze different sets of parts. Retain both so
+  // an inspector render cannot evict the result needed by a whole-assembly drag.
+  for (const entry of analysisCache) {
+    if (entry.rule !== rule) continue
+    let translation: THREE.Vector3 | undefined
+    const translated = lists.every((list, kind) => {
+      const old = entry.lists[kind]
+      return old.length === list.length && list.every((part, i) => {
+        const { position, ...rest } = part
+        const { position: before, ...oldRest } = old[i]
+        if (JSON.stringify(rest) !== JSON.stringify(oldRest)) return false
+        const delta = new THREE.Vector3(...position).sub(new THREE.Vector3(...before))
+        translation ??= delta
+        return delta.distanceToSquared(translation) < 1e-16
+      })
     })
-  })
-  if (translated && translation && cacheValue) {
-    const offset = translation
-    cacheValue = { ...cacheValue,
-      conflicts: cacheValue.conflicts.map(c => ({ ...c, region: c.region.clone().translate(offset) })),
-      equipmentConflicts: cacheValue.equipmentConflicts.map(c => ({ ...c, region: c.region.clone().translate(offset) })),
-      mismatches: cacheValue.mismatches.map(m => ({ ...m, at: m.at.clone().add(offset) })),
-    }
-    cacheKey = profiles; cacheParts = connectors; cacheBoards = panels
-    cacheFittings = fittings; cacheEquipment = equipment
-    return cacheValue
+    if (!translated || !translation) continue
+    const offset = translation, value = entry.value
+    return rememberAnalysis(lists, rule, { ...value,
+      conflicts: value.conflicts.map(c => ({ ...c, region: c.region.clone().translate(offset) })),
+      equipmentConflicts: value.equipmentConflicts.map(c => ({ ...c, region: c.region.clone().translate(offset) })),
+      mismatches: value.mismatches.map(m => ({ ...m, at: m.at.clone().add(offset) })),
+    })
   }
   const trims = computeAllTrims(profiles)
   const conflicts = findConflicts(profiles, trims, connectors, panels, fittings)
@@ -373,12 +373,5 @@ export function analyzeFrame(
   }
   const mismatchIds = new Set<string>()
   for (const m of mismatches) { mismatchIds.add(m.a); mismatchIds.add(m.b) }
-  cacheKey = profiles
-  cacheParts = connectors
-  cacheBoards = panels
-  cacheFittings = fittings
-  cacheEquipment = equipment
-  cacheRule = rule
-  cacheValue = { trims, conflicts, conflictIds, equipmentConflicts, equipmentConflictIds, mismatches, mismatchIds }
-  return cacheValue
+  return rememberAnalysis(lists, rule, { trims, conflicts, conflictIds, equipmentConflicts, equipmentConflictIds, mismatches, mismatchIds })
 }

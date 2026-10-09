@@ -68,6 +68,7 @@ test.describe('how far a span will bend', () => {
     await shelf(page, 400)
     await expect(page.getByTestId('bom-sagging')).toHaveCount(0)
     await shelf(page, 1800)
+    await page.getByTestId('sidebar-tab-inspect').click()
     await expect(page.getByTestId('bom-sagging')).toBeVisible()
     await expect(page.getByTestId('bom-sagging')).toContainText('20 kg')
   })

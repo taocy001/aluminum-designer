@@ -4,6 +4,7 @@ import type { ConnectorData } from '../store/useStore'
 import { connectorOBB } from '../utils/analysis'
 import { connectorHitsBody, connectorsCollide } from '../utils/connectorCollision'
 import { connectorMeshes, connectorSolidTop } from '../utils/connectorGeometry'
+import { connectorScale } from '../utils/connectorCatalog'
 import { makeOBB, obbCorners, type OBB } from '../utils/obb'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
@@ -21,6 +22,25 @@ function vertexOverlap(a: OBB, b: OBB, tolerance: number): boolean {
 }
 
 describe('modeled connector collision bodies', () => {
+  it('keeps support height exact through translations, rotations and different series', () => {
+    for (const series of [20, 30, 40] as const) {
+      for (let turn = 0; turn < 36; turn++) {
+        const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(turn / 10, .23, -.41))
+        const c: ConnectorData = { ...part('inside-corner'), series, quaternion: quaternion.toArray() }
+        let expected = -Infinity
+        for (const { geometry } of connectorMeshes(c.type, series)) {
+          const vertices = geometry.getAttribute('position')
+          for (let i = 0; i < vertices.count; i++) {
+            const world = new THREE.Vector3().fromBufferAttribute(vertices, i).multiplyScalar(connectorScale(series)).applyQuaternion(quaternion)
+            expected = Math.max(expected, world.y)
+          }
+        }
+        expect(connectorSolidTop(c)).toBeCloseTo(expected, 8)
+        expect(connectorSolidTop({ ...c, position: [30, 170, -90] })).toBeCloseTo(expected + 170, 8)
+      }
+    }
+  })
+
   it('refreshes pair bounds after movement, rotation and panel fastener edits', () => {
     const a = part('flat-plate'), b = { ...part('flat-plate'), id: 'other' }
     expect(connectorsCollide(a, b)).toBe(true)

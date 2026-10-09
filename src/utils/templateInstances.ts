@@ -2,7 +2,8 @@ import { useStore, type ProfileData } from '../store/useStore'
 import { templateById, type Template } from './templates'
 import { nextId } from './profileFactory'
 import type { TemplateInstance } from './templateMetadata'
-import type { EditResult } from './openingBindings'
+import { reconcileBindings, type EditResult } from './openingBindings'
+import { resizePanelMounts } from './resizePanelMounts'
 
 export type TemplateEditResult = EditResult | { status: 'blocked'; reason: 'template' | 'parameters' | 'topology' | 'modified' | 'unbound' | 'panel-mount'; partIds: string[] }
 const blocked = (reason: Extract<TemplateEditResult, { status: 'blocked' }>['reason'], partIds: string[] = []): TemplateEditResult => ({ status: 'blocked', reason, partIds })
@@ -52,13 +53,16 @@ export function updateTemplateInstance(id: string, parameters: Record<string, nu
     ...state.fittings.filter(f => !f.openingBinding),
   ].map(p => p.id)
   if (unbound.length) return blocked('unbound', unbound)
-  const mounts = state.connectors.filter(c => c.panelMount).map(c => c.id)
-  if (mounts.length) return blocked('panel-mount', mounts)
   const replacements = generated.map((p, index) => ({ ...members[index]!, ...p, id: instance.profileIds[index] }))
   const byId = new Map(replacements.map(p => [p.id, p]))
   const nextInstance: TemplateInstance = { ...instance, parameters: { ...parameters }, fingerprints: replacements.map(templateProfileFingerprint) }
-  // The store reconciles opening, runner and support bindings before committing one history entry.
-  return state.commitDocument({ profiles: state.profiles.map(p => byId.get(p.id) ?? p),
+  const resolved = reconcileBindings(state, { profiles: state.profiles.map(p => byId.get(p.id) ?? p),
+    panels: state.panels, fittings: state.fittings, connectors: state.connectors, equipment: state.equipment, throughRule: state.throughRule })
+  if (resolved.status === 'rejected') return resolved
+  const mounts = resizePanelMounts(state, resolved.document)
+  if (mounts.status !== 'resolved') return mounts
+  // Stage every dependent and mounting check before writing a single history entry.
+  return state.commitDocument({ ...resolved.document, connectors: mounts.connectors,
     templateInstances: state.templateInstances.map(item => item.id === id ? nextInstance : item) })
 }
 
@@ -68,7 +72,7 @@ export function templateEditMessage(result: Extract<TemplateEditResult, { status
     parameters: ['参数超出模板范围，或层数 / U 数不是整数。', 'Parameters are outside the template range, or shelf / unit counts are not integers.'],
     topology: ['这项修改会改变型材数量。请新建模板实例；当前零件未改动。', 'This change alters the member count. Add a new template instance; existing parts are unchanged.'],
     modified: ['模板成员已手动修改、删除或锁定，不能按原参数重建。', 'Template members were manually changed, deleted or locked and cannot be regenerated.'],
-    'panel-mount': ['现有板材固定件需要重新选择安装位。请先移除固定件，更新参数后重新安装。', 'Existing panel fasteners need new mounting positions. Remove them, update parameters and reinstall the fasteners.'],
+    'panel-mount': ['板材固定件的原安装位无效，或新尺寸下无法保持安装、存在干涉。请检查标出的固定件。', 'Panel fasteners have invalid original seats or cannot remain installed without interference at the new size. Check the indicated fasteners.'],
     unbound: ['工程中有未关联的连接件、板材或门抽屉，无法确定应如何跟随。请先建立关联或移除这些零件。', 'The project contains unbound connectors, panels or fittings. Bind or remove them before changing template parameters.'],
   }
   return messages[result.reason][zh ? 0 : 1]
