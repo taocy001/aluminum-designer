@@ -1,3 +1,4 @@
+import { Html } from '@react-three/drei'
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -47,7 +48,7 @@ const ARC_START = 0.34
 const ARC_SWEEP = Math.PI / 2 - 0.68
 const ARC_RADIUS = 0.78
 
-/** World-axis arrows translate the selection; each arc rotates it 90° about its axis. */
+/** World-axis arrows move the selection; arcs support continuous dragging and 90° clicks. */
 const TransformGizmo: React.FC = () => {
   const { camera } = useThree()
   const selectedIds = useStore((s) => s.selectedIds)
@@ -63,6 +64,8 @@ const TransformGizmo: React.FC = () => {
   const pivotMode = useToolStore((s) => s.pivotMode)
   const hoverPart = useToolStore((s) => s.gizmoHover)
 
+  const rotation = useToolStore(s => s.rotationGesture)
+  const language = useToolStore(s => s.language)
   const group = useRef<THREE.Group>(null)
   const handleRefs = useRef<Map<string, THREE.Object3D>>(new Map())
   const probeRefs = useRef<Map<string, THREE.Object3D>>(new Map())
@@ -103,7 +106,7 @@ const TransformGizmo: React.FC = () => {
     const persp = camera as THREE.PerspectiveCamera
     const dist = anchor.distanceTo(camera.position)
     const viewHeight = 2 * Math.tan(THREE.MathUtils.degToRad(persp.fov ?? 45) / 2) * dist
-    group.current.position.copy(anchor)
+    group.current.position.copy(rotation ? new THREE.Vector3(...rotation.pivot) : anchor)
     group.current.scale.setScalar(viewHeight * GIZMO_SCREEN)
   })
 
@@ -130,6 +133,12 @@ const TransformGizmo: React.FC = () => {
 
   return (
     <group ref={group} renderOrder={25}>
+      {rotation && <Html position={[0, 1.25, 0]} center style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+        <div data-testid="rotation-angle" className="rounded bg-slate-950/95 px-3 py-2 text-xs text-white shadow-lg">
+          <strong>{rotation.axis.toUpperCase()} {rotation.degrees.toFixed(1)}°</strong>
+          <div>{language === 'zh' ? `${rotation.snapped ? '15° 吸附 · Shift 自由旋转' : '自由旋转'} · Esc 取消` : `${rotation.snapped ? '15° snap · Shift for free rotation' : 'Free rotation'} · Esc cancels`}</div>
+        </div>
+      </Html>}
       {AXES.map((axis) => {
         const dir = AXIS_VECTOR[axis]
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)

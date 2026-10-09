@@ -52,6 +52,8 @@ interface ToolState {
   /** what the next camera fit should frame: everything, or just what is selected */
   cameraFitScope: 'all' | 'selection'
   /** R was pressed and is waiting for an axis key; null when no turn is pending */
+  rotationGesture: null | { axis: 'x' | 'y' | 'z'; degrees: number; snapped: boolean; pivot: [number, number, number] }
+  setRotationGesture: (gesture: ToolState['rotationGesture']) => void
   pendingRotate: null | { degrees: number }
   /** +1 closer, -1 further; the viewport consumes it and resets to 0 */
   zoomStep: number
@@ -237,6 +239,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   measuring: null,
   suggestion: null,
   suggestSkipped: new Set(),
+  rotationGesture: null,
+  setRotationGesture: (rotationGesture) => set({ rotationGesture }),
   pendingRotate: null,
   zoomStep: 0,
   zoomAt: null,

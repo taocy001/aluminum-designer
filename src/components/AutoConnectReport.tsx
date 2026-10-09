@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { remainingConnectionIssues } from '../utils/connectionReport'
+import { useViewStore } from '../store/useViewStore'
 import { nearbyConnectorSeats, sameConnectorModel } from '../utils/connectorRecovery'
 import { placementObstacles } from '../utils/placementObstacles'
 import * as THREE from 'three'
@@ -15,11 +17,19 @@ import { translations } from '../utils/translations'
 
 export default function AutoConnectReport() {
   const report = useInspectionStore(s => s.report)
+  const hosts = useInspectionStore(s => s.reportHosts)
+  const replacements = useInspectionStore(s => s.replacements)
   const doc = useStore()
-  const { language, viewMode, held } = useToolStore(), zh = language === 'zh', t = translations[language]
+  const { language, viewMode, held, isDragging, resize, rotationGesture } = useToolStore(), zh = language === 'zh', t = translations[language]
+  const checked = useRef(doc)
+  if (!isDragging && !resize && !rotationGesture) checked.current = doc
+  const stable = checked.current
+  const issues = useMemo(() => report ? remainingConnectionIssues(report, stable, hosts, replacements) : [],
+    [report, stable.profiles, stable.connectors, stable.panels, stable.fittings, stable.equipment, stable.throughRule, hosts, replacements])
   const [active, setActive] = useState(-1), [choice, setChoice] = useState(-1)
   useEffect(() => { setActive(-1); setChoice(-1) }, [report])
-  const issue = report?.issues[active]
+  const issue = issues.find(item => item.sourceIndex === active)
+  useEffect(() => { setChoice(-1) }, [doc.profiles, doc.connectors, doc.panels, doc.fittings, doc.equipment, doc.throughRule])
   const options = useMemo(() => ({ panels: doc.panels, equipment: doc.equipment, fittings: doc.fittings,
     excludeConnectorId: issue?.connectorId }), [doc.panels, doc.equipment, doc.fittings, issue?.connectorId])
   const candidates = useMemo(() => !report || !issue ? [] : nearbyConnectorSeats(report.type, new THREE.Vector3(...issue.position), doc.profiles, doc.connectors, options)
@@ -38,10 +48,14 @@ export default function AutoConnectReport() {
   const reason = (r?: ConnectorPlacementReason) => r === 'equipment' ? t.connectorReasonEquipment : r === 'collision' ? t.connectorReasonCollision
     : r === 'occupied' ? t.connectorOccupied : r === 'unverified' ? t.connectorReasonUnverified : t.connectorNoSeat
   const locate = (index: number) => {
-    const item = report.issues[index], tools = useToolStore.getState()
+    const item = issues.find(item => item.sourceIndex === index)!, tools = useToolStore.getState()
     tools.putDown()
     tools.cancelDraw()
-    doc.selectItems(item.connectorId ? [item.connectorId, ...item.hosts] : item.hosts)
+    tools.setSection(null)
+    tools.setBuildStep(null)
+    const ids = item.connectorId ? [item.connectorId, ...item.hosts] : item.hosts
+    useViewStore.getState().reveal(ids)
+    doc.selectItems(ids)
     useInspectionStore.getState().focusAt(item.position)
     setActive(index); setChoice(-1)
   }
@@ -52,16 +66,19 @@ export default function AutoConnectReport() {
     if (issue.connectorId && (!existing || existing.locked)) return
     const part = { id: existing?.id ?? nextId('c'), type: report.type, ...selected.seat }
     if (!validateConnectorPlacement(part, store.profiles, store.connectors, { ...options, panels: store.panels, equipment: store.equipment, fittings: store.fittings }).allowed) return
-    reportEditResult(existing ? store.commitTransform({ connectors: [{ id: existing.id, updates: { ...part, supportBinding: undefined, panelMount: undefined } }] })
-      : store.commitDocument({ connectors: [...store.connectors, part] }))
+    if (reportEditResult(existing ? store.commitTransform({ connectors: [{ id: existing.id, updates: { ...part, supportBinding: undefined, panelMount: undefined } }] })
+      : store.commitDocument({ connectors: [...store.connectors, part] }))) {
+      useInspectionStore.getState().recordRepair(issue.sourceIndex, part.id)
+      setChoice(-1)
+    }
   }
   return <section data-testid="auto-connect-report" className="mt-2 rounded-lg bg-slate-950 p-2 space-y-2 text-[11px]">
     <div className="flex justify-between"><span>{zh ? '自动连接结果' : 'Auto-connect results'} · {connectorLabel(report.type, language)}</span>
       <button aria-label={zh ? '关闭结果' : 'Close results'} onClick={() => useInspectionStore.getState().setReport(null)}>×</button></div>
-    <p>{zh ? `新增 ${report.placed} · 已安装 ${report.skipped} · 校正 ${report.repaired} · 待处理 ${report.issues.length}` : `Added ${report.placed} · Installed ${report.skipped} · Repaired ${report.repaired} · Issues ${report.issues.length}`}</p>
+    <p>{zh ? `新增 ${report.placed} · 已安装 ${report.skipped} · 校正 ${report.repaired} · 待处理 ${issues.length}` : `Added ${report.placed} · Installed ${report.skipped} · Repaired ${report.repaired} · Issues ${issues.length}`}</p>
     <div className="max-h-48 overflow-auto space-y-1">
-      {report.issues.map((item, index) => <button key={index} data-testid="connection-issue" aria-pressed={index === active} onClick={() => locate(index)}
-        className={`block w-full rounded text-left p-1.5 ${index === active ? 'bg-cyan-950' : 'bg-slate-800'}`}>
+      {issues.map((item, index) => <button key={item.sourceIndex} data-testid="connection-issue" aria-pressed={item.sourceIndex === active} onClick={() => locate(item.sourceIndex)}
+        className={`block w-full rounded text-left p-1.5 ${item.sourceIndex === active ? 'bg-cyan-950' : 'bg-slate-800'}`}>
         {index + 1}. {reason(item.reason)}<span className="block text-slate-400">{item.position.map(n => n.toFixed(1)).join(' / ')} mm</span>
         <span className="block text-slate-400">{[...(item.connectorId ? [partNumber('connector', item.connectorId)] : []), ...item.hosts.map(id => partNumber('profile', id))].join(' + ')}</span>
       </button>)}

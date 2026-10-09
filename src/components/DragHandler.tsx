@@ -1,7 +1,9 @@
+import { beginTransformGesture, cancelTransformGesture, finishTransformGesture, notifyLockedSelection } from '../utils/transformGesture'
 import React, { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { useToolStore } from '../store/useToolStore'
+import { isObjectVisible } from '../store/useViewStore'
 import { withFixedProfileCuts } from '../utils/jointUtils'
 import { reportEditResult } from '../utils/editFeedback'
 import type { EditResult } from '../utils/openingBindings'
@@ -58,11 +60,16 @@ const DragHandler: React.FC = () => {
       if (key !== rejectedGesture.current) { rejectedGesture.current = key; reportEditResult(result) }
     }
     const finishGesture = () => {
+      cancelTransformGesture()
       canvas.dispatchEvent(new Event('aluframe:consume-pointer'))
       const ts = useToolStore.getState()
       ts.stopDrag(); ts.stopResize(); ts.setDragConflict(false)
     }
     const unsubscribe = useToolStore.subscribe((state, previous) => {
+      if ((state.isDragging && !previous.isDragging) || (state.resize && !previous.resize)) {
+        beginTransformGesture()
+        notifyLockedSelection()
+      }
       if (!state.resize) resizingGesture.current = null
       if (!state.resize && !state.isDragging) rejectedGesture.current = ''
       if (state.isDragging && !previous.isDragging) {
@@ -72,7 +79,8 @@ const DragHandler: React.FC = () => {
       }
       if ((previous.isDragging || previous.resize) && (state.held !== previous.held
         || state.activeSpec !== previous.activeSpec || state.selectMode !== previous.selectMode
-        || state.measuring !== previous.measuring)) finishGesture()
+        || state.measuring !== previous.measuring || state.viewMode !== previous.viewMode)) finishGesture()
+      else if ((previous.isDragging || previous.resize) && !state.isDragging && !state.resize) finishTransformGesture()
     })
 
     const onPointerDown = (e: PointerEvent) => {
@@ -205,7 +213,7 @@ const DragHandler: React.FC = () => {
       // Snapping uses physical cuts, but the document changes only after validation.
       const all = store.profiles.some((p) => dragIds.has(p.id) && !p.locked)
         ? withFixedProfileCuts(store.profiles, undefined, store.throughRule) : store.profiles
-      const others = all.filter((p) => !dragIds.has(p.id))
+      const others = all.filter((p) => !dragIds.has(p.id) && isObjectVisible(p.id))
       const single = dragIds.size === 1
 
       // Group delta: snap the grabbed member, then apply the same offset to everything
@@ -236,7 +244,8 @@ const DragHandler: React.FC = () => {
           const threshold = ts.dragAxis ? AXIS_SNAP_MAX_MM
             : Math.max(6, Math.min(24, pixelsToWorld(ALIGN_PX, distance, camera, size.height)))
           connectorSnap = snapDraggedConnector(connector, leadNew, leadOrigin, all, store.connectors, allowedAxes, threshold,
-            { equipment: store.equipment, panels: store.panels, fittings: store.fittings }, connectorSnapKey.current)
+            { equipment: store.equipment, panels: store.panels, fittings: store.fittings,
+              seatFilter: (_seat, supportIds) => supportIds.every(isObjectVisible) }, connectorSnapKey.current)
           connectorSnapKey.current = connectorSnap?.key ?? null
           if (connectorSnap) groupDelta.copy(new THREE.Vector3(...connectorSnap.seat.position).sub(leadOrigin))
         }
@@ -345,6 +354,7 @@ const DragHandler: React.FC = () => {
       if (ts.resize) {
         applyResize(e)
         resizingGesture.current = null
+        finishTransformGesture()
         useToolStore.getState().stopResize()
         useToolStore.getState().setDragConflict(false)
         return
@@ -352,6 +362,7 @@ const DragHandler: React.FC = () => {
       if (!ts.isDragging) return
       // Browsers coalesce pointermove events per frame; make sure the release position is applied
       if (ts.dragMoved) applyDrag(e)
+      finishTransformGesture()
       useToolStore.getState().stopDrag()
     }
 

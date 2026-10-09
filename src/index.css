@@ -103,3 +103,46 @@ html, body, #root {
   .project-identity [data-testid=autosave-status] > span { display: none; }
   .file-menu { left: 0; top: calc(100% + 4px); width: min(274px, calc(100vw - 16px)); }
 }
+
+/* Stable task navigation leaves one full-height working panel beside the canvas. */
+.sidebar-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 4px 8px; border-bottom: 1px solid #ffffff14; flex-shrink: 0; }
+.sidebar-tabs button { padding: 9px 2px; border-radius: 5px; color: #cbd5e1; font-size: 12px; }
+.sidebar-tabs button:hover { background: #ffffff0d; }
+.sidebar-tabs button[aria-selected="true"] { color: #93c5fd; background: #2563eb24; box-shadow: inset 0 -2px #60a5fa; }
+.sidebar-tabs button:focus-visible, .object-browser button:focus-visible, .fitting-entry:focus-visible { outline: 2px solid #60a5fa; outline-offset: -2px; }
+.fitting-entry { display: flex; gap: 6px; align-items: center; justify-content: center; padding: 8px; font-size: 12px; background: #334155; border: 1px solid #ffffff14; border-radius: 6px; }
+.fitting-entry.is-active { background: #2563eb33; border-color: #60a5fa; color: #bfdbfe; }
+.object-browser { padding: 12px; font-size: 12px; }
+.object-search { display: flex; align-items: center; gap: 7px; background: #0f172a; padding: 9px; border: 1px solid #475569; border-radius: 6px; }
+.object-search:focus-within { border-color: #60a5fa; }
+.object-search input { width: 100%; background: transparent; outline: none; min-width: 0; }
+.object-filter { width: 100%; margin: 8px 0; padding: 7px; background: #1e293b; border: 1px solid #475569; border-radius: 6px; }
+.object-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.object-actions button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 2px; border-radius: 5px; background: #334155; }
+.object-browser button:disabled { opacity: .4; cursor: default; }
+.object-count { margin: 12px 0 6px; color: #94a3b8; font-size: 11px; }
+.object-row { display: flex; border: 1px solid transparent; border-bottom-color: #ffffff0a; border-radius: 4px; }
+.object-row:hover { background: #33415580; }
+.object-row.is-selected { background: #2563eb26; border-color: #60a5fa99; }
+.object-row.is-hidden .object-row-main { opacity: .48; }
+.object-row-main { padding: 9px 6px; text-align: left; min-width: 0; flex: 1; }
+.object-number { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, monospace; color: #e2e8f0; }
+.object-description { display: block; margin-top: 4px; color: #cbd5e1; overflow-wrap: anywhere; }
+.object-description span { color: #94a3b8; font-size: 11px; }
+.object-visibility { padding: 6px; align-self: center; color: #94a3b8; }
+.object-empty { padding: 28px 6px; line-height: 1.7; color: #94a3b8; }
+.viewport-tool-group { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.viewport-tool-group + .viewport-tool-group { border-left: 1px solid #ffffff24; padding-left: 6px; margin-left: 4px; }
+.viewport-tool-caption { padding: 0 5px; font-size: 11px; color: #94a3b8; }
+@media (max-width: 767px) { .viewport-tool-caption { display: none; } .viewport-tool-group + .viewport-tool-group { border-left: 0; margin-left: 0; padding-left: 0; } }
+.object-groups { margin-top: 14px; padding-top: 10px; border-top: 1px solid #334155; }
+.object-group-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; color: #94a3b8; }
+.object-group-heading button, .object-group-form button { display: flex; align-items: center; gap: 4px; padding: 5px 6px; background: #334155; border-radius: 4px; color: #e2e8f0; }
+.object-group-form { display: flex; gap: 4px; margin: 6px 0; }
+.object-group-form input { min-width: 0; flex: 1; padding: 5px; border: 1px solid #64748b; border-radius: 4px; background: #0f172a; }
+.object-group-row { display: flex; align-items: center; gap: 3px; min-width: 0; margin: 3px 0; }
+.object-group-row > button { padding: 5px; border-radius: 4px; }
+.object-group-main { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; text-align: left; }
+.object-group-main span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.object-group-main small { color: #94a3b8; }
+.object-group-main[aria-pressed="true"] { background: #164e63; color: #a5f3fc; }

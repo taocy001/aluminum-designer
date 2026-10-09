@@ -20,6 +20,7 @@ test('document commands and history remain usable with the panel collapsed', asy
   await expect(page.getByTestId('import-project')).toBeFocused()
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowDown')
   await expect(page.getByTestId('save-as')).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(menu).toBeFocused()

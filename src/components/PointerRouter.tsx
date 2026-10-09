@@ -1,3 +1,5 @@
+import { isObjectVisible } from '../store/useViewStore'
+import { beginTransformGesture, cancelTransformGesture, finishTransformGesture, notifyLockedSelection, type TransformSource } from '../utils/transformGesture'
 import { assemblySteps, shownAt } from '../utils/assembly'
 import { useInspectionStore } from '../store/useInspectionStore'
 import React, { useEffect, useRef } from 'react'
@@ -10,7 +12,7 @@ import { frontmostId, promoteFrontmost } from '../utils/frontmost'
 import { getProfileEndpoints, getProfileDir } from '../utils/geometryCore'
 import { endGrabRadius } from './ResizeHandles'
 import { gizmoState, gizmoHandleAt } from './TransformGizmo'
-import { rotateSelected, selectConnected } from '../utils/editOps'
+import { rotateSelected, selectConnected, selectionPivot } from '../utils/editOps'
 import { setFittingOpen } from '../utils/fittingOps'
 import { translations } from '../utils/translations'
 import { memberBox } from '../utils/dragSnap'
@@ -52,7 +54,7 @@ const PointerRouter: React.FC = () => {
   /** draw mode: a press that landed on a member, waiting to see whether it becomes a drag */
   const pendingDrawDrag = useRef<{ x: number; y: number; id: string; point: THREE.Vector3; shift: boolean; alt: boolean } | null>(null)
   /** a press that landed on a rotation arc, waiting for the release */
-  const pendingRotate = useRef<{ x: number; y: number; axis: 'x' | 'y' | 'z'; shift: boolean } | null>(null)
+  const pendingRotate = useRef<{ x: number; y: number; axis: 'x' | 'y' | 'z'; shift: boolean; source: TransformSource; pivot: THREE.Vector3; start: THREE.Vector3 | null; screen: THREE.Vector2; last: number; total: number; moved: boolean; applied: boolean } | null>(null)
   /** a left press while a suggestion is showing: on its ghost or not, decided on release */
   const pendingSuggest = useRef<{ x: number; y: number; onGhost: boolean } | null>(null)
   /**
@@ -163,7 +165,7 @@ const PointerRouter: React.FC = () => {
       // put away is put away: a hidden door is not something you can click either
       const visible = useToolStore.getState().showFittings ? fittings : []
       const list = pickCandidatesAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
-        profiles, connectors, panels, visible, trimsFor(store), equipment)
+        profiles, connectors, panels, visible, trimsFor(store), equipment).filter(p => isObjectVisible(p.id))
       const step = useToolStore.getState().buildStep
       if (step !== null) {
         const old = shownCache?.store
@@ -196,10 +198,38 @@ const PointerRouter: React.FC = () => {
       ts.setHoverCandidates(candidates.current.list.length, candidates.current.index)
     }
 
+    const updateRotation = (e: PointerEvent) => {
+      const rot = pendingRotate.current
+      if (!rot) return
+      if (!rot.moved && Math.hypot(e.clientX - rot.x, e.clientY - rot.y) <= CLICK_SLOP_PX) return
+      rot.moved = true
+      const normal = new THREE.Vector3(rot.axis === 'x' ? 1 : 0, rot.axis === 'y' ? 1 : 0, rot.axis === 'z' ? 1 : 0)
+      const point = cursorOf(e)
+      const hit = rayOf(point.cursor, point.rect).intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(normal, rot.pivot), new THREE.Vector3())
+      let angle: number
+      if (rot.start && hit) {
+        const vector = hit.sub(rot.pivot).normalize()
+        angle = Math.atan2(normal.dot(rot.start.clone().cross(vector)), rot.start.dot(vector))
+      } else {
+        const current = new THREE.Vector2(e.clientX - rot.screen.x, e.clientY - rot.screen.y)
+        const start = new THREE.Vector2(rot.x - rot.screen.x, rot.y - rot.screen.y)
+        const sign = normal.dot(camera.position.clone().sub(rot.pivot)) >= 0 ? -1 : 1
+        angle = sign * Math.atan2(start.x * current.y - start.y * current.x, start.dot(current))
+      }
+      const delta = Math.atan2(Math.sin(angle - rot.last), Math.cos(angle - rot.last))
+      rot.total += delta
+      rot.last = angle
+      const raw = THREE.MathUtils.radToDeg(rot.total)
+      const degrees = e.shiftKey ? Math.round(raw * 10) / 10 : Math.round(raw / 15) * 15
+      if (rotateSelected(rot.axis, degrees, { source: rot.source, pivot: rot.pivot, history: !rot.applied })) rot.applied = true
+      useToolStore.getState().setRotationGesture({ axis: rot.axis, degrees, snapped: !e.shiftKey, pivot: rot.pivot.toArray() })
+    }
+
     const onPointerMove = (e: PointerEvent) => {
+      if (pendingRotate.current) { updateRotation(e); return }
       // A real return to the canvas hands keyboard navigation back to the model.
       // Keep inputs focused while typing; keyboard-only toolbar Tab remains native.
-      if (e.buttons === 0 && document.activeElement?.closest('button')) {
+      if (e.buttons === 0 && !useToolStore.getState().quickMenuAt && document.activeElement?.closest('button')) {
         canvas.closest<HTMLElement>('[data-testid="viewport"]')?.focus({ preventScroll: true })
       }
       const ts = useToolStore.getState()
@@ -215,7 +245,7 @@ const PointerRouter: React.FC = () => {
           const store = useStore.getState()
           const item = partById(store, shift.pick.id)
           if (!item || item.locked) {
-            if (orbit) orbit.enabled = !ts.selectMode
+            if (orbit) orbit.enabled = true
             return
           }
           const ids = store.selectedIds.includes(item.id) ? store.selectedIds : [item.id]
@@ -286,7 +316,7 @@ const PointerRouter: React.FC = () => {
       const ray = rayOf(cursor, rect)
       const store = useStore.getState()
       const hit = pickAtScreen(cursor, ray, camera, { width: rect.width, height: rect.height },
-        store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store), store.equipment)
+        store.profiles.filter(p => isObjectVisible(p.id)), store.connectors.filter(p => isObjectVisible(p.id)), store.panels.filter(p => isObjectVisible(p.id)), (ts.showFittings ? store.fittings : []).filter(p => isObjectVisible(p.id)), trimsFor(store), store.equipment.filter(p => isObjectVisible(p.id)))
       let target = hit?.point?.clone() ?? null
       if (!target) {
         // For an empty-space zoom, keep the current view depth along the pointer ray.
@@ -311,7 +341,7 @@ const PointerRouter: React.FC = () => {
       const store = useStore.getState()
       const hit = pickAtScreen(
         new THREE.Vector2(rect.width / 2, rect.height / 2), ray.ray, camera,
-        { width: rect.width, height: rect.height }, store.profiles, store.connectors, store.panels, store.fittings, trimsFor(store), store.equipment,
+        { width: rect.width, height: rect.height }, store.profiles.filter(p => isObjectVisible(p.id)), store.connectors.filter(p => isObjectVisible(p.id)), store.panels.filter(p => isObjectVisible(p.id)), (useToolStore.getState().showFittings ? store.fittings : []).filter(p => isObjectVisible(p.id)), trimsFor(store), store.equipment.filter(p => isObjectVisible(p.id)),
       )
       const dir = camera.getWorldDirection(new THREE.Vector3())
       let depth: number | null = null
@@ -320,11 +350,11 @@ const PointerRouter: React.FC = () => {
       } else {
         // nothing dead ahead: use the middle of what is actually on screen
         const box = new THREE.Box3()
-        for (const p of store.profiles) box.union(memberBox(p))
-        for (const b of store.panels) box.expandByPoint(new THREE.Vector3(...b.position))
-        for (const c of store.connectors) box.expandByPoint(new THREE.Vector3(...c.position))
-        for (const f of store.fittings) box.expandByPoint(new THREE.Vector3(...f.position))
-        for (const e of store.equipment) for (const corner of obbCorners(equipmentBody(e))) box.expandByPoint(corner)
+        for (const p of store.profiles.filter(p => isObjectVisible(p.id))) box.union(memberBox(p))
+        for (const b of store.panels.filter(p => isObjectVisible(p.id))) box.expandByPoint(new THREE.Vector3(...b.position))
+        for (const c of store.connectors.filter(p => isObjectVisible(p.id))) box.expandByPoint(new THREE.Vector3(...c.position))
+        for (const f of (useToolStore.getState().showFittings ? store.fittings : []).filter(p => isObjectVisible(p.id))) box.expandByPoint(new THREE.Vector3(...f.position))
+        for (const e of store.equipment.filter(p => isObjectVisible(p.id))) for (const corner of obbCorners(equipmentBody(e))) box.expandByPoint(corner)
         if (!box.isEmpty()) depth = box.getCenter(new THREE.Vector3()).sub(camera.position).dot(dir)
       }
       if (depth === null || !isFinite(depth) || depth < 1) return
@@ -385,11 +415,21 @@ const PointerRouter: React.FC = () => {
           return
         }
         if (part?.kind === 'rotate' && !(e.shiftKey && pointer.pick)) {
-          // a click on an arc turns the selection; a drag that wanders off is ignored
+          // A click turns 90 degrees; dragging previews an absolute angle about the original pivot.
           // The same press may already have armed DrawingHandler when a profile is
           // in hand. Give this click exclusively to the arc, in either listener order.
           canvas.dispatchEvent(new Event('aluframe:consume-pointer'))
-          pendingRotate.current = { x: e.clientX, y: e.clientY, axis: part.axis, shift: e.shiftKey }
+          const source = beginTransformGesture()
+          notifyLockedSelection()
+          const selected = new Set(source.selectedIds)
+          const movable = <T extends { id: string; locked?: boolean }>(items: T[]) => items.filter(item => selected.has(item.id) && !item.locked)
+          const pivot = selectionPivot(movable(source.profiles), movable(source.connectors), ts.pivotMode, movable(source.panels), movable(source.fittings), source.profiles, movable(source.equipment))
+          const normal = new THREE.Vector3(part.axis === 'x' ? 1 : 0, part.axis === 'y' ? 1 : 0, part.axis === 'z' ? 1 : 0)
+          const hit = Math.abs(normal.dot(ray.direction)) > 0.08 ? ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(normal, pivot), new THREE.Vector3()) : null
+          const projected = pivot.clone().project(camera)
+          const screen = new THREE.Vector2(pointer.rect.left + (projected.x + 1) * pointer.rect.width / 2, pointer.rect.top + (1 - projected.y) * pointer.rect.height / 2)
+          pendingRotate.current = { x: e.clientX, y: e.clientY, axis: part.axis, shift: e.shiftKey, source, pivot, start: hit?.sub(pivot).normalize() ?? null, screen, last: 0, total: 0, moved: false, applied: false }
+          ts.setRotationGesture({ axis: part.axis, degrees: 0, snapped: !e.shiftKey, pivot: pivot.toArray() })
           gizmoState.busy = true
           if (orbit) orbit.enabled = false
           return
@@ -487,7 +527,7 @@ const PointerRouter: React.FC = () => {
       const shift = pendingShift.current
       pendingShift.current = null
       if (shift) {
-        if (orbit) orbit.enabled = !useToolStore.getState().selectMode
+        if (orbit) orbit.enabled = true
         if (e.button === 0 && Math.hypot(e.clientX - shift.down.clientX, e.clientY - shift.down.clientY) <= CLICK_SLOP_PX) {
           useStore.getState().selectItem(shift.pick.id, true)
         }
@@ -502,11 +542,16 @@ const PointerRouter: React.FC = () => {
       }
 
       const rot = pendingRotate.current
-      pendingRotate.current = null
       if (rot) {
+        updateRotation(e)
+        pendingRotate.current = null
+        const degrees = useToolStore.getState().rotationGesture?.degrees ?? 0
+        if (rot.moved && Math.abs(degrees % 360) < .0001) cancelTransformGesture()
+        useToolStore.getState().setRotationGesture(null)
+        finishTransformGesture()
         gizmoState.busy = false
-        if (orbit) orbit.enabled = !useToolStore.getState().selectMode
-        if (Math.hypot(e.clientX - rot.x, e.clientY - rot.y) <= CLICK_SLOP_PX) {
+        if (orbit) orbit.enabled = true
+        if (!rot.moved) {
           rotateSelected(rot.axis, rot.shift ? -90 : 90)
         }
         return
@@ -514,7 +559,7 @@ const PointerRouter: React.FC = () => {
 
       const ts0 = useToolStore.getState()
       if (ts0.resize) ts0.stopResize()
-      if (orbit && !ts0.isDragging) orbit.enabled = !ts0.selectMode
+      if (orbit && !ts0.isDragging) orbit.enabled = true
 
       if (pendingSelect.current) {
         const { x, y, id, multi } = pendingSelect.current
@@ -534,12 +579,13 @@ const PointerRouter: React.FC = () => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && pendingShift.current) {
         pendingShift.current = null
-        if (orbit) orbit.enabled = !useToolStore.getState().selectMode
+        if (orbit) orbit.enabled = true
       }
       if (e.key === 'Escape' && pendingRotate.current) {
+        cancelTransformGesture()
         pendingRotate.current = null
         gizmoState.busy = false
-        if (orbit) orbit.enabled = !useToolStore.getState().selectMode
+        if (orbit) orbit.enabled = true
         return
       }
       if (e.key !== 'Tab') return
@@ -578,15 +624,16 @@ const PointerRouter: React.FC = () => {
       const ts = useToolStore.getState()
       ts.stopDrag()
       ts.stopResize()
-      if (orbit) orbit.enabled = !ts.selectMode
+      if (orbit) orbit.enabled = true
     }
     canvas.addEventListener('aluframe:consume-pointer', consumePointer)
     const unsubscribe = useToolStore.subscribe((state, previous) => {
-      if (state.viewMode && !previous.viewMode) consumePointer()
+      if (state.viewMode && !previous.viewMode) { cancelTransformGesture(); consumePointer() }
       else if ((pendingRotate.current || pendingShift.current) && (state.held !== previous.held
-        || state.selectMode !== previous.selectMode || state.showGizmo !== previous.showGizmo)) consumePointer()
+        || state.selectMode !== previous.selectMode || state.showGizmo !== previous.showGizmo)) { cancelTransformGesture(); consumePointer() }
     })
-    const onPointerCancel = () => consumePointer()
+    const onPointerCancel = () => { cancelTransformGesture(); consumePointer() }
+    window.addEventListener('aluframe:cancel-gesture', onPointerCancel)
 
     canvas.addEventListener('dblclick', onDoubleClick)
     canvas.addEventListener('pointermove', onPointerMove)
@@ -597,6 +644,7 @@ const PointerRouter: React.FC = () => {
     window.addEventListener('blur', onPointerCancel)
     return () => {
       unsubscribe()
+      window.removeEventListener('aluframe:cancel-gesture', onPointerCancel)
       window.removeEventListener('aluframe:overlap', onOverlap)
       window.removeEventListener('keydown', onKey)
       canvas.removeEventListener('aluframe:consume-pointer', consumePointer)

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { cancelActiveTransformGesture } from '../utils/transformGesture'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Box, ChevronDown, FileJson, FolderOpen, Languages, Link2, Save, Undo2, Redo2, X, Download, HardDrive } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
@@ -6,10 +7,20 @@ import { parseProjectDocument, serializeProjectDocument } from '../utils/documen
 import { canOverwriteProject, canPickFiles, openProject, rememberOpenedFile, saveProject } from '../utils/projectFile'
 import { COMFORTABLE_URL, encodeShareLink } from '../utils/shareLink'
 import { translations } from '../utils/translations'
+import { projectSession, type ProjectDraft } from '../utils/projectSession'
 import AutoSaveStatus from './AutoSaveStatus'
 
 /** Document commands stay available independently of the design panel. */
 export default function EditorHeader() {
+  const session = useSyncExternalStore(projectSession.subscribe, projectSession.getState)
+  const geometry = useStore(s => [s.profiles.length, s.connectors.length, s.panels.length, s.fittings.length, s.equipment.length].join(','))
+  const counts = geometry.split(',').map(Number)
+  const hasParts = counts.some(Boolean)
+  const [drafts, setDrafts] = useState<ProjectDraft[]>([])
+  const [draftsOpen, setDraftsOpen] = useState(false)
+  const [switchError, setSwitchError] = useState(false)
+  const switchDialog = useRef<HTMLDialogElement>(null)
+  const draftsDialog = useRef<HTMLDialogElement>(null)
   const name = useStore(s => s.projectName)
   const canUndo = useStore(s => s.past.length > 0)
   const canRedo = useStore(s => s.future.length > 0)
@@ -32,6 +43,7 @@ export default function EditorHeader() {
   const native = canPickFiles()
   const overwrite = canOverwriteProject()
   const request = (newFile = false) => {
+    cancelActiveTransformGesture()
     returnFocus.current = document.activeElement as HTMLElement
     setMenuOpen(false)
     setFilename(useStore.getState().projectName ?? `aluframe-${new Date().toISOString().slice(0, 10)}.json`)
@@ -41,13 +53,15 @@ export default function EditorHeader() {
   }
   const acceptFile = (text: string, fileName: string, accept: () => void) => {
     const parsed = parseProjectDocument(JSON.parse(text))
-    useStore.getState().loadDocument(parsed)
-    useToolStore.getState().putDown()
-    accept()
-    useStore.setState({ projectName: fileName })
-    showToast(t.toastImported, 'success')
+    projectSession.requestReplacement(() => {
+      useStore.getState().loadDocument(parsed, { name: fileName, saved: true })
+      useToolStore.getState().putDown()
+      accept()
+      showToast(t.toastImported, 'success')
+    })
   }
   const openFile = async () => {
+    cancelActiveTransformGesture()
     closeMenu()
     const picked = await openProject()
     if (picked.outcome === 'unsupported') { fileInput.current?.click(); return }
@@ -56,7 +70,29 @@ export default function EditorHeader() {
     try { acceptFile(picked.text, picked.name, picked.accept) }
     catch { showToast(t.toastImportFailed, 'error') }
   }
+  useEffect(() => {
+    if (session.replacement && !open) switchDialog.current?.showModal()
+    else switchDialog.current?.close()
+  }, [session.replacement, open])
+  useEffect(() => {
+    if (draftsOpen) draftsDialog.current?.showModal()
+    else draftsDialog.current?.close()
+  }, [draftsOpen])
+  const finishSwitch = () => {
+    if (!projectSession.keepDraft()) { setSwitchError(true); return }
+    try { projectSession.finishReplacement(); setSwitchError(false) }
+    catch { setSwitchError(true) }
+  }
+  const restoreDraft = (draft: ProjectDraft) => {
+    cancelActiveTransformGesture()
+    setDraftsOpen(false)
+    projectSession.requestReplacement(() => {
+      useStore.getState().loadDocument(draft.document, { draft })
+      useToolStore.getState().putDown()
+    })
+  }
   const share = async () => {
+    cancelActiveTransformGesture()
     closeMenu()
     try {
       const link = await encodeShareLink(useStore.getState())
@@ -77,7 +113,7 @@ export default function EditorHeader() {
   })
   useEffect(() => {
     if (!menuOpen) return
-    menuRoot.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+    menuRoot.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus()
     const outside = (e: PointerEvent) => {
       if (!menuRoot.current?.contains(e.target as Node)) setMenuOpen(false)
     }
@@ -100,15 +136,23 @@ export default function EditorHeader() {
     setBusy(true)
     setError(false)
     const target = /\.json$/i.test(filename.trim()) ? filename.trim() : `${filename.trim()}.json`
-    const result = await saveProject(serializeProjectDocument(useStore.getState()), target, newFile)
+    const text = serializeProjectDocument(useStore.getState())
+    const savedDocument = parseProjectDocument(text)
+    const sessionId = projectSession.getState().id
+    const result = await saveProject(text, target, newFile)
     setBusy(false)
     if (result.outcome === 'failed') { setError(true); return }
     if (result.outcome === 'cancelled') return
-    if (result.outcome !== 'downloaded') useStore.setState({ projectName: result.name ?? null })
+    if (sessionId !== projectSession.getState().id) return
+    if (result.outcome !== 'downloaded') {
+      useStore.setState({ projectName: result.name ?? null })
+      projectSession.markSaved(savedDocument, sessionId)
+    }
     showToast(result.outcome === 'downloaded'
       ? (zh ? `已下载副本：${result.name}` : `Downloaded a copy: ${result.name}`)
       : (zh ? `已保存：${result.name}` : `Saved: ${result.name}`), 'success')
     setOpen(false)
+    if (result.outcome !== 'downloaded' && !projectSession.getState().dirty) projectSession.finishReplacement()
   }
   const item = 'file-menu-item'
   const closeMenu = () => { setMenuOpen(false); menuButton.current?.focus() }
@@ -126,7 +170,7 @@ export default function EditorHeader() {
             e.stopPropagation()
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); request(e.shiftKey); return }
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); void openFile(); return }
-            const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+            const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')]
             const index = items.indexOf(document.activeElement as HTMLButtonElement)
             if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
               e.preventDefault()
@@ -137,24 +181,54 @@ export default function EditorHeader() {
             if (e.key === 'Tab') setMenuOpen(false)
           }}>
           <button role="menuitem" className={item} data-testid="import-project" onClick={() => void openFile()}><FolderOpen size={16} /><span>{zh ? '打开工程…' : 'Open project…'}</span><kbd>{mod}O</kbd></button>
+          <button role="menuitem" className={item} data-testid="restore-drafts" onClick={() => { closeMenu(); setDrafts(projectSession.listDrafts()); setDraftsOpen(true) }}><HardDrive size={16} /><span>{zh ? '恢复草稿…' : 'Restore draft…'}</span></button>
           <div className="file-menu-divider" />
           <button role="menuitem" className={item} onClick={() => request()}><Save size={16} /><span>{zh ? '保存…' : 'Save…'}</span><kbd>{mod}S</kbd></button>
           <button role="menuitem" className={item} data-testid="save-as" onClick={() => request(true)}><FileJson size={16} /><span>{zh ? '另存为…' : 'Save as…'}</span><kbd>{mod}⇧S</kbd></button>
+          <div className="file-menu-divider" />
+          {(['bom', 'cutting', 'dxf', 'step', 'assembly'] as const).map((kind, index) => <button key={kind} role="menuitem" className={item} data-testid={`export-${kind}`}
+            disabled={kind === 'cutting' ? !counts[0] : kind === 'dxf' || kind === 'step' ? !counts.slice(0, 4).some(Boolean) : !hasParts}
+            onClick={() => { closeMenu(); window.dispatchEvent(new CustomEvent('aluframe:export', { detail: kind })) }}><Download size={16} /><span>{(zh
+              ? ['导出物料清单…', '导出下料方案…', '导出 DXF…', '导出 STEP…', '导出装配图…']
+              : ['Export bill of materials…', 'Export cutting plan…', 'Export DXF…', 'Export STEP…', 'Export assembly guide…'])[index]}</span></button>)}
           <div className="file-menu-divider" />
           <button role="menuitem" className={item} data-testid="share-link" onClick={() => void share()}><Link2 size={16} /><span>{zh ? '复制分享链接' : 'Copy share link'}</span></button>
         </div>}
       </div>
       <div className="header-history" role="group" aria-label={zh ? '编辑历史' : 'Edit history'}>
-        <button className="header-control header-icon" disabled={viewMode || !canUndo} onClick={() => { useToolStore.getState().cancelDraw(); useStore.getState().undo() }} aria-label={t.undo} title={`${t.undo} (${mod}Z)`}><Undo2 size={16} /></button>
-        <button className="header-control header-icon" disabled={viewMode || !canRedo} onClick={() => { useToolStore.getState().cancelDraw(); useStore.getState().redo() }} aria-label={t.redo} title={`${t.redo} (${mod}⇧Z)`}><Redo2 size={16} /></button>
+        <button className="header-control header-icon" disabled={viewMode || !canUndo} onClick={() => { cancelActiveTransformGesture(); useToolStore.getState().cancelDraw(); useStore.getState().undo() }} aria-label={t.undo} title={`${t.undo} (${mod}Z)`}><Undo2 size={16} /></button>
+        <button className="header-control header-icon" disabled={viewMode || !canRedo} onClick={() => { cancelActiveTransformGesture(); useToolStore.getState().cancelDraw(); useStore.getState().redo() }} aria-label={t.redo} title={`${t.redo} (${mod}⇧Z)`}><Redo2 size={16} /></button>
       </div>
       <div className="project-identity">
         <span className="project-name" title={name ?? undefined} data-testid="current-project-name">{name ?? (zh ? '未命名工程' : 'Untitled project')}</span>
+        <span data-testid="project-dirty" className="text-xs text-slate-400">{session.dirty ? (zh ? '有未保存更改' : 'Unsaved changes') : (zh ? '无未保存更改' : 'No unsaved changes')}</span>
         <AutoSaveStatus compact />
       </div>
       <button data-keep-draw className="header-control header-save" data-testid="export-project" onClick={() => request()} title={`${zh ? '保存工程' : 'Save project'} (${mod}S)`}><Save size={15} /><span>{zh ? '保存' : 'Save'}</span></button>
       <button data-keep-draw className="header-control header-icon language-control" onClick={() => setLanguage(zh ? 'en' : 'zh')} title={t.hintLanguage} aria-label={zh ? 'English' : '中文'}><Languages size={17} /></button>
     </header>
+    {session.storageError && <div role="alert" className="px-4 py-2 text-xs bg-amber-950 text-amber-100">{zh ? '工程草稿未能保存到浏览器。请保存文件后再切换或关闭页面。' : 'The project draft could not be saved in this browser. Save the file before switching or closing.'}<button className="underline ml-3" onClick={() => projectSession.keepDraft()}>{zh ? '重试' : 'Retry'}</button></div>}
+    <dialog ref={switchDialog} className="project-save-dialog" data-testid="project-switch-dialog" aria-labelledby="project-switch-title"
+      onCancel={() => projectSession.cancelReplacement()} onKeyDown={e => e.stopPropagation()}>
+      <h2 id="project-switch-title" className="font-semibold">{zh ? '当前工程有未保存更改' : 'This project has unsaved changes'}</h2>
+      <p className="text-sm text-slate-400 mt-3">{zh ? '切换前保存文件，或保留到此浏览器的草稿列表。草稿不会覆盖原文件。' : 'Save the file or keep a draft in this browser before switching. Drafts do not overwrite the original file.'}</p>
+      {switchError && <p role="alert" className="text-sm text-red-300 mt-3">{zh ? '草稿保存失败，当前工程仍保留在画布中。请保存文件或取消切换。' : 'The draft could not be saved. The current project remains open. Save the file or cancel switching.'}</p>}
+      <div className="save-dialog-footer">
+        <button className="dialog-secondary" data-testid="switch-cancel" onClick={() => { projectSession.cancelReplacement(); setSwitchError(false) }}>{zh ? '取消' : 'Cancel'}</button>
+        <button className="dialog-secondary" data-testid="switch-keep-draft" onClick={finishSwitch}>{zh ? '保留草稿并继续' : 'Keep draft and continue'}</button>
+        <button className="dialog-primary" data-testid="switch-save" onClick={() => request()}>{zh ? '保存后继续' : 'Save and continue'}</button>
+      </div>
+    </dialog>
+    <dialog ref={draftsDialog} className="project-save-dialog" data-testid="project-drafts-dialog" aria-labelledby="project-drafts-title"
+      onCancel={() => setDraftsOpen(false)} onKeyDown={e => e.stopPropagation()}>
+      <h2 id="project-drafts-title" className="font-semibold">{zh ? '恢复草稿' : 'Restore draft'}</h2>
+      <p className="text-xs text-slate-400 my-3">{zh ? '仅存于当前浏览器。恢复后需要重新选择保存文件的位置。' : 'Stored in this browser only. After restoring, choose the save location again.'}</p>
+      <div className="max-h-80 overflow-y-auto">{drafts.length ? drafts.map(draft => <div key={draft.id} className="flex items-center gap-3 border-b border-slate-700 py-3">
+        <div className="min-w-0 flex-1"><p className="truncate text-sm">{draft.name ?? (zh ? '未命名工程' : 'Untitled project')}</p><time className="text-xs text-slate-400" dateTime={new Date(draft.updatedAt).toISOString()}>{new Date(draft.updatedAt).toLocaleString(language)}</time></div>
+        <button className="dialog-secondary" onClick={() => restoreDraft(draft)}>{zh ? '恢复' : 'Restore'}</button>
+      </div>) : <p className="text-sm text-slate-400">{zh ? '没有其他工程的草稿。' : 'No drafts from other projects.'}</p>}</div>
+      <div className="save-dialog-footer"><button className="dialog-secondary" onClick={() => setDraftsOpen(false)}>{zh ? '关闭' : 'Close'}</button></div>
+    </dialog>
     <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={e => {
       const file = e.target.files?.[0]
       if (file) void file.text().then(text => acceptFile(text, file.name, () => rememberOpenedFile(file.name)))

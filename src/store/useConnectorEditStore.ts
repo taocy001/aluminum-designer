@@ -9,6 +9,8 @@ export type ConnectorEditPreview = Pick<ConnectorData, 'type' | 'series' | 'posi
 
 /** A temporary installation choice; applying it is a separate document transaction. */
 export const useConnectorEditStore = create<{
+  slideGuide: { origin: [number, number, number]; axis: [number, number, number]; min: number; max: number } | null
+  setSlideGuide: (slideGuide: { origin: [number, number, number]; axis: [number, number, number]; min: number; max: number } | null) => void
   preview: ConnectorEditPreview | null
   setPreview: (preview: ConnectorEditPreview | null) => void
-}>((set) => ({ preview: null, setPreview: (preview) => set({ preview }) }))
+}>((set) => ({ slideGuide: null, setSlideGuide: slideGuide => set({ slideGuide }), preview: null, setPreview: (preview) => set({ preview }) }))

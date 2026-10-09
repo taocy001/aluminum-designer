@@ -4,7 +4,7 @@ import { useStore, type ConnectorData, type PanelData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { buildProfile } from '../utils/profileFactory'
 import { resolveConnectorPlacement } from '../utils/connectorPlacement'
-import { connectorSlide, moveConnectorAlongSlot } from '../utils/connectorSlide'
+import { connectorSlide, connectorSlideRange, moveConnectorAlongSlot } from '../utils/connectorSlide'
 import { deriveSupport } from '../utils/openingBindings'
 import { attachPanels } from '../utils/attachPanels'
 import { panelMountSupports } from '../utils/panelMounts'
@@ -22,6 +22,21 @@ function nut() {
   useStore.setState({ profiles: [p], connectors: [c] })
   return { p, c }
 }
+it('shows actual mounting bounds and keeps collision checks separate from support limits', () => {
+  const { c } = nut()
+  const doc = useStore.getState()
+  const range = connectorSlideRange(c, doc)!
+  expect(range.min).toBeLessThan(-100)
+  expect(range.max).toBeGreaterThan(100)
+  expect(connectorSlide(c, range.min, doc).allowed).toBe(true)
+  expect(connectorSlide(c, range.max, doc).allowed).toBe(true)
+  expect(connectorSlide(c, range.min - 1, doc).reason).toBe('no-joint')
+  expect(connectorSlide(c, range.max + 1, doc).reason).toBe('no-joint')
+  const blocked = { ...doc, connectors: [c, { ...c, id: 'obstacle', position: [c.position[0], c.position[1], c.position[2] + 20] as [number, number, number] }] }
+  expect(connectorSlideRange(c, blocked)).toEqual(range)
+  expect(connectorSlide(c, 20, blocked).allowed).toBe(false)
+  expect(connectorSlideRange({ ...c, type: 'inside-corner' }, doc)).toBeNull()
+})
 it('slides fractional distances along a rotated rail, preserves orientation, and undoes once', () => {
   const { p, c } = nut()
   const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(.4, .3, .2))

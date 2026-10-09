@@ -297,11 +297,13 @@ const DrawingHandler: React.FC = () => {
     const ts = useToolStore.getState()
     if (!ts.isDrawing || !ts.drawOrigin) return
     const profiles = useStore.getState().profiles
+    const visible = visibleMemberIds()
+    const snapProfiles = profiles.filter(p => visible.has(p.id))
     const origin = ts.drawOrigin
 
     const meshHit = hitMember(ray)
     // Pass 1: which axis is the user pulling along?
-    const first = resolveAxisEnd(origin, ray, cursor, camera, size, profiles, ts.lockedAxis, meshHit, ts.drawSnapFace)
+    const first = resolveAxisEnd(origin, ray, cursor, camera, size, snapProfiles, ts.lockedAxis, meshHit, ts.drawSnapFace)
     if (!first) {
       ts.updateDraw({ startPoint: origin.clone(), currentPoint: origin.clone(), snapPoint: null, drawAxis: null, alignGuides: [], snapKind: null, hoverTargetId: null, drawSnapFace: null })
       return
@@ -312,7 +314,7 @@ const DrawingHandler: React.FC = () => {
 
     let res = start.equals(origin)
       ? first
-      : resolveAxisEnd(start, ray, cursor, camera, size, profiles, first.axis, meshHit, ts.drawSnapFace)
+      : resolveAxisEnd(start, ray, cursor, camera, size, snapProfiles, first.axis, meshHit, ts.drawSnapFace)
     if (!res) return
 
     // The selected start face may offset the section sideways. Resolve the target
@@ -322,7 +324,7 @@ const DrawingHandler: React.FC = () => {
       const offset = new THREE.Vector3(...startPreview.profile.position).sub(start)
       offset.addScaledVector(res.dir, -offset.dot(res.dir))
       if (offset.lengthSq() > 1e-6) {
-        const adjusted = resolveAxisEnd(start.clone().add(offset), ray, cursor, camera, size, profiles, res.axis, meshHit, ts.drawSnapFace)
+        const adjusted = resolveAxisEnd(start.clone().add(offset), ray, cursor, camera, size, snapProfiles, res.axis, meshHit, ts.drawSnapFace)
         if (adjusted) res = { ...adjusted, end: adjusted.end.clone().sub(offset) }
       }
     }
@@ -337,7 +339,7 @@ const DrawingHandler: React.FC = () => {
       drawAxis: res.axis,
       alignGuides: res.guide ? [{ from: res.guide.from.toArray() as any, to: res.guide.to.toArray() as any }] : [],
     })
-  }, [camera, size, hitMember])
+  }, [camera, size, hitMember, visibleMemberIds])
 
   const updateHover = useCallback((ray: THREE.Ray, cursor: THREE.Vector2) => {
     const ts = useToolStore.getState()

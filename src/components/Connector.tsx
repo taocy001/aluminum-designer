@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import * as THREE from 'three'
 import { connectorScale } from '../utils/connectorCatalog'
 import { connectorMeshes } from '../utils/connectorGeometry'
@@ -30,18 +30,19 @@ const Connector: React.FC<ConnectorProps> = ({
   const opacity = preview ? 0.92 : 1
   const highlighted = preview || isSelected || hovered
 
+  const meshes = useMemo(() => connectorMeshes(type, series, profileSpec, mountSeries, panelMount).map((part, index) => <mesh key={`${type}-${series}-${index}`}>
+    {/* Primitives keep cached geometry alive when a preview or instance unmounts. */}
+    <primitive object={part.geometry} attach="geometry" />
+    <meshStandardMaterial color={part.dark && !highlighted ? '#1e293b' : color}
+      metalness={part.polished ? 0.8 : 0.3} roughness={part.polished ? 0.2 : 0.55}
+      emissive={glow ?? '#000000'} emissiveIntensity={glow ? 0.9 : 0}
+      transparent={opacity < 1} opacity={opacity} depthWrite={part.previewDepthWrite || opacity >= 1} />
+  </mesh>), [type, series, profileSpec, mountSeries, panelMount, highlighted, color, glow, opacity])
+
   return (
     <group position={new THREE.Vector3(...position)} quaternion={new THREE.Quaternion(...quaternion).normalize()}
       scale={connectorScale(series)} userData={{ connectorId: id }} raycast={preview ? () => null : undefined}>
-      {connectorMeshes(type, series, profileSpec, mountSeries, panelMount).map((part, index) => <mesh key={`${type}-${series}-${index}`}>
-        {/* Primitives keep cached geometry alive when a preview or instance unmounts. */}
-        <primitive object={part.geometry} attach="geometry" />
-        <meshStandardMaterial color={part.dark && !highlighted ? '#1e293b' : color}
-          metalness={part.polished ? 0.8 : 0.3} roughness={part.polished ? 0.2 : 0.55}
-          emissive={glow ?? '#000000'}
-          emissiveIntensity={glow ? 0.9 : 0}
-          transparent={opacity < 1} opacity={opacity} depthWrite={part.previewDepthWrite || opacity >= 1} />
-      </mesh>)}
+      {meshes}
     </group>
   )
 }

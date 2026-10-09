@@ -1,3 +1,5 @@
+import type { PartGroup } from './groupMetadata'
+import type { TemplateInstance } from './templateMetadata'
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { parseProjectDocument, validateProjectDocument, PROJECT_VERSION, type ParsedProjectDocument } from './document'
 import type { ThroughRule } from './jointUtils'
@@ -5,6 +7,8 @@ import type { ThroughRule } from './jointUtils'
 /** Encode project data as compact arrays, deflate it and store it in a URL fragment. */
 
 export interface ShareDoc {
+  templateInstances?: TemplateInstance[]
+  groups?: PartGroup[]
   throughRule?: ThroughRule
   profiles: ProfileData[]
   connectors: ConnectorData[]
@@ -16,11 +20,11 @@ export interface ShareDoc {
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–9. */
+/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–10. */
 function pack(doc: ShareDoc): unknown[] {
   const checked = validateProjectDocument(doc)
   return [
-    9, checked.throughRule,
+    10, checked.throughRule,
     checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null,
       p.id, p.runnerBinding ?? null]),
     checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked, c.id, c.supportBinding ?? null, c.profileSpec ?? null, c.mountSeries ?? null, c.panelMount ?? null]),
@@ -31,15 +35,16 @@ function pack(doc: ShareDoc): unknown[] {
       f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '', f.drawer ?? null, f.id, f.openingBinding ?? null,
     ]),
     checked.equipment.map((e) => [e.id, e.name, e.width, e.height, e.depth, e.position, e.quaternion, e.clearance, !!e.locked]),
+    checked.templateInstances ?? null, checked.groups ?? null,
   ]
 }
 
 function unpack(raw: unknown): ParsedProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8 && version !== 9) throw new Error('unknown link version')
-  const [profiles, connectors, panels, fittings, equipment = []] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
-  if (raw.length !== (version >= 7 ? 7 : version >= 2 ? 6 : 5)
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8 && version !== 9 && version !== 10) throw new Error('unknown link version')
+  const [profiles, connectors, panels, fittings, equipment = [], templateInstances = [], groups = []] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
+  if (raw.length !== (version >= 10 ? 9 : version >= 7 ? 7 : version >= 2 ? 6 : 5)
     || ![profiles, connectors, panels, fittings, equipment].every(Array.isArray)) throw new Error('incomplete link')
   const throughRule = version >= 2 ? raw[1] : 'rails'
   let n = 0
@@ -47,6 +52,8 @@ function unpack(raw: unknown): ParsedProjectDocument {
   return parseProjectDocument({
     version: version >= 7 ? PROJECT_VERSION : version === 6 ? 8 : version === 5 ? 7 : version === 4 ? 6 : undefined,
     throughRule,
+    ...(version >= 10 && templateInstances !== null ? { templateInstances } : {}),
+    ...(version >= 10 && groups !== null ? { groups } : {}),
     equipment: equipment.map((row) => {
       if (!Array.isArray(row) || row.length !== 9) throw new Error('invalid equipment link')
       const [id, name, width, height, depth, position, quaternion, clearance, locked] = row

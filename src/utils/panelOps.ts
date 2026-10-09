@@ -147,11 +147,13 @@ export function panelFromSelection(
     }
   }
 
-  // A board lying flat is carried: it rests on the top of the rails it was fitted to. Hung
-  // at their mid-height it is held by nothing, and put on "the side away from the cabinet"
-  // — the right answer for a door or a back — a base went under the floor.
+  // An inset shelf's top is flush with the rails; plates below fasten it to the frame.
+  // An overlay shelf rests above the selected rails.
   const top = inner.max.y
-  if (lying) { inner.min.y = top; inner.max.y = top + thickness }
+  if (lying) {
+    inner.min.y = fit === 'inset' ? top - thickness : top
+    inner.max.y = fit === 'inset' ? top : top + thickness
+  }
 
   // Lying on the rails, it must still get past whatever stands up through them. An overlay
   // board is the frame's outside size, and a post in each corner would go straight through

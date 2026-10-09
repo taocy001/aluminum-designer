@@ -4,6 +4,7 @@ export type V3 = [number, number, number]
 
 /** The compact hardware row expands only while choosing a different model. */
 export async function chooseConnector(page: Page, type: string) {
+  await page.getByTestId('sidebar-tab-add').click()
   const toggle = page.getByTestId('connector-picker-toggle')
   if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click()
   await page.getByTestId(`connector-${type}`).click()
@@ -82,6 +83,7 @@ export async function tool(page: Page) {
 }
 
 export async function enterDraw(page: Page, spec = '2020') {
+  await page.getByTestId('sidebar-tab-add').click()
   await page.getByTestId(`spec-${spec}`).click()
   expect((await tool(page)).held).not.toBe(null)
 }

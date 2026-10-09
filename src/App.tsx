@@ -1,3 +1,5 @@
+import { ScanLine } from 'lucide-react'
+import { cancelActiveTransformGesture, transformGestureActive } from './utils/transformGesture'
 import EditorHeader from './components/EditorHeader'
 import OverlapPicker from './components/OverlapPicker'
 import { reportEditResult } from './utils/editFeedback'
@@ -115,6 +117,18 @@ function App() {
         || e.code === 'Space'
       )
       if (isInInput || nativeButtonKey) return
+      if (quickMenuOpenRef.current) return
+      if (transformGestureActive()) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          cancelActiveTransformGesture()
+          return
+        }
+        if (!(exactGestureRef.current && (/^[0-9.]$/.test(e.key) || (exactGestureRef.current === 'move' && e.key === '-')))) {
+          if (mod || ['Delete', 'Backspace', ' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault()
+          return
+        }
+      }
       // Part copies use an in-app snapshot. Inputs retain their native text clipboard.
       if (mod && ['c', 'v'].includes(e.key.toLowerCase())) {
         e.preventDefault()
@@ -452,7 +466,10 @@ function App() {
                   onChange={(e) => setExactInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') { e.preventDefault(); confirmExact() }
-                    if (e.key === 'Escape') { e.preventDefault(); setExactInput(''); (e.target as HTMLInputElement).blur() }
+                    if (e.key === 'Escape') {
+                      e.preventDefault(); setExactInput(''); (e.target as HTMLInputElement).blur()
+                      cancelActiveTransformGesture()
+                    }
                     e.stopPropagation()
                   }}
                   placeholder={t.exactMm}
@@ -492,11 +509,9 @@ function App() {
           {/* Related controls wrap together; short mobile canvases scroll the toolbar
               above the bottom controls. The drawing HUD follows its measured height. */}
           <div ref={toolbarRef} data-testid="viewport-toolbar" className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 flex-wrap whitespace-nowrap w-[calc(100%-1rem)] md:w-max max-w-[calc(100%-1rem)] max-h-[calc(100%-6rem)] md:max-h-none overflow-y-auto md:overflow-visible bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl p-1 shadow-2xl z-10">
-            {/* What is in hand, and the way to put it down. Not a mode switch: it only ever
-                empties the hand, because filling it is the sidebar's job. */}
-            {/* the label is the part's name, but the accessible name says what the button does,
-                so it is never confused with the sidebar button carrying the same name */}
-            <button data-testid="held-chip" onClick={() => { if (held !== null) putDown() }}
+            <div className="viewport-tool-group" role="group" aria-label={language === 'zh' ? '编辑' : 'Edit'}>
+              <span className="viewport-tool-caption">{language === 'zh' ? '编辑' : 'Edit'}</span>
+              <button data-testid="held-chip" onClick={() => { if (held !== null) putDown() }}
               disabled={held === null} title={held !== null ? t.holdingHint : t.emptyHand}
               aria-label={held !== null ? `${t.putDown} ${heldName}` : t.emptyHand}
               className={held !== null
@@ -506,83 +521,72 @@ function App() {
                 ? <><Pencil size={13} />{heldName}<X size={11} className="opacity-60" /></>
                 : <Hand size={14} />}
             </button>
-            <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button data-testid="select-toggle" onClick={() => { putDown(); setSelectMode(!selectMode) }}
+              <button data-testid="select-toggle" onClick={() => { putDown(); setSelectMode(!selectMode) }}
               title={t.selectMode} aria-label={t.selectMode}
               aria-pressed={selectMode}
               className={iconBtn(selectMode, 'bg-violet-600/30 text-violet-400')}>
               <MousePointer2 size={14} />{mobileLabel(t.selectMode)}
             </button>
-            <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <div className={advancedTools}>
-            <button data-keep-draw onClick={toggleFittings} data-testid="fittings-toggle" title={t.hintShowFittings}
-              aria-pressed={showFittings}
-              aria-label={t.showFittings} className={iconBtn(!showFittings, 'bg-slate-600/40 text-slate-100')}>
-              {showFittings ? <DoorOpen size={14} /> : <DoorClosed size={14} />}{mobileLabel(t.showFittings)}
-            </button>
-            <button data-keep-draw onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labelsHint}
-              aria-pressed={showDimensionLabels}
-              aria-label={t.labels} className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
-              <Ruler size={14} />{mobileLabel(t.labels)}
-            </button>
-            <button data-keep-draw onClick={togglePartNumbers} data-testid="part-numbers-toggle" title={t.partNumbersHint}
-              aria-pressed={showPartNumbers} aria-label={t.partNumbers}
-              className={iconBtn(showPartNumbers, 'bg-cyan-600/20 text-cyan-400')}>
-              <span className="font-mono text-sm">#</span>{mobileLabel(t.partNumbers)}
-            </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button data-keep-draw data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
+              <div className={advancedTools}><button data-keep-draw data-testid="gizmo-toggle" onClick={toggleGizmo} title={t.gizmoHint}
               aria-pressed={showGizmo}
               aria-label={t.rotate3d} className={iconBtn(showGizmo, 'bg-amber-600/20 text-amber-400')}>
               <Rotate3d size={14} />{mobileLabel(t.rotate3d)}
-            </button>
-            {/* Where the selection turns about. The gizmo moves onto it, so the choice is visible. */}
-            <button data-keep-draw data-testid="pivot-toggle" onClick={cyclePivotMode} title={`${t.pivot}: ${pivotName} · ${t.pivotHint}`}
+            </button></div>
+              <div className={advancedTools}><button data-keep-draw data-testid="pivot-toggle" onClick={cyclePivotMode} title={`${t.pivot}: ${pivotName} · ${t.pivotHint}`}
               aria-label={`${t.pivot}: ${pivotName} (P)`}
               className={toolBtn(pivotMode !== 'center', 'bg-amber-600/20 text-amber-400')}>
               <Crosshair size={14} /><span>{pivotName}</span>
-            </button>
-            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            <button data-keep-draw data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (F11)`}
-              aria-pressed={isFullscreen}
-              aria-label={t.fullscreen} className={iconBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
-              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}{mobileLabel(t.fullscreen)}
-            </button>
-            </div>
-            <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            {/* Building or looking: two states, so one switch. It shows the state it is in,
-                not the one it would take you to — a button that lies about where you are is
-                worse than one more click. */}
-            <button data-testid="measure-toggle" onClick={() => measuring ? stopMeasuring() : startMeasuring()}
+            </button></div>
+              <button data-testid="measure-toggle" onClick={() => measuring ? stopMeasuring() : startMeasuring()}
               aria-pressed={!!measuring}
               title={t.hintMeasure} aria-label={t.measure}
               className={iconBtn(!!measuring, 'bg-amber-500 text-white shadow-lg')}>
               <Ruler size={14} />{mobileLabel(t.measure)}
             </button>
-            {/* The next member the drawing most likely needs, offered as a ghost to click */}
-            <div className={advancedTools}><button data-testid="suggest-next" onClick={() => { if (isDrawing) cancelDraw(); nextSuggestion() }}
+              <div className={advancedTools}><button data-testid="suggest-next" onClick={() => { if (isDrawing) cancelDraw(); nextSuggestion() }}
               disabled={viewMode || !!measuring}
               title={t.hintSuggest} aria-label={t.suggest}
               className={`${iconBtn(!!suggestion, 'bg-emerald-600/30 text-emerald-300')} disabled:opacity-30 disabled:pointer-events-none`}>
               <Lightbulb size={14} />{mobileLabel(t.suggest)}
             </button></div>
-            <button data-testid="mode-toggle" onClick={() => setViewMode(!viewMode)}
+              <button data-testid="mode-toggle" onClick={() => setViewMode(!viewMode)}
               aria-pressed={viewMode}
               title={viewMode ? t.hintLook : t.hintBuild} aria-label={viewMode ? t.look : t.build}
               className={iconBtn(true, viewMode ? 'bg-emerald-600 text-white shadow-lg' : 'bg-blue-600 text-white shadow-lg')}>
               {viewMode ? <Eye size={14} /> : <PencilRuler size={14} />}{mobileLabel(viewMode ? t.look : t.build)}
             </button>
-            <div className="hidden md:block w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-            {/* The wheel already does this; the buttons are for trackpads and for anyone who
-                would rather press something than learn a gesture. */}
-            <div className={advancedTools}><button data-keep-draw data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
-              className={iconBtn(false, '')}><Minus size={14} />{mobileLabel(t.zoomOut)}</button>
-            <button data-keep-draw data-testid="zoom-in" onClick={() => zoomBy(1)} title={t.zoomIn} aria-label={t.zoomIn}
+            </div>
+            <div className="viewport-tool-group" role="group" aria-label={language === 'zh' ? '视图' : 'View'}>
+              <span className="viewport-tool-caption">{language === 'zh' ? '视图' : 'View'}</span>
+              <div className={advancedTools}><button data-keep-draw onClick={toggleFittings} data-testid="fittings-toggle" title={t.hintShowFittings}
+              aria-pressed={showFittings}
+              aria-label={t.showFittings} className={iconBtn(!showFittings, 'bg-slate-600/40 text-slate-100')}>
+              {showFittings ? <DoorOpen size={14} /> : <DoorClosed size={14} />}{mobileLabel(t.showFittings)}
+            </button></div>
+              <div className={advancedTools}><button data-keep-draw onClick={toggleDimensionLabels} data-testid="labels-toggle" title={t.labelsHint}
+              aria-pressed={showDimensionLabels}
+              aria-label={t.labels} className={iconBtn(showDimensionLabels, 'bg-emerald-600/20 text-emerald-400')}>
+              <ScanLine size={14} />{mobileLabel(t.labels)}
+            </button></div>
+              <div className={advancedTools}><button data-keep-draw onClick={togglePartNumbers} data-testid="part-numbers-toggle" title={t.partNumbersHint}
+              aria-pressed={showPartNumbers} aria-label={t.partNumbers}
+              className={iconBtn(showPartNumbers, 'bg-cyan-600/20 text-cyan-400')}>
+              <span className="font-mono text-sm">#</span>{mobileLabel(t.partNumbers)}
+            </button></div>
+              <div className={advancedTools}><button data-keep-draw data-testid="zoom-out" onClick={() => zoomBy(-1)} title={t.zoomOut} aria-label={t.zoomOut}
+              className={iconBtn(false, '')}><Minus size={14} />{mobileLabel(t.zoomOut)}</button></div>
+              <div className={advancedTools}><button data-keep-draw data-testid="zoom-in" onClick={() => zoomBy(1)} title={t.zoomIn} aria-label={t.zoomIn}
               className={iconBtn(false, '')}><Plus size={14} />{mobileLabel(t.zoomIn)}</button></div>
-            <button data-keep-draw data-testid="fit-view" onClick={() => triggerCameraReset('all')} title={`${t.fitView} (F)`}
+              <button data-keep-draw data-testid="fit-view" onClick={() => triggerCameraReset('all')} title={`${t.fitView} (F)`}
               aria-label={t.fitView} className={iconBtn(false, '')}>
               <Home size={14} />{mobileLabel(t.home)}
             </button>
+              <div className={advancedTools}><button data-keep-draw data-testid="fullscreen-toggle" onClick={toggleFullscreen} title={`${t.fullscreen} (F11)`}
+              aria-pressed={isFullscreen}
+              aria-label={t.fullscreen} className={iconBtn(isFullscreen, 'bg-slate-600/40 text-slate-100')}>
+              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}{mobileLabel(t.fullscreen)}
+            </button></div>
+            </div>
             <button data-testid="mobile-tools-toggle" data-keep-draw onClick={() => setMobileToolsOpen(!mobileToolsOpen)}
               aria-expanded={mobileToolsOpen} aria-label={t.toolbarMore}
               className="md:hidden flex items-center justify-center min-h-11 px-2 text-[10px] font-bold text-slate-300 rounded-lg bg-slate-700/50">

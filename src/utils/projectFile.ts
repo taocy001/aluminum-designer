@@ -35,10 +35,12 @@ type PickerWindow = Window & {
 /** Accepted target for subsequent saves. */
 let handle: FileHandleLike | null = null
 let openedName: string | null = null
+let targetGeneration = 0
 
 export const canOverwriteProject = () => handle !== null
 
 export function rememberOpenedFile(name: string): void {
+  targetGeneration++
   handle = null
   openedName = name
 }
@@ -48,6 +50,7 @@ export function savedFileName(): string | null {
 }
 
 export function forgetSavedFile(): void {
+  targetGeneration++
   handle = null
   openedName = null
 }
@@ -72,9 +75,12 @@ export type SaveOutcome = 'saved' | 'overwritten' | 'downloaded' | 'cancelled' |
 /** asNew opens the save picker; otherwise reuse the selected handle. */
 export async function saveProject(text: string, suggested: string, asNew = false): Promise<{ outcome: SaveOutcome; name?: string }> {
   const w = window as PickerWindow
+  const generation = targetGeneration
   if (!canPickFiles()) {
-    downloadText(suggested, text, 'application/json')
-    return { outcome: 'downloaded', name: suggested }
+    try {
+      downloadText(suggested, text, 'application/json')
+      return { outcome: 'downloaded', name: suggested }
+    } catch { return { outcome: 'failed' } }
   }
   if (!handle || asNew) {
     let chosen: FileHandleLike
@@ -87,7 +93,9 @@ export async function saveProject(text: string, suggested: string, asNew = false
       return { outcome: (e as DOMException)?.name === 'AbortError' ? 'cancelled' : 'failed' }
     }
     try {
+      if (targetGeneration !== generation) return { outcome: 'cancelled' }
       await writable(chosen, text)
+      if (targetGeneration !== generation) return { outcome: 'cancelled' }
       handle = chosen
       openedName = chosen.name
       return { outcome: 'saved', name: chosen.name }
@@ -95,9 +103,10 @@ export async function saveProject(text: string, suggested: string, asNew = false
       return { outcome: 'failed' }
     }
   }
+  const target = handle
   try {
-    await writable(handle, text)
-    return { outcome: 'overwritten', name: handle.name }
+    await writable(target, text)
+    return { outcome: 'overwritten', name: target.name }
   } catch {
     return { outcome: 'failed' }
   }
@@ -126,7 +135,7 @@ export async function openProject(): Promise<OpenProjectResult> {
   const chosen = h
   try {
     const file = await chosen.getFile()
-    return { outcome: 'opened', text: await file.text(), name: chosen.name, accept: () => { handle = chosen; openedName = chosen.name } }
+    return { outcome: 'opened', text: await file.text(), name: chosen.name, accept: () => { targetGeneration++; handle = chosen; openedName = chosen.name } }
   } catch {
     // A failed read, including AbortError, is not a dismissed picker.
     return { outcome: 'failed' }

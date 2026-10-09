@@ -1,3 +1,4 @@
+import { notifyLockedSelection, type TransformSource } from './transformGesture'
 import * as THREE from 'three'
 import { noteNext } from './opLog'
 import { reportEditResult } from './editFeedback'
@@ -18,6 +19,7 @@ import { validEquipment } from './equipmentValidation'
 import { equipmentBody } from './equipmentGeometry'
 import { connectorTransformUpdates } from './connectorEdits'
 import { connectorPlacementCandidates } from './connectorPlacement'
+import type { PartGroup } from './groupMetadata'
 
 export type RotAxis = 'x' | 'y' | 'z'
 const AXES: Record<RotAxis, THREE.Vector3> = {
@@ -71,6 +73,7 @@ function selectedEquipment(includeLocked = false): EquipmentData[] {
 }
 
 type PartDocument = Pick<ReturnType<typeof useStore.getState>, 'profiles' | 'connectors' | 'panels' | 'fittings'> & { equipment?: EquipmentData[] }
+type CopyDocument = PartDocument & { groups?: PartGroup[] }
 
 /** Shared by the properties panel and the quick menu; empty or stale selections are unlocked. */
 export function selectionLocked(doc: PartDocument, ids: string[]): boolean {
@@ -81,7 +84,7 @@ export function selectionLocked(doc: PartDocument, ids: string[]): boolean {
 }
 
 /** Add every kind of part and select the whole copy in one document transaction. */
-function addCopies(copies: PartDocument): boolean {
+function addCopies(copies: CopyDocument): boolean {
   const store = useStore.getState()
   const ids = [...copies.profiles, ...copies.connectors, ...copies.panels, ...copies.fittings, ...(copies.equipment ?? [])].map((part) => part.id)
   return reportEditResult(store.commitDocument({
@@ -90,6 +93,7 @@ function addCopies(copies: PartDocument): boolean {
     panels: [...store.panels, ...copies.panels],
     fittings: [...store.fittings, ...copies.fittings],
     equipment: [...store.equipment, ...(copies.equipment ?? [])],
+    groups: [...store.groups, ...(copies.groups ?? [])],
   }, ids))
 }
 
@@ -155,6 +159,7 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
   if (sink < 0) d[1] -= sink
   if (d.every((v) => Math.abs(v) < 1e-6)) return false   // fully clamped: no move, no history entry
 
+  notifyLockedSelection()
   noteNext('nudge')
   const before = conflictPairsNow()
   const result = useStore.getState().commitTransform({
@@ -182,12 +187,15 @@ export function nudgeSelected(delta: [number, number, number]): boolean {
 }
 
 /** Capture physical parts now; later edits and pastes cannot change the clipboard. */
-function selectedCopyDocument(): PartDocument {
+function selectedCopyDocument(): CopyDocument {
+  const state = useStore.getState()
+  const ids = new Set(state.selectedIds)
   return structuredClone({ profiles: fixedSelectedProfiles(), connectors: selectedConnectors(true),
-    panels: selectedPanels(true), fittings: selectedFittings(true), equipment: selectedEquipment(true) })
+    panels: selectedPanels(true), fittings: selectedFittings(true), equipment: selectedEquipment(true),
+    groups: state.groups.filter(g => g.memberIds.every(id => ids.has(id))) })
 }
 
-let partClipboard: { document: PartDocument; pasted: number } | null = null
+let partClipboard: { document: CopyDocument; pasted: number } | null = null
 
 /** Copying changes neither the document nor undo history. Locked references can be copied. */
 export function copySelected(): boolean {
@@ -214,8 +222,8 @@ export function duplicateSelected(): boolean {
   return duplicateDocument(selectedCopyDocument(), 1)
 }
 
-function duplicateDocument(snapshot: PartDocument, step: number): boolean {
-  const { profiles, connectors, panels, fittings, equipment = [] } = structuredClone(snapshot)
+function duplicateDocument(snapshot: CopyDocument, step: number): boolean {
+  const { profiles, connectors, panels, fittings, equipment = [], groups = [] } = structuredClone(snapshot)
   if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
   noteNext('duplicate')
   const axis = profiles[0] ? getProfileAxis(profiles[0]) : 'y'
@@ -239,8 +247,14 @@ function duplicateDocument(snapshot: PartDocument, step: number): boolean {
   }))
   const newEquipment = equipment.map((e) => ({ ...e, id: nextId('e'), locked: false,
     clearance: { ...e.clearance }, position: shifted(e.position, new THREE.Vector3(...d)) }))
-  if (!addCopies(remapCopiedBindings({ profiles, connectors, panels, fittings, equipment },
-    { profiles: newProfiles, connectors: newConnectors, panels: newPanels, fittings: newFittings, equipment: newEquipment }))) return false
+  const originals = [...profiles, ...connectors, ...panels, ...fittings, ...equipment]
+  const copies = [...newProfiles, ...newConnectors, ...newPanels, ...newFittings, ...newEquipment]
+  const idMap = new Map(originals.map((part, i) => [part.id, copies[i].id]))
+  const copiedGroups = groups.filter(g => g.memberIds.every(id => idMap.has(id))).map(g => ({
+    ...g, id: nextId('g'), memberIds: g.memberIds.map(id => idMap.get(id)!),
+  }))
+  if (!addCopies({ ...remapCopiedBindings({ profiles, connectors, panels, fittings, equipment },
+    { profiles: newProfiles, connectors: newConnectors, panels: newPanels, fittings: newFittings, equipment: newEquipment }), groups: copiedGroups })) return false
   toast(t().toastDuplicated(newProfiles.length + newConnectors.length + newPanels.length + newFittings.length + newEquipment.length), 'success')
   warnIfNewConflicts(before)
   return true
@@ -480,20 +494,22 @@ export function pivotApplies(profiles: ProfileData[], connectors: ConnectorData[
  * Rotate the whole selection by any angle about a world axis, around the selection centre.
  * Profiles and connectors alike — nothing is restricted to 90° steps or to the Y axis.
  */
-export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
-  const { profiles: allProfiles, selectedIds } = useStore.getState()
+export function rotateSelected(axis: RotAxis = 'y', degrees = 90, preview?: { source: TransformSource; pivot: THREE.Vector3; history: boolean }): boolean {
+  const state = preview?.source ?? useStore.getState()
+  const { profiles: allProfiles, selectedIds } = state
   const ids = new Set(selectedIds)
   // Use the same physical cuts for the pivot, rotation and floor check. The transaction
   // fixes these cuts in the document; this preparation itself does not mutate the scene.
   const profiles = withFixedProfileCuts(allProfiles).filter((p) => ids.has(p.id) && !p.locked)
-  const connectors = selectedConnectors()
-  const panels = selectedPanels()
-  const fittings = selectedFittings()
-  const equipment = selectedEquipment()
+  const connectors = state.connectors.filter(p => ids.has(p.id) && !p.locked)
+  const panels = state.panels.filter(p => ids.has(p.id) && !p.locked)
+  const fittings = state.fittings.filter(p => ids.has(p.id) && !p.locked)
+  const equipment = state.equipment.filter(p => ids.has(p.id) && !p.locked)
   if (profiles.length === 0 && connectors.length === 0 && panels.length === 0 && fittings.length === 0 && equipment.length === 0) return false
-  if (!isFinite(degrees) || degrees % 360 === 0) return false
-  noteNext(`turn ${axis.toUpperCase()} ${degrees}°`)
-  const pivot = selectionPivot(profiles, connectors, useToolStore.getState().pivotMode, panels, fittings, allProfiles, equipment)
+  if (!isFinite(degrees) || (!preview && degrees % 360 === 0)) return false
+  if (!preview) notifyLockedSelection()
+  if (!preview) noteNext(`turn ${axis.toUpperCase()} ${degrees}°`)
+  const pivot = preview?.pivot ?? selectionPivot(profiles, connectors, useToolStore.getState().pivotMode, panels, fittings, allProfiles, equipment)
   const rot = new THREE.Quaternion().setFromAxisAngle(AXES[axis], THREE.MathUtils.degToRad(degrees))
   const spin = (pos: [number, number, number], quat: [number, number, number, number]) => {
     const p = new THREE.Vector3(...pos).sub(pivot).applyQuaternion(rot).add(pivot)
@@ -522,11 +538,11 @@ export function rotateSelected(axis: RotAxis = 'y', degrees = 90): boolean {
 
   const before = conflictPairsNow()
   const movingProfiles = new Set(profiles.map((p) => p.id))
-  if (!reportEditResult(useStore.getState().commitTransform({ profiles: spunProfiles,
+  if (!reportEditResult(useStore.getState().updateParts({ profiles: spunProfiles,
     connectors: spunConnectors.map((part, index) => ({ ...part,
       updates: connectorTransformUpdates(connectors[index], part.updates, movingProfiles) })),
-    panels: spunPanels, fittings: spunFittings, equipment: spunEquipment }))) return false
-  warnIfNewConflicts(before)
+    panels: spunPanels, fittings: spunFittings, equipment: spunEquipment }, { history: preview?.history ?? true }))) return false
+  if (!preview) warnIfNewConflicts(before)
   return true
 }
 

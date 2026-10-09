@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStore, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { useConnectorEditStore } from '../store/useConnectorEditStore'
-import { connectorSlide, moveConnectorAlongSlot } from '../utils/connectorSlide'
+import { connectorSlide, connectorSlideRange, moveConnectorAlongSlot } from '../utils/connectorSlide'
 
 export default function ConnectorSlideEditor({ connector }: { connector: ConnectorData }) {
   const doc = useStore()
@@ -12,6 +12,12 @@ export default function ConnectorSlideEditor({ connector }: { connector: Connect
   const amount = draft.trim() ? Number(draft) : NaN
   const result = useMemo(() => connectorSlide(connector, amount, doc), [connector, amount, doc.profiles, doc.connectors, doc.panels, doc.fittings, doc.equipment, doc.throughRule])
   const setPreview = useConnectorEditStore(s => s.setPreview)
+  const setSlideGuide = useConnectorEditStore(s => s.setSlideGuide)
+  const range = useMemo(() => connectorSlideRange(connector, doc), [connector, doc.profiles, doc.panels])
+  useEffect(() => {
+    setSlideGuide(held || viewMode || connector.locked ? null : range)
+    return () => setSlideGuide(null)
+  }, [range, held, viewMode, connector.locked, setSlideGuide])
   useEffect(() => { setDraft('0') }, [connector])
   useEffect(() => {
     if (!amount || !Number.isFinite(amount) || result.reason === 'fixed' || held || viewMode || connector.locked) return
@@ -32,6 +38,7 @@ export default function ConnectorSlideEditor({ connector }: { connector: Connect
       <button type="button" onClick={() => setDraft(String(Math.round(((Number.isFinite(amount) ? amount : 0) + step) * 1000) / 1000))}>+</button>
     </div>
     <p className="text-[10px] text-slate-400">{zh ? '相对当前位置（mm）；正向沿型材起点至终点。保持安装面和朝向。' : 'Relative millimetres; positive follows the host from start to end. Mounting face and orientation stay fixed.'}</p>
+    {range && <p data-testid="connector-slide-range" className="text-[10px] text-cyan-300">{zh ? '安装范围' : 'Mounting range'}: {range.min.toFixed(1)} … +{range.max.toFixed(1)} mm · {zh ? '仍需避开干涉' : 'Obstructions still apply'}</p>}
     {!result.allowed && <p role="status" className="text-amber-400">{zh ? (result.reason === 'invalid-distance' ? '请输入有效距离' : result.reason === 'no-joint' ? '超出原安装范围' : '此位置与其他零件干涉或已占用') : 'Outside the original mount or obstructed'}</p>}
     {!!result.conflicts?.length && <p className="text-amber-400 break-all">{zh ? '干涉零件（红框）' : 'Obstructions (red)'}: {result.conflicts.join(' · ')}</p>}
     {alternatives.map(n => <button key={n} type="button" onClick={() => setDraft(String(n))} className="mr-2 text-cyan-400">{n.toFixed(1)} mm</button>)}

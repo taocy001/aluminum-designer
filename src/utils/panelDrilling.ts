@@ -17,13 +17,17 @@ export function panelDrillCenters(panel: PanelData, connectors: ConnectorData[])
   return holes
 }
 export function panelShape(panel: PanelData, connectors: ConnectorData[]): THREE.Shape {
+  return panelShapeFromHoles(panel.width, panel.height, panelDrillCenters(panel, connectors))
+}
+
+export function panelShapeFromHoles(width: number, height: number, holes: { x: number; y: number; diameter: number }[]): THREE.Shape {
   const shape = new THREE.Shape()
-  shape.moveTo(-panel.width / 2, -panel.height / 2)
-  shape.lineTo(panel.width / 2, -panel.height / 2)
-  shape.lineTo(panel.width / 2, panel.height / 2)
-  shape.lineTo(-panel.width / 2, panel.height / 2)
+  shape.moveTo(-width / 2, -height / 2)
+  shape.lineTo(width / 2, -height / 2)
+  shape.lineTo(width / 2, height / 2)
+  shape.lineTo(-width / 2, height / 2)
   shape.closePath()
-  for (const hole of panelDrillCenters(panel, connectors)) {
+  for (const hole of holes) {
     const path = new THREE.Path()
     path.absarc(hole.x, hole.y, hole.diameter / 2, 0, Math.PI * 2, true)
     shape.holes.push(path)

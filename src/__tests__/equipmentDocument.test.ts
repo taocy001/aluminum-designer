@@ -163,6 +163,7 @@ describe('equipment automatic saves', () => {
     state.loadDocument({ profiles: [], connectors: [] })
     expect(useStore.getState().equipment).toEqual([])
     useStore.getState().undo()
-    expect(useStore.getState().equipment).toEqual(source.equipment)
+    expect(useStore.getState().equipment).toEqual([])
+    expect(useStore.getState().past).toEqual([])
   })
 })

@@ -84,8 +84,11 @@ test('rotation arcs own their press, preserve the camera and release it after ca
   await page.mouse.move(c.x + 65, c.y - 30, { steps: 8 })
   await page.mouse.up()
   expect((await camera(page)).position).toEqual(view.position)
-  expect((await store(page)).profiles).toEqual(before.profiles)
+  expect((await store(page)).profiles).not.toEqual(before.profiles)
+  expect((await store(page)).past).toBe(before.past + 1)
   expect((await camera(page)).enabled).toBe(true)
+  await page.keyboard.press('Control+z')
+  await settle(page)
   await page.mouse.click(c.x, c.y)
   await settle(page)
   expect((await store(page)).profiles[0].quaternion).not.toEqual(before.profiles[0].quaternion)
@@ -109,7 +112,7 @@ test('returning the pointer from the toolbar gives Tab to overlapping parts', as
   })
   await page.getByTestId('fit-view').click()
   await page.keyboard.press('Tab')
-  await expect(page.getByTestId('view-top')).toBeFocused()
+  await expect(page.getByTestId('fullscreen-toggle')).toBeFocused()
   await page.getByTestId('view-front').click()
   await setView(page, [300, 300, 1600], [300, 300, 0])
   await hoverWorld(page, [300, 300, 200])
@@ -200,6 +203,7 @@ test('phone tools and view controls remain reachable above an open bottom panel'
 
 test('fast exact input keeps every digit and Escape gives control back to the canvas', async ({ page }) => {
   await singleMember(page)
+  const original = (await store(page)).profiles
   const from = await w2c(page, [300, 10, 0]), to = await w2c(page, [300, 10, 70])
   await page.mouse.move(from.x, from.y)
   await page.mouse.down()
@@ -208,9 +212,9 @@ test('fast exact input keeps every digit and Escape gives control back to the ca
   await page.keyboard.type('900')
   await expect(page.getByTestId('exact-input')).toHaveValue('900')
   await page.keyboard.press('Escape')
-  await expect(page.getByTestId('exact-input')).not.toBeFocused()
-  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('exact-input')).toHaveCount(0)
   expect((await tool(page)).isDragging).toBe(false)
+  expect((await store(page)).profiles).toEqual(original)
   const stopped = (await store(page)).profiles
   await page.mouse.move(to.x + 90, to.y, { steps: 6 })
   await page.mouse.up()

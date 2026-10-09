@@ -31,7 +31,7 @@ const Dim: React.FC<{ from: THREE.Vector3; to: THREE.Vector3; tick: THREE.Vector
   }
 
 /** Overall dimensions, controlled by the dimension-label visibility setting. */
-const FrameDimensions: React.FC = () => {
+const FrameDimensions: React.FC<{ visibleIds?: Set<string> }> = ({ visibleIds }) => {
   const profiles = useStore((s) => s.profiles)
   const panels = useStore((s) => s.panels)
   const throughRule = useStore((s) => s.throughRule)
@@ -39,10 +39,10 @@ const FrameDimensions: React.FC = () => {
   const { trims } = useMemo(() => analyzeFrame(profiles), [profiles, throughRule])
 
   const bounds = useMemo(() => {
-    const b = computeFrameBounds(profiles, trims)
+    const b = computeFrameBounds(profiles.filter(p => !visibleIds || visibleIds.has(p.id)), trims)
     if (!b) return null
     // boards stick out past the frame they hang on, and they are part of the thing
-    for (const p of panels) {
+    for (const p of panels.filter(p => !visibleIds || visibleIds.has(p.id))) {
       const half = new THREE.Vector3(p.width / 2, p.height / 2, p.thickness / 2)
       const q = new THREE.Quaternion(...p.quaternion).normalize()
       for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
@@ -51,7 +51,7 @@ const FrameDimensions: React.FC = () => {
       }
     }
     return b
-  }, [profiles, trims, panels])
+  }, [profiles, trims, panels, visibleIds])
 
   if (!show || !bounds || profiles.length === 0) return null
   const min = bounds.min, max = bounds.max

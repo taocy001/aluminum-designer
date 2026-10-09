@@ -1,3 +1,4 @@
+import { projectSession } from './utils/projectSession'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -100,17 +101,18 @@ if (import.meta.env.DEV || import.meta.env.VITE_TEST_HOOK) {
 /** Consume shared project data from the URL before rendering the app. */
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 async function start() {
+  root.render(<React.StrictMode><App /></React.StrictMode>)
   const payload = takeShareLink()
   if (payload) {
-    root.render(<div role="status" className="p-6 text-slate-200">{useToolStore.getState().language === 'zh' ? '正在打开工程…' : 'Opening project…'}</div>)
     try {
       const doc = await decodeShare(payload)
-      useStore.getState().loadDocument(doc)
-      useToolStore.getState().showToast(translations[useToolStore.getState().language].toastSharedOpened, 'success')
+      projectSession.requestReplacement(() => {
+        useStore.getState().loadDocument(doc)
+        useToolStore.getState().showToast(translations[useToolStore.getState().language].toastSharedOpened, 'success')
+      })
     } catch {
       useToolStore.getState().showToast(translations[useToolStore.getState().language].toastImportFailed, 'error')
     }
   }
-  root.render(<React.StrictMode><App /></React.StrictMode>)
 }
 void start()

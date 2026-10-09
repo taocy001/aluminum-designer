@@ -1,3 +1,4 @@
+import { useViewStore, isObjectVisible } from '../store/useViewStore'
 import { useInspectionStore } from '../store/useInspectionStore'
 import React, { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
@@ -133,7 +134,7 @@ const CameraController: React.FC = () => {
     const orbit = controls as any
     const doc = useStore.getState()
     const ids = cameraFitScope === 'selection' && doc.selectedIds.length > 0 ? new Set(doc.selectedIds) : null
-    const chosen = <T extends { id: string }>(parts: T[]) => ids ? parts.filter((p) => ids.has(p.id)) : parts
+    const chosen = <T extends { id: string }>(parts: T[]) => parts.filter((p) => isObjectVisible(p.id) && (!ids || ids.has(p.id)))
     let bounds = computeFrameBounds(chosen(doc.profiles))
     const boxes = [
       ...chosen(doc.connectors).map(connectorOBB), ...chosen(doc.panels).map(panelOBB),
@@ -183,7 +184,7 @@ const SectionPlane: React.FC = () => {
   return null
 }
 
-const FrameSelector: React.FC = () => {
+const FrameSelector: React.FC<{ visibleIds: Set<string> }> = ({ visibleIds }) => {
   const { camera, size } = useThree()
   const frameSelectRect = useToolStore((s) => s.frameSelectRect)
   const clearFrameSelectRect = useToolStore((s) => s.clearFrameSelectRect)
@@ -211,8 +212,8 @@ const FrameSelector: React.FC = () => {
     for (const b of s.panels) if (inside(new THREE.Vector3(...b.position))) selected.push(b.id)
     for (const f of s.fittings) if (inside(fittingObb(f).center)) selected.push(f.id)
     for (const e of s.equipment) if (inside(equipmentBody(e).center)) selected.push(e.id)
-    s.selectItems(selected)
-  }, [frameSelectRect, camera, size, clearFrameSelectRect])
+    s.selectItems(selected.filter(id => visibleIds.has(id)))
+  }, [frameSelectRect, camera, size, clearFrameSelectRect, visibleIds])
 
   return null
 }
@@ -263,7 +264,7 @@ const PartDimensions: React.FC<{
  * W, H, D for a drawer or a door — because a number on the drawing that does not say which
  * field it is sends you counting axes.
  */
-const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims }) => {
+const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims>; visibleIds: Set<string> }> = ({ trims, visibleIds }) => {
   const profiles = useStore((s) => s.profiles)
   const panels = useStore((s) => s.panels)
   const fittings = useStore((s) => s.fittings)
@@ -271,7 +272,7 @@ const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims
   const mm = (v: number) => String(Math.round(v))
   return (
     <>
-      {profiles.map((p) => {
+      {profiles.filter(p => visibleIds.has(p.id)).map((p) => {
         const { start, end } = getProfileEndpoints(p)
         const mid = start.clone().lerp(end, 0.5)
         const dir = getProfileDir(p)
@@ -280,15 +281,15 @@ const DimensionLabels: React.FC<{ trims: Map<string, ProfileTrims> }> = ({ trims
         return <TextSprite key={p.id} text={String(Math.round(cut))} priority={2} owner={p.id} position={mid.toArray() as [number, number, number]} />
       })}
 
-      {panels.map((b) => (
+      {panels.filter(p => visibleIds.has(p.id)).map((b) => (
         <PartDimensions key={b.id} owner={b.id}
           position={b.position} quaternion={b.quaternion}
           sizes={[['W', b.width], ['H', b.height], ['T', b.thickness]]} color="#fde68a" />
       ))}
 
-      {equipment.map((e) => <PartDimensions key={e.id} owner={e.id} position={e.position} quaternion={e.quaternion}
+      {equipment.filter(p => visibleIds.has(p.id)).map((e) => <PartDimensions key={e.id} owner={e.id} position={e.position} quaternion={e.quaternion}
         sizes={[['W', e.width], ['H', e.height], ['D', e.depth]]} color="#5eead4" />)}
-      {fittings.map((f) => {
+      {fittings.filter(p => visibleIds.has(p.id)).map((f) => {
         // A door is labelled as the leaf you would cut: its own width, height and thickness,
         // on the leaf and following it open. Its depth is the cabinet's, and "D 670" on a
         // door read as a door 670 thick.
@@ -383,7 +384,7 @@ const DevHook: React.FC = () => {
       const st = useStore.getState()
       const visible = useToolStore.getState().showFittings ? st.fittings : []
       const list = pickCandidatesAtScreen(cursor, rc.ray, camera, { width: rect.width, height: rect.height },
-        st.profiles, st.connectors, st.panels, visible, undefined, st.equipment)
+        st.profiles, st.connectors, st.panels, visible, undefined, st.equipment).filter(p => isObjectVisible(p.id))
       return promoteFrontmost(list, frontmostId(scene, rc.ray, camera)).map((p) => ({ kind: p.kind, id: p.id }))
     }
     w.__aluframe.countByName = (name: string) => {
@@ -531,8 +532,14 @@ const Viewport: React.FC = () => {
   const steps = useMemo(() => (buildStep === null ? null : assemblySteps(profiles, connectors, panels, fittings, throughRule)),
     [buildStep, profiles, connectors, panels, fittings, throughRule])
   const on = useMemo(() => (steps && buildStep !== null ? shownAt(steps, buildStep) : null), [steps, buildStep])
-  const showing = <T extends { id: string }>(list: T[], kind: 'profiles' | 'connectors' | 'panels' | 'fittings') =>
-    (on ? list.filter((x) => on[kind].has(x.id)) : list)
+  const { hiddenIds, isolatedIds } = useViewStore()
+  const hidden = new Set(hiddenIds), isolated = isolatedIds ? new Set(isolatedIds) : null
+  const showing = <T extends { id: string }>(list: T[], kind: 'profiles' | 'connectors' | 'panels' | 'fittings' | 'equipment') =>
+    list.filter(x => !hidden.has(x.id) && (!isolated || isolated.has(x.id)) && (!on || kind === 'equipment' || on[kind].has(x.id)))
+  const visibleIds = new Set([
+    ...showing(profiles, 'profiles'), ...showing(connectors, 'connectors'), ...showing(panels, 'panels'),
+    ...(showFittings ? showing(fittings, 'fittings') : []), ...showing(equipment, 'equipment'),
+  ].map(p => p.id))
   const { trims, conflicts, conflictIds, equipmentConflicts, mismatches } = useMemo(
     () => analyzeFrame(profiles, connectors, panels, fittings, equipment), [profiles, connectors, panels, fittings, equipment, throughRule])
   const equipmentKinds = useMemo(() => {
@@ -543,11 +550,11 @@ const Viewport: React.FC = () => {
     return kinds
   }, [equipmentConflicts])
 
-  const orbitEnabled = !isDragging && !selectMode
-  // One mapping for the whole canvas, whatever is in hand: the buttons must not change
-  // meaning under the user. Left orbits unless the press turns out to be a click on
-  // something (DrawingHandler and PointerRouter decide that on release).
-  const mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
+  const rotationGesture = useToolStore(s => s.rotationGesture)
+  const orbitEnabled = !isDragging && !rotationGesture
+  // Middle drag always orbits, including over dense models and while box selection is active.
+  // Right drag pans; the wheel zooms. Left drag remains available to editing tools.
+  const mouseButtons = { LEFT: selectMode ? undefined : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN }
 
   return (
     <Canvas
@@ -580,17 +587,17 @@ const Viewport: React.FC = () => {
         <Fitting key={f.id} {...f} isSelected={selectedIds.includes(f.id)} />
       ))}
 
-      {equipment.map((e) => <Equipment key={e.id} {...e} isSelected={selectedIds.includes(e.id)} conflict={equipmentKinds.get(e.id)} />)}
+      {showing(equipment, 'equipment').map((e) => <Equipment key={e.id} {...e} isSelected={selectedIds.includes(e.id)} conflict={equipmentKinds.get(e.id)} />)}
 
       <MeasureOverlay />
-      {showDimensionLabels && <DimensionLabels trims={trims} />}
+      {showDimensionLabels && <DimensionLabels trims={trims} visibleIds={visibleIds} />}
       {showPartNumbers && <PartNumberLabels profiles={showing(profiles, 'profiles')} connectors={showing(connectors, 'connectors')}
         panels={showing(panels, 'panels')} fittings={showFittings ? showing(fittings, 'fittings') : []} trims={trims} />}
-      <FrameDimensions />
+      <FrameDimensions visibleIds={visibleIds} />
       <LabelLayout />
-      <ConflictMarkers conflicts={conflicts} />
-      {equipmentConflicts.map((c) => <ConflictMarker key={`${c.a}-${c.b}-${c.kind}`} conflict={c} clearance={c.kind === 'equipment-clearance'} />)}
-      <MismatchMarkers mismatches={mismatches} />
+      <ConflictMarkers conflicts={conflicts.filter(c => visibleIds.has(c.a) && visibleIds.has(c.b))} />
+      {equipmentConflicts.filter(c => visibleIds.has(c.a) && visibleIds.has(c.b)).map((c) => <ConflictMarker key={`${c.a}-${c.b}-${c.kind}`} conflict={c} clearance={c.kind === 'equipment-clearance'} />)}
+      <MismatchMarkers mismatches={mismatches.filter(c => visibleIds.has(c.a) && visibleIds.has(c.b))} />
       <EditAlignmentGuides trims={trims} />
 
       <DrawingHandler />
@@ -600,7 +607,7 @@ const Viewport: React.FC = () => {
       <PointerRouter />
       <ResizeHandles />
       <TransformGizmo />
-      <FrameSelector />
+      <FrameSelector visibleIds={visibleIds} />
       <SectionPlane />
 
       {/* No damping. drei turns it on by default, which eases the camera toward the cursor

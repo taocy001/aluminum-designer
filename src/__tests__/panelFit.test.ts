@@ -6,6 +6,8 @@ import { panelFromSelection } from '../utils/panelOps'
 import { shelfEdges } from '../utils/shelfSupport'
 import { findConflicts } from '../utils/analysis'
 import { computeAllTrims } from '../utils/jointUtils'
+import { attachPanels } from '../utils/attachPanels'
+import { unfastenedPanels } from '../utils/panelFastening'
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 const P = (sx: number, sy: number, sz: number, ex: number, ey: number, ez: number, spec: ProfileSpec = '2020'): ProfileData =>
@@ -37,7 +39,7 @@ function cabinet() {
   return { posts, bottom, top, mid, all: [...posts, ...bottom, ...top, mid] }
 }
 
-describe('a board fitted to four floor rails lies on them', () => {
+describe('horizontal board placement', () => {
   it('overlay: on top of the rails, clear of every post, not under the floor', () => {
     const c = cabinet()
     load(c.all)
@@ -50,18 +52,34 @@ describe('a board fitted to four floor rails lies on them', () => {
     expect(findConflicts(s.profiles, computeAllTrims(s.profiles), [], [board])).toEqual([])
   })
 
-  it('inset: between the corner posts, on top of the rails, not cut in half by the middle post', () => {
+  it('inset: flush with the rail tops and bounded by the full opening', () => {
     const c = cabinet()
     load(c.all)
     useStore.getState().selectItems(c.bottom.map((p) => p.id))
     const board = panelFromSelection('mdf', 18, 'inset')!
     const b = slab(board)
-    expect(b.min.y).toBeCloseTo(30, 1)
+    expect(b.max.y).toBeCloseTo(30, 1)
+    expect(b.min.y).toBeCloseTo(12, 1)
     // the corner posts' inner faces are at 10 and 590 both ways
     expect(b.min.x).toBeCloseTo(10, 1)
     expect(b.max.x).toBeCloseTo(590, 1)
     expect(b.min.z).toBeCloseTo(10, 1)
     expect(b.max.z).toBeCloseTo(590, 1)
+  })
+
+  it.each([6, 12, 18, 20])('fastens a flush %i mm inset shelf without intersections', (thickness) => {
+    const c = cabinet()
+    load(c.all)
+    useStore.getState().selectItems(c.bottom.map(p => p.id))
+    const board = panelFromSelection('mdf', thickness, 'inset')!
+    expect(slab(board).max.y).toBeCloseTo(30)
+    const doc = { profiles: c.all, panels: [board], connectors: [], fittings: [] }
+    let i = 0
+    const installed = attachPanels(doc, [board.id], () => `mount-${i++}`)
+    expect(installed.made).toHaveLength(8)
+    const complete = { ...doc, connectors: installed.made }
+    expect(unfastenedPanels(complete)).toEqual([])
+    expect(findConflicts(c.all, computeAllTrims(c.all), installed.made, [board])).toEqual([])
   })
 
   it('a board clipped to the inner opening needs additional bearing below it', () => {

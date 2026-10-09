@@ -36,3 +36,57 @@ test('fasten an inset shelf in place, preserve mounts on reload and undo the ass
   expect((await store(page)).connectors).toHaveLength(8)
   expect((await store(page)).panels).toEqual(before.panels)
 })
+
+test('panel meshes survive rigid moves, but change when fastening holes are removed', async ({ page }) => {
+  await openApp(page)
+  await page.evaluate(async () => {
+    const { attachPanels } = await import('/src/utils/attachPanels.ts' as string)
+    const s = (window as any).__aluframe.store.getState()
+    const panel = { id: 'board', width: 860, height: 240, thickness: 18, position: [450, 350, 160],
+      quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2], material: 'ply' }
+    const rail = (id: string, z: number) => ({ id, position: [0, 350, z], length: 900, spec: '2040',
+      quaternion: [.5, .5, .5, .5], miterCuts: [], holes: [] })
+    const doc = { profiles: [rail('front', 20), rail('back', 300)], panels: [panel], connectors: [], fittings: [], equipment: [] }
+    let i = 0
+    s.loadDocument({ ...doc, connectors: attachPanels(doc, ['board'], () => `mount-${i++}`).made })
+  })
+  const mesh = () => page.evaluate(() => {
+    let result: { uuid: string; vertices: number } | null = null
+    ;(window as any).__aluframe.sceneRoot.traverse((o: any) => {
+      if (o.userData.panelId === 'board') {
+        const mesh = o.children.find((c: any) => c.isMesh)
+        result = { uuid: mesh.geometry.uuid, vertices: mesh.geometry.attributes.position.count }
+      }
+    })
+    return result
+  })
+  await expect.poll(mesh).not.toBeNull()
+  const before = await mesh()
+  expect((await store(page)).connectors.length).toBeGreaterThan(0)
+  await page.evaluate(() => {
+    const s = (window as any).__aluframe.store.getState()
+    const updates = (parts: any[]) => parts.map(p => ({ id: p.id, updates: { position: [p.position[0] + 100, p.position[1], p.position[2] + 50] } }))
+    s.commitTransform({ profiles: updates(s.profiles), connectors: updates(s.connectors), panels: updates(s.panels) })
+  })
+  await expect.poll(async () => (await store(page)).panels[0].position[0]).toBe(550)
+  expect(await mesh()).toEqual(before)
+  const seating = page.getByTestId('bom-bracket-seating')
+  const beforeSeating = await seating.textContent()
+  await page.evaluate(() => {
+    const api = (window as any).__aluframe, s = api.store.getState()
+    api.tool.setState({ isDragging: true })
+    const c = s.connectors[0]
+    s.updateConnector(c.id, { position: [c.position[0], c.position[1] + 100, c.position[2]] })
+  })
+  await expect(page.getByTestId('installation-pending')).toHaveCount(1)
+  expect(await seating.textContent()).toBe(beforeSeating)
+  await page.evaluate(() => (window as any).__aluframe.tool.getState().stopDrag())
+  await expect(page.getByTestId('installation-pending')).toHaveCount(0)
+  await expect(seating).not.toHaveText(beforeSeating!)
+  await page.evaluate(() => {
+    const s = (window as any).__aluframe.store.getState()
+    s.removeConnectors(s.connectors.map((c: any) => c.id))
+  })
+  await expect.poll(async () => (await mesh())?.uuid).not.toBe(before!.uuid)
+  expect((await mesh())!.vertices).toBeLessThan(before!.vertices)
+})

@@ -1,3 +1,5 @@
+import { validPartGroups, type PartGroup } from './groupMetadata'
+import { validTemplateInstances, type TemplateInstance } from './templateMetadata'
 import { validPanelMount } from './panelMounts'
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import type { ThroughRule } from './jointUtils'
@@ -8,8 +10,10 @@ import { validFittingFields, validFittingDimensions } from './fittingValidation'
 import { validOpeningRef, validFittingOpeningBinding, validPanelOpeningBinding, validRunnerBinding, validSupportBinding } from './openingBindings'
 import { normalizeEquipmentClearance, validEquipment } from './equipmentValidation'
 
-export const PROJECT_VERSION = 10
+export const PROJECT_VERSION = 11
 export interface ProjectGeometry {
+  templateInstances?: TemplateInstance[]
+  groups?: PartGroup[]
   profiles: ProfileData[]
   connectors: ConnectorData[]
   panels: PanelData[]
@@ -39,6 +43,8 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
   for (const key of ['connectors', 'panels', 'fittings', 'equipment']) {
     if (doc[key] !== undefined && !Array.isArray(doc[key])) fail(key)
   }
+  if (!optional(doc.groups, validPartGroups)) fail('groups')
+  if (!optional(doc.templateInstances, validTemplateInstances)) fail('template instances')
   const ids = new Set<string>()
   const base = (value: unknown, binding?: 'openingBinding' | 'runnerBinding' | 'supportBinding'): Record<string, unknown> => {
     if (!record(value)) fail('part must be an object')
@@ -117,6 +123,8 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
   }
   return {
     profiles, connectors, panels, fittings, equipment,
+    ...(doc.groups !== undefined ? { groups: doc.groups as PartGroup[] } : {}),
+    ...(doc.templateInstances !== undefined ? { templateInstances: doc.templateInstances as TemplateInstance[] } : {}),
     throughRule: (doc.throughRule ?? 'rails') as ThroughRule,
   }
 }

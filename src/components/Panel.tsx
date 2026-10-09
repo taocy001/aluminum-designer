@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useStore, type PanelData } from '../store/useStore'
-import { panelShape } from '../utils/panelDrilling'
+import { panelDrillCenters, panelShapeFromHoles } from '../utils/panelDrilling'
 import { useToolStore } from '../store/useToolStore'
 
 const MATERIAL_LOOK: Record<PanelData['material'], { color: string; opacity: number; metalness: number; roughness: number }> = {
@@ -20,9 +20,13 @@ const Panel: React.FC<PanelData & { isSelected?: boolean }> = ({
   const look = MATERIAL_LOOK[material]
 
   const connectors = useStore((s) => s.connectors)
-  const geometry = useMemo(() => new THREE.ExtrudeGeometry(panelShape({ id, width, height, thickness, position, quaternion, material }, connectors),
+  // Rigid assembly moves preserve local holes. Ignore sub-micron floating-point noise
+  // so moving the group does not rebuild and upload every board's mesh and outline.
+  const holesKey = JSON.stringify(panelDrillCenters({ id, width, height, thickness, position, quaternion, material }, connectors)
+    .map(({ x, y, diameter }) => ({ x: Math.round(x * 1e6) / 1e6, y: Math.round(y * 1e6) / 1e6, diameter })))
+  const geometry = useMemo(() => new THREE.ExtrudeGeometry(panelShapeFromHoles(width, height, JSON.parse(holesKey)),
     { depth: thickness, bevelEnabled: false, curveSegments: 16 }).translate(0, 0, -thickness / 2),
-  [id, width, height, thickness, position, quaternion, material, connectors])
+  [width, height, thickness, holesKey])
   const edges = useMemo(() => new THREE.EdgesGeometry(geometry), [geometry])
   useEffect(() => () => { geometry.dispose(); edges.dispose() }, [geometry, edges])
   const quat = useMemo(() => new THREE.Quaternion(...quaternion).normalize(), [quaternion])

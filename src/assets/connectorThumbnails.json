@@ -35,7 +35,7 @@
     "src/assets/connectorCad/motedis-tnut-30-installed.json": "333242fd04d6d76c9f7d8d27c346bce90845b825973fcc5faf0d57d7be2547c9",
     "src/assets/connectorCad/motedis-tnut-40-installed.json": "2c576a2971372c9dc629e545613307b80f8babc5ca77829e5c483ec3b8208fda",
     "src/assets/profileSections.json": "7102bfadd0570c163f9d0d62d83a6ce9a302d7ef61349639f28ee6ca793efd57",
-    "src/utils/analysis.ts": "d18b1fd8a4f633cfc97fb2c4e325b47d7e8ee7422a9760aa7a4c3f83f85ba734",
+    "src/utils/analysis.ts": "c8780fb41f372c14716cf2858f725189ddf0cda96561eb323db053510425b74f",
     "src/utils/bracketSeat.ts": "ae30514d80477e9878944f5a94ed4815f7b150fac00b85b2415c6a7ce957c593",
     "src/utils/connectorAccessoryGeometry.ts": "25bc6a9713f584035fcd25f0e9bbb1d107dedc5fd1743e770e5324176912e7e5",
     "src/utils/connectorAccessoryReferences.ts": "a9c8cadf79f7bb889d4cdcc1a0aad15095e32d00613ddff18d2be6ddfd4091d8",
@@ -60,7 +60,7 @@
     "src/utils/specCompat.ts": "1e411c5f008d31818a75d42033be3f8207f9139e97aa4a24c1e1e4153cd61581",
     "src/utils/specUtils.ts": "9c149a590a3250161d9216035acc15ced9ae34c2521a5ba33c5295f4f3854f55"
   },
-  "sourceHash": "bc298f755a01fe77267f25b54a466c3e0c832cd4ba07bfd1babab7acfedf2bfe",
+  "sourceHash": "ecaa556b7db0280dcb872d5089c4a8d4c86ab812735bfeaa9c232daddba8be6c",
   "images": {
     "bracket:20": {
       "file": "bracket-20-9df5579da940.png",

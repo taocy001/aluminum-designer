@@ -1,3 +1,6 @@
+import type { PartGroup } from '../utils/groupMetadata'
+import type { TemplateInstance } from '../utils/templateMetadata'
+import { projectSession, type ProjectDraft } from '../utils/projectSession'
 import { forgetSavedFile } from '../utils/projectFile'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -148,7 +151,7 @@ function takeSnapshot(state: ProjectDocument): Snapshot {
   return {
     profiles: [...state.profiles], connectors: [...state.connectors],
     panels: [...state.panels], fittings: [...state.fittings], throughRule: state.throughRule,
-    equipment: [...(state.equipment ?? [])],
+    equipment: [...(state.equipment ?? [])], templateInstances: state.templateInstances ?? [], groups: state.groups ?? [],
   }
 }
 
@@ -218,6 +221,8 @@ export interface PartUpdates {
 }
 export interface LiveEditOptions { history?: boolean }
 interface State {
+  templateInstances: TemplateInstance[]
+  groups: PartGroup[]
   projectName: string | null
   profiles: ProfileData[]
   connectors: ConnectorData[]
@@ -243,7 +248,7 @@ interface State {
   setFittingOpenings: (ids: string[], open: number) => void
   updatePanel: (id: string, updates: Partial<PanelData>) => EditResult
   commitPanelEdit: (id: string, updates: Partial<PanelData>) => EditResult
-  loadDocument: (doc: Pick<ProjectGeometry, 'profiles' | 'connectors'> & Partial<ProjectDocument> & { version?: number }) => void
+  loadDocument: (doc: Pick<ProjectGeometry, 'profiles' | 'connectors'> & Partial<ProjectDocument> & { version?: number }, options?: { name?: string | null; saved?: boolean; draft?: ProjectDraft }) => void
   removeProfile: (id: string) => EditResult
   removeSelected: () => EditResult
   toggleLockSelected: () => EditResult
@@ -268,7 +273,7 @@ interface State {
 }
 
 const documentOf = (state: ProjectDocument): ProjectDocument & { equipment: EquipmentData[] } => ({ profiles: state.profiles, connectors: state.connectors,
-  panels: state.panels, fittings: state.fittings, equipment: state.equipment ?? [], throughRule: state.throughRule })
+  panels: state.panels, fittings: state.fittings, equipment: state.equipment ?? [], templateInstances: state.templateInstances ?? [], groups: state.groups ?? [], throughRule: state.throughRule })
 const partKinds = ['profiles', 'connectors', 'panels', 'fittings', 'equipment'] as const
 const rejectEdit = (reason: Extract<EditResult, { status: 'rejected' }>['reason'], partIds: string[]): Extract<EditResult, { status: 'rejected' }> => ({ status: 'rejected', reason, partIds })
 
@@ -309,9 +314,14 @@ export const useStore = create<State>()(
           }
           const resolved = reconcileBindings(before, candidate)
           if (resolved.status === 'rejected') { result = resolved; return state }
-          const doc = { ...resolved.document, equipment: candidate.equipment }
+          const doc = { ...resolved.document, equipment: candidate.equipment, templateInstances: candidate.templateInstances ?? [], groups: candidate.groups ?? [] }
+          const memberIds = new Set(partKinds.flatMap(kind => doc[kind].map(part => part.id)))
+          doc.groups = doc.groups.flatMap(group => {
+            const surviving = group.memberIds.filter(id => memberIds.has(id))
+            return !surviving.length ? [] : [surviving.length === group.memberIds.length ? group : { ...group, memberIds: surviving }]
+          })
           for (const kind of partKinds) if (sameValue(doc[kind], state[kind])) (doc[kind] as unknown[]) = state[kind]
-          if (partKinds.every((kind) => doc[kind] === state[kind]) && doc.throughRule === state.throughRule) return state
+          if (partKinds.every((kind) => doc[kind] === state[kind]) && doc.throughRule === state.throughRule && sameValue(doc.templateInstances, state.templateInstances) && sameValue(doc.groups, state.groups)) return state
           const old = new Map(partKinds.flatMap((kind) => state[kind].map((p) => [p.id, p] as const)))
           const next = new Map(partKinds.flatMap((kind) => doc[kind].map((p) => [p.id, p] as const)))
           const changedIds = [...new Set([...old.keys(), ...next.keys()])].filter((id) => !sameValue(old.get(id), next.get(id)))
@@ -325,7 +335,7 @@ export const useStore = create<State>()(
       }
       const edit = (updates: PartUpdates, history = true) => transact((state) => updatedParts(state, updates), history)
       return {
-        projectName: null, profiles: [], connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails', selectedIds: [], past: [], future: [],
+        templateInstances: [], groups: [], projectName: null, profiles: [], connectors: [], panels: [], fittings: [], equipment: [], throughRule: 'rails', selectedIds: [], past: [], future: [],
         setThroughRule: (throughRule) => transact((state) => state.throughRule === throughRule ? {} : {
           throughRule, profiles: automaticUnlockedCuts(state.profiles, state.throughRule),
         }),
@@ -349,10 +359,13 @@ export const useStore = create<State>()(
           const fittings = state.fittings.map((f) => selected.has(f.id) && f.open !== value ? { ...f, open: value } : f)
           return fittings.some((f, i) => f !== state.fittings[i]) ? { fittings } : state
         }),
-        loadDocument: (doc) => {
+        loadDocument: (doc, options = {}) => {
           const checked = parseProjectDocument(doc)
+          // Never replace a browser document whose recoverable draft could not be written.
+          if (typeof document !== 'undefined' && projectSession.getState().dirty && !projectSession.keepDraft()) throw new Error('draft storage unavailable')
           forgetSavedFile()
-          set((state) => ({ ...checked, projectName: null, past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: [], selectedIds: [] }))
+          projectSession.start(checked, options)
+          set({ ...checked, templateInstances: checked.templateInstances ?? [], groups: checked.groups ?? [], projectName: options.name ?? options.draft?.name ?? null, past: [], future: [], selectedIds: [] })
         },
         removeProfile: (id) => transact((state) => state.profiles.some((p) => p.id === id && !p.locked)
           ? { profiles: withFixedProfileCuts(state.profiles, undefined, state.throughRule).filter((p) => p.id !== id) } : {}, true,
@@ -373,7 +386,7 @@ export const useStore = create<State>()(
             panels: state.panels.map((p) => ids.has(p.id) ? { ...p, locked } : p), fittings: state.fittings.map((p) => ids.has(p.id) ? { ...p, locked } : p),
             equipment: state.equipment.map((p) => ids.has(p.id) ? { ...p, locked } : p) }
         }),
-        clearAll: () => transact(() => ({ profiles: [], connectors: [], panels: [], fittings: [], equipment: [] }), true, []),
+        clearAll: () => transact(() => ({ templateInstances: [], groups: [], profiles: [], connectors: [], panels: [], fittings: [], equipment: [] }), true, []),
         addConnector: (connector) => transact((state) => ({ connectors: [...state.connectors, connector] })),
         removeConnector: (id) => transact((state) => ({ connectors: state.connectors.filter((c) => c.id !== id || c.locked) }), true, (state, doc) => survivingSelection(state.selectedIds, doc)),
         removeConnectors: (ids, history = true) => transact((state) => ({ connectors: state.connectors.filter((c) => !ids.includes(c.id) || c.locked) }), history, (state, doc) => survivingSelection(state.selectedIds, doc)),
@@ -391,20 +404,20 @@ export const useStore = create<State>()(
         undo: () => set((state) => {
           if (!state.past.length) return state
           const prev = state.past[state.past.length - 1]
-          return { ...prev, panels: prev.panels ?? [], fittings: prev.fittings ?? [], equipment: prev.equipment ?? [], throughRule: prev.throughRule ?? 'rails',
+          return { ...prev, templateInstances: prev.templateInstances ?? [], groups: prev.groups ?? [], panels: prev.panels ?? [], fittings: prev.fittings ?? [], equipment: prev.equipment ?? [], throughRule: prev.throughRule ?? 'rails',
             past: state.past.slice(0, -1), future: [takeSnapshot(state), ...state.future.slice(0, MAX_HISTORY - 1)], selectedIds: survivingSelection(state.selectedIds, prev) }
         }),
         redo: () => set((state) => {
           if (!state.future.length) return state
           const next = state.future[0]
-          return { ...next, panels: next.panels ?? [], fittings: next.fittings ?? [], equipment: next.equipment ?? [], throughRule: next.throughRule ?? 'rails',
+          return { ...next, templateInstances: next.templateInstances ?? [], groups: next.groups ?? [], panels: next.panels ?? [], fittings: next.fittings ?? [], equipment: next.equipment ?? [], throughRule: next.throughRule ?? 'rails',
             past: [...state.past.slice(-(MAX_HISTORY - 1)), takeSnapshot(state)], future: state.future.slice(1), selectedIds: survivingSelection(state.selectedIds, next) }
         }),
       }
     },
     {
       name: 'aluminum-designer-store', storage: documentStorage,
-      partialize: (state) => ({ projectName: state.projectName, version: PROJECT_VERSION, profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, equipment: state.equipment, throughRule: state.throughRule }),
+      partialize: (state) => ({ templateInstances: state.templateInstances, groups: state.groups, projectName: state.projectName, version: PROJECT_VERSION, profiles: state.profiles, connectors: state.connectors, panels: state.panels, fittings: state.fittings, equipment: state.equipment, throughRule: state.throughRule }),
     },
   ),
 )
@@ -414,4 +427,13 @@ export const useStore = create<State>()(
 applyThroughRule(useStore.getState().throughRule)
 useStore.subscribe((state, previous) => {
   if (state.throughRule !== previous.throughRule) applyThroughRule(state.throughRule)
+})
+
+projectSession.initialize(documentOf(useStore.getState()), useStore.getState().projectName)
+useStore.subscribe((state, previous) => {
+  if (state.projectName !== previous.projectName || state.throughRule !== previous.throughRule
+    || state.templateInstances !== previous.templateInstances || state.groups !== previous.groups
+    || partKinds.some(kind => state[kind] !== previous[kind])) {
+    projectSession.update(documentOf(state), state.projectName)
+  }
 })

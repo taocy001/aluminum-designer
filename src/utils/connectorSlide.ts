@@ -56,3 +56,27 @@ export function moveConnectorAlongSlot(id: string, distance: number): boolean {
     position: result.part.position, supportBinding: result.part.supportBinding,
   } }] }))
 }
+
+/** The continuous support interval only; obstructions are checked separately for each proposed position. */
+export function connectorSlideRange(c: ConnectorData, doc: Document) {
+  const ids = slideSupports(c, doc)
+  const hosts = doc.profiles.filter(p => ids?.includes(p.id))
+  if (!hosts.length || connectorSlide(c, 0, doc, false).reason === 'fixed') return null
+  const axis = getProfileDir(hosts[0])
+  const limit = Math.max(...hosts.map(p => p.length)) + 100
+  const supported = (distance: number) => {
+    const position = new THREE.Vector3(...c.position).addScaledVector(axis, distance).toArray() as ConnectorData['position']
+    const next = slideSupports({ ...c, position }, doc)
+    return !!next && ids!.every(id => next.includes(id))
+  }
+  const bound = (sign: number) => {
+    let lo = 0, hi = limit
+    for (let i = 0; i < 20; i++) {
+      const mid = (lo + hi) / 2
+      if (supported(sign * mid)) lo = mid
+      else hi = mid
+    }
+    return sign * Math.floor(lo * 10) / 10
+  }
+  return { origin: c.position, axis: axis.toArray() as [number, number, number], min: bound(-1), max: bound(1) }
+}

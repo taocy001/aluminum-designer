@@ -44,6 +44,7 @@ test('native cancellation and failures preserve the project and save target with
 
   await page.getByTestId('file-menu').click()
   await page.getByTestId('import-project').click()
+  await page.getByTestId('switch-keep-draft').click()
   await expect(page.getByTestId('current-project-name')).toContainText('original.json')
   await expect.poll(async () => (await store(page)).profiles).toEqual(drawing.profiles)
   const original = await store(page)
@@ -109,6 +110,7 @@ test('a browser without the native open API imports through the ordinary file in
   await page.getByTestId('import-project').click()
   const chooser = await event
   await chooser.setFiles({ name: 'fallback.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(drawing)) })
+  await page.getByTestId('switch-keep-draft').click()
   await expect(page.getByTestId('toasts')).toContainText('工程已载入')
   await expect.poll(async () => (await store(page)).profiles).toEqual(drawing.profiles)
   await expect(page.getByTestId('through-posts')).toHaveAttribute('aria-pressed', 'true')

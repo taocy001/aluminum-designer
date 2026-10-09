@@ -1,4 +1,8 @@
-import AutoConnectReport from './AutoConnectReport'
+import { TemplateInstanceEditor } from './TemplateInstanceEditor'
+import { addTemplateInstance, templateEditMessage } from '../utils/templateInstances'
+import ObjectList from './ObjectList'
+import InspectionPanel from './InspectionPanel'
+import { useViewStore } from '../store/useViewStore'
 import { reportEditResult } from '../utils/editFeedback'
 import EquipmentEditor, { EquipmentCreator } from './EquipmentEditor'
 import ConnectorEditor from './ConnectorEditor'
@@ -54,7 +58,7 @@ function facingLabel(p: ProfileData): string {
 }
 
 /** Shared file action button style. */
-const FILE_BTN = 'flex items-center justify-center gap-1.5 py-2 px-1 bg-slate-800/60 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800/60 border border-white/5 text-slate-300 rounded-lg text-[10px] font-bold'
+const FILE_BTN = 'flex items-center justify-center gap-1.5 py-2 px-1 bg-slate-800/60 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800/60 border border-white/5 text-slate-300 rounded-lg text-xs font-bold'
 
 export const CONNECTOR_LIST: { type: string; labelZh: string; labelEn: string }[] = CONNECTOR_CATALOG
 
@@ -126,7 +130,7 @@ const NumField: React.FC<{
   return (
     <label className={`flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500 ${className}`}>
       {label && (
-        <span className="text-[9px] font-bold w-3" style={{ color: AXIS_COLOR[label] ?? '#64748b' }}>{label}</span>
+        <span className="text-[11px] font-bold w-3" style={{ color: AXIS_COLOR[label] ?? '#64748b' }}>{label}</span>
       )}
       <input
         type="number" step={step} value={text} aria-label={name ?? label} disabled={disabled}
@@ -176,9 +180,12 @@ const Sidebar: React.FC = () => {
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
     workPlaneY, setWorkPlaneY, viewMode, setViewMode,
     section, setSection, buildStep, setBuildStep } = useToolStore()
+  const isDragging = useToolStore(s => s.isDragging)
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
   const [hardwareOpen, setHardwareOpen] = useState(false)
+  const [fittingForm, setFittingForm] = useState<'door' | 'drawer' | null>(null)
+  const { sidebarTab, setSidebarTab } = useViewStore()
   const hardwareToggle = useRef<HTMLButtonElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -191,9 +198,6 @@ const Sidebar: React.FC = () => {
   // The sidebar and viewport share cached geometry checks.
   const { trims, conflicts, conflictIds, mismatches, mismatchIds, equipmentConflicts } = useMemo(
     () => analyzeFrame(profiles, connectors, panels, fittings, equipment), [profiles, connectors, panels, fittings, equipment, throughRule])
-  const selectedIdsSignature = selectedIds.join(',')
-  const selectedIdsRef = useRef(selectedIds)
-  selectedIdsRef.current = selectedIds
   const [rotAngleText, setRotAngleText] = useState('90')
   const [arrayCountText, setArrayCountText] = useState('1')
   const [arraySpacingText, setArraySpacingText] = useState('300')
@@ -233,25 +237,20 @@ const Sidebar: React.FC = () => {
     } catch { /* private mode or blocked storage */ }
     return { components: true, properties: true, bom: true, log: false }
   })
-  useEffect(() => {
-    if (selectedIdsRef.current.length === 0) return
-    setOpen((prev) => {
-      if (prev.properties) return prev
-      const next = { ...prev, properties: true }
-      try { localStorage.setItem('aluminum-designer-sections', JSON.stringify(next)) } catch { /* ignore */ }
-      return next
-    })
-    const frame = requestAnimationFrame(() => {
-      scrollRef.current?.querySelector('[data-testid="section-properties"]')?.scrollIntoView({ block: 'start' })
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [selectedIdsSignature])
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0 }, [sidebarTab])
 
   const toggle = (key: SectionKey) => setOpen((prev) => {
     const next = { ...prev, [key]: !prev[key] }
     try { localStorage.setItem('aluminum-designer-sections', JSON.stringify(next)) } catch { /* ignore */ }
     return next
   })
+  useEffect(() => {
+    if (selectedIds.length && useViewStore.getState().sidebarTab === 'add' && !held && !fittingForm) {
+      setSidebarTab('properties')
+      setOpen(prev => ({ ...prev, properties: true }))
+    }
+  }, [selectedIds.join(',')])
+
   const rotAngle = parseFloat(rotAngleText)
   const rotAngleValid = isFinite(rotAngle) && rotAngle % 360 !== 0
   const arrayValid = isFinite(parseFloat(arrayCountText)) && parseFloat(arrayCountText) >= 1
@@ -280,10 +279,17 @@ const Sidebar: React.FC = () => {
   const selectedDrawerLayout = selectedFitting?.kind === 'drawer' ? drawerLayout(selectedFitting) : null
   const pickedPanelIds = () => pickedPanels.map((b) => b.id)
   const pickedFittingIds = () => pickedFittings.map((f) => f.id)
-  const bracketFaults = useMemo(() => cachedHardwareSupports({ profiles, connectors, panels }, trims).faultDetails,
-    [profiles, connectors, panels, trims])
-  const runnerProblems = useMemo(() => runnerFaults(profiles, trims, fittings, panels), [profiles, trims, fittings, panels])
-  const supports = useMemo(() => shelfEdges(panels, profiles, trims, connectors, { fittings, equipment }), [panels, profiles, trims, connectors, fittings, equipment])
+  // Installation checks run on release; live interference feedback remains above.
+  const installation = useRef({ profiles, connectors, panels, fittings, equipment, trims })
+  if (!isDragging) installation.current = { profiles, connectors, panels, fittings, equipment, trims }
+  const checked = installation.current
+  const bracketFaults = useMemo(() => cachedHardwareSupports(checked, checked.trims).faultDetails,
+    [checked.profiles, checked.connectors, checked.panels, checked.trims])
+  const runnerProblems = useMemo(() => runnerFaults(checked.profiles, checked.trims, checked.fittings, checked.panels),
+    [checked.profiles, checked.trims, checked.fittings, checked.panels])
+  const supports = useMemo(() => shelfEdges(checked.panels, checked.profiles, checked.trims, checked.connectors,
+    { fittings: checked.fittings, equipment: checked.equipment }),
+  [checked.panels, checked.profiles, checked.trims, checked.connectors, checked.fittings, checked.equipment])
   const unconfirmedEdges = supports.filter((edge) => !edge.carried && !edge.fixed)
   const seriesMismatches = mismatches.filter((m) => m.kind === 'series')
 
@@ -385,6 +391,20 @@ const Sidebar: React.FC = () => {
       'text/html;charset=utf-8')
     notifyExport()
   }
+  useEffect(() => {
+    const onExport = (event: Event) => {
+      const kind = (event as CustomEvent<string>).detail
+      if (!profiles.length && !connectors.length && !panels.length && !fittings.length && !equipment.length) return
+      if (kind === 'bom') handleExportBOM()
+      else if (kind === 'cutting' && profiles.length) handleExportCutting()
+      else if (kind === 'dxf') handleExportDxf()
+      else if (kind === 'step') handleExportStep()
+      else if (kind === 'assembly') void handleExportAssembly()
+    }
+    window.addEventListener('aluframe:export', onExport)
+    return () => window.removeEventListener('aluframe:export', onExport)
+  })
+
   const handleCopyLog = async () => {
     try {
       if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
@@ -408,7 +428,7 @@ const Sidebar: React.FC = () => {
         <button onClick={() => setCollapsed(false)} title={t.expandPanel} data-testid="sidebar-expand"
           className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><PanelLeftOpen size={16} /></button>
         <div className={narrow ? 'h-6 w-px bg-white/10' : 'w-6 h-px bg-white/10'} />
-        <div className="text-[9px] font-mono text-slate-500" style={narrow ? undefined : { writingMode: 'vertical-rl' }}>
+        <div className="text-[11px] font-mono text-slate-500" style={narrow ? undefined : { writingMode: 'vertical-rl' }}>
           {profiles.length} · {(totalCut / 1000).toFixed(2)}m{conflicts.length ? ` · ⚠${conflicts.length}` : ''}
         </div>
       </div>
@@ -425,20 +445,27 @@ const Sidebar: React.FC = () => {
           className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><PanelLeftClose size={15} /></button>
       </div>
 
-      {/* one scroll container for all sections: on a short window nothing gets squeezed away */}
+      <nav className="sidebar-tabs" role="tablist" aria-label={language === 'zh' ? '设计任务' : 'Design tasks'}>
+        {([['add', '添加', 'Add'], ['objects', '对象', 'Objects'], ['properties', '属性', 'Properties'], ['inspect', '检查', 'Inspect']] as const).map(([id, zh, en]) => (
+          <button key={id} role="tab" aria-selected={sidebarTab === id} aria-controls={`sidebar-panel-${id}`} id={`sidebar-tab-${id}`}
+            data-testid={`sidebar-tab-${id}`} onClick={() => setSidebarTab(id)}>{language === 'zh' ? zh : en}</button>
+        ))}
+      </nav>
       <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0" data-testid="sidebar-scroll">
+      <div id="sidebar-panel-objects" role="tabpanel" aria-labelledby="sidebar-tab-objects" hidden={sidebarTab !== 'objects'}><ObjectList /></div>
+      <div id="sidebar-panel-add" role="tabpanel" aria-labelledby="sidebar-tab-add" hidden={sidebarTab !== 'add'}>
       <Section id="components" title={t.components} open={open.components} onToggle={() => toggle('components')}>
         <div className="space-y-4">
           <div>
             {/** Frame templates. */}
             <div className="space-y-1 pb-3 mb-3 border-b border-white/5" data-testid="template-block">
-              <label className="text-[9px] text-slate-500 font-black mb-1 block uppercase tracking-widest" title={t.hintTemplates}>{t.templates}</label>
+              <label className="text-[11px] text-slate-500 font-black mb-1 block uppercase tracking-widest" title={t.hintTemplates}>{t.templates}</label>
               <div className="grid grid-cols-3 gap-1">
                 {TEMPLATES.map((tpl) => (
                   <button key={tpl.id} data-testid={`template-${tpl.id}`}
                     onClick={() => { setTemplateId(tpl.id === templateId ? null : tpl.id); setTemplateParams({}) }}
                     title={language === 'zh' ? tpl.noteZh : tpl.noteEn}
-                    className={`py-1.5 rounded-lg text-[10px] font-bold ${templateId === tpl.id ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                    className={`py-1.5 rounded-lg text-xs font-bold ${templateId === tpl.id ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                     {language === 'zh' ? tpl.labelZh : tpl.labelEn}
                   </button>
                 ))}
@@ -457,19 +484,20 @@ const Sidebar: React.FC = () => {
                     if (viewMode) setViewMode(false)
                     const values: Record<string, number> = {}
                     for (const prm of chosenTemplate.params) values[prm.key] = templateParams[prm.key] ?? prm.value
-                    const made = chosenTemplate.build(values)
-                    if (!reportEditResult(useStore.getState().addItems(made, [], true))) return
-                    showToast(t.toastTemplateAdded(made.length), 'success')
+                    const result = addTemplateInstance(chosenTemplate.id, values)
+                    if (result.status === 'blocked') { showToast(templateEditMessage(result, language === 'zh'), 'error'); return }
+                    if (!reportEditResult(result)) return
+                    showToast(t.toastTemplateAdded(useStore.getState().selectedIds.length), 'success')
                     setTemplateId(null)
                   }}
-                    className="w-full flex items-center justify-center gap-1 py-1.5 bg-blue-600/80 hover:bg-blue-600 rounded-lg text-[10px] font-bold">
+                    className="w-full flex items-center justify-center gap-1 py-1.5 bg-blue-600/80 hover:bg-blue-600 rounded-lg text-xs font-bold">
                     <Box size={12} />{t.templateAdd}
                   </button>
                 </div>
               )}
             </div>
 
-            <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.profiles}</label>
+            <label className="text-[11px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.profiles}</label>
             <div className="grid grid-cols-3 gap-1">
               {ALL_SPECS.map((spec) => (
                 <button key={spec} onClick={() => handleSpecClick(spec)} data-testid={`spec-${spec}`} data-keep-draw
@@ -484,55 +512,55 @@ const Sidebar: React.FC = () => {
           </div>
           {/* How the frame is put together, which decides every trim in it */}
           <div>
-            <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.throughRule}</label>
+            <label className="text-[11px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.throughRule}</label>
             <div className="grid grid-cols-2 gap-1" title={t.throughRuleHint}>
               {([['rails', t.throughRails], ['posts', t.throughPosts]] as const).map(([rule, label]) => (
                 <button key={rule} disabled={viewMode} onClick={() => reportEditResult(setThroughRule(rule))} data-testid={`through-${rule}`} aria-pressed={throughRule === rule}
                   title={t.throughRuleHint}
-                  className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                  className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     throughRule === rule ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                   {label}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-[10px] leading-relaxed text-slate-400">{t.moveKeepsLength}</p>
+            <p className="mt-2 text-xs leading-relaxed text-slate-400">{t.moveKeepsLength}</p>
             <button data-testid="recalculate-joints" title={t.recalculateJointsHint}
               disabled={viewMode || !profiles.some((p) => p.fixedTrims && !p.locked)}
               onClick={() => reportEditResult(recalculateJoints())}
-              className="mt-1 w-full rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700/50 disabled:opacity-35 disabled:cursor-not-allowed">
+              className="mt-1 w-full rounded-lg border border-white/10 px-2 py-1.5 text-xs text-slate-300 hover:bg-slate-700/50 disabled:opacity-35 disabled:cursor-not-allowed">
               {t.recalculateJoints}
             </button>
           </div>
 
           {/** Work-plane height for drawing. */}
           <div>
-            <label className="text-[9px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.workPlane}</label>
+            <label className="text-[11px] text-slate-500 font-black mb-2 block uppercase tracking-widest">{t.workPlane}</label>
             <div className="flex items-center gap-1">
               <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
-                <span className="text-[9px] text-slate-500 font-bold">Y</span>
+                <span className="text-[11px] text-slate-500 font-bold">Y</span>
                 <input type="number" step={10} min={0} value={workPlaneText} data-testid="work-plane"
                   onChange={(e) => { setWorkPlaneText(e.target.value); setWorkPlaneY(parseFloat(e.target.value)) }}
                   onKeyDown={(e) => e.stopPropagation()}
                   className={`w-full bg-transparent py-1.5 text-xs font-mono outline-none ${workPlaneY > 0 ? 'text-amber-300' : ''}`} />
-                <span className="text-[9px] text-slate-500">mm</span>
+                <span className="text-[11px] text-slate-500">mm</span>
               </label>
               <button data-testid="work-plane-from-selection" title={t.workPlaneFromSelection}
                 disabled={selectionTopY === null}
                 onClick={() => { if (selectionTopY !== null) { setWorkPlaneY(selectionTopY); setWorkPlaneText(String(useToolStore.getState().workPlaneY)) } }}
-                className="px-2 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 text-[10px] font-bold whitespace-nowrap">
+                className="px-2 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-30 text-xs font-bold whitespace-nowrap">
                 {t.workPlaneFromSelection}
               </button>
             </div>
-            <p className="text-[9px] text-slate-500 mt-1 leading-snug">{t.workPlaneHint}</p>
+            <p className="text-[11px] text-slate-500 mt-1 leading-snug">{t.workPlaneHint}</p>
           </div>
 
           {/** Assembly suggestions. */}
           <div className="space-y-1" data-testid="build-block">
             <div className="flex items-center justify-between">
-              <label className="text-[9px] text-slate-500 font-black uppercase tracking-widest" title={t.buildOrderHint}>{t.buildOrder}</label>
+              <label className="text-[11px] text-slate-500 font-black uppercase tracking-widest" title={t.buildOrderHint}>{t.buildOrder}</label>
               <button data-testid="build-toggle"
                 onClick={() => setBuildStep(buildStep === null ? 1 : null)}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${buildStep === null ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-emerald-600 text-white'}`}>
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold ${buildStep === null ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-emerald-600 text-white'}`}>
                 {buildStep === null ? t.buildShow : t.buildHide}
               </button>
             </div>
@@ -554,7 +582,7 @@ const Sidebar: React.FC = () => {
                     <span className="text-slate-500">{t.buildStepOf(buildStep, steps.length)}</span>
                     <span className="font-mono text-slate-400">{t.buildAtHeight(step?.atHeight ?? 0)}</span>
                   </div>
-                  <div className="text-slate-300 font-mono text-[10px]" data-testid="build-parts">
+                  <div className="text-slate-300 font-mono text-xs" data-testid="build-parts">
                     {t.buildParts(step?.profiles.length ?? 0, step?.connectors.length ?? 0,
                       (step?.panels.length ?? 0) + (step?.fittings.length ?? 0))}
                   </div>
@@ -562,7 +590,7 @@ const Sidebar: React.FC = () => {
                 <button data-testid="build-select" onClick={() => {
                   const s = steps[buildStep - 1]
                   if (s) useStore.getState().selectItems([...s.profiles, ...s.connectors, ...s.panels, ...s.fittings])
-                }} className="w-full py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold">
+                }} className="w-full py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-xs font-bold">
                   {t.buildSelect}
                 </button>
               </div>
@@ -572,9 +600,9 @@ const Sidebar: React.FC = () => {
           {/* A cut through the drawing, for looking inside without hiding anything */}
           <div className="space-y-1" data-testid="section-block">
             <div className="flex items-center justify-between">
-              <label className="text-[9px] text-slate-500 font-black uppercase tracking-widest" title={t.sectionHint}>{t.section}</label>
+              <label className="text-[11px] text-slate-500 font-black uppercase tracking-widest" title={t.sectionHint}>{t.section}</label>
               <button data-testid="section-off" onClick={() => setSection(null)}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${section ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-blue-600 text-white'}`}>
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold ${section ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-blue-600 text-white'}`}>
                 {t.sectionOff}
               </button>
             </div>
@@ -582,13 +610,13 @@ const Sidebar: React.FC = () => {
               {(['x', 'y', 'z'] as const).map((ax) => (
                 <button key={ax} data-testid={`section-${ax}`}
                   onClick={() => setSection({ axis: ax, at: sectionMid(ax), flip: section?.flip ?? false })}
-                  className={`py-1 rounded-lg text-[10px] font-bold font-mono ${section?.axis === ax ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                  className={`py-1 rounded-lg text-xs font-bold font-mono ${section?.axis === ax ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                   {ax.toUpperCase()}
                 </button>
               ))}
               <button data-testid="section-flip" disabled={!section} title={t.sectionFlip}
                 onClick={() => section && setSection({ ...section, flip: !section.flip })}
-                className="py-1 rounded-lg text-[10px] font-bold bg-slate-700/50 hover:bg-slate-700 text-slate-400 disabled:opacity-30">
+                className="py-1 rounded-lg text-xs font-bold bg-slate-700/50 hover:bg-slate-700 text-slate-400 disabled:opacity-30">
                 <FlipHorizontal2 size={12} className="mx-auto" />
               </button>
             </div>
@@ -613,7 +641,7 @@ const Sidebar: React.FC = () => {
               }
             }}>
               <div className="flex items-center gap-2 py-1">
-                <label className="flex-1 text-[9px] text-slate-500 font-black uppercase tracking-widest">{t.connectors}</label>
+                <label className="flex-1 text-[11px] text-slate-500 font-black uppercase tracking-widest">{t.connectors}</label>
                 <button data-testid="connector-current" onClick={() => handleConnectorClick(currentHardware.type)}
                   aria-label={language === 'zh' ? currentHardware.labelZh : currentHardware.labelEn}
                   aria-pressed={held === 'connector' && activeConnectorType === currentHardware.type}
@@ -648,19 +676,24 @@ const Sidebar: React.FC = () => {
             {/** Drawer and door insertion controls. */}
             {(
               <div className="space-y-1 pt-1 border-t border-white/5" data-testid="fitting-block">
-                <label className="text-[9px] text-slate-500 font-black block uppercase tracking-widest">{t.fittings}</label>
-                {selectedProfileCount < 2 && (
-                  <p className="text-[9px] text-slate-600 leading-snug pb-1">{t.hintFittingNeedsOpening}</p>
+                <label className="text-[11px] text-slate-500 font-black block uppercase tracking-widest">{t.fittings}</label>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label={t.fittings}>
+                  <button className={`fitting-entry ${fittingForm === 'drawer' ? 'is-active' : ''}`} data-testid="configure-drawer" aria-expanded={fittingForm === 'drawer'} onClick={() => setFittingForm(fittingForm === 'drawer' ? null : 'drawer')}><Archive size={14} />{t.drawer}</button>
+                  <button className={`fitting-entry ${fittingForm === 'door' ? 'is-active' : ''}`} data-testid="configure-door" aria-expanded={fittingForm === 'door'} onClick={() => setFittingForm(fittingForm === 'door' ? null : 'door')}><DoorOpen size={14} />{t.addDoor}</button>
+                </div>
+                {fittingForm && selectedProfileCount < 2 && (
+                  <p className="text-[11px] text-slate-400 leading-snug pb-1">{t.hintFittingNeedsOpening}</p>
                 )}
+                <div hidden={fittingForm !== 'drawer'} className="space-y-2 pt-2">
                 <div className="flex items-center gap-1">
                   <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
-                    <span className="text-[9px] text-slate-500 font-bold">{t.drawerHeight}</span>
+                    <span className="text-[11px] text-slate-500 font-bold">{t.drawerHeight}</span>
                     <input type="number" min={60} step={10} value={drawerHeightText} data-testid="drawer-height" aria-label={t.drawerHeight}
                       onChange={(e) => setDrawerHeightText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
                       className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
                   </label>
                   <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 w-20 focus-within:border-blue-500">
-                    <span className="text-[9px] text-slate-500 font-bold">{t.drawerCount}</span>
+                    <span className="text-[11px] text-slate-500 font-bold">{t.drawerCount}</span>
                     <input type="number" min={1} max={8} step={1} value={drawerCountText} data-testid="drawer-count" aria-label={t.drawerCount}
                       onChange={(e) => setDrawerCountText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
                       className="w-full bg-transparent py-1.5 text-xs font-mono outline-none" />
@@ -669,16 +702,18 @@ const Sidebar: React.FC = () => {
                 <button
                   onClick={() => addFittingFromSelection({ kind: 'drawer', frontHeight: drawerHeight, count: drawerCount })}
                   data-testid="add-drawer" title={t.drawerHint} disabled={viewMode || selectedProfileCount < 2 || !drawerInputsValid}
-                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-sky-600/80 hover:bg-sky-600 disabled:opacity-40 rounded-lg text-[10px] font-bold">
+                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-sky-600/80 hover:bg-sky-600 disabled:opacity-40 rounded-lg text-xs font-bold">
                   <Archive size={12} />{t.drawer}
                 </button>
-                {!drawerInputsValid && <p className="text-[10px] text-amber-300" role="status">{t.toastInvalidFitting}</p>}
+                {!drawerInputsValid && <p className="text-xs text-amber-300" role="status">{t.toastInvalidFitting}</p>}
 
+                </div>
+                <div hidden={fittingForm !== 'door'} className="space-y-2 pt-2">
                 <div className="grid grid-cols-4 gap-1 pt-0.5">
                   {(['left', 'right', 'top', 'bottom'] as const).map((side) => (
                     <button key={side} data-testid={`hinge-${side}`} onClick={() => setHingeSide(side)}
                       title={`${t.hingeSide} ${({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[side]}`}
-                      className={`py-1 rounded-lg text-[10px] font-bold ${hingeSide === side ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      className={`py-1 rounded-lg text-xs font-bold ${hingeSide === side ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                       {({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[side]}
                     </button>
                   ))}
@@ -686,7 +721,7 @@ const Sidebar: React.FC = () => {
                 <div className="grid grid-cols-3 gap-1">
                   {([['cup', t.hingeCup, t.hintHingeCup], ['slot', t.hingeSlot, t.hintHingeSlot], ['continuous', t.hingeContinuous, t.hintHingeContinuous]] as const).map(([k, label, tip]) => (
                     <button key={k} data-testid={`hingetype-${k}`} onClick={() => setHingeType(k)} title={tip}
-                      className={`py-1 rounded-lg text-[9px] font-bold ${hingeType === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      className={`py-1 rounded-lg text-[11px] font-bold ${hingeType === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                       {label}
                     </button>
                   ))}
@@ -694,7 +729,7 @@ const Sidebar: React.FC = () => {
                 <div className="grid grid-cols-6 gap-1">
                   {HINGE_ANGLES.map((deg) => (
                     <button key={deg} data-testid={`hinge-angle-${deg}`} onClick={() => setSwing(deg)} title={t.hintHingeAngle}
-                      className={`py-1 rounded-lg text-[9px] font-bold font-mono ${swing === deg ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      className={`py-1 rounded-lg text-[11px] font-bold font-mono ${swing === deg ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                       {deg}°
                     </button>
                   ))}
@@ -702,7 +737,7 @@ const Sidebar: React.FC = () => {
                 <div className="grid grid-cols-3 gap-1">
                   {([['full', t.overlayFull], ['half', t.overlayHalf], ['inset', t.overlayInset]] as const).map(([k, label]) => (
                     <button key={k} data-testid={`overlay-${k}`} onClick={() => setOverlay(k)} title={t.hintOverlay}
-                      className={`py-1 rounded-lg text-[9px] font-bold ${overlay === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                      className={`py-1 rounded-lg text-[11px] font-bold ${overlay === k ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                       {label}
                     </button>
                   ))}
@@ -710,20 +745,20 @@ const Sidebar: React.FC = () => {
                 <button
                   onClick={() => addFittingFromSelection({ kind: 'door', hinge: hingeSide, hingeType, overlay, swing })}
                   data-testid="add-door" title={t.hintAddDoor} disabled={viewMode || selectedProfileCount < 2}
-                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-amber-600/80 hover:bg-amber-600 disabled:opacity-40 rounded-lg text-[10px] font-bold">
+                  className="w-full flex items-center justify-center gap-1 py-1.5 bg-amber-600/80 hover:bg-amber-600 disabled:opacity-40 rounded-lg text-xs font-bold">
                   <DoorOpen size={12} />{t.addDoor}
                 </button>
+                </div>
               </div>
             )}
 
             <EquipmentCreator />
-            <AutoConnectReport />
 
             {/* Add compatible connectors at detected joints. */}
             {held === 'connector' && activeConnectorType && (
               <button onClick={() => autoConnect(activeConnectorType)} data-testid="auto-connect"
                 title={t.autoConnectHint} disabled={profiles.length === 0}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 rounded-lg text-[10px] font-bold">
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 rounded-lg text-xs font-bold">
                 <Zap size={12} />{t.autoConnect}
               </button>
             )}
@@ -731,17 +766,20 @@ const Sidebar: React.FC = () => {
         </div>
       </Section>
 
+      </div>
+      <div id="sidebar-panel-properties" role="tabpanel" aria-labelledby="sidebar-tab-properties" hidden={sidebarTab !== 'properties'}>
+      <TemplateInstanceEditor />
       <Section
         id="properties"
         title={t.properties}
         open={open.properties}
         onToggle={() => toggle('properties')}
-        badge={selectedIds.length > 0 ? <span className="text-[9px] font-mono text-blue-400">{selectedIds.length}</span> : undefined}
+        badge={selectedIds.length > 0 ? <span className="text-[11px] font-mono text-blue-400">{selectedIds.length}</span> : undefined}
       >
         {selectedProfile || selectedConnector || selectedPanel || selectedFitting || selectedEquipment ? (
           <div className="bg-slate-900/50 rounded-xl p-3 border border-white/5 space-y-3 shadow-xl" data-testid="properties">
             <div className="flex items-start justify-between gap-2 border-b border-white/5 pb-2">
-              {(selectedProfile || selectedConnector || selectedPanel || selectedFitting) ? <div className="min-w-0 flex-1 text-[10px]" data-testid="selected-part-numbers">
+              {(selectedProfile || selectedConnector || selectedPanel || selectedFitting) ? <div className="min-w-0 flex-1 text-xs" data-testid="selected-part-numbers">
                 <span className="text-slate-500">{t.partNumber}</span>
                 <code className="block break-all select-text text-cyan-300">{selectedProfile ? partNumber('profile', selectedProfile.id)
                   : selectedConnector ? partNumber('connector', selectedConnector.id)
@@ -753,7 +791,7 @@ const Sidebar: React.FC = () => {
                     {fittingBoardNumber(selectedFitting.id, b.key)}
                   </code>)}
                 </details>}
-              </div> : <span className="text-[10px] font-bold text-slate-400">{t.equipment}</span>}
+              </div> : <span className="text-xs font-bold text-slate-400">{t.equipment}</span>}
               <div className="flex shrink-0 items-center gap-1">
                 <button onClick={toggleLockSelected} title={t.lockHint} data-testid="lock-toggle"
                   disabled={viewMode} aria-pressed={selectionLocked} aria-label={selectionLocked ? t.unlock : t.lock}
@@ -783,11 +821,11 @@ const Sidebar: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold">{t.length}</span>
+                  <span className="text-xs text-slate-500 uppercase font-bold">{t.length}</span>
                   <NumField name={t.length} value={selectedProfile.length} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onCommit={(v) => setProfileLength(selectedProfile.id, v)} />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold">{t.position}</span>
+                  <span className="text-xs text-slate-500 uppercase font-bold">{t.position}</span>
                   <div className="grid grid-cols-3 gap-1">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
                       <NumField key={ax} label={ax} name={`${t.position} ${ax}`} value={selectedProfile.position[i]} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onCommit={(v) => {
@@ -808,7 +846,7 @@ const Sidebar: React.FC = () => {
                       <span className="font-mono text-slate-300 text-[11px]">{facingLabel(selectedProfile)}</span>
                       <button onClick={() => rollProfile(selectedProfile.id)} data-testid="roll-section" disabled={selectedProfile.locked || !!selectedProfile.runnerBinding}
                         title={t.hintRoll}
-                        className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 text-[10px] font-bold">
+                        className="px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 text-xs font-bold">
                         {t.rollQuarter}
                       </button>
                     </div>
@@ -817,7 +855,7 @@ const Sidebar: React.FC = () => {
 
                 {/** Far endpoint coordinates. */}
                 <div className="space-y-1" data-testid="end-position">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold">{t.endPosition}</span>
+                  <span className="text-xs text-slate-500 uppercase font-bold">{t.endPosition}</span>
                   <div className="grid grid-cols-3 gap-1">
                     {(['X', 'Y', 'Z'] as const).map((ax, i) => (
                       <NumField key={ax} label={ax} name={`${t.endPosition} ${ax}`} value={selectedEnd[i]} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} onCommit={(v) => {
@@ -839,21 +877,21 @@ const Sidebar: React.FC = () => {
                         <input type="number" min={0} step={5} value={loadText} data-testid="deflection-load"
                           aria-label={t.assumedLoad}
                           onChange={(e) => setLoadText(e.target.value)}
-                          className="w-12 bg-slate-950 border border-white/5 rounded px-1 py-0.5 text-[10px] font-mono text-slate-300 outline-none text-right" />
-                        <span className="text-slate-600 text-[10px]">kg</span>
+                          className="w-12 bg-slate-950 border border-white/5 rounded px-1 py-0.5 text-xs font-mono text-slate-300 outline-none text-right" />
+                        <span className="text-slate-400 text-xs">kg</span>
                         <span className={`font-mono font-bold ${selectedSag.ratio < SLENDER ? 'text-amber-400' : 'text-slate-300'}`}
                           data-testid="deflection-sag">{selectedSag.sag.toFixed(1)} mm</span>
-                        <span className="text-slate-600 text-[10px]">L/{selectedSag.ratio === Infinity ? '∞' : selectedSag.ratio}</span>
+                        <span className="text-slate-400 text-xs">L/{selectedSag.ratio === Infinity ? '∞' : selectedSag.ratio}</span>
                       </span>
                     </div>
                   )}
                   {selectedSag && selectedSag.turnHelps && (
-                    <div className="text-[10px] text-amber-400/80" data-testid="deflection-turn">{t.deflectionTurn}</div>
+                    <div className="text-xs text-amber-400/80" data-testid="deflection-turn">{t.deflectionTurn}</div>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-1">
-                  <button onClick={() => flipProfile(selectedProfile.id)} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
-                  <button onClick={() => duplicateSelected()} title={`${t.duplicate} (Ctrl+D)`} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold"><Copy size={12} />{t.duplicate}</button>
+                  <button onClick={() => flipProfile(selectedProfile.id)} disabled={selectedProfile.locked || !!selectedProfile.runnerBinding} title={t.flip} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-xs font-bold"><ArrowLeftRight size={12} />{t.flip}</button>
+                  <button onClick={() => duplicateSelected()} title={`${t.duplicate} (Ctrl+D)`} className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs font-bold"><Copy size={12} />{t.duplicate}</button>
                 </div>
               </fieldset>
             )}
@@ -865,7 +903,7 @@ const Sidebar: React.FC = () => {
             {selectedFitting && (
               <div className="space-y-2" data-testid="fitting-props">
                 {pickedFittings.length > 1 && (
-                  <div className="text-[10px] text-sky-400 font-mono" data-testid="fitting-multi">{t.editingCount(pickedFittings.length)}</div>
+                  <div className="text-xs text-sky-400 font-mono" data-testid="fitting-multi">{t.editingCount(pickedFittings.length)}</div>
                 )}
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">{selectedFitting.kind === 'drawer' ? t.drawerKind : t.doorKind}</span>
@@ -895,16 +933,16 @@ const Sidebar: React.FC = () => {
                         ['runnerLength', t.drawerRunnerLength], ['runnerTravel', t.drawerRunnerTravel],
                       ] as const).map(([key, name]) => (
                         <div key={key} className="space-y-1">
-                          <div className="text-[9px] text-slate-500">{name}</div>
+                          <div className="text-[11px] text-slate-500">{name}</div>
                           <NumField name={name} value={selectedDrawerLayout.config[key]} step={key.includes('Thickness') || key === 'sideClearance' ? 0.5 : 10}
                             onCommit={(value) => updateDrawerConfig(pickedFittingIds(), { [key]: value })} />
                         </div>
                       ))}
                     </div>
-                    <p className="text-[10px] text-slate-500" data-testid="drawer-box-size">
+                    <p className="text-xs text-slate-500" data-testid="drawer-box-size">
                       {t.drawerBoxSize(selectedDrawerLayout.boxWidth, selectedDrawerLayout.boxHeight, selectedDrawerLayout.boxDepth)}
                     </p>
-                    <label className="flex items-center justify-between text-[10px] text-slate-400">
+                    <label className="flex items-center justify-between text-xs text-slate-400">
                       {t.drawerReinforcement}
                       <select aria-label={t.drawerReinforcement} data-testid="drawer-reinforcement" value={selectedDrawerLayout.config.reinforcement.count}
                         onChange={(e) => updateDrawerConfig(pickedFittingIds(), { reinforcement: { count: Number(e.target.value) } })}
@@ -916,14 +954,14 @@ const Sidebar: React.FC = () => {
                       <div className="grid grid-cols-2 gap-2">
                         {([['width', t.drawerReinforcementWidth], ['height', t.drawerReinforcementHeight]] as const).map(([key, name]) => (
                           <div key={key} className="space-y-1">
-                            <div className="text-[9px] text-slate-500">{name}</div>
+                            <div className="text-[11px] text-slate-500">{name}</div>
                             <NumField name={name} value={selectedDrawerLayout.config.reinforcement[key]} step={5}
                               onCommit={(value) => updateDrawerConfig(pickedFittingIds(), { reinforcement: { [key]: value } })} />
                           </div>
                         ))}
                       </div>
                     )}
-                    <label className="flex gap-2 text-[10px] text-slate-400">
+                    <label className="flex gap-2 text-xs text-slate-400">
                       <input type="checkbox" data-testid="link-drawer-supports" checked={linkDrawerSupports}
                         onChange={(e) => setLinkDrawerSupports(e.target.checked)} />{t.bindingLinkSupports}
                     </label>
@@ -941,7 +979,7 @@ const Sidebar: React.FC = () => {
                     {HINGE_ANGLES.map((deg) => (
                       <button key={deg} data-testid={`fitting-angle-${deg}`} title={t.hintHingeAngle}
                         onClick={() => updateFittings(pickedFittingIds(), { swing: deg })}
-                        className={`py-1 rounded-lg text-[9px] font-bold font-mono ${swingOf(selectedFitting) === deg ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
+                        className={`py-1 rounded-lg text-[11px] font-bold font-mono ${swingOf(selectedFitting) === deg ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-400'}`}>
                         {deg}°
                       </button>
                     ))}
@@ -969,7 +1007,7 @@ const Sidebar: React.FC = () => {
             {selectedPanel && (
               <fieldset disabled={viewMode || selectedPanel.locked} className="space-y-2" data-testid="panel-props">
                 {pickedPanels.length > 1 && (
-                  <div className="text-[10px] text-orange-400 font-mono" data-testid="panel-multi">{t.editingCount(pickedPanels.length)}</div>
+                  <div className="text-xs text-orange-400 font-mono" data-testid="panel-multi">{t.editingCount(pickedPanels.length)}</div>
                 )}
                 <div className="grid grid-cols-3 gap-1">
                   <NumField label="W" name={t.widthMm} value={selectedPanel.width} step={10} disabled={!!selectedPanel.openingBinding}
@@ -1000,11 +1038,11 @@ const Sidebar: React.FC = () => {
             {selectedProfileCount >= 2 && !viewMode && (
               <div className="grid grid-cols-2 gap-1">
                 <button onClick={() => addPanelFromSelection()} data-testid="add-panel" title={t.addPanelHint}
-                  className="flex items-center justify-center gap-1 py-1.5 bg-orange-600/80 hover:bg-orange-600 rounded-lg text-[10px] font-bold">
+                  className="flex items-center justify-center gap-1 py-1.5 bg-orange-600/80 hover:bg-orange-600 rounded-lg text-xs font-bold">
                   <Square size={12} />{t.addPanel}
                 </button>
                 <button onClick={() => addPanelFromSelection('mdf', 18, 'inset')} data-testid="add-panel-inset" title={t.addPanelInsetHint}
-                  className="flex items-center justify-center gap-1 py-1.5 bg-orange-600/30 hover:bg-orange-600/50 rounded-lg text-[10px] font-bold">
+                  className="flex items-center justify-center gap-1 py-1.5 bg-orange-600/30 hover:bg-orange-600/50 rounded-lg text-xs font-bold">
                   <SquareDashed size={12} />{t.addPanelInset}
                 </button>
               </div>
@@ -1013,9 +1051,9 @@ const Sidebar: React.FC = () => {
             {/** Rotation controls for movable selections. */}
             <fieldset disabled={viewMode || selectionLocked} className="space-y-1 pt-1 border-t border-white/5" data-testid="rotate-block">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-500 uppercase font-bold">{t.rotate3d}</span>
+                <span className="text-xs text-slate-500 uppercase font-bold">{t.rotate3d}</span>
                 <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500">
-                  <span className="text-[9px] text-slate-500 font-bold">{t.rotateAngle}</span>
+                  <span className="text-[11px] text-slate-500 font-bold">{t.rotateAngle}</span>
                   <input
                     type="number" step={15} value={rotAngleText} data-testid="rotate-angle"
                     onChange={(e) => setRotAngleText(e.target.value)}
@@ -1030,11 +1068,11 @@ const Sidebar: React.FC = () => {
                   <button key={`${ax}+`} data-testid={`rot-${ax}-plus`} disabled={!rotAngleValid} onClick={() => rotateSelected(ax, rotAngle)}
                     title={t.hintRotateFwd(ax.toUpperCase())}
                     style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
-                    className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold font-mono">{ax.toUpperCase()}+</button>,
+                    className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold font-mono">{ax.toUpperCase()}+</button>,
                   <button key={`${ax}-`} data-testid={`rot-${ax}-minus`} disabled={!rotAngleValid} onClick={() => rotateSelected(ax, -rotAngle)}
                     title={t.hintRotateBack(ax.toUpperCase())}
                     style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
-                    className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold font-mono">{ax.toUpperCase()}−</button>,
+                    className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold font-mono">{ax.toUpperCase()}−</button>,
                 ])}
               </div>
               {selectedProfile && (
@@ -1047,26 +1085,26 @@ const Sidebar: React.FC = () => {
 
             {/** Mirror and array controls. */}
             <fieldset disabled={viewMode} className="space-y-1 pt-1 border-t border-white/5" data-testid="repeat-block">
-              <span className="text-[10px] text-slate-500 uppercase font-bold">{t.mirror} / {t.array}</span>
+              <span className="text-xs text-slate-500 uppercase font-bold">{t.mirror} / {t.array}</span>
               <div className="grid grid-cols-3 gap-1">
                 {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
                   <button key={ax} data-testid={`mirror-${ax}`} onClick={() => mirrorSelected(ax)}
                     title={t.hintMirror(ax.toUpperCase())}
                     style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
-                    className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-[10px] font-bold font-mono">
+                    className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs font-bold font-mono">
                     <FlipHorizontal2 size={11} />{ax.toUpperCase()}
                   </button>
                 ))}
               </div>
               <div className="flex items-center gap-1">
                 <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
-                  <span className="text-[9px] text-slate-500 font-bold">{t.arrayCount}</span>
+                  <span className="text-[11px] text-slate-500 font-bold">{t.arrayCount}</span>
                   <input type="number" min={1} step={1} value={arrayCountText} data-testid="array-count"
                     onChange={(e) => setArrayCountText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
                     className="w-full bg-transparent py-1 text-xs font-mono outline-none" />
                 </label>
                 <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 flex-1 focus-within:border-blue-500">
-                  <span className="text-[9px] text-slate-500 font-bold">{t.arraySpacing}</span>
+                  <span className="text-[11px] text-slate-500 font-bold">{t.arraySpacing}</span>
                   <input type="number" step={10} value={arraySpacingText} data-testid="array-spacing"
                     onChange={(e) => setArraySpacingText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
                     className="w-full bg-transparent py-1 text-xs font-mono outline-none" />
@@ -1078,36 +1116,40 @@ const Sidebar: React.FC = () => {
                     onClick={() => arraySelected(ax, parseFloat(arrayCountText), parseFloat(arraySpacingText))}
                     title={t.hintArray(ax.toUpperCase())}
                     style={{ color: AXIS_COLOR[ax.toUpperCase()] }}
-                    className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold font-mono">
+                    className="flex items-center justify-center gap-1 py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-xs font-bold font-mono">
                     <Rows3 size={11} />{ax.toUpperCase()}
                   </button>
                 ))}
               </div>
             </fieldset>
             {selectedIds.length > 1 && (
-              <div className="text-[10px] text-slate-400 pt-1 border-t border-white/5">{t.selected(selectedIds.length)}</div>
+              <div className="text-xs text-slate-400 pt-1 border-t border-white/5">{t.selected(selectedIds.length)}</div>
             )}
           </div>
         ) : (
-          <div className="py-8 flex flex-col items-center justify-center text-slate-600 opacity-40 space-y-2">
+          <div className="py-8 flex flex-col items-center justify-center text-slate-400 opacity-40 space-y-2">
             <Box size={28} />
-            <span className="text-[10px] font-bold uppercase text-center">{t.selectToEdit}</span>
+            <span className="text-xs font-bold uppercase text-center">{t.selectToEdit}</span>
           </div>
         )}
       </Section>
 
+      </div>
+      <div id="sidebar-panel-inspect" role="tabpanel" aria-labelledby="sidebar-tab-inspect" hidden={sidebarTab !== 'inspect'}>
+      <InspectionPanel />
       <Section
         id="bom"
         title={t.bomSummary}
         open={open.bom}
         onToggle={() => toggle('bom')}
-        badge={<span className={`text-[9px] font-mono ${conflicts.length ? 'text-red-400' : 'text-slate-500'}`}>
+        badge={<span className={`text-[11px] font-mono ${conflicts.length ? 'text-red-400' : 'text-slate-500'}`}>
           {profiles.length}{conflicts.length ? ` · ⚠${conflicts.length}` : ''}
         </span>}
       >
         <div className="space-y-3">
-        <div data-testid="manufacturing-checks" className="rounded-lg border border-white/10 bg-slate-950/50 p-2 space-y-2 text-[10px]">
+        <div data-testid="manufacturing-checks" className="rounded-lg border border-white/10 bg-slate-950/50 p-2 space-y-2 text-xs">
           <div className="font-bold text-slate-300">{t.manufacturingChecks}</div>
+          {isDragging && <div data-testid="installation-pending" className="text-slate-400">{t.installationPending}</div>}
           <div className={reviewCount ? 'text-amber-300' : 'text-slate-300'} data-testid="manufacturing-result">
             {reviewCount ? t.manufacturingCount(reviewCount) : t.manufacturingClear}
           </div>
@@ -1146,14 +1188,14 @@ const Sidebar: React.FC = () => {
           <div className="bg-white/5 p-1.5 rounded-lg border border-white/5"><div className="text-[8px] text-slate-500 uppercase">{t.brackets}</div><div className="text-sm font-mono font-bold text-amber-400" data-testid="bom-brackets" title={t.bracketsHint}>{placedBrackets}<span className="text-slate-500">/{buttEnds}</span></div></div>
         </div>
         {overall && (
-          <div className="text-[10px] text-slate-400 flex justify-between"><span>{t.overall}</span><span className="font-mono text-slate-200" data-testid="bom-overall">{Math.round(overall.x)}×{Math.round(overall.z)}×{Math.round(overall.y)}</span></div>
+          <div className="text-xs text-slate-400 flex justify-between"><span>{t.overall}</span><span className="font-mono text-slate-200" data-testid="bom-overall">{Math.round(overall.x)}×{Math.round(overall.z)}×{Math.round(overall.y)}</span></div>
         )}
         {profiles.length > 1 && (
           <button
             onClick={() => { if (conflicts.length) useStore.getState().selectItems([...conflictIds]) }}
             title={t.hintConflicts}
             disabled={conflicts.length === 0}
-            className={`w-full text-[10px] flex justify-between items-center ${conflicts.length ? 'text-red-400 hover:text-red-300' : 'text-slate-500 cursor-default'}`}
+            className={`w-full text-xs flex justify-between items-center ${conflicts.length ? 'text-red-400 hover:text-red-300' : 'text-slate-500 cursor-default'}`}
           >
             <span className="flex items-center gap-1">{conflicts.length > 0 && <AlertTriangle size={11} />}{t.penetrations}</span>
             <span className="font-mono" data-testid="bom-penetrations">{conflicts.length ? t.penetrationsCount(conflicts.length) : t.penetrationsOk}</span>
@@ -1164,7 +1206,7 @@ const Sidebar: React.FC = () => {
             onClick={() => { if (mismatches.length) useStore.getState().selectItems(mismatches.flatMap((m) => [m.a, m.b])) }}
             title={t.hintMismatches}
             disabled={mismatches.length === 0}
-            className={`w-full text-[10px] flex justify-between items-center ${mismatches.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
+            className={`w-full text-xs flex justify-between items-center ${mismatches.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
           >
             <span className="flex items-center gap-1">{mismatches.length > 0 && <AlertTriangle size={11} />}{t.specMismatch}</span>
             <span className="font-mono" data-testid="bom-mismatches">
@@ -1181,7 +1223,7 @@ const Sidebar: React.FC = () => {
               showToast(r.steps.length ? t.toastRepaired(r.before - r.after, r.after) : t.toastRepairNothing,
                 r.steps.length ? 'success' : 'info')
             }}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold">
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold">
             <Wrench size={12} /> {t.alignFaces}
           </button>
         )}
@@ -1191,7 +1233,7 @@ const Sidebar: React.FC = () => {
             onClick={() => { if (clashes.length) useStore.getState().selectItems(clashes.flat()) }}
             title={t.hintSwingClash}
             disabled={clashes.length === 0}
-            className={`w-full text-[10px] flex justify-between items-center ${clashes.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
+            className={`w-full text-xs flex justify-between items-center ${clashes.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
           >
             <span className="flex items-center gap-1">{clashes.length > 0 && <AlertTriangle size={11} />}{t.swingClash}</span>
             <span className="font-mono" data-testid="bom-swing-clash">
@@ -1204,7 +1246,7 @@ const Sidebar: React.FC = () => {
             onClick={() => { if (bracketFaults.length) useStore.getState().selectItems(bracketFaults.map((f) => f.id)) }}
             title={t.hintBracketSeating}
             disabled={bracketFaults.length === 0}
-            className={`w-full text-[10px] flex justify-between items-center ${bracketFaults.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
+            className={`w-full text-xs flex justify-between items-center ${bracketFaults.length ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 cursor-default'}`}
           >
             <span className="flex items-center gap-1">{bracketFaults.length > 0 && <AlertTriangle size={11} />}{t.bracketSeating}</span>
             <span className="font-mono" data-testid="bom-bracket-seating">
@@ -1213,19 +1255,19 @@ const Sidebar: React.FC = () => {
           </button>
         )}
         {seriesMismatches.length > 0 && (
-          <div className="w-full text-[10px] flex justify-between items-center text-slate-500">
+          <div className="w-full text-xs flex justify-between items-center text-slate-500">
             <span>{t.crossSeries}</span>
             <span className="font-mono" data-testid="bom-cross-series">{t.crossSeriesCount(seriesMismatches.length)}</span>
           </div>
         )}
         {sagging.length > 0 && (
-          <div className="w-full text-[10px] flex justify-between items-center text-amber-400/90">
+          <div className="w-full text-xs flex justify-between items-center text-amber-400/90">
             <span title={t.hintDeflection}>{t.saggingSpans}</span>
             <span className="font-mono" data-testid="bom-sagging">{t.saggingCount(sagging.length, loadKg)}</span>
           </div>
         )}
         {(bom.profiles.length > 0 || bom.connectors.length > 0 || bom.panels.length > 0) && (
-          <div className="max-h-44 overflow-y-auto rounded-lg border border-white/5 text-[10px] font-mono" data-testid="bom-table">
+          <div className="max-h-44 overflow-y-auto rounded-lg border border-white/5 text-xs font-mono" data-testid="bom-table">
             {bom.profiles.map((r) => (
               <details key={r.key} className="px-2 py-1 odd:bg-white/5">
                 <summary className="cursor-pointer"><span className="text-slate-400">{r.label}</span> <span className="text-slate-200">{r.length} mm</span> <span className="text-blue-400">×{r.qty}</span></summary>
@@ -1241,7 +1283,7 @@ const Sidebar: React.FC = () => {
               </div>
             ))}
             {bom.fasteners.length > 0 && (
-              <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-fasteners">{t.fasteners}</div>
+              <div className="px-2 py-1 text-[11px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-fasteners">{t.fasteners}</div>
             )}
             {bom.fasteners.map((r) => (
               <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
@@ -1249,7 +1291,7 @@ const Sidebar: React.FC = () => {
               </div>
             ))}
             {bom.panels.length > 0 && (
-              <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-panels">{t.boardCutList}</div>
+              <div className="px-2 py-1 text-[11px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-panels">{t.boardCutList}</div>
             )}
             {bom.panels.map((r) => (
               <details key={r.key} className="px-2 py-1 odd:bg-white/5">
@@ -1258,7 +1300,7 @@ const Sidebar: React.FC = () => {
               </details>
             ))}
             {bom.suggested.length > 0 && (
-              <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-suggested">{t.suggested}</div>
+              <div className="px-2 py-1 text-[11px] uppercase tracking-widest text-slate-500 bg-white/5" data-testid="bom-suggested">{t.suggested}</div>
             )}
             {bom.suggested.map((r) => (
               <div key={r.key} className="flex justify-between px-2 py-1 odd:bg-white/5">
@@ -1272,15 +1314,15 @@ const Sidebar: React.FC = () => {
         {bom.profiles.length > 0 && (
           <div className="space-y-1 pt-2 border-t border-white/5" data-testid="nesting-block">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-slate-500 uppercase font-bold" title={t.hintNesting}>{t.nesting}</span>
+              <span className="text-xs text-slate-500 uppercase font-bold" title={t.hintNesting}>{t.nesting}</span>
               <label className="flex items-center gap-1 bg-slate-950 border border-white/5 rounded-lg px-2 focus-within:border-blue-500">
-                <span className="text-[9px] text-slate-500 font-bold">{t.stockLength}</span>
+                <span className="text-[11px] text-slate-500 font-bold">{t.stockLength}</span>
                 <input type="number" step={500} min={500} value={stockText} data-testid="stock-length"
                   onChange={(e) => setStockText(e.target.value)} onKeyDown={(e) => e.stopPropagation()}
                   className="w-16 bg-transparent py-1 text-xs font-mono outline-none" />
               </label>
             </div>
-            <div className="text-[10px] font-mono rounded-lg border border-white/5 overflow-hidden" data-testid="nesting-summary">
+            <div className="text-xs font-mono rounded-lg border border-white/5 overflow-hidden" data-testid="nesting-summary">
               {nesting.bySpec.map((r) => (
                 <div key={r.spec} className="flex justify-between px-2 py-1 odd:bg-white/5">
                   <span className="text-slate-400">{r.spec}</span>
@@ -1298,7 +1340,7 @@ const Sidebar: React.FC = () => {
 
         {/** Project files and exports. */}
         <div className="space-y-1 pt-2 border-t border-white/5">
-          <span className="text-[10px] text-slate-500 uppercase font-bold">{t.exportsGroup}</span>
+          <span className="text-xs text-slate-500 uppercase font-bold">{t.exportsGroup}</span>
           <div className="grid grid-cols-2 gap-1.5">
             <button onClick={handleExportBOM} disabled={profiles.length + connectors.length + panels.length + fittings.length === 0} data-testid="export-bom" title={t.hintExportBOM} className={FILE_BTN}>
               <Download size={13} className="text-blue-400" /> {t.exportBOM}
@@ -1321,12 +1363,12 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1 text-[10px]">
-          <button onClick={handleLogDebug} title={t.hintDebugLog} className="flex items-center gap-1 text-slate-600 hover:text-amber-400">
+        <div className="flex items-center justify-between pt-1 text-xs">
+          <button onClick={handleLogDebug} title={t.hintDebugLog} className="flex items-center gap-1 text-slate-400 hover:text-amber-400">
             <Bug size={11} /> {t.debugLog}
           </button>
           <button onClick={handleClearAll} disabled={viewMode} data-testid="clear-all" title={t.hintClearAll}
-            className={`flex items-center gap-1 rounded px-1.5 py-0.5 transition-all ${confirmClear ? 'bg-red-600 text-white font-bold' : 'text-slate-600 hover:text-red-400'}`}>
+            className={`flex items-center gap-1 rounded px-1.5 py-0.5 transition-all ${confirmClear ? 'bg-red-600 text-white font-bold' : 'text-slate-400 hover:text-red-400'}`}>
             <Eraser size={11} /> {confirmClear ? t.clearConfirm : t.clear}
           </button>
         </div>
@@ -1335,14 +1377,14 @@ const Sidebar: React.FC = () => {
 
       {/** Persistent operation log. */}
       <Section id="log" title={t.opLog} open={open.log} onToggle={() => toggle('log')}
-        badge={<span className="text-[9px] font-mono text-slate-600">{log.length || ''}</span>}>
+        badge={<span className="text-[11px] font-mono text-slate-400">{log.length || ''}</span>}>
         <div className="space-y-2">
-          <div className="max-h-64 overflow-auto text-[10px] font-mono rounded-lg border border-white/5" data-testid="op-log">
+          <div className="max-h-64 overflow-auto text-xs font-mono rounded-lg border border-white/5" data-testid="op-log">
             {log.length === 0
-              ? <div className="px-2 py-3 text-slate-600 text-center">{t.opLogEmpty}</div>
+              ? <div className="px-2 py-3 text-slate-400 text-center">{t.opLogEmpty}</div>
               : [...log].reverse().slice(0, 120).map((e, i) => (
                 <div key={log.length - i} className="flex gap-2 px-2 py-1 odd:bg-white/5 items-baseline">
-                  <span className="text-slate-600 shrink-0">{new Date(e.at).toTimeString().slice(0, 8)}</span>
+                  <span className="text-slate-400 shrink-0">{new Date(e.at).toTimeString().slice(0, 8)}</span>
                   <span className="text-slate-300 shrink-0 font-bold">{e.label}</span>
                   <span className="text-slate-500 truncate" title={e.detail}>{e.detail}</span>
                 </div>
@@ -1351,16 +1393,17 @@ const Sidebar: React.FC = () => {
           <div className="grid grid-cols-2 gap-1">
             <button data-testid="op-log-copy" title={t.hintOpLog} disabled={log.length === 0}
               onClick={handleCopyLog}
-              className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[10px] font-bold text-slate-300">
+              className="py-1.5 bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-xs font-bold text-slate-300">
               {t.opLogCopy}
             </button>
             <button data-testid="op-log-clear" disabled={log.length === 0} onClick={() => clearOpLog()}
-              className="py-1.5 bg-slate-800 hover:bg-red-600/20 hover:text-red-400 disabled:opacity-40 rounded-lg text-[10px] font-bold text-slate-500">
+              className="py-1.5 bg-slate-800 hover:bg-red-600/20 hover:text-red-400 disabled:opacity-40 rounded-lg text-xs font-bold text-slate-500">
               {t.opLogClear}
             </button>
           </div>
         </div>
       </Section>
+      </div>
       </div>
     </div>
   )

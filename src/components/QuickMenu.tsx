@@ -43,11 +43,38 @@ const QuickMenu: React.FC = () => {
     if (!at) return
     const onDown = (e: PointerEvent) => {
       if (ref.current?.contains(e.target as Node)) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
       closeQuickMenu()
     }
     window.addEventListener('pointerdown', onDown, true)
     return () => window.removeEventListener('pointerdown', onDown, true)
   }, [at, closeQuickMenu])
+
+  useEffect(() => {
+    if (!at) return
+    const previous = document.activeElement as HTMLElement | null
+    const frame = requestAnimationFrame(() => ref.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus())
+    return () => {
+      cancelAnimationFrame(frame)
+      if (previous?.isConnected) previous.focus({ preventScroll: true })
+    }
+  }, [at])
+
+  const onMenuKey = (event: React.KeyboardEvent) => {
+    event.stopPropagation()
+    const buttons = Array.from(ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])
+    const current = buttons.indexOf(document.activeElement as HTMLButtonElement)
+    if (event.key === 'Escape' || event.key === 'Tab') {
+      event.preventDefault(); closeQuickMenu(); return
+    }
+    const step = ['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : ['ArrowUp', 'ArrowLeft'].includes(event.key) ? -1 : 0
+    if (step || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault()
+      const index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (current + step + buttons.length) % buttons.length
+      buttons[index]?.focus()
+    }
+  }
 
   if (!at) return null
 
@@ -57,7 +84,7 @@ const QuickMenu: React.FC = () => {
   const run = (fn: () => void) => () => { fn(); closeQuickMenu() }
   const Item: React.FC<{ onClick: () => void; children: React.ReactNode; testId: string; danger?: boolean; tip?: string; edit?: boolean }> =
     ({ onClick, children, testId, danger, tip, edit }) => (
-      <button onClick={onClick} data-testid={testId} title={tip} disabled={viewMode && edit}
+      <button role="menuitem" onClick={onClick} data-testid={testId} title={tip} disabled={viewMode && edit}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap ${
           danger ? 'text-red-400 hover:bg-red-400/10' : 'text-slate-200 hover:bg-white/10'}`}>
         {children}
@@ -65,7 +92,7 @@ const QuickMenu: React.FC = () => {
     )
 
   return (
-    <div ref={ref} data-testid="quick-menu"
+    <div ref={ref} data-testid="quick-menu" role="menu" aria-label={t.quickMenu} onKeyDown={onMenuKey}
       style={{
         left: place ? place.x : at.x + 6, top: place ? place.y : at.y + 6, minWidth: MIN_WIDTH,
         visibility: place ? 'visible' : 'hidden',   // drawn once to be measured, shown once placed
@@ -91,7 +118,7 @@ const QuickMenu: React.FC = () => {
           <Item edit testId={`quick-rot-${ax}`} tip={t.hintRotateFwd(ax.toUpperCase())} onClick={run(() => rotateSelected(ax, 90))}>
             <RotateCw size={12} style={{ color: AXIS_COLORS[ax] }} />{t.gizmoRotate(ax.toUpperCase())}
           </Item>
-          <button onClick={run(() => rotateSelected(ax, -90))} data-testid={`quick-rot-${ax}-back`}
+          <button role="menuitem" onClick={run(() => rotateSelected(ax, -90))} data-testid={`quick-rot-${ax}-back`}
             disabled={viewMode} aria-label={t.hintRotateBack(ax.toUpperCase())}
             title={t.hintRotateBack(ax.toUpperCase())}
             className="ml-auto mr-1 p-1.5 rounded-lg text-slate-400 hover:bg-white/10"><RotateCcw size={12} /></button>
@@ -107,7 +134,7 @@ const QuickMenu: React.FC = () => {
       {hasSelection && <div className="flex items-center gap-0.5 px-1.5 pb-0.5">
         <FlipHorizontal2 size={12} className="text-slate-400 mx-1.5" />
         {(['x', 'y', 'z'] as RotAxis[]).map((ax) => (
-          <button key={ax} onClick={run(() => mirrorSelected(ax))} data-testid={`quick-mirror-${ax}`}
+          <button role="menuitem" key={ax} onClick={run(() => mirrorSelected(ax))} data-testid={`quick-mirror-${ax}`}
             disabled={viewMode} aria-label={t.hintMirror(ax.toUpperCase())}
             title={t.hintMirror(ax.toUpperCase())}
             className="flex-1 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-[10px] font-bold font-mono text-slate-200">

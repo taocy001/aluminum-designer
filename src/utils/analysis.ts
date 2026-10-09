@@ -2,7 +2,7 @@ import { connectorMeshes } from './connectorGeometry'
 import * as THREE from 'three'
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorExtent, connectorScale } from './connectorCatalog'
-import { computeAllTrims, computeTrims, getThroughRule, type ProfileTrims } from './jointUtils'
+import { computeAllTrims, createTrimResolver, getThroughRule, type ProfileTrims } from './jointUtils'
 import { getProfileDir } from './geometryCore'
 import { specDims } from './specUtils'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
@@ -297,16 +297,15 @@ let cacheValue: FrameAnalysis | null = null
  */
 export function movingPartsConflict(all: ProfileData[], movingIds: Set<string>): boolean {
   if (movingIds.size === 0) return false
-  const trims = new Map<string, ProfileTrims>()
   const need = all.filter((p) => movingIds.has(p.id))
-  for (const p of need) trims.set(p.id, computeTrims(p, all))
   const others = all.filter((p) => !movingIds.has(p.id))
+  if (!need.length || !others.length) return false
+  const resolve = createTrimResolver(all)
+  const stationary = others.map(q => trimmedOBB(q, resolve(q)))
   for (const p of need) {
-    const a = trimmedOBB(p, trims.get(p.id)!)
-    for (const q of others) {
-      const qt = trims.get(q.id) ?? computeTrims(q, all)
-      trims.set(q.id, qt)
-      if (obbPenetration(a, trimmedOBB(q, qt), TOUCH_TOL) > 0) return true
+    const a = trimmedOBB(p, resolve(p))
+    for (const b of stationary) {
+      if (obbPenetration(a, b, TOUCH_TOL) > 0) return true
     }
   }
   return false
@@ -321,6 +320,34 @@ export function analyzeFrame(
   const rule = getThroughRule()
   if (cacheKey === profiles && cacheParts === connectors && cacheBoards === panels
     && cacheFittings === fittings && cacheEquipment === equipment && cacheRule === rule && cacheValue) return cacheValue
+  // Translating every part together leaves joints and interference unchanged.
+  // Move the cached markers as well; any other edit takes the full analysis path.
+  const oldLists = [cacheKey, cacheParts, cacheBoards, cacheFittings, cacheEquipment]
+  const newLists = [profiles, connectors, panels, fittings, equipment]
+  let translation: THREE.Vector3 | undefined
+  const translated = cacheValue && cacheRule === rule && newLists.every((list, kind) => {
+    const old = oldLists[kind]
+    return old?.length === list.length && list.every((part, i) => {
+      const previous = old[i]
+      const { position, ...rest } = part
+      const { position: before, ...oldRest } = previous
+      if (JSON.stringify(rest) !== JSON.stringify(oldRest)) return false
+      const delta = new THREE.Vector3(...position).sub(new THREE.Vector3(...before))
+      translation ??= delta
+      return delta.distanceToSquared(translation) < 1e-16
+    })
+  })
+  if (translated && translation && cacheValue) {
+    const offset = translation
+    cacheValue = { ...cacheValue,
+      conflicts: cacheValue.conflicts.map(c => ({ ...c, region: c.region.clone().translate(offset) })),
+      equipmentConflicts: cacheValue.equipmentConflicts.map(c => ({ ...c, region: c.region.clone().translate(offset) })),
+      mismatches: cacheValue.mismatches.map(m => ({ ...m, at: m.at.clone().add(offset) })),
+    }
+    cacheKey = profiles; cacheParts = connectors; cacheBoards = panels
+    cacheFittings = fittings; cacheEquipment = equipment
+    return cacheValue
+  }
   const trims = computeAllTrims(profiles)
   const conflicts = findConflicts(profiles, trims, connectors, panels, fittings)
   const conflictIds = new Set<string>()

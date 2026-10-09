@@ -23,6 +23,7 @@ const en = {
   thicknessMm: 'Thickness (mm)',
   assumedLoad: 'Assumed point load (kg)',
   manufacturingChecks: 'Checks before cutting',
+  installationPending: 'Installation checks update when dragging ends',
   manufacturingCount: (n: number) => `${n} items to review`,
   manufacturingClear: 'No issues in the current checks',
   estimateBoundary: 'Sag assumes a point load at mid-span or the free end. Motion checks sample positions. Supports and runner mounts only check the geometry drawn.',
@@ -407,7 +408,7 @@ const en = {
   toastArrayed: (n: number) => `Added ${n} part${n === 1 ? '' : 's'}`,
   gizmoMove: (axis: string) => `Move along ${axis}`,
   gizmoRotate: (axis: string) => `Turn 90° about ${axis}`,
-  gizmoRotateHint: (axis: string) => `Click to turn 90° about ${axis} · Shift reverses`,
+  gizmoRotateHint: (axis: string) => `Drag about ${axis}: 15° snap, Shift for free rotation · click: 90°, Shift reverses · Esc cancels`,
   standardViews: 'Standard views',
   viewNames: { top: 'Top', front: 'Front', right: 'Right', iso: '3D' },
   guideDraw: [
@@ -428,7 +429,7 @@ const en = {
     'Trackpad: pinch to zoom · two-finger scroll zooms · right-drag pans',
     'Touch: one finger orbits · two pan and zoom · two-finger tap undoes · hold for the menu',
     'Rotate freely about X / Y / Z in the properties panel',
-    'Left-drag empty space orbits · right-drag pans · wheel zooms',
+    'Middle-drag anywhere or left-drag empty space orbits · right-drag pans · wheel zooms',
   ],
   guideSelect: [
     'Drag a box to select several members',
@@ -463,6 +464,7 @@ const zh: typeof en = {
   thicknessMm: '厚度（mm）',
   assumedLoad: '假定集中载荷（kg）',
   manufacturingChecks: '下料前检查',
+  installationPending: '拖动结束后更新安装检查',
   manufacturingCount: (n: number) => `${n} 项待核对`,
   manufacturingClear: '当前检查项未发现异常',
   estimateBoundary: '挠度按跨中或悬挑端集中载荷估算；运动检查为离散位置采样；承托和滑轨安装面只核对已画出的几何。',
@@ -846,7 +848,7 @@ const zh: typeof en = {
   toastArrayed: (n: number) => `已新增 ${n} 个零件`,
   gizmoMove: (axis: string) => `沿 ${axis} 轴移动`,
   gizmoRotate: (axis: string) => `绕 ${axis} 轴转 90°`,
-  gizmoRotateHint: (axis: string) => `单击绕 ${axis} 轴转 90° · Shift 反向`,
+  gizmoRotateHint: (axis: string) => `拖动绕 ${axis} 轴旋转：15° 吸附，Shift 自由旋转 · 单击 90°，Shift 反向 · Esc 取消`,
   standardViews: '标准视图',
   viewNames: { top: '俯视', front: '正视', right: '右视', iso: '立体' },
   guideDraw: [
@@ -867,7 +869,7 @@ const zh: typeof en = {
     '触摸板：双指捏合缩放 · 双指滚动缩放 · 右键拖动平移',
     '触摸屏：单指转视角 · 双指平移与缩放 · 双指轻点撤销 · 长按呼出菜单',
     '属性面板可绕 X / Y / Z 任意角度旋转',
-    '左键拖空白处旋转视角 · 右键拖动平移 · 滚轮缩放',
+    '中键拖任意处或左键拖空白处旋转视角 · 右键拖动平移 · 滚轮缩放',
   ],
   guideSelect: [
     '拖出矩形框选多根型材',
