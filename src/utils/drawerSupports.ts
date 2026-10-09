@@ -5,7 +5,7 @@ import { validFitting } from './fittingValidation'
 import { runnerFaults } from './runnerMount'
 import { computeAllTrims, withFixedProfileCuts } from './jointUtils'
 import { panelOBB, trimmedOBB } from './analysis'
-import { fittingSolids } from './fittingGeometry'
+import { fittingBodies } from './fittingGeometry'
 import { obbCorners, obbPenetration, type OBB } from './obb'
 import { getProfileDir } from './geometryCore'
 import { seatsFor } from './bracketSeat'
@@ -92,7 +92,7 @@ export function addDrawerSupports(ids: string[], spec?: ProfileSpec, options?: {
           const all = [...profiles, ...stagedProfiles, rail], trims = computeAllTrims(all)
           const body = trimmedOBB(rail, trims.get(rail.id)!)
           const otherBodies = [...profiles, ...stagedProfiles].map((p) => trimmedOBB(p, trims.get(p.id)!))
-          const boards = [...state.panels.map(panelOBB), ...state.fittings.flatMap((v) => fittingSolids(v, 0))]
+          const boards = [...state.panels.map(panelOBB), ...state.fittings.flatMap((v) => fittingBodies(v, 0))]
           if ([...otherBodies, ...boards].some((b) => obbPenetration(body, b, 1) > 1)
             || [...connectors, ...stagedConnectors].some(c => connectorHitsBody(c, body))
             || reserved.some((b) => obbPenetration(body, b, 1) > 0)) { reason = 'collision'; continue }

@@ -20,11 +20,11 @@ export interface ShareDoc {
 /** Base link-length threshold used by the sharing UI. */
 export const COMFORTABLE_URL = 8000
 
-/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–11. */
+/** Compact columns for geometry, stable IDs and bindings; reads link versions 1–12. */
 function pack(doc: ShareDoc): unknown[] {
   const checked = validateProjectDocument(doc)
   return [
-    11, checked.throughRule,
+    12, checked.throughRule,
     checked.profiles.map((p) => [p.spec, p.length, p.position, p.quaternion, !!p.locked, p.miterCuts, p.holes, p.fixedTrims ?? null,
       p.id, p.runnerBinding ?? null]),
     checked.connectors.map((c) => [c.type, c.series ?? 20, c.position, c.quaternion, !!c.locked, c.id, c.supportBinding ?? null, c.profileSpec ?? null, c.mountSeries ?? null, c.panelMount ?? null]),
@@ -32,7 +32,7 @@ function pack(doc: ShareDoc): unknown[] {
     checked.fittings.map((f) => [
       f.kind, f.width, f.height, f.depth, f.position, f.quaternion,
       f.material, f.hinge ?? '', f.hingeType ?? '', f.overlay ?? '', f.swing ?? 0,
-      f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '', f.drawer ?? null, f.id, f.openingBinding ?? null, f.fabrication ?? null,
+      f.frame, f.stacked ?? null, !!f.locked, f.meeting ?? '', f.drawer ?? null, f.id, f.openingBinding ?? null, f.fabrication ?? null, f.handle ?? null,
     ]),
     checked.equipment.map((e) => [e.id, e.name, e.width, e.height, e.depth, e.position, e.quaternion, e.clearance, !!e.locked]),
     checked.templateInstances ?? null, checked.groups ?? null,
@@ -42,7 +42,7 @@ function pack(doc: ShareDoc): unknown[] {
 function unpack(raw: unknown): ParsedProjectDocument {
   if (!Array.isArray(raw)) throw new Error('invalid link')
   const version = raw[0]
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8 && version !== 9 && version !== 10 && version !== 11) throw new Error('unknown link version')
+  if (!Number.isInteger(version) || version < 1 || version > 12) throw new Error('unknown link version')
   const [profiles, connectors, panels, fittings, equipment = [], templateInstances = [], groups = []] = raw.slice(version >= 2 ? 2 : 1) as unknown[][]
   if (raw.length !== (version >= 10 ? 9 : version >= 7 ? 7 : version >= 2 ? 6 : 5)
     || ![profiles, connectors, panels, fittings, equipment].every(Array.isArray)) throw new Error('incomplete link')
@@ -94,14 +94,15 @@ function unpack(raw: unknown): ParsedProjectDocument {
       }
     }),
     fittings: (fittings ?? []).map((row) => {
-      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked, meeting, drawer, originalId, openingBinding, fabrication] =
-        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean, FittingData['meeting'] | '', FittingData['drawer'] | null, string, FittingData['openingBinding'] | null, FittingData['fabrication'] | null]
+      const [kind, width, height, depth, position, quaternion, material, hinge, hingeType, overlay, swing, frame, stacked, locked, meeting, drawer, originalId, openingBinding, fabrication, handle] =
+        row as [string, number, number, number, number[], number[], string, string, string, string, number, number, FittingData['stacked'], boolean, FittingData['meeting'] | '', FittingData['drawer'] | null, string, FittingData['openingBinding'] | null, FittingData['fabrication'] | null, FittingData['handle'] | null]
       return {
         id: version >= 6 ? originalId : id('f'), kind: kind as FittingData['kind'], width, height, depth,
         position: position as [number, number, number],
         quaternion: quaternion as [number, number, number, number],
         material: material as PanelData['material'],
-        ...(version >= 11 && fabrication != null ? { fabrication } : {}), open: 0,
+        ...(version >= 11 && fabrication != null ? { fabrication } : {}),
+        ...(version >= 12 && handle != null ? { handle } : {}), open: 0,
         ...(frame !== undefined && frame !== null ? { frame } : {}),
         ...(stacked ? { stacked } : {}),
         ...(locked ? { locked: true } : {}),

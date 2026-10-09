@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { ScanLine } from 'lucide-react'
 import { cancelActiveTransformGesture, transformGestureActive } from './utils/transformGesture'
 import EditorHeader from './components/EditorHeader'
@@ -25,10 +26,15 @@ import { profileFace, type ProfileFaceRef } from './utils/profileFaces'
 import { Home, Ruler, MousePointer2, Pencil, Hand, Rotate3d, RotateCw, X, Crosshair, Maximize, Minimize, Plus, Minus, Eye, PencilRuler, HelpCircle, DoorOpen, DoorClosed, Lightbulb } from 'lucide-react'
 import type { Axis } from './utils/jointUtils'
 
+const EMPTY_PROFILES: ReturnType<typeof useStore.getState>['profiles'] = []
+
 const AXIS_COLORS: Record<string, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 
 function App() {
-  const { profiles, throughRule, clearSelection } = useStore()
+  const isDrawingDocument = useToolStore(s => s.isDrawing || !!s.drawStartFace || !!s.drawSnapFace)
+  const { profiles, throughRule, clearSelection } = useStore(useShallow(s => ({
+    profiles: isDrawingDocument ? s.profiles : EMPTY_PROFILES, throughRule: s.throughRule, clearSelection: s.clearSelection,
+  })))
   const {
     language, isDrawing, startPoint, currentPoint, drawAxis, lockedAxis, setLockedAxis, snapKind, drawStartFace, drawSnapFace, drawStartAlignmentFace, drawSnapAlignmentFace,
     drawLengthInput: preciseInput, setDrawLengthInput: setPreciseInput,
@@ -42,7 +48,72 @@ function App() {
     dragMoved, resize, hoverCandidates, workPlaneY,
     pendingRotate, setPendingRotate, viewMode, setViewMode, helpOpen, toggleHelp, showFittings, toggleFittings,
     measuring, startMeasuring, stopMeasuring, suggestion,
-  } = useToolStore()
+  } = useToolStore(useShallow(s => ({
+    language: s.language,
+    isDrawing: s.isDrawing,
+    startPoint: s.startPoint,
+    currentPoint: s.currentPoint,
+    drawAxis: s.drawAxis,
+    lockedAxis: s.lockedAxis,
+    setLockedAxis: s.setLockedAxis,
+    snapKind: s.snapKind,
+    drawStartFace: s.drawStartFace,
+    drawSnapFace: s.drawSnapFace,
+    drawStartAlignmentFace: s.drawStartAlignmentFace,
+    drawSnapAlignmentFace: s.drawSnapAlignmentFace,
+    drawLengthInput: s.drawLengthInput,
+    setDrawLengthInput: s.setDrawLengthInput,
+    held: s.held,
+    putDown: s.putDown,
+    triggerCameraReset: s.triggerCameraReset,
+    setCameraView: s.setCameraView,
+    zoomBy: s.zoomBy,
+    cancelDraw: s.cancelDraw,
+    activeSpec: s.activeSpec,
+    activeConnectorType: s.activeConnectorType,
+    isDragging: s.isDragging,
+    showDimensionLabels: s.showDimensionLabels,
+    toggleDimensionLabels: s.toggleDimensionLabels,
+    showPartNumbers: s.showPartNumbers,
+    togglePartNumbers: s.togglePartNumbers,
+    showGizmo: s.showGizmo,
+    toggleGizmo: s.toggleGizmo,
+    pivotMode: s.pivotMode,
+    cyclePivotMode: s.cyclePivotMode,
+    quickMenuAt: s.quickMenuAt,
+    openQuickMenu: s.openQuickMenu,
+    closeQuickMenu: s.closeQuickMenu,
+    selectMode: s.selectMode,
+    setSelectMode: s.setSelectMode,
+    isFrameSelecting: s.isFrameSelecting,
+    frameSelectStart: s.frameSelectStart,
+    frameSelectCurrent: s.frameSelectCurrent,
+    startFrameSelect: s.startFrameSelect,
+    updateFrameSelect: s.updateFrameSelect,
+    endFrameSelect: s.endFrameSelect,
+    toasts: s.toasts,
+    showToast: s.showToast,
+    dragConflict: s.dragConflict,
+    hoverPartId: s.hoverPartId,
+    snapGuides: s.snapGuides,
+    gizmoHover: s.gizmoHover,
+    dragMoved: s.dragMoved,
+    resize: s.resize,
+    hoverCandidates: s.hoverCandidates,
+    workPlaneY: s.workPlaneY,
+    pendingRotate: s.pendingRotate,
+    setPendingRotate: s.setPendingRotate,
+    viewMode: s.viewMode,
+    setViewMode: s.setViewMode,
+    helpOpen: s.helpOpen,
+    toggleHelp: s.toggleHelp,
+    showFittings: s.showFittings,
+    toggleFittings: s.toggleFittings,
+    measuring: s.measuring,
+    startMeasuring: s.startMeasuring,
+    stopMeasuring: s.stopMeasuring,
+    suggestion: s.suggestion
+  })))
   const t = translations[language]
   const faceName = (ref: ProfileFaceRef) => {
     if (ref.axis === 2) return t.faceNames[`2:${ref.side}`]

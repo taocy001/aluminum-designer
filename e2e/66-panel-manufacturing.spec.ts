@@ -9,7 +9,7 @@ test('panel cutting previews grain rotation, oversized stock and downloadable CS
   })
   await page.getByTestId('sidebar-tab-inspect').click()
   const cutting = page.getByTestId('panel-cut-plan')
-  await cutting.locator('summary').click()
+  await cutting.locator(':scope > summary').click()
   await expect(cutting.getByRole('alert')).toContainText('B-tall')
   await cutting.getByRole('checkbox').check()
   await expect(cutting.getByRole('alert')).toHaveCount(0)

@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { translations } from '../utils/translations'
 import { selectionLocked, type RotAxis } from '../utils/editOps'
+import { suppressDismissPointer } from '../utils/dismissPointer'
 
 const AXIS_COLORS: Record<RotAxis, string> = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' }
 const MIN_WIDTH = 190
@@ -24,6 +25,8 @@ const QuickMenu: React.FC = () => {
   const canInspect = useToolStore(s => !s.held && !s.isDrawing && !s.isDragging && !s.measuring)
   const viewMode = useToolStore((s) => s.viewMode)
   const ref = useRef<HTMLDivElement>(null)
+  const dismissCleanup = useRef<(() => void) | null>(null)
+  useEffect(() => () => dismissCleanup.current?.(), [])
   // Measure the rendered menu to keep it within the viewport.
   const [place, setPlace] = useState<{ x: number; y: number } | null>(null)
   useLayoutEffect(() => {
@@ -41,8 +44,8 @@ const QuickMenu: React.FC = () => {
     if (!at) return
     const onDown = (e: PointerEvent) => {
       if (ref.current?.contains(e.target as Node)) return
-      e.preventDefault()
-      e.stopImmediatePropagation()
+      dismissCleanup.current?.()
+      dismissCleanup.current = suppressDismissPointer(e)
       closeQuickMenu()
     }
     window.addEventListener('pointerdown', onDown, true)

@@ -10,10 +10,17 @@ import { connectorLabel } from '../utils/connectorCatalog'
 import { partNumber } from '../utils/partNumbers'
 import { slideSupports } from '../utils/connectorSlide'
 import ConnectorThumbnail from './ConnectorThumbnail'
+import { suppressDismissPointer } from '../utils/dismissPointer'
 
 export default function OverlapPicker() {
   const overlap = useInspectionStore(s => s.overlap)
-  const close = () => useInspectionStore.getState().setOverlap(null)
+  const dismissCleanup = useRef<(() => void) | null>(null)
+  useEffect(() => () => dismissCleanup.current?.(), [])
+  const close = () => {
+    useInspectionStore.getState().setOverlap(null)
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas')
+    if (canvas) { canvas.tabIndex = -1; canvas.focus({ preventScroll: true }) }
+  }
   const doc = useStore()
   const language = useToolStore(s => s.language), zh = language === 'zh'
   const [filter, setFilter] = useState('all'), [place, setPlace] = useState({ x: 0, y: 0 })
@@ -27,7 +34,12 @@ export default function OverlapPicker() {
   }, [overlap])
   useEffect(() => {
     if (!overlap) return
-    const outside = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) close() }
+    const outside = (e: PointerEvent) => {
+      if (ref.current?.contains(e.target as Node)) return
+      dismissCleanup.current?.()
+      dismissCleanup.current = suppressDismissPointer(e)
+      close()
+    }
     window.addEventListener('pointerdown', outside, true)
     return () => {
       window.removeEventListener('pointerdown', outside, true)

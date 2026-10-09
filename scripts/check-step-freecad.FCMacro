@@ -1,0 +1,152 @@
+"""Validate export-step-fixtures.ts outputs in the FreeCAD GUI.
+
+Set ALUFRAME_STEP_DIR to a fixture directory outside the repository, then open
+this macro in FreeCAD. ALUFRAME_STEP_CASE optionally selects one STEP filename.
+ALUFRAME_STEP_EXIT=1 exits FreeCAD after writing freecad-check.json and screenshots.
+This check uses the legacy App::Part import tree; App::Link imports are rejected.
+"""
+import json
+import math
+import os
+import re
+import traceback
+from pathlib import Path
+
+import FreeCAD as App
+import FreeCADGui as Gui
+import ImportGui
+import Part
+from PySide import QtCore
+
+
+def world_shape(obj):
+    # A Part::Feature Shape already contains its local Placement. Replace it
+    # with the global placement, rather than applying the local transform twice.
+    shape = obj.Shape.copy()
+    shape.Placement = obj.getGlobalPlacement()
+    return shape
+
+
+def metrics(shapes):
+    assert shapes, 'No imported solids'
+    compound = Part.makeCompound(shapes)
+    assert compound.isValid(), 'Invalid imported geometry'
+    assert all(solid.Volume > 0 for solid in compound.Solids), 'Non-positive solid'
+    box = compound.BoundBox
+    return {'solids': len(compound.Solids), 'volume': compound.Volume,
+            'bounds': [box.XMin, box.YMin, box.ZMin, box.XMax, box.YMax, box.ZMax]}
+
+
+def compare(actual, expected):
+    if 'solids' in expected:
+        assert actual['solids'] == expected['solids'], 'Changed solid count'
+    if 'bounds' in expected:
+        assert len(expected['bounds']) == 6 and all(math.isfinite(v) for v in expected['bounds']), 'Invalid expected bounds'
+        assert max(abs(a - b) for a, b in zip(actual['bounds'], expected['bounds'])) < .02, 'Changed placement'
+    if 'volume' in expected:
+        assert math.isfinite(expected['volume']) and expected['volume'] > 0, 'Invalid expected volume'
+        assert abs(actual['volume'] - expected['volume']) / expected['volume'] < .001, 'Changed volume'
+
+
+def fixture_path(directory, filename):
+    if not isinstance(filename, str) or Path(filename).name != filename or filename in ('', '.', '..'):
+        raise ValueError('Fixture paths must be filenames within the fixture directory')
+    path = directory / filename
+    if path.is_symlink() or path.resolve().parent != directory:
+        raise ValueError('Fixture inputs and outputs must not be symbolic links')
+    return path
+
+
+def group_members(group, objects):
+    members = []
+    for obj in group.Group:
+        if obj.TypeId == 'App::Part':
+            members.extend(group_members(obj, objects))
+        elif obj in objects:
+            members.append(obj)
+    return members
+
+
+def check_cases(directory, cases, results):
+    for case in cases:
+        doc = None
+        result = {'file': case['file'], 'passed': False}
+        try:
+            source = fixture_path(directory, case['file'])
+            if source.suffix.lower() not in ('.step', '.stp'):
+                raise ValueError('Expected a STEP fixture')
+            screenshot = fixture_path(directory, 'freecad-' + source.stem + '.png')
+            doc = App.newDocument('StepValidation')
+            ImportGui.insert(str(source), doc.Name)
+            doc.recompute()
+            assert not any(obj.TypeId.startswith('App::Link') for obj in doc.Objects), \
+                'App::Link import is not covered by this check; disable STEP UseLinkGroup and rerun'
+            objects = [obj for obj in doc.Objects if obj.TypeId != 'App::Part'
+                       and hasattr(obj, 'Shape') and not obj.Shape.isNull() and obj.Shape.Solids]
+            result.update(metrics([world_shape(obj) for obj in objects]))
+            compare(result, case)
+            result['components'] = []
+            matched = set()
+            for expected in case.get('components', []):
+                # FreeCAD splits multi-solid products into App::Part children.
+                # Its unique-label rule can suffix the parent Label, but not Name.
+                group = doc.getObject(re.sub('[^a-zA-Z0-9_]', '_', expected['name']))
+                if group and group.TypeId == 'App::Part':
+                    members = group_members(group, objects)
+                else:
+                    members = [obj for obj in objects if obj.Label == expected['name']]
+                assert members, f"Missing component: {expected['name']}"
+                names = {obj.Name for obj in members}
+                assert len(names) == len(members) and not names.intersection(matched), 'Duplicate component membership'
+                matched.update(names)
+                component = {'name': expected['name'], **metrics([world_shape(obj) for obj in members])}
+                result['components'].append(component)
+                compare(component, expected)
+            if case.get('components'):
+                assert matched == {obj.Name for obj in objects}, 'Unmatched imported component'
+            view = Gui.activeDocument().activeView()
+            view.viewAxonometric()
+            view.fitAll()
+            view.saveImage(str(screenshot), 1440, 1000, 'White')
+            result['passed'] = True
+        except Exception:
+            result['error'] = traceback.format_exc()
+        finally:
+            if doc is not None:
+                App.closeDocument(doc.Name)
+            results.append(result)
+
+
+def validate():
+    results = []
+    report = {'version': App.Version(), 'passed': False, 'results': results}
+    report_path = None
+    try:
+        directory = Path(os.environ['ALUFRAME_STEP_DIR']).resolve(strict=True)
+        repository = Path(__file__).resolve().parents[1]
+        if not directory.is_dir() or directory == repository or repository in directory.parents:
+            raise ValueError('Fixture directory must exist outside the repository')
+        report_path = fixture_path(directory, 'freecad-check.json')
+        cases = json.loads(fixture_path(directory, 'manifest.json').read_text())
+        selected = os.environ.get('ALUFRAME_STEP_CASE')
+        cases = [case for case in cases if not selected or case['file'] == selected]
+        assert cases, 'No matching STEP fixtures'
+        check_cases(directory, cases, results)
+        report['passed'] = all(result['passed'] for result in results)
+    except Exception:
+        report['error'] = traceback.format_exc()
+    try:
+        if report_path is not None:
+            report_path.write_text(json.dumps(report, indent=2))
+    except Exception:
+        report['passed'] = False
+        report['error'] = traceback.format_exc()
+    finally:
+        if not report['passed']:
+            App.Console.PrintError(json.dumps(report, indent=2) + '\n')
+        App.Console.PrintMessage(f'FreeCAD STEP checks: {sum(r["passed"] for r in results)}/{len(results)} passed\n')
+        if os.environ.get('ALUFRAME_STEP_EXIT') == '1':
+            QtCore.QTimer.singleShot(500, lambda: os._exit(0 if report['passed'] else 1))
+
+
+QtCore.QTimer.singleShot(1000, validate)

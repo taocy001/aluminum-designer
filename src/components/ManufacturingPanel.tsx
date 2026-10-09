@@ -57,7 +57,7 @@ export default function ManufacturingPanel({ document, zh }: { document: Project
       <p className="my-2 text-slate-400">{zh ? '直切排版草案；排版坐标从原板左上角计量。锯缝和边距按输入值计算，不保证用料最少。' : 'Guillotine layout measured from the stock sheet’s upper-left corner, with the entered kerf and margins; not guaranteed optimal.'}</p>
       <button className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600" onClick={() => downloadText('panel-layout.csv', '\uFEFF' + panelLayoutCsv(result, options), 'text/csv;charset=utf-8;')}>{zh ? '导出板材排版 CSV' : 'Export panel layout CSV'}</button>
     </>}
-    <p className="my-2 text-slate-400">{zh ? `已有板材固定通孔 ${holeCount} 个。孔表包含成品及扣除封边后的毛坯坐标，均从板件局部左下角计量；不包含铰链、滑轨等尚未定义的加工孔。` : `${holeCount} defined panel mounting through-holes. Finished and blank coordinates start at each board’s local lower-left corner; undefined hinge and runner holes are excluded.`}</p>
+    <p className="my-2 text-slate-400">{zh ? `已定义板材固定及拉手通孔 ${holeCount} 个。孔表包含成品及扣除封边后的毛坯坐标，均从板件局部左下角计量；不包含铰链、滑轨等尚未定义的加工孔。` : `${holeCount} defined panel mounting and pull through-holes. Finished and blank coordinates start at each board’s local lower-left corner; undefined hinge and runner holes are excluded.`}</p>
     {edgeHoles.length > 0 && <p role="alert" className="my-2 text-amber-300">{zh ? '通孔超出扣除封边后的毛坯，请调整孔位或封边：' : 'Holes cross the blank edge; adjust mounting positions or edge bands: '}{edgeHoles.map(b => b.id).join(', ')}</p>}
     <button disabled={!holeCount} className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 disabled:opacity-40" onClick={() => downloadText('panel-holes.csv', '\uFEFF' + panelHolesCsv(boards), 'text/csv;charset=utf-8;')}>{zh ? '导出已有板孔 CSV' : 'Export defined panel holes CSV'}</button>
   </details>

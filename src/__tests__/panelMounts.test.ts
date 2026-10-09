@@ -34,6 +34,25 @@ function install(doc = fixture()) {
 }
 
 describe('shelf edge fastening', () => {
+  it.each(['2020', '3030', '4040'] as const)('through-bolts a top board to all four %s rails without moving it', (spec) => {
+    const size = Number(spec.slice(0, 2))
+    const profiles = [[0, 0, 600, 0], [0, 400, 600, 400], [0, 0, 0, 400], [600, 0, 600, 400]].map(([x, z, ex, ez]) =>
+      buildProfile(new THREE.Vector3(x, 350, z), new THREE.Vector3(ex, 350, ez), spec)!)
+    const board: PanelData = { id: 'board', width: 600 + size, height: 400 + size, thickness: 18,
+      position: [300, 350 + size / 2 + 9, 200], quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2], material: 'ply' }
+    const doc: ProjectGeometry = { profiles, panels: [board], connectors: [], fittings: [] }
+    const original = JSON.stringify(doc), mounted = install(doc), trims = computeAllTrims(profiles)
+    expect(mounted.result).toMatchObject({ blocked: 0, unsupported: 0, existing: 0 })
+    expect(mounted.connectors).toHaveLength(8)
+    expect(new Set(mounted.connectors.map(c => c.panelMount!.profileId)).size).toBe(4)
+    expect(mounted.connectors.every(c => c.panelMount!.mode === 'direct' && panelMountSupports(c, profiles, [board], trims))).toBe(true)
+    expect(findConflicts(profiles, trims, mounted.connectors, [board])).toEqual([])
+    expect(shelfEdges([board], profiles, trims, mounted.connectors).map(edge => ({ fixed: edge.fixed, carried: edge.carried }))).toEqual(Array(4).fill({ fixed: true, carried: true }))
+    expect(panelDrillCenters(board, mounted.connectors)).toHaveLength(8)
+    expect(attachPanels(mounted, ['board'], () => 'duplicate')).toMatchObject({ made: [], existing: 8 })
+    expect(JSON.stringify(doc)).toBe(original)
+  })
+
   it('recognises spread fasteners, but rejects missing, shifted, clustered or obstructed mounts', () => {
     const doc = install()
     const edges = (connectors = doc.connectors, profiles = doc.profiles) =>

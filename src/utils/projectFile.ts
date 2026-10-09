@@ -18,7 +18,7 @@ export function downloadText(filename: string, text: string, mime: string) {
 
 interface FileHandleLike {
   name: string
-  createWritable: () => Promise<{ write: (data: string) => Promise<void>; close: () => Promise<void> }>
+  createWritable: () => Promise<{ write: (data: string) => Promise<void>; close: () => Promise<void>; abort?: () => Promise<void> }>
   queryPermission?: (d: { mode: string }) => Promise<string>
   requestPermission?: (d: { mode: string }) => Promise<string>
 }
@@ -66,8 +66,14 @@ async function writable(h: FileHandleLike, text: string): Promise<void> {
     if (state !== 'granted') throw new Error('permission')
   }
   const w = await h.createWritable()
-  await w.write(text)
-  await w.close()
+  try {
+    await w.write(text)
+    await w.close()
+  } catch (error) {
+    // Release the temporary write and file lock without committing partial data.
+    try { await w.abort?.() } catch { /* The stream may already be closed. */ }
+    throw error
+  }
 }
 
 export type SaveOutcome = 'saved' | 'overwritten' | 'downloaded' | 'cancelled' | 'failed'

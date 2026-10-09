@@ -117,10 +117,12 @@ describe('editing validates every target after rounding', () => {
     expect(useStore.getState()).toBe(before)
   })
 
-  it('rounds a valid size, retains unchanged targets and skips locked targets', () => {
+  it('rejects a mixed locked batch, then rounds unlocked targets with one undo', () => {
     useStore.getState().addFittings([drawer('same', { width: 65.1 }), drawer('changed'), drawer('locked', { locked: true })])
     const before = useStore.getState()
-    expect(liveParts(['same', 'changed', 'locked'], { width: 65.06 }, true)).toBe(true)
+    expect(liveParts(['same', 'changed', 'locked'], { width: 65.06 }, true)).toBe(false)
+    expect(useStore.getState()).toBe(before)
+    expect(liveParts(['same', 'changed'], { width: 65.06 }, true)).toBe(true)
     expect(useStore.getState().fittings.map((f) => f.width)).toEqual([65.1, 65.1, 500])
     expect(useStore.getState().past).toHaveLength(before.past.length + 1)
     useStore.getState().undo()

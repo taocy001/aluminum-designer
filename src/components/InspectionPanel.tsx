@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
-import { useStore } from '../store/useStore'
+import { memo, useMemo, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { useSettledDocument } from '../store/useSettledDocument'
 import { useToolStore } from '../store/useToolStore'
 import { useViewStore } from '../store/useViewStore'
 import { useInspectionStore } from '../store/useInspectionStore'
@@ -17,12 +18,11 @@ const labels = {
     shelf: 'Board edge lacks confirmed support or fastening', swing: 'Door or drawer movement overlaps' },
 }
 
-export default function InspectionPanel() {
-  const doc = useStore(), { language, isDragging, resize, rotationGesture } = useToolStore(), zh = language === 'zh'
-  const transforming = isDragging || !!resize || !!rotationGesture
-  const checked = useRef(doc)
-  if (!transforming) checked.current = doc
-  const stable = checked.current
+function InspectionPanel() {
+  const doc = useSettledDocument()
+  const { language, transforming } = useToolStore(useShallow(s => ({ language: s.language, transforming: s.isDragging || !!s.resize || !!s.rotationGesture })))
+  const zh = language === 'zh'
+  const stable = doc
   const issues = useMemo(() => inspectDocument(stable),
     [stable.profiles, stable.connectors, stable.panels, stable.fittings, stable.equipment, stable.throughRule])
   const [filter, setFilter] = useState<InspectionIssue['kind'] | 'all'>('all')
@@ -51,8 +51,8 @@ export default function InspectionPanel() {
     <p className="text-slate-400">{transforming ? (zh ? '松开鼠标后更新检查。' : 'Checks update on release.')
       : (zh ? '点击问题定位；修改后更新，撤销后重新检查。' : 'Select an issue to locate it. Checks update after edits and undo.')}</p>
     {!issues.length && <p className="text-emerald-300">{zh ? '未发现上述几何问题。' : 'No issues found by these geometry checks.'}</p>}
-    {issues.filter(i => filter === 'all' || i.kind === filter).map(issue => <button type="button" key={issue.key} data-testid="inspection-issue" onClick={() => locate(issue)}
-      className="block w-full rounded border border-slate-700 bg-slate-900 p-2 text-left hover:border-cyan-500 focus-visible:outline-cyan-400">
+    {issues.filter(i => filter === 'all' || i.kind === filter).map(issue => <button type="button" key={issue.key} data-testid="inspection-issue" disabled={transforming} onClick={() => locate(issue)}
+      className="block w-full rounded border border-slate-700 bg-slate-900 p-2 text-left enabled:hover:border-cyan-500 disabled:opacity-60 focus-visible:outline-cyan-400">
       <span className="block text-amber-300">{labels[language][issue.kind]}</span>
       <span className="mt-1 block break-words text-slate-300">{issue.ids.map(number).join(' + ')}</span>
       {issue.detail && <span className="block text-slate-400">{issue.kind === 'connector'
@@ -63,3 +63,5 @@ export default function InspectionPanel() {
     <ManufacturingPanel document={stable} zh={zh} />
   </section>
 }
+
+export default memo(InspectionPanel)

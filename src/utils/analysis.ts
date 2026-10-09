@@ -8,7 +8,7 @@ import { getProfileDir } from './geometryCore'
 import { specDims } from './specUtils'
 import { makeOBB, obbPenetration, obbCorners, type OBB } from './obb'
 import { findSpecMismatches, type SpecMismatch } from './specCompat'
-import { fittingObb, fittingSolids } from './fittingGeometry'
+import { fittingObb, fittingBodies } from './fittingGeometry'
 import { findEquipmentConflicts, type EquipmentConflict } from './equipmentChecks'
 import { connectorHitsBody, connectorsCollide } from './connectorCollision'
 import { auditBrackets } from './bracketSeat'
@@ -158,7 +158,7 @@ export function createConflictFinder(
       let states = fittingGeometry.get(f.id)
       const old = states?.get(state)
       if (old?.snapshot === snapshot) return old.geometry
-      const geometry = fittingSolids(f).map(collisionGeometry)
+      const geometry = fittingBodies(f).map(collisionGeometry)
       if (fittingIds.has(f.id)) {
         if (!states) { states = new Map(); fittingGeometry.set(f.id, states) }
         // A search checks the current position and fully open position. Keep
@@ -195,10 +195,10 @@ function findConflictsWithGeometry(
   const parts = boxes.length
   for (const b of panels) { boxes.push(source?.panel(b) ?? collisionGeometry(panelOBB(b))); ids.push(b.id) }
   // A drawer or a door is judged by its boards — the box, the front, the leaf — where they
-  // are at its current opening, not by the block round its opening. See `fittingSolids`.
+  // are at its current opening, not by the block round its opening. See `fittingBodies`.
   const fittingStart = boxes.length, fittingOwners: number[] = []
   fittings.forEach((f, k) => {
-    for (const geometry of source?.fitting(f) ?? fittingSolids(f).map(collisionGeometry)) {
+    for (const geometry of source?.fitting(f) ?? fittingBodies(f).map(collisionGeometry)) {
       boxes.push(geometry); ids.push(f.id); fittingOwners.push(k)
     }
   })
@@ -357,7 +357,7 @@ export function analyzeFrame(
     ...profiles.map((p) => ({ id: p.id, obb: trimmedOBB(p, trims.get(p.id)!) })),
     ...connectors.map((c) => ({ id: c.id, obb: connectorOBB(c), connector: c })),
     ...panels.map((b) => ({ id: b.id, obb: panelOBB(b) })),
-    ...fittings.flatMap((f) => fittingSolids(f).map((obb) => ({ id: f.id, obb }))),
+    ...fittings.flatMap((f) => fittingBodies(f).map((obb) => ({ id: f.id, obb }))),
   ]) : []
   const equipmentConflictIds = new Set<string>()
   for (const c of equipmentConflicts) { equipmentConflictIds.add(c.a); equipmentConflictIds.add(c.b) }

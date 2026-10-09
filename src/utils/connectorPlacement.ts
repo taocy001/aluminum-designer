@@ -6,7 +6,7 @@ import { auditBrackets, connectorSeatAt, connectorSeatsAt, type BracketSeat } fr
 import { computeAllTrims, type ProfileTrims } from './jointUtils'
 import { panelOBB, trimmedOBB } from './analysis'
 import { equipmentClearance } from './equipmentGeometry'
-import { fittingSolids } from './fittingGeometry'
+import { fittingBodies } from './fittingGeometry'
 import { connectorHitsBody, connectorsCollide } from './connectorCollision'
 import { hardwareReference } from './connectorHardware'
 import { nonCornerMounted, nonCornerSupports } from './connectorMounting'
@@ -84,7 +84,7 @@ export function createConnectorPlacementValidator(profiles: ProfileData[], optio
   trims: Map<string, ProfileTrims> = computeAllTrims(profiles)) {
   const members = profiles.map((p) => trimmedOBB(p, trims.get(p.id)!))
   const equipment = (options.equipment ?? []).map(equipmentClearance)
-  const boards = [...(options.panels ?? []).map((p) => ({ body: panelOBB(p), id: p.id })), ...(options.fittings ?? []).flatMap((fitting) => fittingSolids(fitting).map((body) => ({ body, id: fitting.id })))]
+  const boards = [...(options.panels ?? []).map((p) => ({ body: panelOBB(p), id: p.id })), ...(options.fittings ?? []).flatMap((fitting) => fittingBodies(fitting).map((body) => ({ body, id: fitting.id })))]
   return (part: ConnectorData, connectors: ConnectorData[]): ConnectorPlacementStatus => {
     const others = connectors.filter((c) => c.id !== options.excludeConnectorId)
     if (others.some((c) => sameConnectorInstallation(part, c))) return { occupied: true, allowed: false, reason: 'occupied' }

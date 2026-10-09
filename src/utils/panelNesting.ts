@@ -4,6 +4,7 @@ import type { PanelMaterial } from '../store/useStore'
 import { fittingParts } from './fittingGeometry'
 import { fittingBoardNumber, partNumber } from './partNumbers'
 import { panelDrillCenters } from './panelDrilling'
+import { fittingHandleHoles } from './fittingHandle'
 
 export interface CutBoard {
   id: string
@@ -30,7 +31,8 @@ export function documentBoards(doc: ProjectDocument): CutBoard[] {
       thickness: p.thickness, material: p.material, fabrication: p.fabrication,
       holes: panelDrillCenters(p, doc.connectors).map(h => ({ x: h.x + p.width / 2, y: h.y + p.height / 2, diameter: h.diameter })) })),
     ...doc.fittings.flatMap(f => fittingParts(f).boards.map(b => ({ id: fittingBoardNumber(f.id, b.key), sourceId: f.id,
-      width: b.width, height: b.height, thickness: b.thickness, material: f.material, boardKey: b.key, fabrication: f.fabrication?.[b.key], holes: [] }))),
+      width: b.width, height: b.height, thickness: b.thickness, material: f.material, boardKey: b.key, fabrication: f.fabrication?.[b.key],
+      holes: fittingHandleHoles(f, b.key).map(h => ({ ...h, x: h.x + b.width / 2, y: h.y + b.height / 2 })) }))),
   ]
 }
 

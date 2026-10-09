@@ -1,0 +1,3 @@
+{$ALUFRAME_DOMAIN} {
+	reverse_proxy app:80
+}

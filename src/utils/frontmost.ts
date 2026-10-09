@@ -12,6 +12,22 @@ export function cutAway(v: THREE.Vector3): boolean {
 
 const raycaster = new THREE.Raycaster()
 
+/** Resolve ordinary meshes and instanced solids to the document part they display. */
+export function hitPartId(hit: Pick<THREE.Intersection, 'object' | 'instanceId'>): string | null {
+  if (hit.instanceId !== undefined) {
+    const id = hit.object.userData.partIds?.[hit.instanceId]
+    if (typeof id === 'string') return id
+  }
+  let object: THREE.Object3D | null = hit.object
+  while (object) {
+    const d = object.userData
+    const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId ?? d.equipmentId
+    if (id) return id
+    object = object.parent
+  }
+  return null
+}
+
 /**
  * The nearest visible part mesh, or null for empty space. Wide lines require a camera
  * for raycasting; sectioned-away intersections are excluded.
@@ -21,13 +37,8 @@ export function frontmostId(scene: THREE.Object3D, ray: THREE.Ray, camera: THREE
   raycaster.camera = camera
   for (const hit of raycaster.intersectObjects(scene.children, true)) {
     if (cutAway(hit.point)) continue
-    let o: THREE.Object3D | null = hit.object
-    while (o) {
-      const d = o.userData as Record<string, string | undefined>
-      const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId ?? d.equipmentId
-      if (id) return id
-      o = o.parent
-    }
+    const id = hitPartId(hit)
+    if (id) return id
   }
   return null
 }

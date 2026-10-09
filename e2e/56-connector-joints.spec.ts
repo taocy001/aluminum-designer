@@ -326,13 +326,18 @@ test('an installed inner bracket remains reachable at its slot-facing arm with m
   await settle(page)
   const installed = await store(page)
   const view = await page.evaluate(id => {
-    let group: any
-    ;(window as any).__aluframe.sceneRoot.traverse((object: any) => {
-      if (object.userData.connectorId === id) group = object
+    const w = (window as any).__aluframe, matrix = new w.THREE.Matrix4()
+    let found = false
+    w.sceneRoot.updateMatrixWorld(true)
+    w.sceneRoot.traverse((object: any) => {
+      const index = object.userData.partIds?.indexOf(id) ?? -1
+      if (found || !object.isInstancedMesh || index < 0) return
+      object.getMatrixAt(index, matrix)
+      matrix.premultiply(object.matrixWorld)
+      found = true
     })
-    if (!group) throw new Error('Installed connector is missing from the scene')
-    group.updateWorldMatrix(true, false)
-    const world = (x: number, y: number, z: number) => group.localToWorld(group.position.clone().set(x, y, z)).toArray()
+    if (!found) throw new Error('Installed connector is missing from the scene')
+    const world = (x: number, y: number, z: number) => new w.THREE.Vector3(x, y, z).applyMatrix4(matrix).toArray()
     return { target: world(18, 0, 0), camera: world(18, 160, 16), origin: world(0, 0, 0) }
   }, added.id)
   await page.getByTestId('labels-toggle').click()
@@ -354,7 +359,7 @@ test('an installed inner bracket remains reachable at its slot-facing arm with m
   const bodyColor = () => page.evaluate(id => {
     let color: string | null = null
     ;(window as any).__aluframe.sceneRoot.traverse((object: any) => {
-      if (object.userData.connectorId === id) color = object.children.find((child: any) => child.isMesh)?.material.color.getHexString() ?? null
+      if (object.isInstancedMesh && object.userData.partIds?.includes(id)) color = object.material.color.getHexString()
     })
     return color
   }, added.id)

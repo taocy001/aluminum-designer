@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { accessoryPlateDimensions } from './connectorAccessoryReferences'
 import { accessoryMeshes } from './connectorAccessoryGeometry'
 import { cylinderGeometry, ringGeometry, plateGeometry, type ConnectorMesh, type CollisionPart, type V3 } from './connectorSolidPrimitives'
 import type { ConnectorSeries } from './connectorCatalog'
@@ -42,18 +43,20 @@ export function panelMountMeshes(m: PanelMount, series: ConnectorSeries = 20): C
       cylinder(d.headRadius, d.headHeight, bearing + d.headHeight / 2, 0),
       cylinder(r, bolt, bearing - bolt / 2, 0, true)]
   }
-  const nutRadius = (series === 30 ? 10 : 8) / Math.sqrt(3)
+  const nutRadius = d.nutAcross / Math.sqrt(3)
   const hex: [number, number][] = Array.from({ length: 6 }, (_, i) => [nutRadius * Math.cos(i * Math.PI / 3), nutRadius * Math.sin(i * Math.PI / 3)])
   const nut = plateGeometry(hex, d.nut, [{ x: 0, y: 0, r }], far - d.washer - d.nut)
     .rotateY(Math.PI / 2).translate(0, 0, offset)
-  const bearing = 4 + d.washer
+  const plate = accessoryPlateDimensions('joining-plate', series).thickness
+  const bearing = plate + d.washer, railBearing = bearing + d.railSpacer
   return [
     ...profileNutMeshes(series, offset),
-    ring(d.washerRadius, d.washerBore / 2, d.washer, 4, -offset),
-    cylinder(d.headRadius, d.headHeight, bearing + d.headHeight / 2, -offset),
-    cylinder(r, d.railBolt, bearing - d.railBolt / 2, -offset),
+    ...(d.railSpacer > 0 ? [ring(d.washerRadius, d.clearance / 2, d.railSpacer, plate, -offset)] : []),
+    ring(d.washerRadius, d.washerBore / 2, d.washer, plate + d.railSpacer, -offset),
+    cylinder(d.headRadius, d.headHeight, railBearing + d.headHeight / 2, -offset),
+    cylinder(r, d.railBolt, railBearing - d.railBolt / 2, -offset),
     ...(m.spacer > 0 ? [ring(d.washerRadius, d.clearance / 2, m.spacer, -m.spacer, offset)] : []),
-    ring(d.washerRadius, d.washerBore / 2, d.washer, 4, offset),
+    ring(d.washerRadius, d.washerBore / 2, d.washer, plate, offset),
     cylinder(d.headRadius, d.headHeight, bearing + d.headHeight / 2, offset),
     cylinder(r, bolt, bearing - bolt / 2, offset, true),
     ring(d.washerRadius, d.washerBore / 2, d.washer, far - d.washer, offset),

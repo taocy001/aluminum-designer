@@ -4,6 +4,8 @@ import { useFrame } from '@react-three/fiber'
 import type { FittingData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { fittingHandle, fittingParts, openTransform, type Board } from '../utils/fittingGeometry'
+import { fittingHandleHoles } from '../utils/fittingHandle'
+import { panelShapeFromHoles } from '../utils/panelDrilling'
 
 const LOOK: Record<string, { color: string; opacity: number; metalness: number; roughness: number }> = {
   mdf: { color: '#d6bb96', opacity: 1, metalness: 0.02, roughness: 0.85 },
@@ -15,20 +17,23 @@ const LOOK: Record<string, { color: string; opacity: number; metalness: number; 
 /** how fast a drawer or a door catches up with where it has been asked to go (per second) */
 const EASE = 6
 
-const BoardView = React.memo(({ board, color, look, selected }: {
-  board: Board; color: string; look: typeof LOOK[string]; selected?: boolean
+const BoardView = React.memo(({ board, holes, color, look, selected }: {
+  board: Board; holes: ReturnType<typeof fittingHandleHoles>; color: string; look: typeof LOOK[string]; selected?: boolean
 }) => {
   const quaternion = useMemo(() => new THREE.Quaternion(...board.quaternion), [board.quaternion])
+  const geometry = useMemo(() => {
+    if (!holes.length) return new THREE.BoxGeometry(board.width, board.height, board.thickness)
+    return new THREE.ExtrudeGeometry(panelShapeFromHoles(board.width, board.height, holes), {
+      depth: board.thickness, bevelEnabled: false, curveSegments: 12,
+    }).translate(0, 0, -board.thickness / 2)
+  }, [board.width, board.height, board.thickness, holes])
   const edges = useMemo(() => {
-    const box = new THREE.BoxGeometry(board.width, board.height, board.thickness)
-    const outline = new THREE.EdgesGeometry(box)
-    box.dispose()
-    return outline
-  }, [board.width, board.height, board.thickness])
-  useEffect(() => () => edges.dispose(), [edges])
+    return new THREE.EdgesGeometry(geometry)
+  }, [geometry])
+  useEffect(() => () => { edges.dispose(); geometry.dispose() }, [edges, geometry])
   return <group position={board.position} quaternion={quaternion}>
     <mesh userData={{ fittingBoard: board.role }}>
-      <boxGeometry args={[board.width, board.height, board.thickness]} />
+      <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial color={color} transparent={look.opacity < 1} opacity={look.opacity}
         metalness={look.metalness} roughness={look.roughness} />
     </mesh>
@@ -45,8 +50,9 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
   const hovered = useToolStore((s) => !s.isDragging && s.hoverPartId === id)
   // Moving or selecting an assembly does not change its local boards or handles.
   const shape = useMemo(() => f, [f.kind, f.width, f.height, f.depth, f.frame, f.overlay,
-    f.hinge, f.hingeType, f.swing, f.meeting, f.stacked, f.drawer])
+    f.hinge, f.hingeType, f.swing, f.meeting, f.stacked, f.drawer, f.handle])
   const parts = useMemo(() => fittingParts(shape), [shape])
+  const holes = useMemo(() => parts.boards.map(b => fittingHandleHoles(shape, b.key)), [parts, shape])
   const handle = useMemo(() => fittingHandle(shape), [shape])
   const applied = useRef<{ shape: FittingData; open: number } | null>(null)
   const moving = useRef<THREE.Group>(null)
@@ -82,7 +88,7 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
       ))}
 
       <group ref={moving}>
-        {parts.boards.map(b => <BoardView key={b.key} board={b} color={color} look={look} selected={isSelected} />)}
+        {parts.boards.map((b, i) => <BoardView key={b.key} board={b} holes={holes[i]} color={color} look={look} selected={isSelected} />)}
         {/* The pull is mounted on the actual outer face and moves with that front. */}
         <group name="fitting-handle">
           {handle.mounts.map((mount, i) => (

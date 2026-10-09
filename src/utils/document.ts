@@ -11,7 +11,7 @@ import { validFittingFields, validFittingDimensions } from './fittingValidation'
 import { validOpeningRef, validFittingOpeningBinding, validPanelOpeningBinding, validRunnerBinding, validSupportBinding } from './openingBindings'
 import { normalizeEquipmentClearance, validEquipment } from './equipmentValidation'
 
-export const PROJECT_VERSION = 11
+export const PROJECT_VERSION = 12
 export interface ProjectGeometry {
   templateInstances?: TemplateInstance[]
   groups?: PartGroup[]
@@ -78,7 +78,7 @@ function readProjectDocument(input: unknown): ValidatedProjectDocument {
     const c = base(value, 'supportBinding')
     if (!optional(c.supportBinding, validSupportBinding)) fail('support binding')
     if (c.panelMount !== undefined && (!validPanelMount(c.panelMount) || c.type !== (c.panelMount.mode === 'direct' ? 't-nut' : 'joining-plate')
-      || ![20, 30].includes((c.series ?? 20) as number) || c.supportBinding !== undefined)) fail('panel mount')
+      || ![20, 30, 40].includes((c.series ?? 20) as number) || c.supportBinding !== undefined)) fail('panel mount')
     if (typeof c.type !== 'string' || !connectorTypes.has(c.type)
       || !optional(c.series, (v) => oneOf(v, [20, 30, 40]))
       || !optional(c.mountSeries, (v) => Array.isArray(v) && v.length === 2 && v.every((x) => oneOf(x, [20, 30, 40])))

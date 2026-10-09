@@ -135,6 +135,17 @@ export function buildBom(
   let totalBoardArea = 0
   const boards = panels.map((panel) => ({ panel, number: partNumber('panel', panel.id) }))
   for (const f of fittings) {
+    if (f.handle) {
+      const h = f.handle
+      const spec = `P${h.pitch} / H${h.projection} / ${h.thickness} / Ø${h.holeDiameter} mm`
+      const key = `pull-${spec}`
+      const row = connectorRows.get(key) ?? { kind: 'connector' as const, key,
+        label: language === 'zh' ? '拉手（用户尺寸，待选型号）' : 'Pull (user dimensions; select model)',
+        spec, qty: 0, partNumbers: [] }
+      row.qty++
+      row.partNumbers.push(`${partNumber('fitting', f.id)}.H`)
+      connectorRows.set(key, row)
+    }
     for (const b of fittingParts(f).boards) {
       boards.push({ number: fittingBoardNumber(f.id, b.key), panel: {
         id: `${f.id}-${b.key}`, width: b.width, height: b.height, thickness: b.thickness,

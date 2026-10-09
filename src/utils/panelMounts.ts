@@ -5,7 +5,7 @@ import { computeAllTrims, type ProfileTrims } from './jointUtils'
 import { seriesOf } from './connectorCatalog'
 import { slotOffsets } from './specUtils'
 import type { HardwareFastener } from './connectorHardware'
-import { accessoryNutDimensions } from './connectorAccessoryReferences'
+import { accessoryNutDimensions, accessoryPlateDimensions } from './connectorAccessoryReferences'
 import type { ConnectorSeries } from './connectorCatalog'
 import type { OBB } from './obb'
 
@@ -22,17 +22,19 @@ export function validPanelMount(value: unknown): value is PanelMount {
     && Number.isFinite(m.boardThickness) && m.boardThickness >= 6 && m.boardThickness <= 40
 }
 export function panelFastenerSizes(series: ConnectorSeries = 20) {
-  return series === 30 ? { thread: 'M6', diameter: 6, clearance: 6.6, washer: 1.6, washerBore: 6.4, washerRadius: 6,
-    headHeight: 6, headRadius: 5, nut: 5, engagement: 7, railBolt: 12 }
+  return series === 40 ? { thread: 'M8', diameter: 8, clearance: 9, washer: 1.6, washerBore: 8.4, washerRadius: 8,
+    headHeight: 8, headRadius: 6.5, nut: 6.5, engagement: 11, railBolt: 20, railSpacer: 1.4, nutAcross: 13 }
+    : series === 30 ? { thread: 'M6', diameter: 6, clearance: 6.6, washer: 1.6, washerBore: 6.4, washerRadius: 6,
+    headHeight: 6, headRadius: 5, nut: 5, engagement: 7, railBolt: 12, railSpacer: 0, nutAcross: 10 }
     : { thread: 'M5', diameter: 5, clearance: 5.5, washer: 1, washerBore: 5.3, washerRadius: 5,
-      headHeight: 5, headRadius: 4.25, nut: 4, engagement: 5, railBolt: 10 }
+      headHeight: 5, headRadius: 4.25, nut: 4, engagement: 5, railBolt: 10, railSpacer: 0, nutAcross: 8 }
 }
 export function panelBoltLength(m: PanelMount, series: ConnectorSeries = 20): number {
   const d = panelFastenerSizes(series)
   return Math.ceil((m.mode === 'direct' ? m.boardThickness + d.washer + d.engagement
-    : 4 + m.spacer + m.boardThickness + 2 * d.washer + d.nut + 2) / 5) * 5
+    : accessoryPlateDimensions('joining-plate', series).thickness + m.spacer + m.boardThickness + 2 * d.washer + d.nut + 2) / 5) * 5
 }
-/** Cut sleeve outside a directly mounted board makes a standard bolt engage the full T-nut without bottoming out. */
+/** Cut sleeve outside a directly mounted board makes a standard bolt reach through the nominal T-nut without bottoming out. */
 export function directStackExtra(m: PanelMount, series: ConnectorSeries = 20) {
   const d = panelFastenerSizes(series)
   return Math.round((panelBoltLength(m, series) - m.boardThickness - d.washer - d.engagement) * 1000) / 1000
@@ -45,11 +47,14 @@ export function panelMountFasteners(m: PanelMount, series: ConnectorSeries = 20)
   return [
     ...(!direct ? [
       { kind: 'bolt' as const, count: 1, thread: d.thread, length: d.railBolt, standard: 'DIN 912' },
-      { kind: 't-nut' as const, count: 1, thread: d.thread, descriptionZh: series === 30 ? 'B 型槽 8' : 'B 型槽 6', descriptionEn: series === 30 ? 'B-type slot 8' : 'B-type slot 6' },
+      { kind: 't-nut' as const, count: 1, thread: d.thread, descriptionZh: series === 40 ? 'I 型槽 8' : series === 30 ? 'B 型槽 8' : 'B 型槽 6', descriptionEn: series === 40 ? 'I-type slot 8' : series === 30 ? 'B-type slot 8' : 'B-type slot 6' },
     ] : []),
     { kind: 'bolt', count: 1, thread: d.thread, length: panelBoltLength(m, series), standard: 'DIN 912' },
     { kind: 'washer', count: washers, thread: d.thread, standard: 'ISO 7089', descriptionZh: `厚 ${d.washer} mm`, descriptionEn: `${d.washer} mm thick` },
     ...(!direct ? [{ kind: 'nut' as const, count: 1, thread: d.thread, standard: 'DIN 934' }] : []),
+    ...(!direct && d.railSpacer > 0 ? [{ kind: 'other' as const, count: 1, length: d.railSpacer,
+      descriptionZh: `轨侧定长垫套，外径 ${d.washerRadius * 2} / 内径 ${d.clearance} mm`,
+      descriptionEn: `Rail-side cut spacer, OD ${d.washerRadius * 2} / ID ${d.clearance} mm` }] : []),
     ...(sleeve > 0 ? [{ kind: 'other' as const, count: 1, length: sleeve,
       descriptionZh: `定长垫套，外径 ${d.washerRadius * 2} / 内径 ${d.clearance} mm`,
       descriptionEn: `Cut spacer, OD ${d.washerRadius * 2} / ID ${d.clearance} mm` }] : []),
@@ -77,7 +82,7 @@ export function panelMountBoardFits(c: ConnectorData, body: OBB): boolean {
 export function panelMountSupports(c: ConnectorData, profiles: ProfileData[], panels: PanelData[],
   trims: Map<string, ProfileTrims> = computeAllTrims(profiles)): string[] | null {
   const m = c.panelMount
-  if (!validPanelMount(m) || c.type !== (m.mode === 'direct' ? 't-nut' : 'joining-plate') || ![20, 30].includes(c.series ?? 20)) return null
+  if (!validPanelMount(m) || c.type !== (m.mode === 'direct' ? 't-nut' : 'joining-plate') || ![20, 30, 40].includes(c.series ?? 20)) return null
   const panel = panels.find((p) => p.id === m.panelId), profile = profiles.find((p) => p.id === m.profileId)
   if (!panel || !['ply', 'mdf'].includes(panel.material) || !profile || profile.spec === '3040' || seriesOf(profile.spec) !== (c.series ?? 20) || profile.miterCuts.length) return null
   const { normal, across, railHole } = panelMountFrame(c)
@@ -98,11 +103,13 @@ export function panelMountCandidates(panel: PanelData, profiles: ProfileData[],
   trims = computeAllTrims(profiles)): ConnectorData[] {
   if (panel.locked || !['ply', 'mdf'].includes(panel.material) || panel.thickness < 6 || panel.thickness > 40) return []
   const board = panelOBB(panel)
-  if (Math.abs(board.axes[2].y) < .999999) return directPanelCandidates(panel, profiles, trims)
-  const result: ConnectorData[] = []
+  const result = directPanelCandidates(panel, profiles, trims)
+  if (Math.abs(board.axes[2].y) < .999999) return result
+  const directlyMounted = new Set(result.map(c => c.panelMount!.profileId))
   for (const profile of profiles) {
+    if (directlyMounted.has(profile.id)) continue
     const series = seriesOf(profile.spec)
-    if (profile.spec === '3040' || ![20, 30].includes(series) || profile.miterCuts.length) continue
+    if (profile.spec === '3040' || ![20, 30, 40].includes(series) || profile.miterCuts.length) continue
     const body = trimmedOBB(profile, trims.get(profile.id)!)
     if (Math.abs(body.axes[2].y) > 1e-6) continue
     const faceAxis = [0, 1].find((i) => Math.abs(body.axes[i].y) > .999999)
@@ -137,7 +144,7 @@ function directPanelCandidates(panel: PanelData, profiles: ProfileData[], trims:
   const board = panelOBB(panel), result: ConnectorData[] = []
   for (const profile of profiles) {
     const series = seriesOf(profile.spec)
-    if (profile.spec === '3040' || ![20, 30].includes(series) || profile.miterCuts.length) continue
+    if (profile.spec === '3040' || ![20, 30, 40].includes(series) || profile.miterCuts.length) continue
     const body = trimmedOBB(profile, trims.get(profile.id)!)
     const faceAxis = [0, 1].find(i => Math.abs(body.axes[i].dot(board.axes[2])) > .999999)
     if (faceAxis === undefined) continue
@@ -154,8 +161,10 @@ function directPanelCandidates(panel: PanelData, profiles: ProfileData[], trims:
     const low = Math.max(-body.half.z + nut.length + 10, mid - extent + 15)
     const high = Math.min(body.half.z - nut.length - 10, mid + extent - 15)
     if (high - low < 40) continue
+    // Spread short-rail fixings across at least half the board where the usable slot permits it.
+    const inset = Math.min((high - low) / 5, Math.max(0, (high - low - extent) / 2))
     for (const slot of slotOffsets(body.half.getComponent(1 - faceAxis) * 2, series)) {
-      for (const distance of [low + (high - low) / 5, high - (high - low) / 5]) {
+      for (const distance of [low + inset, high - inset]) {
         const candidate: ConnectorData = { id: 'panel-mount-candidate', type: 't-nut', series,
           position: body.center.clone().addScaledVector(normal, body.half.getComponent(faceAxis))
             .addScaledVector(across, slot).addScaledVector(along, distance).toArray(), quaternion,

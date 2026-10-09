@@ -204,17 +204,20 @@ describe('movement treats explicitly selected assemblies together', () => {
 })
 
 describe('live input uses the same safe rules for every target', () => {
-  it('previews a batch once, skips locked parts and rejects illegal dimensions without history', () => {
+  it('rejects mixed locked batches and previews an explicit unlocked subset once', () => {
     const b = panel('b'), b2 = { ...panel('b2'), locked: true }, b3 = panel('b3')
     load({ panels: [b, b2, b3], fittings: [fitting()] }, ['b', 'b2', 'b3', 'f'])
     expect(liveParts(['b', 'b2', 'b3'], { width: 10 }, true)).toBe(false)
     expect(liveParts(['f'], { depth: Infinity }, true)).toBe(false)
     expect(liveParts(['f'], { width: 59 }, true)).toBe(false)
     expect(useStore.getState().past).toHaveLength(0)
-    expect(liveParts(['b', 'b2', 'b3'], { width: 620 }, true)).toBe(true)
+    const before = useStore.getState()
+    expect(liveParts(['b', 'b2', 'b3'], { width: 620 }, true)).toBe(false)
+    expect(useStore.getState()).toBe(before)
+    expect(liveParts(['b', 'b3'], { width: 620 }, true)).toBe(true)
     expect(useStore.getState().panels.map((part) => part.width)).toEqual([620, 560, 620])
-    expect(liveParts(['b', 'b2', 'b3'], { width: 650 })).toBe(true)
-    expect(liveParts(['b', 'b2', 'b3'], { width: 650 }, true)).toBe(false)
+    expect(liveParts(['b', 'b3'], { width: 650 })).toBe(true)
+    expect(liveParts(['b', 'b3'], { width: 650 }, true)).toBe(false)
     expect(useStore.getState().past).toHaveLength(1)
     useStore.getState().undo()
     expect(useStore.getState().panels.map((part) => part.width)).toEqual([560, 560, 560])

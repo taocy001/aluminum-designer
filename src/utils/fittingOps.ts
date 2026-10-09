@@ -11,6 +11,7 @@ import { connectedTo } from './editOps'
 import { makeOBB, obbCorners } from './obb'
 import { MIN_FITTING_OPENING as MIN_OPENING, validFitting } from './fittingValidation'
 import { DEFAULT_REINFORCEMENT } from './drawerLayout'
+import { frontBoard } from './fittingGeometry'
 
 /** Derive an opening from the selected frame members, insetting axes with enough clearance. */
 
@@ -375,21 +376,21 @@ export function updateDrawerConfig(ids: string[], patch: DrawerConfigPatch): boo
 }
 
 /** A side-hung single door needs room for two openings of at least 60 mm. */
-export function canSplitDoor(f: FittingData): boolean {
+function splitEligible(f: FittingData): boolean {
   return validFitting(f) && f.kind === 'door' && f.meeting === undefined
     && f.width >= MIN_OPENING * 2 && (f.hinge === undefined || f.hinge === 'left' || f.hinge === 'right')
 }
 
 /** Replace one opening with two half openings; keep its outside edges and front plane. */
 export function splitDoor(f: FittingData, ids?: readonly [string, string]): [FittingData, FittingData] | null {
-  if (!canSplitDoor(f)) return null
+  if (!splitEligible(f)) return null
   const children = ids ?? [nextId('f'), nextId('f')]
   const q = new THREE.Quaternion(...f.quaternion).normalize()
   const origin = new THREE.Vector3(...f.position)
   const make = (side: 'left' | 'right', index: 0 | 1): FittingData => {
     const position = new THREE.Vector3(side === 'left' ? -f.width / 4 : f.width / 4, 0, 0)
       .applyQuaternion(q).add(origin)
-    return {
+    const child: FittingData = {
       ...f, id: children[index], width: f.width / 2,
       position: [position.x, position.y, position.z], quaternion: [...f.quaternion],
       hinge: side, meeting: side === 'left' ? 'right' : 'left',
@@ -398,8 +399,21 @@ export function splitDoor(f: FittingData, ids?: readonly [string, string]): [Fit
         end: side === 'left' ? (f.openingBinding.start + f.openingBinding.end) / 2 : f.openingBinding.end,
       } } : {}),
     }
+    if (f.handle) {
+      const edgeDistance = frontBoard(f).width / 2 - (f.hinge === 'right' ? -f.handle.x : f.handle.x)
+      const x = frontBoard(child).width / 2 - edgeDistance
+      child.handle = { ...f.handle, x: side === 'left' ? x : -x }
+    }
+    return child
   }
-  return [make('left', 0), make('right', 1)]
+  const pair: [FittingData, FittingData] = [make('left', 0), make('right', 1)]
+  if (pair[0].handle && pair[0].handle.x < 0) return null
+  return pair.every(validFitting) ? pair : null
+}
+
+/** Splitting must preserve the measured pull's free-edge setback on both leaves. */
+export function canSplitDoor(f: FittingData): boolean {
+  return splitDoor(f, ['split-left', 'split-right']) !== null
 }
 
 /** Split the selected unlocked single doors as one undo step. Other selections stay put. */

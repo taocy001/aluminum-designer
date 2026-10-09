@@ -59,16 +59,25 @@ test.describe('Editing and focused controls', () => {
     expect((await store(page)).panels).toHaveLength(0)
   })
 
-  test('a locked first board does not disable editing the unlocked board in a mixed selection', async ({ page }) => {
+  test('mixed board locks disable edits until only the unlocked board is selected', async ({ page }) => {
     await boards(page)
     await page.evaluate(() => {
       const s = (window as any).__aluframe.store.getState()
       s.commitDocument({ panels: s.panels.map((b: any, i: number) => i ? { ...b, width: 600 } : { ...b, locked: true }) })
     })
     const width = page.getByTestId('panel-props').locator('input').first()
+    const material = page.getByTestId('panel-material')
+    const mixed = await store(page)
+    await expect(width).toBeDisabled()
+    await expect(material).toBeDisabled()
+    await expect(page.getByTestId('panel-locked-hint')).toContainText('先解锁')
+    expect(await store(page)).toEqual(mixed)
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['b']))
     await expect(width).toBeEnabled()
+    await expect(material).toBeEnabled()
     await expect(width).toHaveValue('600')
     const before = (await store(page)).past
+    expect(before).toBe(mixed.past)
     await width.fill('760')
     await width.press('Enter')
     await page.getByTestId('panel-material').selectOption('ply')
@@ -99,7 +108,7 @@ test.describe('Editing and focused controls', () => {
     await expect(page.getByTestId('lock-toggle')).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test('mixed fitting locks protect the locked door while keeping the other door editable', async ({ page }) => {
+  test('mixed fitting locks disable edits until only the unlocked door is selected', async ({ page }) => {
     await page.evaluate(() => {
       const s = (window as any).__aluframe.store.getState()
       s.loadDocument({ profiles: [], connectors: [], panels: [], fittings: ['a', 'b'].map((id, i) => ({
@@ -110,12 +119,27 @@ test.describe('Editing and focused controls', () => {
       s.selectItems(['a', 'b'])
     })
     const width = page.getByTestId('fitting-props').locator('input[type=number]').first()
+    const angle = page.getByTestId('fitting-angle-165')
+    const mixed = await store(page)
+    await expect(width).toBeDisabled()
+    await expect(angle).toBeDisabled()
+    await expect(page.getByTestId('fitting-locked-hint')).toContainText('先解锁')
+    expect(await store(page)).toEqual(mixed)
+    await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['b']))
     await expect(width).toBeEnabled()
+    await expect(angle).toBeEnabled()
     await expect(width).toHaveValue('600')
+    expect((await store(page)).past).toBe(mixed.past)
     await width.fill('760')
     await width.press('Enter')
-    await page.getByTestId('fitting-angle-165').click()
+    await angle.click()
     expect((await store(page)).fittings.map((f) => [f.width, f.swing])).toEqual([[500, 110], [760, 165]])
+    expect((await store(page)).past).toBe(mixed.past + 2)
+    await page.getByTestId('viewport').focus()
+    await page.keyboard.press('Control+z')
+    await page.keyboard.press('Control+z')
+    expect((await store(page)).fittings.map((f) => [f.width, f.swing])).toEqual([[500, 110], [600, 110]])
+    expect((await store(page)).past).toBe(mixed.past)
   })
 
   test('Space activates a focused specification button', async ({ page }) => {

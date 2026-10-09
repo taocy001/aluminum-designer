@@ -74,6 +74,18 @@ describe('native project opening outcomes', () => {
 })
 
 describe('saving a project', () => {
+  it.each(['write', 'close'])('aborts a failed %s without replacing the save target', async phase => {
+    const chosen = fileHandle('copy.json')
+    const write = vi.fn(), close = vi.fn(), abort = vi.fn()
+    ;(phase === 'write' ? write : close).mockRejectedValue(new Error('Disk full'))
+    chosen.createWritable.mockResolvedValue({ write, close, abort } as Awaited<ReturnType<typeof chosen.createWritable>>)
+    vi.stubGlobal('window', { showSaveFilePicker: async () => chosen })
+    expect(await saveProject('contents', 'copy.json', true)).toEqual({ outcome: 'failed' })
+    expect(abort).toHaveBeenCalledTimes(1)
+    if (phase === 'write') expect(close).not.toHaveBeenCalled()
+    expect(savedFileName()).toBe('original.json')
+  })
+
   it.each(['write', 'close'])('reports %s AbortError as a failure and preserves the original target', async phase => {
     const chosen = fileHandle('copy.json')
     const write = vi.fn(), close = vi.fn()

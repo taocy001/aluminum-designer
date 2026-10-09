@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { rotateSelected } from '../utils/editOps'
 import { useStore } from '../store/useStore'
 import { addTemplateInstance, updateTemplateInstance } from '../utils/templateInstances'
 import { parseProjectDocument, serializeProjectDocument } from '../utils/document'
@@ -176,6 +177,76 @@ describe('editable template instances', () => {
     expect(updateTemplateInstance(other.id, { ...other.parameters, w: 800 }).status).toBe('applied')
     expect(useStore.getState().connectors).toEqual(state.connectors)
     expect(useStore.getState().panels).toEqual(state.panels)
+  })
+
+  it('preserves the template origin after rigid rotation, translation, reopening and repeated resizing', () => {
+    const instance = add(), beforeMove = useStore.getState()
+    const rotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2)
+    const translation = new Vector3(1200, 40, -800)
+    expect(beforeMove.commitTransform({ profiles: beforeMove.profiles.map(p => ({ id: p.id, updates: {
+      position: new Vector3(...p.position).applyQuaternion(rotation).add(translation).toArray(),
+      quaternion: rotation.clone().multiply(new Quaternion(...p.quaternion)).toArray(),
+    } })) }).status).toBe('applied')
+    useStore.getState().loadDocument(parseProjectDocument(serializeProjectDocument(useStore.getState())))
+    const before = useStore.getState()
+    for (const w of [700, 900]) {
+      expect(updateTemplateInstance(instance.id, { ...instance.parameters, w }).status).toBe('applied')
+      const expected = templateById('cabinet')!.build({ ...instance.parameters, w })
+      useStore.getState().profiles.forEach((p, i) => {
+        expect(new Vector3(...p.position).distanceTo(new Vector3(...expected[i].position).applyQuaternion(rotation).add(translation))).toBeLessThan(1e-6)
+        expect(p.length).toBeCloseTo(expected[i].length)
+        expect(Math.abs(new Quaternion(...p.quaternion).dot(rotation.clone().multiply(new Quaternion(...expected[i].quaternion))))).toBeCloseTo(1)
+      })
+    }
+    useStore.getState().undo(); useStore.getState().undo()
+    expect(useStore.getState().profiles).toEqual(before.profiles)
+  })
+
+  it('accepts repeated rounded rotations from the actual selection command', () => {
+    const instance = add()
+    useStore.getState().selectItems(instance.profileIds)
+    for (const angle of [15, 37, -11, 23, -5]) expect(rotateSelected('y', angle)).toBe(true)
+    const moved = useStore.getState()
+    expect(moved.commitTransform({ profiles: moved.profiles.map(p => ({ id: p.id, updates: {
+      position: [p.position[0]+1000, p.position[1]+100, p.position[2]-300],
+    } })) }).status).toBe('applied')
+    useStore.getState().loadDocument(parseProjectDocument(serializeProjectDocument(useStore.getState())))
+    expect(updateTemplateInstance(instance.id, { ...instance.parameters, w: 750 }).status).toBe('applied')
+  })
+
+  it.each<Record<string, number>>([{ shelves: 1e9 }, {}, { w: 600, d: 400, h: 1800, shelves: 3, extra: 1 }])('rejects invalid saved parameter metadata before rebuilding', parameters => {
+    const instance = add('shelving')
+    useStore.getState().commitDocument({ templateInstances: [{ ...instance, parameters }] })
+    const before = useStore.getState()
+    expect(updateTemplateInstance(instance.id, defaults('shelving'))).toMatchObject({ status: 'blocked', reason: 'parameters' })
+    expect(useStore.getState()).toBe(before)
+  })
+
+  it('resizes a rotated frame with its attached board and fasteners', () => {
+    const instance = mountedPanel('top'), state = useStore.getState()
+    const q = new Quaternion().setFromAxisAngle(new Vector3(0,1,0), Math.PI / 2), t = new Vector3(1000,0,-500)
+    const move = (p: { id: string; position: [number,number,number]; quaternion: [number,number,number,number] }) => ({ id: p.id, updates: {
+      position: new Vector3(...p.position).applyQuaternion(q).add(t).toArray(),
+      quaternion: q.clone().multiply(new Quaternion(...p.quaternion)).toArray(),
+    } })
+    expect(state.commitTransform({ profiles: state.profiles.map(move), panels: state.panels.map(move), connectors: state.connectors.map(move) }).status).toBe('applied')
+    expect(updateTemplateInstance(instance.id, { ...instance.parameters, w: 800, d: 750 }).status).toBe('applied')
+    const after = useStore.getState(), validate = createConnectorPlacementValidator(after.profiles, after)
+    for (const mount of after.connectors) {
+      expect(panelMountSupports(mount, after.profiles, after.panels)).toEqual([mount.panelMount!.profileId])
+      expect(validate(mount, after.connectors.filter(c => c.id !== mount.id)).allowed).toBe(true)
+    }
+    expect(panelDrillCenters(after.panels[0], after.connectors)).toHaveLength(after.connectors.length)
+  })
+
+  it.each(['move', 'rotate', 'malformed'] as const)('rejects %s changes that cannot retain the template frame', kind => {
+    const instance = add(), state = useStore.getState(), p = state.profiles[0]
+    if (kind === 'malformed') state.commitDocument({ templateInstances: [{ ...instance, fingerprints: instance.fingerprints.map(() => 'invalid') }] })
+    else state.commitTransform({ profiles: [{ id: p.id, updates: kind === 'move' ? { position: [15, 16, 17] }
+      : { quaternion: [0, 0, 0, 1] } }] })
+    const before = useStore.getState()
+    expect(updateTemplateInstance(instance.id, { ...instance.parameters, w: 750 })).toMatchObject({ status: 'blocked', reason: 'modified' })
+    expect(useStore.getState()).toBe(before)
   })
 
   it('updates opening-bound panels and end-bound supports with the frame', () => {

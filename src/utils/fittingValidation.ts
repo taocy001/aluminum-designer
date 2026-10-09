@@ -2,6 +2,7 @@ import { validBoardFabrication, validFabricatedBoard } from './boardFabrication'
 import { fittingParts } from './fittingGeometry'
 import type { FittingData } from '../store/useStore'
 import { drawerLayout } from './drawerLayout'
+import { handleFitsFront, validHandleFields } from './fittingHandle'
 
 export const MIN_FITTING_OPENING = 60
 
@@ -31,6 +32,7 @@ export function validFittingFields(value: unknown): boolean {
   return finite(norm) && norm >= 1e-12
     && optional(value.fabrication, v => record(v) && Object.values(v).every(validBoardFabrication))
     && optional(value.locked, (v) => typeof v === 'boolean')
+    && optional(value.handle, validHandleFields)
     && oneOf(value.kind, ['door', 'drawer'])
     && [value.width, value.height, value.depth].every((v) => finite(v) && v > 0)
     && oneOf(value.material, ['mdf', 'ply', 'acrylic', 'alu'])
@@ -49,6 +51,7 @@ export function validFittingFields(value: unknown): boolean {
 /** Every accepted drawer includes its front, two sides, back, inner front and base. */
 export function validFittingDimensions(f: FittingData): boolean {
   if (![f.width, f.height, f.depth].every((v) => finite(v) && v >= MIN_FITTING_OPENING)) return false
+  if (!handleFitsFront(f)) return false
   if (f.fabrication) {
     const boards = fittingParts(f).boards
     if (Object.keys(f.fabrication).some(key => !['panel', 'front', 'side-left', 'side-right', 'back', 'inner-front', 'base', 'reinforcement-1', 'reinforcement-2', 'reinforcement-3', 'reinforcement-4'].includes(key))

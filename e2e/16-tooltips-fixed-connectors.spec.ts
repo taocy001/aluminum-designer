@@ -156,6 +156,8 @@ test.describe('A connector can be positioned independently', () => {
     expect(added).toMatchObject({ type: installed.type, series: installed.series,
       position: installed.position, quaternion: installed.quaternion })
 
+    // Added parts open Properties; keep the active connector while returning to Add.
+    await page.getByTestId('sidebar-tab-add').click()
     await page.getByTestId('auto-connect').click()
     await settle(page)
     expect((await store(page)).connectors).toEqual(filled.connectors)

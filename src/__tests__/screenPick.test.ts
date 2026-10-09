@@ -243,3 +243,25 @@ it('excludes connectors behind the camera or removed by the section plane', () =
   expect(pickCandidatesAtScreen(cursor, ray, view, size, [], [part])).toEqual([])
   expect(frontmostId(connectorScene([part]), ray, view)).toBeNull()
 })
+
+it('resolves instanced connector identity after movement and ignores clipped instances', () => {
+  const scene = new THREE.Scene()
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial(), 2)
+  mesh.userData.partIds = ['left', 'right']
+  mesh.setMatrixAt(0, new THREE.Matrix4().makeTranslation(0, 0, 0))
+  mesh.setMatrixAt(1, new THREE.Matrix4().makeTranslation(20, 0, 0))
+  scene.add(mesh)
+  scene.updateMatrixWorld(true)
+  const ray = new THREE.Ray(V(20, 0, 100), V(0, 0, -1))
+  expect(frontmostId(scene, ray, camera)).toBe('right')
+  useToolStore.setState({ section: { axis: 'x', at: 10, flip: false } })
+  expect(frontmostId(scene, ray, camera)).toBeNull()
+  useToolStore.setState({ section: null })
+  mesh.setMatrixAt(1, new THREE.Matrix4().makeTranslation(40, 0, 0))
+  mesh.computeBoundingSphere()
+  expect(frontmostId(scene, ray, camera)).toBeNull()
+  ray.origin.x = 40
+  expect(frontmostId(scene, ray, camera)).toBe('right')
+  mesh.geometry.dispose()
+  ;(mesh.material as THREE.Material).dispose()
+})

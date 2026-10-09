@@ -24,6 +24,7 @@ import { CONNECTOR_CATALOG, connectorEntry } from '../utils/connectorCatalog'
 import { buildBom, bomToCsv } from '../utils/bom'
 import { partNumber, fittingBoardNumber } from '../utils/partNumbers'
 import { fittingParts } from '../utils/fittingGeometry'
+import HandleEditor from './HandleEditor'
 import { analyzeFrame } from '../utils/analysis'
 import { selectedSolidTop } from '../utils/selectionBounds'
 import { equipmentBody } from '../utils/equipmentGeometry'
@@ -270,6 +271,7 @@ const Sidebar: React.FC = () => {
   const selectedConnector = connectors.find((c) => selectedIds.includes(c.id))
   /** Boards affected by a selection-wide edit. */
   const pickedPanels = panels.filter((b) => selectedIds.includes(b.id))
+  const panelTargetsLocked = pickedPanels.some(part => part.locked)
   const selectedPanel = pickedPanels.find((b) => !b.locked) ?? pickedPanels[0]
   // the member's far end, derived: the model keeps a start, a direction and a length
   const selectedEnd: [number, number, number] = selectedProfile
@@ -282,6 +284,7 @@ const Sidebar: React.FC = () => {
 
   const clashes = useMemo(() => swingClashes(fittings), [fittings])
   const pickedFittings = fittings.filter((f) => selectedIds.includes(f.id))
+  const fittingTargetsLocked = pickedFittings.some(part => part.locked)
   const selectedFitting = pickedFittings.find((f) => !f.locked) ?? pickedFittings[0]
   const selectedDrawerLayout = selectedFitting?.kind === 'drawer' ? drawerLayout(selectedFitting) : null
   const pickedPanelIds = () => pickedPanels.map((b) => b.id)
@@ -910,6 +913,7 @@ const Sidebar: React.FC = () => {
             {/* Fitting dimensions describe the clear opening. */}
             {selectedFitting && (
               <div className="space-y-2" data-testid="fitting-props">
+                {fittingTargetsLocked && <p className="text-xs text-amber-300" data-testid="fitting-locked-hint">{language === 'zh' ? '选中对象包含锁定零件；请先解锁再修改尺寸与结构。' : 'The selection includes locked parts. Unlock them before editing dimensions or construction.'}</p>}
                 {pickedFittings.length > 1 && (
                   <div className="text-xs text-sky-400 font-mono" data-testid="fitting-multi">{t.editingCount(pickedFittings.length)}</div>
                 )}
@@ -919,7 +923,7 @@ const Sidebar: React.FC = () => {
                     ? `${({ left: t.hingeLeft, right: t.hingeRight, top: t.hingeTop, bottom: t.hingeBottom })[selectedFitting.hinge ?? 'left']} · ${swingOf(selectedFitting)}°`
                     : ''}</span>
                 </div>
-                <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-3 gap-1">
+                <fieldset disabled={viewMode || fittingTargetsLocked} className="grid grid-cols-3 gap-1">
                   <NumField label="W" name={t.widthMm} value={selectedFitting.width} step={10} disabled={!!selectedFitting.openingBinding}
                     onLive={(v, history) => liveParts(pickedFittingIds(), { width: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { width: v })} />
@@ -930,9 +934,12 @@ const Sidebar: React.FC = () => {
                     onLive={(v, history) => liveParts(pickedFittingIds(), { depth: v }, history)}
                     onCommit={(v) => updateFittings(pickedFittingIds(), { depth: v })} />
                 </fieldset>
-                <OpeningBindingEditor key={selectedFitting.id} part={selectedFitting} kind="fitting" />
+                <fieldset disabled={viewMode || fittingTargetsLocked}>
+                  <OpeningBindingEditor key={selectedFitting.id} part={selectedFitting} kind="fitting" />
+                </fieldset>
+                {pickedFittings.length === 1 && <HandleEditor fitting={selectedFitting} zh={language === 'zh'} />}
                 {selectedDrawerLayout && (
-                  <fieldset disabled={viewMode || selectedFitting.locked} className="space-y-2 border-t border-white/5 pt-2" data-testid="drawer-config">
+                  <fieldset disabled={viewMode || fittingTargetsLocked} className="space-y-2 border-t border-white/5 pt-2" data-testid="drawer-config">
                     <p className="text-[11px] font-bold text-slate-400">{t.drawerConstruction}</p>
                     <div className="grid grid-cols-2 gap-2">
                       {([
@@ -983,7 +990,7 @@ const Sidebar: React.FC = () => {
                   </fieldset>
                 )}
                 {selectedFitting.kind === 'door' && (
-                  <fieldset disabled={viewMode || selectedFitting.locked} className="grid grid-cols-6 gap-1">
+                  <fieldset disabled={viewMode || fittingTargetsLocked} className="grid grid-cols-6 gap-1">
                     {HINGE_ANGLES.map((deg) => (
                       <button key={deg} data-testid={`fitting-angle-${deg}`} title={t.hintHingeAngle}
                         onClick={() => updateFittings(pickedFittingIds(), { swing: deg })}
@@ -995,7 +1002,7 @@ const Sidebar: React.FC = () => {
                 )}
                 {pickedFittings.some((f) => f.kind === 'door') && (
                   <button type="button" data-testid="split-double-door" title={t.hintSplitDoubleDoor}
-                    disabled={viewMode || !pickedFittings.some((f) => !f.locked && canSplitDoor(f))}
+                    disabled={viewMode || fittingTargetsLocked || !pickedFittings.some((f) => canSplitDoor(f))}
                     onClick={splitSelectedDoors}
                     className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-slate-700/50 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">
                     {t.splitDoubleDoor}
@@ -1013,7 +1020,8 @@ const Sidebar: React.FC = () => {
             )}
 
             {selectedPanel && (
-              <fieldset disabled={viewMode || selectedPanel.locked} className="space-y-2" data-testid="panel-props">
+              <fieldset disabled={viewMode || panelTargetsLocked} className="space-y-2" data-testid="panel-props">
+                {panelTargetsLocked && <p className="text-xs text-amber-300" data-testid="panel-locked-hint">{language === 'zh' ? '选中对象包含锁定零件；请先解锁再修改尺寸与结构。' : 'The selection includes locked parts. Unlock them before editing dimensions or construction.'}</p>}
                 {pickedPanels.length > 1 && (
                   <div className="text-xs text-orange-400 font-mono" data-testid="panel-multi">{t.editingCount(pickedPanels.length)}</div>
                 )}

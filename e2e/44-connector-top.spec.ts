@@ -29,16 +29,17 @@ test('selection work planes coincide with the real connector solids across serie
       const w = (window as any).__aluframe, v = new w.THREE.Vector3()
       let top = -Infinity, count = 0
       w.sceneRoot.updateMatrixWorld(true)
-      w.sceneRoot.traverse((group: any) => {
-        if (group.userData.connectorId !== id) return
-        group.traverse((mesh: any) => {
-          if (!mesh.isMesh) return
+      w.sceneRoot.traverse((mesh: any) => {
+          const instance = mesh.userData.partIds?.indexOf(id) ?? -1
+          if (!mesh.isInstancedMesh || instance < 0) return
+          const matrix = new w.THREE.Matrix4()
+          mesh.getMatrixAt(instance, matrix)
+          matrix.premultiply(mesh.matrixWorld)
           const vertices = mesh.geometry.getAttribute('position')
           for (let i = 0; i < vertices.count; i++) {
-            v.fromBufferAttribute(vertices, i).applyMatrix4(mesh.matrixWorld)
+            v.fromBufferAttribute(vertices, i).applyMatrix4(matrix)
             top = Math.max(top, v.y); count++
           }
-        })
       })
       return { top: Math.round(top * 1000) / 1000, count }
     }, id)
@@ -79,14 +80,15 @@ test('every connector keeps the same shared solid after another instance is remo
       w.sceneRoot.updateMatrixWorld(true)
       for (const connector of w.store.getState().connectors) {
         let actual = -Infinity
-        w.sceneRoot.traverse((group: any) => {
-          if (group.userData.connectorId !== connector.id) return
-          group.traverse((mesh: any) => {
-            if (!mesh.isMesh) return
+        w.sceneRoot.traverse((mesh: any) => {
+            const instance = mesh.userData.partIds?.indexOf(connector.id) ?? -1
+            if (!mesh.isInstancedMesh || instance < 0) return
+            const matrix = new w.THREE.Matrix4()
+            mesh.getMatrixAt(instance, matrix)
+            matrix.premultiply(mesh.matrixWorld)
             const vertices = mesh.geometry.getAttribute('position')
             for (let i = 0; i < vertices.count; i++) actual = Math.max(actual,
-              v.fromBufferAttribute(vertices, i).applyMatrix4(mesh.matrixWorld).y)
-          })
+              v.fromBufferAttribute(vertices, i).applyMatrix4(matrix).y)
         })
         results.push({ id: connector.id, actual: Math.round(actual * 1000) / 1000 })
       }
@@ -109,4 +111,51 @@ test('every connector keeps the same shared solid after another instance is remo
   await settle(page)
   expect(await measure()).toEqual(original)
   expect(problems).toEqual([])
+})
+
+test('connector instances keep identity through highlighting, hiding, deletion and undo', async ({ page }) => {
+  await openApp(page)
+  await page.evaluate(() => {
+    const w = (window as any).__aluframe
+    w.store.getState().loadDocument({ profiles: [], panels: [], fittings: [], throughRule: 'rails', connectors: [
+      { id: 'first', type: 'bracket', series: 20, position: [0, 80, 0], quaternion: [0, 0, 0, 1] },
+      { id: 'second', type: 'bracket', series: 20, position: [100, 80, 0], quaternion: [0, 0, 0, 1] },
+    ] })
+    w.tool.setState({ showDimensionLabels: false })
+  })
+  await setView(page, [160, 180, 240], [50, 80, 0])
+  const drawn = () => page.evaluate(() => {
+    const w = (window as any).__aluframe, parts: Record<string, { color: string; x: number }> = {}
+    w.sceneRoot.updateMatrixWorld(true)
+    w.sceneRoot.traverse((mesh: any) => {
+      if (!mesh.isInstancedMesh) return
+      mesh.userData.partIds.forEach((id: string, i: number) => {
+        const matrix = new w.THREE.Matrix4()
+        mesh.getMatrixAt(i, matrix)
+        matrix.premultiply(mesh.matrixWorld)
+        parts[id] = { color: mesh.material.color.getHexString(), x: matrix.elements[12] }
+      })
+    })
+    return parts
+  })
+  await expect.poll(drawn).toEqual({ first: { color: '94a3b8', x: 0 }, second: { color: '94a3b8', x: 100 } })
+  await page.evaluate(() => (window as any).__aluframe.tool.getState().setHoverPart('second'))
+  await expect.poll(async () => (await drawn()).second.color).toBe('fbbf24')
+  await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['second']))
+  await expect.poll(async () => (await drawn()).second.color).toBe('60a5fa')
+  await page.getByTestId('sidebar-tab-objects').click()
+  await page.locator('.object-actions button').nth(1).click()
+  await expect.poll(async () => Object.keys(await drawn())).toEqual(['first'])
+  await page.locator('.object-actions button').nth(3).click()
+  await expect.poll(async () => Object.keys(await drawn()).sort()).toEqual(['first', 'second'])
+  await page.getByTestId('object-row').filter({ hasText: 'C-second' }).getByRole('button').first().click()
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(async () => (await drawn()).second.x).not.toBe(100)
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => (await drawn()).second.x).toBe(100)
+  await page.keyboard.press('Delete')
+  await expect.poll(async () => Object.keys(await drawn())).toEqual(['first'])
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => Object.keys(await drawn()).sort()).toEqual(['first', 'second'])
 })

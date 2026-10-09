@@ -8,12 +8,12 @@ import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { pickCandidatesAtScreen } from '../utils/screenPick'
 import { connectorSeatAt, seatFor } from '../utils/bracketSeat'
-import { frontmostId, promoteFrontmost } from '../utils/frontmost'
+import { frontmostId, promoteFrontmost, hitPartId } from '../utils/frontmost'
 import { readout } from '../utils/measure'
 import SnapMarker from './SnapMarker'
 import EditAlignmentGuides from './EditAlignmentGuides'
 import { translations } from '../utils/translations'
-import { fittingObb, leafObb, fittingSolids } from '../utils/fittingGeometry'
+import { fittingObb, leafObb, fittingBodies } from '../utils/fittingGeometry'
 import { equipmentBody, equipmentClearance } from '../utils/equipmentGeometry'
 import { obbCorners } from '../utils/obb'
 import { cutAway } from '../utils/frontmost'
@@ -24,7 +24,7 @@ import { computeFrameBounds, getProfileDir, type ProfileTrims } from '../utils/j
 import { analyzeFrame, connectorOBB, panelOBB, type Conflict } from '../utils/analysis'
 import type { SpecMismatch } from '../utils/specCompat'
 import Profile from './Profile'
-import Connector from './Connector'
+import Connectors from './Connectors'
 import Panel from './Panel'
 import Fitting from './Fitting'
 import Equipment from './Equipment'
@@ -139,7 +139,7 @@ const CameraController: React.FC = () => {
     let bounds = computeFrameBounds(chosen(doc.profiles))
     const boxes = [
       ...chosen(doc.connectors).map(connectorOBB), ...chosen(doc.panels).map(panelOBB),
-      ...chosen(doc.fittings).flatMap((f) => fittingSolids(f)), ...chosen(doc.equipment).map(equipmentBody),
+      ...chosen(doc.fittings).flatMap((f) => fittingBodies(f)), ...chosen(doc.equipment).map(equipmentBody),
     ]
     for (const box of boxes) for (const point of obbCorners(box)) (bounds ??= new THREE.Box3()).expandByPoint(point)
     let target = new THREE.Vector3(0, 0, 0)
@@ -377,13 +377,8 @@ const DevHook: React.FC = () => {
       rc.setFromCamera(ndc, camera)
       for (const h of rc.intersectObjects(scene.children, true)) {
         if (cutAway(h.point)) continue
-        let o: THREE.Object3D | null = h.object
-        while (o) {
-          const d = o.userData as Record<string, string>
-          const id = d.profileId ?? d.panelId ?? d.connectorId ?? d.fittingId ?? d.equipmentId
-          if (id) return { id, dist: h.distance }
-          o = o.parent
-        }
+        const id = hitPartId(h)
+        if (id) return { id, dist: h.distance }
       }
       return null
     }
@@ -594,9 +589,7 @@ const Viewport: React.FC = () => {
         <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selectedIds.includes(p.id)} conflict={conflictIds.has(p.id)} />
       ))}
 
-      {showing(connectors, 'connectors').map((c) => (
-        <Connector key={c.id} {...c} isSelected={selectedIds.includes(c.id)} />
-      ))}
+      <Connectors parts={showing(connectors, 'connectors')} selectedIds={selectedIds} />
 
       {showing(panels, 'panels').map((b) => (
         <Panel key={b.id} {...b} isSelected={selectedIds.includes(b.id)} />
@@ -643,4 +636,4 @@ const Viewport: React.FC = () => {
   )
 }
 
-export default Viewport
+export default React.memo(Viewport)

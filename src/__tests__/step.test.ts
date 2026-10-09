@@ -272,6 +272,55 @@ describe('STEP export', () => {
     for (const p of profiles) expect(updated).toContain(`PRODUCT('${partNumber('profile', p.id)}','${partNumber('profile', p.id)}',`)
   })
 
+  it.each([['flat-plate', 20, 1], ['inside-corner', 30, 3]] as const)(
+    'keeps repeated %s solids independently named while sharing shells and placing each product', (type, series, solidCount) => {
+      const connectors: ConnectorData[] = [0, 1, 2].map(i => ({
+        id: `repeated-${i}`, type, series, position: [i * 120, 50 + i * 30, -25],
+        quaternion: new THREE.Quaternion().setFromEuler(new THREE.Euler(.23 * i, -.41 * i, .67 * i)).toArray(),
+      }))
+      const references = (body: string) => [...body.matchAll(/#(\d+)/g)].map(match => Number(match[1]))
+      const all = entities(buildStep({ profiles: [], connectors }))
+      const representations = [...all].filter(([, body]) => body.startsWith('FACETED_BREP_SHAPE_REPRESENTATION('))
+      const solidIds: number[] = [], shellsByPart: number[][] = [], placements: number[] = []
+      for (const [index, [rep, body]] of representations.entries()) {
+        const connector = connectors[index], label = partNumber('connector', connector.id)
+        expect(body).toContain(`'${label}'`)
+        const ids = references(body).filter(id => all.get(id)!.startsWith('FACETED_BREP('))
+        expect(ids).toHaveLength(solidCount)
+        solidIds.push(...ids)
+        const shells = ids.map((id, ordinal) => {
+          const solid = all.get(id)!
+          expect(solid).toMatch(new RegExp(`^FACETED_BREP\\('${label}-${ordinal + 1}',#\\d+\\)$`))
+          return references(solid)[0]
+        })
+        shellsByPart.push(shells)
+        expect(shells.every(shell => all.get(shell)!.startsWith('CLOSED_SHELL('))).toBe(true)
+        expect(shells.every(shell => references(all.get(shell)!).every(face => all.get(face)!.startsWith('FACE_SURFACE(')))).toBe(true)
+
+        // Follow this representation's assembly transform, rather than relying on export order.
+        const relation = [...all.values()].find(value => value.startsWith('(REPRESENTATION_RELATIONSHIP(')
+          && references(value)[0] === rep)!
+        const transform = all.get(references(relation)[2])!
+        const placement = references(transform)[1]
+        placements.push(placement)
+        const [point, z, x] = references(all.get(placement)!).map(id => {
+          const value = all.get(id)!.match(/\('',\(([^)]+)\)\)/)![1]
+          return new THREE.Vector3(...value.split(',').map(Number) as [number, number, number])
+        })
+        const quaternion = new THREE.Quaternion(...connector.quaternion)
+        expect(point.distanceTo(new THREE.Vector3(...connector.position))).toBeLessThan(1e-6)
+        expect(z.distanceTo(V(0, 0, 1).applyQuaternion(quaternion))).toBeLessThan(1e-10)
+        expect(x.distanceTo(V(1, 0, 0).applyQuaternion(quaternion))).toBeLessThan(1e-10)
+      }
+      expect(representations).toHaveLength(connectors.length)
+      expect(new Set(solidIds).size).toBe(connectors.length * solidCount)
+      expect(new Set(placements).size).toBe(connectors.length)
+      expect(shellsByPart[1]).toEqual(shellsByPart[0])
+      expect(shellsByPart[2]).toEqual(shellsByPart[0])
+      expect([...all.values()].filter(body => body.startsWith('CLOSED_SHELL('))).toHaveLength(solidCount)
+    },
+  )
+
   it('exports configured drawer boards and reinforcements at their closed physical positions', () => {
     const drawer: FittingData = { id: 'drawer-closed', kind: 'drawer', width: 600, height: 240, depth: 500,
       position: [400, 800, -200], quaternion: new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2).toArray(),

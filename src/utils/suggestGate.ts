@@ -11,7 +11,7 @@ import type { Joint } from './repairJoints'
 import { auditBrackets } from './bracketSeat'
 import { cachedHardwareSupports } from './connectorAuditCache'
 import { unsupportedProfileJoint } from './connectorSupport'
-import { fittingSolids } from './fittingGeometry'
+import { fittingBodies } from './fittingGeometry'
 import { lowestPointY, MIN_LENGTH } from './profileFactory'
 import { panelBox, shelfEdges, type ShelfEdge } from './shelfSupport'
 import { specDims } from './specUtils'
@@ -150,7 +150,7 @@ function documentBounds(doc: SuggestDoc): NeighbourBounds {
     profiles: doc.profiles.map((p) => memberBox(p)),
     connectors: doc.connectors.map((c) => new THREE.Vector3(...c.position)),
     panels: doc.panels.map(panelBox),
-    fittings: doc.fittings.map((f) => [...fittingSolids(f, 0), ...fittingSolids(f, 1)].map(obbBox)),
+    fittings: doc.fittings.map((f) => [...fittingBodies(f, 0), ...fittingBodies(f, 1)].map(obbBox)),
   }
   if (neighbourBoundsCache.size >= 8) neighbourBoundsCache.delete(neighbourBoundsCache.keys().next().value!)
   neighbourBoundsCache.set(key, bounds)

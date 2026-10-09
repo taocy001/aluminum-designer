@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { useSettledDocument } from '../store/useSettledDocument'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Eye, EyeOff, LocateFixed, Focus, RotateCcw, Search, Group, Pencil, Ungroup } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
@@ -9,9 +11,9 @@ import { createSelectedGroup, renameGroup, dissolveGroup } from '../utils/groupO
 import { cancelActiveTransformGesture } from '../utils/transformGesture'
 import { projectSession } from '../utils/projectSession'
 
-export default function ObjectList() {
-  const { profiles, connectors, panels, fittings, equipment, groups, selectedIds, selectItem, selectItems } = useStore()
-  const { language, viewMode, putDown, triggerCameraReset } = useToolStore()
+function ObjectList() {
+  const { profiles, connectors, panels, fittings, equipment, groups, selectedIds, selectItem, selectItems } = useSettledDocument()
+  const { language, viewMode, putDown, triggerCameraReset } = useToolStore(useShallow(s => ({ language: s.language, viewMode: s.viewMode, putDown: s.putDown, triggerCameraReset: s.triggerCameraReset })))
   const { hiddenIds, isolatedIds, hide, reveal, isolate, restoreAll } = useViewStore()
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState('all')
@@ -88,3 +90,5 @@ export default function ObjectList() {
     </div>
   </div>
 }
+
+export default memo(ObjectList)

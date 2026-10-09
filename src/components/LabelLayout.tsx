@@ -66,12 +66,27 @@ const LabelLayout: React.FC = () => {
     scene.traverseVisible((o) => {
       const m = o as THREE.Mesh
       if (!m.isMesh || m.userData.labelOccluder === false) return
-      const id = partOf(o)
-      if (!id) return
       const g = m.geometry
       if (!g.boundingSphere) g.computeBoundingSphere()
       if (!g.boundingBox) g.computeBoundingBox()
-      solids.push({ id, sphere: g.boundingSphere!.clone().applyMatrix4(m.matrixWorld), box: g.boundingBox!, toLocal: m.matrixWorld.clone().invert() })
+      const add = (id: string, matrix: THREE.Matrix4) => solids.push({
+        id, sphere: g.boundingSphere!.clone().applyMatrix4(matrix),
+        box: g.boundingBox!, toLocal: matrix.clone().invert(),
+      })
+      if ((m as THREE.InstancedMesh).isInstancedMesh) {
+        const instances = m as THREE.InstancedMesh
+        const matrix = new THREE.Matrix4()
+        for (let i = 0; i < instances.count; i++) {
+          const id = instances.userData.partIds?.[i]
+          if (!id) continue
+          instances.getMatrixAt(i, matrix)
+          matrix.premultiply(m.matrixWorld)
+          add(id, matrix)
+        }
+      } else {
+        const id = partOf(o)
+        if (id) add(id, m.matrixWorld)
+      }
     })
     const local = new THREE.Ray()
     const hitAt = new THREE.Vector3()

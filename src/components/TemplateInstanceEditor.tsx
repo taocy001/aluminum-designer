@@ -33,14 +33,15 @@ function InstanceForm({ instance, zh }: { instance: TemplateInstance; zh: boolea
     setError('')
   }}>
     <h3 className="text-xs font-semibold">{zh ? `${template.labelZh}参数` : `${template.labelEn} parameters`}</h3>
-    <p className="text-[11px] text-slate-400">{zh ? '尺寸更新会带动关联板材、支撑和板材固定件。成员数量变化、成员手动修改或锁定、未关联零件、固定件安装失效会阻止应用。' : 'Dimensions update bound boards, supports and panel fasteners. Changes to member count, edited or locked members, unbound parts and invalid fastener seats prevent regeneration.'}</p>
+    <p className="text-[11px] text-slate-400">{zh ? '整组移动或旋转后仍可改尺寸，关联板材、支撑和固定件随之更新。单根成员改动、锁定、数量变化或安装失效会阻止应用。' : 'Resize after moving or rotating the whole frame; bound boards, supports and fasteners follow. Changed or locked members, topology changes and invalid mounting prevent application.'}</p>
     <div className="grid grid-cols-2 gap-2">{template.params.map(param => <label className="text-xs" key={param.key}>
       {zh ? param.labelZh : param.labelEn}
-      <input type="number" disabled={viewMode} required min={param.min} max={param.max} step={['shelves', 'u'].includes(param.key) ? 1 : 'any'}
+      <input type="number" disabled={viewMode} readOnly={template.id === 'shelving' && param.key === 'shelves'} aria-describedby={template.id === 'shelving' && param.key === 'shelves' ? 'instance-shelves-help' : undefined} required min={param.min} max={param.max} step={['shelves', 'u'].includes(param.key) ? 1 : 'any'}
         data-testid={`instance-param-${param.key}`} value={Number.isFinite(values[param.key]) ? values[param.key] : ''}
         onChange={event => setValues(previous => ({ ...previous, [param.key]: event.target.valueAsNumber }))}
         className="w-full mt-1 rounded bg-slate-800 px-2 py-1" />
     </label>)}</div>
+    {template.id === 'shelving' && <p id="instance-shelves-help" className="text-[11px] text-slate-400">{zh ? '层数为只读；更改层数需要新建置物架实例。' : 'Shelf count is read-only. Create a new shelving instance to change it.'}</p>}
     {error && <p role="alert" className="text-xs text-amber-300">{error}</p>}
     <button type="submit" disabled={viewMode} data-testid="template-instance-apply" className="w-full rounded bg-blue-600 py-1.5 text-xs disabled:opacity-40">{zh ? '应用参数' : 'Apply parameters'}</button>
   </form>

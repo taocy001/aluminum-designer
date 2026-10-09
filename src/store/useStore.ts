@@ -106,6 +106,16 @@ export type Overlay = 'full' | 'half' | 'inset'
 
 export interface DrawerReinforcement { count: number; width: number; height: number }
 
+/** Measured pull dimensions, in mm; x/y are relative to the finished front centre. */
+export interface HandleConfig {
+  pitch: number
+  projection: number
+  thickness: number
+  holeDiameter: number
+  x: number
+  y: number
+}
+
 /** User-specified construction and runner dimensions in millimetres. */
 export interface DrawerConfig {
   sideClearance?: number
@@ -118,6 +128,7 @@ export interface DrawerConfig {
 }
 
 export interface FittingData {
+  handle?: HandleConfig
   /** Manufacturing settings keyed by the generated board key. */
   fabrication?: Record<string, BoardFabrication>
   openingBinding?: FittingOpeningBinding

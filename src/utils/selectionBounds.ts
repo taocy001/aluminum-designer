@@ -1,7 +1,7 @@
 import type { ProjectGeometry } from './document'
 import { panelOBB, trimmedOBB } from './analysis'
 import { connectorSolidTop } from './connectorGeometry'
-import { fittingSolids } from './fittingGeometry'
+import { fittingBodies } from './fittingGeometry'
 import { createTrimResolver, type ProfileTrims } from './jointUtils'
 import type { OBB } from './obb'
 import { equipmentBody } from './equipmentGeometry'
@@ -22,7 +22,7 @@ export function selectedSolidTop(document: ProjectGeometry, selectedIds: readonl
   }
   for (const part of document.connectors) if (ids.has(part.id)) top = Math.max(top, connectorSolidTop(part))
   for (const part of document.panels) if (ids.has(part.id)) consider(panelOBB(part))
-  for (const part of document.fittings) if (ids.has(part.id)) for (const solid of fittingSolids(part)) consider(solid)
+  for (const part of document.fittings) if (ids.has(part.id)) for (const solid of fittingBodies(part)) consider(solid)
   for (const part of document.equipment ?? []) if (ids.has(part.id)) consider(equipmentBody(part))
   return Number.isFinite(top) ? Math.round(top * 1000) / 1000 : null
 }

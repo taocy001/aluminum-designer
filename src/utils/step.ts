@@ -1,4 +1,4 @@
-import { panelShape } from './panelDrilling'
+import { panelShape, panelShapeFromHoles } from './panelDrilling'
 import * as THREE from 'three'
 import type { ConnectorData, FittingData, PanelData, ProfileData } from '../store/useStore'
 import { connectorScale } from './connectorCatalog'
@@ -6,7 +6,9 @@ import { connectorMeshes } from './connectorGeometry'
 import { getProfileShape } from './profileShapes'
 import { computeAllTrims, type ProfileTrims, type ThroughRule } from './jointUtils'
 import { getProfileDir } from './geometryCore'
-import { fittingParts } from './fittingGeometry'
+import { fittingHandle, fittingParts } from './fittingGeometry'
+import { fittingHandleHoles } from './fittingHandle'
+import { planarMeshFaces } from './stepFacets'
 import { fittingBoardNumber, partNumber } from './partNumbers'
 
 /**
@@ -168,12 +170,11 @@ function slab(w: number, h: number): THREE.Vector2[] {
   ]
 }
 
-/** Export a display body as a closed, faceted BREP. Weld face-normal seams before creating polygon loops. */
-function meshSolids(s: Step, geometry: THREE.BufferGeometry, label: string, transform: THREE.Matrix4): number[] {
+/** Export closed faceted shells. Weld face-normal seams before creating polygon loops. */
+function meshShells(s: Step, geometry: THREE.BufferGeometry, transform: THREE.Matrix4): number[] {
   const positions = geometry.getAttribute('position')
   const indices = geometry.getIndex()
   const points: THREE.Vector3[] = []
-  const vertices: number[] = []
   const byPosition = new Map<string, number>()
   const pointIndex = (source: number) => {
     const point = new THREE.Vector3().fromBufferAttribute(positions, source).applyMatrix4(transform)
@@ -185,46 +186,29 @@ function meshSolids(s: Step, geometry: THREE.BufferGeometry, label: string, tran
       // Build planes and edges from the same coordinates written to STEP.
       point.set(...key.split(',').map(Number) as [number, number, number])
       points.push(point)
-      vertices.push(s.point(point))
     }
     return index
   }
-  const faces: number[] = []
-  const parents: number[] = []
-  const edgeFaces = new Map<string, number>()
-  const root = (i: number): number => parents[i] === i ? i : (parents[i] = root(parents[i]))
+  const triangles: number[][] = []
   for (let i = 0; i < (indices?.count ?? positions.count); i += 3) {
-    const triangle = [0, 1, 2].map((offset) => pointIndex(indices ? indices.getX(i + offset) : i + offset))
+    const triangle = [0, 1, 2].map(offset => pointIndex(indices ? indices.getX(i + offset) : i + offset))
     if (new Set(triangle).size < 3) continue
-    const [a, b, c] = triangle.map((index) => points[index])
-    const along = b.clone().sub(a).normalize()
-    const normal = along.clone().cross(c.clone().sub(a)).normalize()
-    if (normal.lengthSq() < 1e-12) continue
-    const loop = s.addUnique(`POLY_LOOP('',(${triangle.map(index => `#${vertices[index]}`).join(',')}))`)
-    const bound = s.addUnique(`FACE_OUTER_BOUND('',#${loop},.T.)`)
-    const plane = s.addUnique(`PLANE('',#${s.placement(a, normal, along)})`)
-    const faceIndex = faces.length
-    parents.push(faceIndex)
-    for (let j = 0; j < 3; j++) {
-      const a = triangle[j], b = triangle[(j + 1) % 3]
-      const edge = a < b ? `${a}/${b}` : `${b}/${a}`
-      const neighbor = edgeFaces.get(edge)
-      if (neighbor !== undefined) parents[root(faceIndex)] = root(neighbor)
-      else edgeFaces.set(edge, faceIndex)
-    }
-    faces.push(s.addUnique(`FACE_SURFACE('',(#${bound}),#${plane},.T.)`))
+    const [a, b, c] = triangle.map(index => points[index])
+    if (b.clone().sub(a).cross(c.clone().sub(a)).lengthSq() < 1e-20) continue
+    triangles.push(triangle)
   }
-  // A display mesh can batch separate solids, such as the caster's bearing balls.
-  // Each connected shell must be a separate BREP within the same assembly part.
-  const shells = new Map<number, number[]>()
-  faces.forEach((face, i) => {
-    const key = root(i), group = shells.get(key) ?? []
-    group.push(face)
-    shells.set(key, group)
-  })
-  return [...shells.values()].map(group => {
-    const shell = s.addUnique(`CLOSED_SHELL('',(${group.map(face => `#${face}`).join(',')}))`)
-    return s.addUnique(`FACETED_BREP('${str(label)}',#${shell})`)
+  return planarMeshFaces(points, triangles).map(group => {
+    const faces = group.map(({ rings, normal }) => {
+      const a = points[rings[0][0]], b = points[rings[0][1]]
+      const along = b.clone().sub(a).normalize()
+      const bounds = rings.map((ring, index) => {
+        const loop = s.addUnique(`POLY_LOOP('',(${ring.map(v => `#${s.point(points[v])}`).join(',')}))`)
+        return s.addUnique(`${index === 0 ? 'FACE_OUTER_BOUND' : 'FACE_BOUND'}('',#${loop},.T.)`)
+      })
+      const plane = s.addUnique(`PLANE('',#${s.placement(a, normal, along)})`)
+      return s.addUnique(`FACE_SURFACE('',(${bounds.map(id => `#${id}`).join(',')}),#${plane},.T.)`)
+    })
+    return s.addUnique(`CLOSED_SHELL('',(${faces.map(face => `#${face}`).join(',')}))`)
   })
 }
 
@@ -260,15 +244,15 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
   const asmRep = s.addUnique(`SHAPE_REPRESENTATION('${str(name)}',(#${asmOrigin}),#${ctx})`)
   const asm = product(name, asmRep)
 
-  // World-space geometry uses an identity assembly placement.
-  const part = (label: string, description: string, solid: number | number[], faceted = false) => {
+  // World-space parts use identity placement; repeated connector bodies share local geometry.
+  const part = (label: string, description: string, solid: number | number[], faceted = false, placement = asmOrigin) => {
     const own = origin()
     const bodies = (Array.isArray(solid) ? solid : [solid]).map((body) => `#${body}`).join(',')
     const rep = s.addUnique(`${faceted ? 'FACETED_BREP' : 'ADVANCED_BREP'}_SHAPE_REPRESENTATION('${str(label)}',(${bodies},#${own}),#${ctx})`)
     const pd = product(label, rep, description)
     const nauo = s.addUnique(`NEXT_ASSEMBLY_USAGE_OCCURRENCE('${str(label)}','${str(label)}','${str(description)}',#${asm},#${pd},$)`)
     const pds = s.addUnique(`PRODUCT_DEFINITION_SHAPE('','',#${nauo})`)
-    const idt = s.addUnique(`ITEM_DEFINED_TRANSFORMATION('','',#${own},#${asmOrigin})`)
+    const idt = s.addUnique(`ITEM_DEFINED_TRANSFORMATION('','',#${own},#${placement})`)
     const rel = s.addUnique(`(REPRESENTATION_RELATIONSHIP('','',#${rep},#${asmRep})REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION(#${idt})SHAPE_REPRESENTATION_RELATIONSHIP())`)
     s.addUnique(`CONTEXT_DEPENDENT_SHAPE_REPRESENTATION(#${rel},#${pds})`)
   }
@@ -309,12 +293,27 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
       const centre = new THREE.Vector3(...board.position).applyQuaternion(world).add(at)
       const back = centre.addScaledVector(z, -board.thickness / 2)
       const label = fittingBoardNumber(f.id, board.key)
+      const section = panelShapeFromHoles(board.width, board.height, fittingHandleHoles(f, board.key)).extractPoints(12)
       part(label, `${f.kind}/${board.role} ${mm(board.width)}x${mm(board.height)}x${mm(board.thickness)}`,
-        prism(s, slab(board.width, board.height), label, back, z, x, board.thickness))
+        prism(s, section.shape, label, back, z, x, board.thickness, section.holes))
+    }
+    if (f.handle) {
+      const handle = fittingHandle(f), { z, x } = frameFor(world)
+      const label = `${partNumber('fitting', f.id)}.H`
+      const bodies = [handle.grip, ...handle.mounts].map((b, i) => {
+        const back = new THREE.Vector3(...b.position).applyQuaternion(world).add(at).addScaledVector(z, -b.size[2] / 2)
+        return prism(s, slab(b.size[0], b.size[1]), `${label}-${i + 1}`, back, z, x, b.size[2])
+      })
+      part(label, `User-sized pull P${mm(f.handle.pitch)} H${mm(f.handle.projection)}`, bodies)
     }
   }
 
-  // Keep each connector as one assembly part containing its modeled bodies.
+  // Share connector shells, while keeping each product's solid identity and name independent.
+  const bodyKey = (c: ConnectorData) => JSON.stringify([c.type, c.series ?? 20, c.profileSpec,
+    c.mountSeries, c.panelMount && [c.panelMount.mode, c.panelMount.spacer, c.panelMount.boardThickness]])
+  const counts = new Map<string, number>()
+  for (const c of connectors) { const key = bodyKey(c); counts.set(key, (counts.get(key) ?? 0) + 1) }
+  const reusableShells = new Map<string, number[]>()
   for (const c of connectors) {
     const series = c.series ?? 20
     const k = connectorScale(series)
@@ -322,10 +321,18 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const at = new THREE.Vector3(...c.position)
     const label = partNumber('connector', c.id)
     const description = `${c.type} ${series}${c.profileSpec ? ` ${c.profileSpec}` : ''}`
-    const transform = new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
-    const bodies = connectorMeshes(c.type, series, c.profileSpec, c.mountSeries, c.panelMount).filter((mesh) => !mesh.visualOnly)
-      .flatMap(({ geometry }, index) => meshSolids(s, geometry, `${label}-${index + 1}`, transform))
-    part(label, description, bodies, true)
+    const key = bodyKey(c), shared = counts.get(key)! > 1
+    let shells = reusableShells.get(key)
+    if (!shells) {
+      const transform = shared ? new THREE.Matrix4().makeScale(k, k, k)
+        : new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
+      shells = connectorMeshes(c.type, series, c.profileSpec, c.mountSeries, c.panelMount).filter(mesh => !mesh.visualOnly)
+        .flatMap(({ geometry }) => meshShells(s, geometry, transform))
+      if (shared) reusableShells.set(key, shells)
+    }
+    const bodies = shells.map((shell, index) => s.addUnique(`FACETED_BREP('${str(label)}-${index + 1}',#${shell})`))
+    const { z, x } = frameFor(quat)
+    part(label, description, bodies, true, shared ? s.placement(at, z, x) : asmOrigin)
   }
 
   const stamp = new Date().toISOString().replace(/\.\d+Z$/, '')

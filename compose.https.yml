@@ -1,0 +1,20 @@
+services:
+  https:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      ALUFRAME_DOMAIN: ${ALUFRAME_DOMAIN:?Set ALUFRAME_DOMAIN to the hostname used by clients}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

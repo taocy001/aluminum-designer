@@ -2,7 +2,7 @@ import type { ConnectorData, ProfileData, PanelData, FittingData, EquipmentData 
 import { computeAllTrims } from './jointUtils'
 import { panelOBB, trimmedOBB } from './analysis'
 import { equipmentClearance } from './equipmentGeometry'
-import { fittingSolids } from './fittingGeometry'
+import { fittingBodies } from './fittingGeometry'
 import { connectorHitsBody, connectorsCollide } from './connectorCollision'
 import { connectorOBB } from './analysis'
 
@@ -14,7 +14,7 @@ export function placementObstacles(part: ConnectorData, doc: {
   const solids = [
     ...doc.profiles.map(p => ({ id: p.id, body: trimmedOBB(p, trims.get(p.id)!), profile: true })),
     ...doc.panels.map(p => ({ id: p.id, body: panelOBB(p), profile: false })),
-    ...doc.fittings.flatMap(p => fittingSolids(p).map(body => ({ id: p.id, body, profile: false }))),
+    ...doc.fittings.flatMap(p => fittingBodies(p).map(body => ({ id: p.id, body, profile: false }))),
     ...doc.equipment.map(p => ({ id: p.id, body: equipmentClearance(p), profile: false })),
   ]
   return [

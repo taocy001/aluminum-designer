@@ -23,6 +23,7 @@ try:
     from OCP.TDF import TDF_LabelSequence
 except ImportError:  # OCCT 8 uses the generated collection name.
     from OCP.collections import Sequence_TDF_Label as TDF_LabelSequence
+from OCP.TDF import TDF_Label
 from OCP.TDocStd import TDocStd_Document
 from OCP.TopAbs import TopAbs_SOLID
 from OCP.TopExp import TopExp_Explorer
@@ -84,6 +85,21 @@ for case in cases:
         components = TDF_LabelSequence()
         shapes.GetComponents_s(root, components)
         assert components.Length() == case['products'], f"Changed part count: {components.Length()}"
+        if 'components' in case:
+            expected_parts = {part['name']: part for part in case['components']}
+            for index in range(1, components.Length() + 1):
+                component = components.Value(index)
+                referred = TDF_Label()
+                assert shapes.GetReferredShape_s(component, referred), 'Missing component definition'
+                part_name = TDataStd_Name()
+                assert referred.FindAttribute(TDataStd_Name.GetID_s(), part_name), 'Missing part name'
+                name = part_name.Get().ToExtString()
+                assert name in expected_parts, f'Unexpected or duplicate part: {name}'
+                expected = expected_parts.pop(name)
+                _, part_volume, part_bounds = metrics(shapes.GetShape_s(component))
+                assert math.isclose(part_volume, expected['volume'], rel_tol=1e-6), f'Changed part volume: {name}'
+                assert max(abs(a - b) for a, b in zip(part_bounds, expected['bounds'])) < 1e-4, f'Changed part placement: {name}'
+            assert not expected_parts, 'Missing parts'
         shape = shapes.GetShape_s(root)
         del reader
         print(f"VALIDATE {case['file']}", flush=True)

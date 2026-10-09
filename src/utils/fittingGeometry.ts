@@ -80,7 +80,7 @@ export function overlayMm(overlay: Overlay | undefined): number {
  * meeting edge or a stacked drawer's shared edge stops half a gap short of its opening,
  * leaving 3 mm between the adjacent fronts. Unequal edge allowances shift the board centre.
  */
-function frontBoard(f: FittingData): Board {
+export function frontBoard(f: FittingData): Board {
   const inset = f.overlay === 'inset'
   const lap = inset ? -FRONT_GAP : overlayMm(f.overlay) - FRONT_GAP
   const meet = -FRONT_GAP / 2
@@ -110,16 +110,17 @@ export function fittingHandle(f: FittingData): { grip: HandleBlock; mounts: Hand
   const front = frontBoard(f)
   const side = f.hinge ?? 'left'
   const horizontal = f.kind === 'drawer' || side === 'top' || side === 'bottom'
-  const thickness = 14
-  const clearance = 18
+  const thickness = f.handle?.thickness ?? 14
+  const clearance = f.handle ? f.handle.projection - thickness : 18
   const span = horizontal ? front.width : front.height
-  const length = Math.min(160, Math.max(thickness, span * (f.kind === 'drawer' ? 0.5 : 0.4)))
+  const length = f.handle ? f.handle.pitch + thickness : Math.min(160, Math.max(thickness, span * (f.kind === 'drawer' ? 0.5 : 0.4)))
   let [x, y] = front.position
   if (f.kind === 'door') {
     // Put the pull opposite the hinge, with an inset that also fits a small front.
     if (horizontal) y += (side === 'top' ? -1 : 1) * Math.max(0, front.height / 2 - 40)
     else x += (side === 'left' ? 1 : -1) * Math.max(0, front.width / 2 - 40)
   }
+  if (f.handle) { x = front.position[0] + f.handle.x; y = front.position[1] + f.handle.y }
   const surface = front.position[2] + front.thickness / 2
   const grip: HandleBlock = {
     position: [x, y, surface + clearance + thickness / 2],
@@ -250,6 +251,17 @@ export function fittingSolids(f: FittingData, open: number = f.open ?? 0): OBB[]
   return fittingParts(f).boards.map((b) => boardObb(f, b, at))
 }
 
+/** Collision bodies include configured pulls; legacy decorative pulls have no measured envelope. */
+export function fittingBodies(f: FittingData, open: number = f.open ?? 0): OBB[] {
+  const boards = fittingSolids(f, open)
+  if (!f.handle) return boards
+  const at = openTransform({ ...f, open }), handle = fittingHandle(f)
+  return [...boards, ...[handle.grip, ...handle.mounts].map(b => boardObb(f, {
+    key: 'handle', role: 'front', width: b.size[0], height: b.size[1], thickness: b.size[2],
+    position: b.position, quaternion: Q_FLAT,
+  }, at))]
+}
+
 /** Sample door swings to find leaf intersections; shared edges without penetration are allowed. */
 export function swingClashes(fittings: FittingData[]): Array<[string, string]> {
   const doors = fittings.filter((f) => f.kind === 'door')
@@ -260,9 +272,9 @@ export function swingClashes(fittings: FittingData[]): Array<[string, string]> {
   // not a continuous collision certificate for every independent pair of hinge angles.
   const samples = doors.map((door) => {
     const count = Math.max(24, Math.ceil(swingOf(door)))
-    const leaves = Array.from({ length: count + 1 }, (_, i) => leafObb(door, i / count)!)
+    const leaves = Array.from({ length: count + 1 }, (_, i) => fittingBodies(door, i / count))
     const bounds = new THREE.Box3()
-    for (const leaf of leaves) for (const point of obbCorners(leaf)) bounds.expandByPoint(point)
+    for (const pose of leaves) for (const leaf of pose) for (const point of obbCorners(leaf)) bounds.expandByPoint(point)
     return { leaves, count, bounds }
   })
   for (let i = 0; i < doors.length; i++) {
@@ -270,7 +282,7 @@ export function swingClashes(fittings: FittingData[]): Array<[string, string]> {
       const a = samples[i], b = samples[j]
       if (!a.bounds.intersectsBox(b.bounds)) continue
       let hit = false
-      const clashes = (u: OBB, v: OBB) => obbPenetration(u, v, 2) > 2
+      const clashes = (u: OBB[], v: OBB[]) => u.some(a => v.some(b => obbPenetration(a, b, 2) > 2))
       const count = Math.max(a.count, b.count)
       for (let k = 0; k <= count && !hit; k++) {
         const ai = Math.round(k * a.count / count), bi = Math.round(k * b.count / count)

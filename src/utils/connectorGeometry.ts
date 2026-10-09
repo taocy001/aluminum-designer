@@ -99,7 +99,7 @@ export function connectorMeshes(type: string, series: ConnectorSeries = 20, prof
     if (type === 'bracket') physical = bracketMeshes(series)
     if (type === 'gusset') physical = gussetMeshes()
     if (type === 'corner-3way') physical = cornerMeshes()
-    if (panelMount && (series === 20 || series === 30)) {
+    if (panelMount) {
       // Accessory meshes are already normalized; fasteners are built in physical mm.
       const hardware = normalized(panelMountMeshes(panelMount, series), series)
       meshCache.set(key, panelMount.mode === 'direct' ? hardware : [...(accessoryMeshes(type, series) ?? []), ...hardware])

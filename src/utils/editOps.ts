@@ -352,6 +352,7 @@ export function mirrorSelected(axis: RotAxis = 'x'): boolean {
       ...(f.meeting ? { meeting: f.meeting === 'left' ? 'right' : 'left' } : {}),
     }
     copy.fabrication = mirrorFittingFabrication(f, copy)
+    if (f.handle) copy.handle = { ...f.handle, x: -f.handle.x }
     return copy
   })
   const equipmentCopies: EquipmentData[] = equipment.map((e) => ({ ...e, id: nextId('e'), locked: false,
@@ -830,6 +831,10 @@ function validLiveUpdates(kind: keyof PartDocument, part: { locked?: boolean }, 
 export function liveParts(ids: string[], updates: Record<string, unknown>, pushHistory = false): boolean {
   const store = useStore.getState()
   const selected = new Set(ids)
+  if ([...store.profiles, ...store.connectors, ...store.panels, ...store.fittings, ...store.equipment].some(part => selected.has(part.id) && part.locked)) {
+    toast(t().toastLocked)
+    return false
+  }
   const edits: Parameters<typeof store.updateParts>[0] = {}
   for (const kind of Object.keys(PART_FIELDS) as Array<keyof PartDocument>) {
     const changes: Array<{ id: string; updates: Record<string, unknown> }> = []
