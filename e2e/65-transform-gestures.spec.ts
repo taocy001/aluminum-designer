@@ -116,3 +116,25 @@ test('middle drag orbits over parts in box-selection mode without changing them'
   expect(await page.evaluate(() => (window as any).__aluframe.camera.position.toArray())).not.toEqual(camera)
   expect(await store(page)).toEqual(before)
 })
+
+
+test('inspector refreshes after a live resize, cancellation and undo', async ({ page }) => {
+  await page.getByTestId('sidebar-tab-properties').click()
+  const length = page.getByTestId('properties').getByRole('spinbutton', { name: '中心线长度 (mm)', exact: true })
+  await expect(length).toHaveValue('500')
+  await dragHold(page, await w2c(page, [499, 100, 0]), await w2c(page, [640, 100, 0]))
+  const changed = (await store(page)).profiles[0].length
+  expect(changed).not.toBe(500)
+  await expect(page.getByTestId('properties-pending')).toBeVisible()
+  await expect(length).toHaveValue('500')
+  await page.mouse.up()
+  await expect(page.getByTestId('properties-pending')).toHaveCount(0)
+  await expect(length).toHaveValue(String(Math.round(changed * 100) / 100))
+  await page.keyboard.press('Control+z')
+  await expect(length).toHaveValue('500')
+  await dragHold(page, await w2c(page, [499, 100, 0]), await w2c(page, [630, 100, 0]))
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  await expect(length).toHaveValue('500')
+  await expect(page.getByTestId('properties-pending')).toHaveCount(0)
+})

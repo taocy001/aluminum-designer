@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useViewStore, isObjectVisible } from '../store/useViewStore'
 import { useInspectionStore } from '../store/useInspectionStore'
 import React, { Suspense, useEffect, useMemo, useRef } from 'react'
@@ -539,8 +540,14 @@ function InspectionMarker() {
 }
 
 const Viewport: React.FC = () => {
-  const { profiles, connectors, panels, fittings, equipment, selectedIds, throughRule } = useStore()
-  const { isDragging, showDimensionLabels, showPartNumbers, selectMode, showFittings, buildStep } = useToolStore()
+  const { profiles, connectors, panels, fittings, equipment, selectedIds, throughRule } = useStore(useShallow(s => ({
+    profiles: s.profiles, connectors: s.connectors, panels: s.panels, fittings: s.fittings,
+    equipment: s.equipment, selectedIds: s.selectedIds, throughRule: s.throughRule,
+  })))
+  const { isDragging, showDimensionLabels, showPartNumbers, selectMode, showFittings, buildStep } = useToolStore(useShallow(s => ({
+    isDragging: s.isDragging, showDimensionLabels: s.showDimensionLabels, showPartNumbers: s.showPartNumbers,
+    selectMode: s.selectMode, showFittings: s.showFittings, buildStep: s.buildStep,
+  })))
   const steps = useMemo(() => (buildStep === null ? null : assemblySteps(profiles, connectors, panels, fittings, throughRule)),
     [buildStep, profiles, connectors, panels, fittings, throughRule])
   const on = useMemo(() => (steps && buildStep !== null ? shownAt(steps, buildStep) : null), [steps, buildStep])

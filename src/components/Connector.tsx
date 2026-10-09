@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import * as THREE from 'three'
 import { connectorScale } from '../utils/connectorCatalog'
+import { connectorRenderMeshes } from '../utils/connectorRenderGeometry'
 import { connectorMeshes } from '../utils/connectorGeometry'
 import { useToolStore } from '../store/useToolStore'
 import type { ConnectorData, ProfileSpec } from '../store/useStore'
@@ -30,7 +31,7 @@ const Connector: React.FC<ConnectorProps> = ({
   const opacity = preview ? 0.92 : 1
   const highlighted = preview || isSelected || hovered
 
-  const meshes = useMemo(() => connectorMeshes(type, series, profileSpec, mountSeries, panelMount).map((part, index) => <mesh key={`${type}-${series}-${index}`}>
+  const meshes = useMemo(() => connectorRenderMeshes(connectorMeshes(type, series, profileSpec, mountSeries, panelMount)).map((part, index) => <mesh key={`${type}-${series}-${index}`}>
     {/* Primitives keep cached geometry alive when a preview or instance unmounts. */}
     <primitive object={part.geometry} attach="geometry" />
     <meshStandardMaterial color={part.dark && !highlighted ? '#1e293b' : color}

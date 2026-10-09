@@ -1,3 +1,4 @@
+import { useSettledDocument } from '../store/useSettledDocument'
 import { useEffect, useMemo, useState } from 'react'
 import { useStore, type FittingData, type PanelData, type ProfileData, type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
@@ -12,7 +13,7 @@ const fieldClass = 'min-w-0 w-full rounded bg-slate-950 border border-white/10 p
 
 /** Attach a single existing part to faces explicitly chosen from the selection. */
 export default function OpeningBindingEditor({ part, kind }: { part: FittingData | PanelData; kind: 'fitting' | 'panel' }) {
-  const { profiles, selectedIds, throughRule, selectItems } = useStore()
+  const { profiles, selectedIds, throughRule, selectItems } = useSettledDocument()
   const { language, viewMode, showToast } = useToolStore()
   const t = translations[language]
   const binding = part.openingBinding
@@ -169,7 +170,7 @@ export default function OpeningBindingEditor({ part, kind }: { part: FittingData
 
 /** Status and detach controls for generated rails and their brackets. */
 export function SupportBindingEditor({ part }: { part: ProfileData | ConnectorData }) {
-  const { profiles, fittings, throughRule, selectItems } = useStore()
+  const { profiles, fittings, throughRule, selectItems } = useSettledDocument()
   const { language, viewMode, showToast } = useToolStore()
   const t = translations[language]
   const rail = 'length' in part ? part : profiles.find((p) => p.id === part.supportBinding?.profileId)

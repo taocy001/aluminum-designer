@@ -1,12 +1,14 @@
+import { useSettledDocument } from '../store/useSettledDocument'
 import { useEffect, useMemo, useState } from 'react'
-import { useStore, type ConnectorData } from '../store/useStore'
+import { type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { useConnectorEditStore } from '../store/useConnectorEditStore'
 import { connectorSlide, connectorSlideRange, moveConnectorAlongSlot } from '../utils/connectorSlide'
 
 export default function ConnectorSlideEditor({ connector }: { connector: ConnectorData }) {
-  const doc = useStore()
+  const doc = useSettledDocument()
   const language = useToolStore(s => s.language), held = useToolStore(s => s.held), viewMode = useToolStore(s => s.viewMode)
+  const transforming = useToolStore(s => s.isDragging || !!s.resize || !!s.rotationGesture)
   const zh = language === 'zh'
   const [step, setStep] = useState(1), [draft, setDraft] = useState('0')
   const amount = draft.trim() ? Number(draft) : NaN
@@ -15,9 +17,9 @@ export default function ConnectorSlideEditor({ connector }: { connector: Connect
   const setSlideGuide = useConnectorEditStore(s => s.setSlideGuide)
   const range = useMemo(() => connectorSlideRange(connector, doc), [connector, doc.profiles, doc.panels])
   useEffect(() => {
-    setSlideGuide(held || viewMode || connector.locked ? null : range)
+    setSlideGuide(transforming || held || viewMode || connector.locked ? null : range)
     return () => setSlideGuide(null)
-  }, [range, held, viewMode, connector.locked, setSlideGuide])
+  }, [range, transforming, held, viewMode, connector.locked, setSlideGuide])
   useEffect(() => { setDraft('0') }, [connector])
   useEffect(() => {
     if (!amount || !Number.isFinite(amount) || result.reason === 'fixed' || held || viewMode || connector.locked) return

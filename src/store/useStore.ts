@@ -1,3 +1,4 @@
+import { sameDocumentValue as sameValue } from '../utils/documentEquality'
 import { validFabricatedBoard, type BoardFabrication } from '../utils/boardFabrication'
 import type { PartGroup } from '../utils/groupMetadata'
 import type { TemplateInstance } from '../utils/templateMetadata'
@@ -167,7 +168,6 @@ function survivingSelection(ids: string[], document: Snapshot): string[] {
 }
 
 type ProfileUpdate = { id: string; updates: Partial<ProfileData> }
-const sameValue = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b)
 const shapeFields = ['position', 'quaternion', 'length', 'spec', 'fixedTrims'] as const
 
 /** Every edit path uses the same rigid-part contract, including numeric/live inputs. */

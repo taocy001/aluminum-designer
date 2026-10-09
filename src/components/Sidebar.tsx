@@ -1,3 +1,5 @@
+import { useShallow } from 'zustand/react/shallow'
+import { useSettledDocument } from '../store/useSettledDocument'
 import { TemplateInstanceEditor } from './TemplateInstanceEditor'
 import { addTemplateInstance, templateEditMessage } from '../utils/templateInstances'
 import ObjectList from './ObjectList'
@@ -176,11 +178,16 @@ const NumField: React.FC<{
 }
 
 const Sidebar: React.FC = () => {
-  const { profiles, connectors, panels, fittings, equipment, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, loadDocument, throughRule, setThroughRule, recalculateJoints } = useStore()
+  const { profiles, connectors, panels, fittings, equipment, updateFitting, selectedIds, removeSelected, toggleLockSelected, clearAll, loadDocument, throughRule, setThroughRule, recalculateJoints } = useSettledDocument()
   const { activeSpec, setActiveSpec, activeConnectorType, setActiveConnector, held, putDown, language, showToast,
     workPlaneY, setWorkPlaneY, viewMode, setViewMode,
-    section, setSection, buildStep, setBuildStep } = useToolStore()
-  const isDragging = useToolStore(s => s.isDragging)
+    section, setSection, buildStep, setBuildStep } = useToolStore(useShallow(s => ({
+      activeSpec: s.activeSpec, setActiveSpec: s.setActiveSpec, activeConnectorType: s.activeConnectorType,
+      setActiveConnector: s.setActiveConnector, held: s.held, putDown: s.putDown, language: s.language, showToast: s.showToast,
+      workPlaneY: s.workPlaneY, setWorkPlaneY: s.setWorkPlaneY, viewMode: s.viewMode, setViewMode: s.setViewMode,
+      section: s.section, setSection: s.setSection, buildStep: s.buildStep, setBuildStep: s.setBuildStep,
+    })))
+  const isDragging = useToolStore(s => s.isDragging || !!s.resize || !!s.rotationGesture)
   const t = translations[language]
   const [confirmClear, setConfirmClear] = useState(false)
   const [hardwareOpen, setHardwareOpen] = useState(false)
@@ -279,7 +286,7 @@ const Sidebar: React.FC = () => {
   const selectedDrawerLayout = selectedFitting?.kind === 'drawer' ? drawerLayout(selectedFitting) : null
   const pickedPanelIds = () => pickedPanels.map((b) => b.id)
   const pickedFittingIds = () => pickedFittings.map((f) => f.id)
-  // Installation checks run on release; live interference feedback remains above.
+  // Sidebar checks refresh on release; the viewport retains live interference feedback.
   const installation = useRef({ profiles, connectors, panels, fittings, equipment, trims })
   if (!isDragging) installation.current = { profiles, connectors, panels, fittings, equipment, trims }
   const checked = installation.current
@@ -802,6 +809,7 @@ const Sidebar: React.FC = () => {
                   className="text-red-400 hover:bg-red-400/10 disabled:opacity-30 p-1.5 rounded-lg"><Trash2 size={14} /></button>
               </div>
             </div>
+            {isDragging && <p data-testid="properties-pending" className="text-xs text-slate-400">{language === 'zh' ? '松开鼠标后更新属性。' : 'Properties update on release.'}</p>}
             {selectedEquipment && <EquipmentEditor part={selectedEquipment} />}
             {selectedProfile && (
               <fieldset disabled={viewMode} className="space-y-2">

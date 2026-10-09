@@ -1,9 +1,10 @@
+import { useSettledDocument } from '../store/useSettledDocument'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { attachPanels } from '../utils/attachPanels'
 
 export default function PanelMountControls() {
-  const state = useStore()
+  const state = useSettledDocument()
   const { language, showToast, viewMode } = useToolStore()
   const zh = language === 'zh'
   const ids = state.panels.filter((p) => state.selectedIds.includes(p.id)).map((p) => p.id)

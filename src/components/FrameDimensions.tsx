@@ -3,8 +3,7 @@ import * as THREE from 'three'
 import { Line } from '@react-three/drei'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { analyzeFrame } from '../utils/analysis'
-import { computeFrameBounds } from '../utils/jointUtils'
+import { computeAllTrims, computeFrameBounds } from '../utils/jointUtils'
 import TextSprite from './TextSprite'
 
 /** how far outside the frame the dimension lines stand off, as a fraction of the frame */
@@ -36,9 +35,10 @@ const FrameDimensions: React.FC<{ visibleIds?: Set<string> }> = ({ visibleIds })
   const panels = useStore((s) => s.panels)
   const throughRule = useStore((s) => s.throughRule)
   const show = useToolStore((s) => s.showDimensionLabels)
-  const { trims } = useMemo(() => analyzeFrame(profiles), [profiles, throughRule])
+  const trims = useMemo(() => show ? computeAllTrims(profiles) : new Map(), [show, profiles, throughRule])
 
   const bounds = useMemo(() => {
+    if (!show) return null
     const b = computeFrameBounds(profiles.filter(p => !visibleIds || visibleIds.has(p.id)), trims)
     if (!b) return null
     // boards stick out past the frame they hang on, and they are part of the thing
@@ -51,7 +51,7 @@ const FrameDimensions: React.FC<{ visibleIds?: Set<string> }> = ({ visibleIds })
       }
     }
     return b
-  }, [profiles, trims, panels, visibleIds])
+  }, [show, profiles, trims, panels, visibleIds])
 
   if (!show || !bounds || profiles.length === 0) return null
   const min = bounds.min, max = bounds.max

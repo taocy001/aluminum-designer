@@ -1,6 +1,7 @@
+import { useSettledDocument } from '../store/useSettledDocument'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { useStore, type ConnectorData } from '../store/useStore'
+import { type ConnectorData } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
 import { useConnectorEditStore } from '../store/useConnectorEditStore'
 import { connectorEntry, connectorLabel } from '../utils/connectorCatalog'
@@ -60,7 +61,7 @@ function PoseField({ value, axis, name, step, onCommit }: {
 }
 
 export default function ConnectorEditor({ connector }: { connector: ConnectorData }) {
-  const { profiles, connectors, equipment, panels, fittings } = useStore()
+  const { profiles, connectors, equipment, panels, fittings } = useSettledDocument()
   const { language, viewMode, held } = useToolStore()
   const t = translations[language]
   const entry = connectorEntry(connector.type)

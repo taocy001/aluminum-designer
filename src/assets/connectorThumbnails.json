@@ -35,7 +35,7 @@
     "src/assets/connectorCad/motedis-tnut-30-installed.json": "333242fd04d6d76c9f7d8d27c346bce90845b825973fcc5faf0d57d7be2547c9",
     "src/assets/connectorCad/motedis-tnut-40-installed.json": "2c576a2971372c9dc629e545613307b80f8babc5ca77829e5c483ec3b8208fda",
     "src/assets/profileSections.json": "7102bfadd0570c163f9d0d62d83a6ce9a302d7ef61349639f28ee6ca793efd57",
-    "src/utils/analysis.ts": "88e368aef37cc02d74c3856d996ee5d3e8b81647a452bf47f600c02c71f32c01",
+    "src/utils/analysis.ts": "cad28b5c6608ff9b712bde99a5057064cbf2f5991645c839987fc58360a49aa4",
     "src/utils/bracketSeat.ts": "ae30514d80477e9878944f5a94ed4815f7b150fac00b85b2415c6a7ce957c593",
     "src/utils/connectorAccessoryGeometry.ts": "25bc6a9713f584035fcd25f0e9bbb1d107dedc5fd1743e770e5324176912e7e5",
     "src/utils/connectorAccessoryReferences.ts": "a9c8cadf79f7bb889d4cdcc1a0aad15095e32d00613ddff18d2be6ddfd4091d8",
@@ -47,6 +47,7 @@
     "src/utils/connectorMounting.ts": "9cd9a33a263b430c4633f97a9021b38408bfc470a51e7699999671176160b44b",
     "src/utils/connectorSolidPrimitives.ts": "e289e985d72c12511a64870c37afc408f20bfdbc679b1dbebcf793fdc179dc21",
     "src/utils/connectorSupport.ts": "2ae45e9e2f0b8056101caedd062a86fd12b1be462fa07a7e6794ea228e6cee0d",
+    "src/utils/documentEquality.ts": "8de3175bb2027885280b911409dcd3745c72e1feb3606ba38ec7fae78601fefd",
     "src/utils/drawerLayout.ts": "e46db9888ced7faf82f5f8b16114e738c1e4e1a79b542a72761014605f47ade6",
     "src/utils/equipmentChecks.ts": "3ba8a6ae7bed275a49e29087800010f0c6aefa9754cdebbecfe1e50b58b8f7de",
     "src/utils/equipmentGeometry.ts": "a7c09c149fb4a28875ff9d1fe893e97d923a74cae36f3832c7f7d3b5ab38ee58",
@@ -60,7 +61,7 @@
     "src/utils/specCompat.ts": "1e411c5f008d31818a75d42033be3f8207f9139e97aa4a24c1e1e4153cd61581",
     "src/utils/specUtils.ts": "9c149a590a3250161d9216035acc15ced9ae34c2521a5ba33c5295f4f3854f55"
   },
-  "sourceHash": "30c0aee036e1e17443cf1d90640dfc7a742388d8434bbd1fc835a3e18ffdfb55",
+  "sourceHash": "889b37df2eecccfcac1e15c45457f9f3e62975c7767020997d73b2921c7daf60",
   "images": {
     "bracket:20": {
       "file": "bracket-20-9df5579da940.png",

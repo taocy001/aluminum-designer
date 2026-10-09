@@ -1,3 +1,4 @@
+import { sameDocumentValue } from './documentEquality'
 import { connectorMeshes } from './connectorGeometry'
 import * as THREE from 'three'
 import type { ConnectorData, EquipmentData, FittingData, PanelData, ProfileData } from '../store/useStore'
@@ -324,8 +325,8 @@ export function analyzeFrame(
   const lists: AnalysisLists = [profiles, connectors, panels, fittings, equipment]
   const exact = analysisCache.find(entry => entry.rule === rule && entry.lists.every((list, i) => list === lists[i]))
   if (exact) return exact.value
-  // Dimensions and the inspector analyze different sets of parts. Retain both so
-  // an inspector render cannot evict the result needed by a whole-assembly drag.
+  // Retain recent results for callers that analyze different subsets, without
+  // evicting the result needed by a whole-assembly drag.
   for (const entry of analysisCache) {
     if (entry.rule !== rule) continue
     let translation: THREE.Vector3 | undefined
@@ -334,7 +335,7 @@ export function analyzeFrame(
       return old.length === list.length && list.every((part, i) => {
         const { position, ...rest } = part
         const { position: before, ...oldRest } = old[i]
-        if (JSON.stringify(rest) !== JSON.stringify(oldRest)) return false
+        if (!sameDocumentValue(rest, oldRest)) return false
         const delta = new THREE.Vector3(...position).sub(new THREE.Vector3(...before))
         translation ??= delta
         return delta.distanceToSquared(translation) < 1e-16
