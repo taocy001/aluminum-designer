@@ -35,7 +35,7 @@
     "src/assets/connectorCad/motedis-tnut-30-installed.json": "333242fd04d6d76c9f7d8d27c346bce90845b825973fcc5faf0d57d7be2547c9",
     "src/assets/connectorCad/motedis-tnut-40-installed.json": "2c576a2971372c9dc629e545613307b80f8babc5ca77829e5c483ec3b8208fda",
     "src/assets/profileSections.json": "7102bfadd0570c163f9d0d62d83a6ce9a302d7ef61349639f28ee6ca793efd57",
-    "src/utils/analysis.ts": "e1c1fc00635733611d486a91758de4e42e492c4e24ad8d48624bea7671e297a2",
+    "src/utils/analysis.ts": "1cc21285b8e2c957f7d0b7be988c49bdf0b9315b0d17f35e404fb97325e371dd",
     "src/utils/bracketSeat.ts": "ae30514d80477e9878944f5a94ed4815f7b150fac00b85b2415c6a7ce957c593",
     "src/utils/connectorAccessoryGeometry.ts": "25bc6a9713f584035fcd25f0e9bbb1d107dedc5fd1743e770e5324176912e7e5",
     "src/utils/connectorAccessoryReferences.ts": "a9c8cadf79f7bb889d4cdcc1a0aad15095e32d00613ddff18d2be6ddfd4091d8",
@@ -48,7 +48,8 @@
     "src/utils/connectorSolidPrimitives.ts": "e289e985d72c12511a64870c37afc408f20bfdbc679b1dbebcf793fdc179dc21",
     "src/utils/connectorSupport.ts": "2ae45e9e2f0b8056101caedd062a86fd12b1be462fa07a7e6794ea228e6cee0d",
     "src/utils/documentEquality.ts": "8de3175bb2027885280b911409dcd3745c72e1feb3606ba38ec7fae78601fefd",
-    "src/utils/drawerLayout.ts": "e46db9888ced7faf82f5f8b16114e738c1e4e1a79b542a72761014605f47ade6",
+    "src/utils/drawerLayout.ts": "f4e3c91832da6990d7742e6bda29b1137ec9878b93c00950a197c73daddbaae9",
+    "src/utils/drawerRunnerCatalog.ts": "c13e4373a61b28b45845bf912c0e171a467eba7d17b52ddb017551a7bcbba0fa",
     "src/utils/equipmentChecks.ts": "3ba8a6ae7bed275a49e29087800010f0c6aefa9754cdebbecfe1e50b58b8f7de",
     "src/utils/equipmentGeometry.ts": "a7c09c149fb4a28875ff9d1fe893e97d923a74cae36f3832c7f7d3b5ab38ee58",
     "src/utils/fittingGeometry.ts": "bfa71662b9afa9c2c690da732755873f03774df6bea4f26ddecc6d310489150c",
@@ -61,7 +62,7 @@
     "src/utils/specCompat.ts": "1e411c5f008d31818a75d42033be3f8207f9139e97aa4a24c1e1e4153cd61581",
     "src/utils/specUtils.ts": "9c149a590a3250161d9216035acc15ced9ae34c2521a5ba33c5295f4f3854f55"
   },
-  "sourceHash": "bab366c31b04256654a581c10787f6140d05bee3a89ef3facd37e41985071abe",
+  "sourceHash": "2d5d3793d09fb9e9ea3f40a116ea15423742b702f6416a8a379bb250d6747acc",
   "images": {
     "bracket:20": {
       "file": "bracket-20-9df5579da940.png",

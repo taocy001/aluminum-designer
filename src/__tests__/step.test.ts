@@ -51,6 +51,20 @@ function reach(all: Map<number, string>, root: number): Set<number> {
 /** every solid in the file with the corners it reaches */
 function solidsOf(step: string) {
   const all = entities(step)
+  const refs = (body: string) => [...body.matchAll(/#(\d+)/g)].map(match => Number(match[1]))
+  const vector = (id: number) => new THREE.Vector3(...all.get(id)!.match(/\('',\(([^)]+)\)\)/)![1]
+    .split(',').map(Number) as [number, number, number])
+  const placements = new Map<number, THREE.Matrix4>()
+  for (const body of all.values()) {
+    if (!body.startsWith('(REPRESENTATION_RELATIONSHIP(')) continue
+    const [representation, , transformation] = refs(body)
+    const target = refs(all.get(transformation)!)[1]
+    const [at, z, x] = refs(all.get(target)!).map(vector)
+    const transform = new THREE.Matrix4().makeBasis(x, z.clone().cross(x), z).setPosition(at)
+    for (const id of refs(all.get(representation)!)) {
+      if (/^(MANIFOLD_SOLID_BREP|FACETED_BREP)\(/.test(all.get(id)!)) placements.set(id, transform)
+    }
+  }
   return [...all].filter(([, b]) => /^(MANIFOLD_SOLID_BREP|FACETED_BREP)\(/.test(b)).map(([id, body]) => {
     const ids = reach(all, id)
     const points: THREE.Vector3[] = []
@@ -70,6 +84,8 @@ function solidsOf(step: string) {
       }
       if (oe) uses.set(oe[1], [...(uses.get(oe[1]) ?? []), oe[2]])
     }
+    const placement = placements.get(id)
+    if (placement) points.forEach(point => point.applyMatrix4(placement))
     return { name: body.match(/'([^']*)'/)![1], points, uses }
   })
 }
@@ -320,6 +336,46 @@ describe('STEP export', () => {
       expect([...all.values()].filter(body => body.startsWith('CLOSED_SHELL('))).toHaveLength(solidCount)
     },
   )
+
+  it('keeps singleton connector facets local and uses an independent assembly placement', () => {
+    const base: ConnectorData = { id: 'local-body', type: 'inside-corner', series: 40,
+      position: [0, 0, 0], quaternion: [0, 0, 0, 1] }
+    const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(.28, -.7, .43))
+    const moved: ConnectorData = { ...base, position: [135, -27, 430], quaternion: rotation.toArray() }
+    const local = buildStep({ profiles: [], connectors: [base] })
+    const placed = buildStep({ profiles: [], connectors: [moved] })
+    const shellGeometry = (output: string) => {
+      const all = entities(output)
+      return [...all].filter(([, body]) => body.startsWith('CLOSED_SHELL('))
+        .map(([id]) => [...reach(all, id)].sort((a, b) => a - b).map(id => all.get(id)))
+    }
+    expect(shellGeometry(placed)).toEqual(shellGeometry(local))
+    const expected = solidsOf(local), actual = solidsOf(placed)
+    expect(actual).toHaveLength(expected.length)
+    for (let i = 0; i < actual.length; i++) {
+      expect(actual[i].name).toBe(expected[i].name)
+      expect(actual[i].points).toHaveLength(expected[i].points.length)
+      const distances = actual[i].points.map((point, index) => point.distanceTo(expected[i].points[index]
+        .clone().applyQuaternion(rotation).add(new THREE.Vector3(...moved.position))))
+      expect(Math.max(...distances)).toBeLessThan(1e-8)
+    }
+    // Planes retain their origin/normal. Only the optional in-plane reference
+    // direction is omitted; explicit 3D polygon boundaries still define each face.
+    const all = entities(placed)
+    const refs = (body: string) => [...body.matchAll(/#(\d+)/g)].map(match => Number(match[1]))
+    const vector = (id: number) => new THREE.Vector3(...all.get(id)!.match(/\('',\(([^)]+)\)\)/)![1]
+      .split(',').map(Number) as [number, number, number])
+    for (const face of all.values()) {
+      if (!face.startsWith('FACE_SURFACE(')) continue
+      const links = refs(face), plane = all.get(links.pop()!)!
+      const placement = all.get(refs(plane)[0])!
+      expect(placement).toMatch(/^AXIS2_PLACEMENT_3D\('',#\d+,#\d+,\$\)$/)
+      const [origin, normal] = refs(placement).map(vector)
+      expect(normal.length()).toBeCloseTo(1, 10)
+      const vertices = links.flatMap(bound => refs(all.get(refs(all.get(bound)!)[0])!).map(vector))
+      expect(Math.max(...vertices.map(vertex => Math.abs(vertex.sub(origin).dot(normal))))).toBeLessThan(2e-6)
+    }
+  })
 
   it('exports configured drawer boards and reinforcements at their closed physical positions', () => {
     const drawer: FittingData = { id: 'drawer-closed', kind: 'drawer', width: 600, height: 240, depth: 500,

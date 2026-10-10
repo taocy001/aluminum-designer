@@ -118,6 +118,7 @@ export interface HandleConfig {
 
 /** User-specified construction and runner dimensions in millimetres. */
 export interface DrawerConfig {
+  runnerModel?: 'custom' | 'accuride-3832e'
   sideClearance?: number
   boxThickness?: number
   bottomThickness?: number

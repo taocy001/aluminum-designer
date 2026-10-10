@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { analyzeFrame, findConflicts } from '../utils/analysis'
 import { buildProfile } from '../utils/profileFactory'
-import { computeAllTrims, setThroughRule } from '../utils/jointUtils'
+import { computeAllTrims, setThroughRule, withFixedProfileCuts } from '../utils/jointUtils'
 import { findSpecMismatches } from '../utils/specCompat'
 
 const fixture = () => [
@@ -14,6 +14,61 @@ const move = (profiles: ReturnType<typeof fixture>, delta: THREE.Vector3) => pro
 }))
 
 describe('analysis during whole-document translation', () => {
+  it('recomputes automatic floor joints when the whole frame changes height', () => {
+    const profiles = [
+      buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 600, 0), '2020')!,
+      buildProfile(new THREE.Vector3(0, 0, 0), new THREE.Vector3(600, 0, 0), '2020')!,
+    ]
+    const before = analyzeFrame(profiles)
+    const moved = move(profiles, new THREE.Vector3(0, 100, 0))
+    const after = analyzeFrame(moved), trims = computeAllTrims(moved)
+    expect(trims).not.toEqual(before.trims)
+    expect(after.trims).toEqual(trims)
+    expect(after.conflictIds).not.toBe(before.conflictIds)
+    expect(after.conflicts).toEqual(findConflicts(moved, trims))
+    expect(after.mismatches).toEqual(findSpecMismatches(moved))
+  })
+
+  it('reuses checks when a drag captures unchanged cuts and refreshes contact metadata', () => {
+    const profiles = fixture(), before = analyzeFrame(profiles)
+    const moved = move(withFixedProfileCuts(profiles), new THREE.Vector3(50, 30, -80))
+    const after = analyzeFrame(moved), trims = computeAllTrims(moved)
+    expect(after.conflictIds).toBe(before.conflictIds)
+    expect(after.mismatchIds).toBe(before.mismatchIds)
+    expect(after.trims).toEqual(trims)
+    expect(after.conflicts).toEqual(findConflicts(moved, trims))
+    expect(after.mismatches).toEqual(findSpecMismatches(moved))
+  })
+
+  it('reuses a trimmed corner when the remaining automatic cuts are captured', () => {
+    const profiles = [
+      buildProfile(new THREE.Vector3(0, 100, 0), new THREE.Vector3(0, 700, 0), '4040')!,
+      buildProfile(new THREE.Vector3(0, 700, 0), new THREE.Vector3(600, 700, 0), '2040')!,
+      buildProfile(new THREE.Vector3(0, 700, 0), new THREE.Vector3(0, 700, 500), '2040')!,
+    ]
+    const mixed = withFixedProfileCuts(profiles, new Set([profiles[0].id]))
+    const before = analyzeFrame(mixed)
+    expect([...before.trims.values()].some(t => t.start.trim !== 0 || t.end.trim !== 0)).toBe(true)
+    const moved = move(withFixedProfileCuts(mixed), new THREE.Vector3(200, 40, -80))
+    const after = analyzeFrame(moved), trims = computeAllTrims(moved)
+    expect(after.conflictIds).toBe(before.conflictIds)
+    expect(after.trims).toEqual(trims)
+    expect(after.conflicts).toEqual(findConflicts(moved, trims))
+    expect(after.mismatches).toEqual(findSpecMismatches(moved))
+  })
+
+  it('rechecks actual cut changes and restoring automatic cuts', () => {
+    const profiles = fixture(), before = analyzeFrame(profiles)
+    const shortened = profiles.map(p => ({ ...p, fixedTrims: { start: 0, end: p.length - 20 } }))
+    const after = analyzeFrame(shortened)
+    expect(after.conflictIds).not.toBe(before.conflictIds)
+    expect(after.conflicts).toEqual(findConflicts(shortened, computeAllTrims(shortened)))
+    const restored = move(profiles, new THREE.Vector3(12, 8, 4))
+    const result = analyzeFrame(restored)
+    expect(result.conflicts).toEqual(findConflicts(restored, computeAllTrims(restored)))
+    expect(result.mismatches).toEqual(findSpecMismatches(restored))
+  })
+
   it('preserves collisions and translates their markers without changing the prior result', () => {
     const profiles = fixture(), before = analyzeFrame(profiles)
     expect(before.conflicts.length).toBeGreaterThan(0)

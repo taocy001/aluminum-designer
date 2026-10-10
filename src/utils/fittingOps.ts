@@ -360,7 +360,8 @@ export type DrawerConfigPatch = Partial<Omit<DrawerConfig, 'reinforcement'>> & {
 /** Merge each selected drawer's own values and validate the complete edit before committing. */
 export function updateDrawerConfig(ids: string[], patch: DrawerConfigPatch): boolean {
   const { fittings, commitTransform } = useStore.getState()
-  const mine = fittings.filter((f) => ids.includes(f.id) && f.kind === 'drawer' && !f.locked)
+  const mine = fittings.filter((f) => ids.includes(f.id) && f.kind === 'drawer')
+  if (mine.some((f) => f.locked)) return false
   const { reinforcement, ...dimensions } = patch
   const next = mine.map((f) => ({ ...f, drawer: { ...f.drawer, ...dimensions,
     ...(reinforcement ? { reinforcement: { ...DEFAULT_REINFORCEMENT, ...f.drawer?.reinforcement, ...reinforcement } } : {}),

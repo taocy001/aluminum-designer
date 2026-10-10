@@ -330,12 +330,18 @@ export function analyzeFrame(
   for (const entry of analysisCache) {
     if (entry.rule !== rule) continue
     let translation: THREE.Vector3 | undefined
+    let cutsChanged = false
     const translated = lists.every((list, kind) => {
       const old = entry.lists[kind]
       return old.length === list.length && list.every((part, i) => {
         const { position, ...rest } = part
         const { position: before, ...oldRest } = old[i]
-        if (!sameDocumentValue(rest, oldRest)) return false
+        if (kind === 0) {
+          const { fixedTrims, ...shape } = rest as Omit<ProfileData, 'position'>
+          const { fixedTrims: oldCuts, ...oldShape } = oldRest as Omit<ProfileData, 'position'>
+          if (!sameDocumentValue(shape, oldShape)) return false
+          cutsChanged ||= !sameDocumentValue(fixedTrims, oldCuts)
+        } else if (!sameDocumentValue(rest, oldRest)) return false
         const delta = new THREE.Vector3(...position).sub(new THREE.Vector3(...before))
         translation ??= delta
         return delta.distanceToSquared(translation) < 1e-16
@@ -343,7 +349,18 @@ export function analyzeFrame(
     })
     if (!translated || !translation) continue
     const offset = translation, value = entry.value
-    return rememberAnalysis(lists, rule, { ...value,
+    // Starting a drag captures automatic cuts. Reuse the expensive checks only
+    // when the resulting solids still match; contact metadata must stay current.
+    const checkCuts = cutsChanged || (Math.abs(offset.y) > 1e-8 && profiles.some(p => !p.fixedTrims))
+    const currentTrims = checkCuts ? computeAllTrims(profiles) : value.trims
+    if (checkCuts && profiles.some(p => {
+      const before = value.trims.get(p.id)!, after = currentTrims.get(p.id)!
+      return Math.abs(before.start.trim - after.start.trim) > 1e-7
+        || Math.abs(before.cutLength - after.cutLength) > 1e-7
+    })) continue
+    const trims = profiles.every(p => sameDocumentValue(value.trims.get(p.id), currentTrims.get(p.id)))
+      ? value.trims : currentTrims
+    return rememberAnalysis(lists, rule, { ...value, trims,
       conflicts: value.conflicts.map(c => ({ ...c, region: c.region.clone().translate(offset) })),
       equipmentConflicts: value.equipmentConflicts.map(c => ({ ...c, region: c.region.clone().translate(offset) })),
       mismatches: value.mismatches.map(m => ({ ...m, at: m.at.clone().add(offset) })),

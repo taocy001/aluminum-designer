@@ -1,3 +1,4 @@
+import { ACCURIDE_3832E, runnerVariant } from './drawerRunnerCatalog'
 import type { DrawerConfig, DrawerReinforcement, FittingData } from '../store/useStore'
 
 export const RUNNER_CLEARANCE = 12.5
@@ -13,7 +14,9 @@ export type ResolvedDrawerConfig = Required<Omit<DrawerConfig, 'reinforcement'>>
 /** Shared closed-box dimensions and runner envelope, in the opening's local frame. */
 export function drawerLayout(f: DrawerOpening) {
   const input = f.drawer ?? {}
-  const sideClearance = input.sideClearance ?? RUNNER_CLEARANCE
+  const runnerModel = input.runnerModel ?? 'custom'
+  const catalog = runnerModel === ACCURIDE_3832E.id
+  const sideClearance = input.sideClearance ?? (catalog ? ACCURIDE_3832E.sideClearance.nominal : RUNNER_CLEARANCE)
   const boxThickness = input.boxThickness ?? BOX_BOARD
   const bottomThickness = input.bottomThickness ?? BOX_BOARD
   const rearClearance = input.rearClearance ?? DRAWER_REAR_CLEARANCE
@@ -26,14 +29,15 @@ export function drawerLayout(f: DrawerOpening) {
   const runnerLength = input.runnerLength ?? Math.min(f.depth, boxDepth)
   const legacyTravel = Math.max(0, f.depth - 30)
   const changesRunner = input.runnerLength !== undefined || rearClearance !== DRAWER_REAR_CLEARANCE
-  const runnerTravel = input.runnerTravel ?? (changesRunner ? Math.min(legacyTravel, runnerLength) : legacyTravel)
-  const config: ResolvedDrawerConfig = { sideClearance, boxThickness, bottomThickness, rearClearance,
+  const runnerTravel = catalog ? (runnerVariant(input.runnerLength)?.travel ?? 0)
+    : input.runnerTravel ?? (changesRunner ? Math.min(legacyTravel, runnerLength) : legacyTravel)
+  const config: ResolvedDrawerConfig = { runnerModel, sideClearance, boxThickness, bottomThickness, rearClearance,
     runnerLength, runnerTravel, reinforcement }
   const boxBottom = -f.height / 2
   const baseBottom = boxBottom + (reinforcement.count ? reinforcement.height : 0)
-  const runnerFront = Math.min(frontZ, f.depth / 2)
+  const runnerFront = Math.min(frontZ - (catalog && f.overlay === 'inset' ? 3.2 : 0), f.depth / 2)
   return { config, boxWidth, boxHeight, boxDepth, innerWidth: boxWidth - boxThickness * 2,
     innerDepth: boxDepth - boxThickness * 2, innerHeight: boxBottom + boxHeight - baseBottom - bottomThickness,
     boxBottom, baseBottom, boxY: boxBottom + boxHeight / 2, boxZ: backZ + boxDepth / 2, backZ, frontZ,
-    runnerLength, travel: runnerTravel, runnerFront, runnerBack: runnerFront - runnerLength }
+    runnerLength, travel: runnerTravel, runnerFront, availableRunnerDepth: runnerFront - Math.max(backZ, -f.depth / 2), runnerBack: runnerFront - runnerLength }
 }

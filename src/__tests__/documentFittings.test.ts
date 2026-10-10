@@ -161,6 +161,14 @@ describe('legacy fitting migration', () => {
 })
 
 describe('drawer parameters in project files and links', () => {
+  it.each(['file', 'share'] as const)('preserves a catalog slide and derived over-length travel through %s', async via => {
+    const source = drawer('catalog', 1000, { drawer: { runnerModel: 'accuride-3832e', runnerLength: 450 } })
+    const [restored] = await reload(via, project([source]))
+    expect(restored.drawer).toEqual(source.drawer)
+    expect(fittingParts(restored).travel).toBe(457)
+    expect(shape(restored)).toEqual(shape(source))
+  })
+
   const configured = {
     sideClearance: 20, boxThickness: 18, bottomThickness: 9, rearClearance: 30,
     runnerLength: 400, runnerTravel: 300, reinforcement: { count: 1, width: 40, height: 20 },

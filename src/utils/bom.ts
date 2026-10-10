@@ -1,4 +1,5 @@
 import { panelMountFasteners } from './panelMounts'
+import { ACCURIDE_3832E, runnerVariant } from './drawerRunnerCatalog'
 import { drawerLayout } from './drawerLayout'
 import { fittingBoardNumber, partNumber } from './partNumbers'
 import type { ConnectorData, PanelData, ProfileData, FittingData, HingeType } from '../store/useStore'
@@ -153,12 +154,15 @@ export function buildBom(
       } })
     }
     if (f.kind === 'drawer') {
-      const depth = cutDimension(drawerLayout(f).runnerLength)
-      const key = `runner-${depth}`
+      const layout = drawerLayout(f)
+      const depth = cutDimension(layout.runnerLength)
+      const variant = layout.config.runnerModel === ACCURIDE_3832E.id ? runnerVariant(layout.runnerLength) : undefined
+      const key = variant ? `runner-${ACCURIDE_3832E.id}-${variant.sku}` : `runner-${depth}`
       const row = connectorRows.get(key) ?? {
         kind: 'connector' as const, key,
-        label: language === 'zh' ? `抽屉滑轨 ${depth}mm` : `Drawer runner ${depth} mm`,
-        spec: language === 'zh' ? '侧装一对' : 'side-mount pair', qty: 0, partNumbers: [],
+        label: variant ? `Accuride ${variant.sku} · ${depth} mm` : language === 'zh' ? `抽屉滑轨 ${depth}mm` : `Drawer runner ${depth} mm`,
+        spec: variant ? (language === 'zh' ? `侧装一对 · 行程 ${variant.travel} mm` : `side-mount pair · travel ${variant.travel} mm`)
+          : language === 'zh' ? '侧装一对' : 'side-mount pair', qty: 0, partNumbers: [],
       }
       row.qty++
       connectorRows.set(key, row)

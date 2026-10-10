@@ -1,3 +1,4 @@
+import DrawerRunnerEditor from './DrawerRunnerEditor'
 import { useShallow } from 'zustand/react/shallow'
 import { useSettledDocument } from '../store/useSettledDocument'
 import { TemplateInstanceEditor } from './TemplateInstanceEditor'
@@ -941,15 +942,16 @@ const Sidebar: React.FC = () => {
                 {selectedDrawerLayout && (
                   <fieldset disabled={viewMode || fittingTargetsLocked} className="space-y-2 border-t border-white/5 pt-2" data-testid="drawer-config">
                     <p className="text-[11px] font-bold text-slate-400">{t.drawerConstruction}</p>
+                    <DrawerRunnerEditor key={selectedFitting.id} fitting={selectedFitting} ids={pickedFittingIds()} zh={language === 'zh'} />
                     <div className="grid grid-cols-2 gap-2">
                       {([
                         ['sideClearance', t.drawerSideClearance], ['boxThickness', t.drawerBoxThickness],
                         ['bottomThickness', t.drawerBottomThickness], ['rearClearance', t.drawerRearClearance],
                         ['runnerLength', t.drawerRunnerLength], ['runnerTravel', t.drawerRunnerTravel],
-                      ] as const).map(([key, name]) => (
+                      ] as const).filter(([key]) => selectedDrawerLayout.config.runnerModel === 'custom' || (key !== 'runnerLength' && key !== 'runnerTravel')).map(([key, name]) => (
                         <div key={key} className="space-y-1">
                           <div className="text-[11px] text-slate-500">{name}</div>
-                          <NumField name={name} value={selectedDrawerLayout.config[key]} step={key.includes('Thickness') || key === 'sideClearance' ? 0.5 : 10}
+                          <NumField name={name} value={selectedDrawerLayout.config[key]} step={key === 'sideClearance' && selectedDrawerLayout.config.runnerModel !== 'custom' ? 0.1 : key.includes('Thickness') || key === 'sideClearance' ? 0.5 : 10}
                             onCommit={(value) => updateDrawerConfig(pickedFittingIds(), { [key]: value })} />
                         </div>
                       ))}

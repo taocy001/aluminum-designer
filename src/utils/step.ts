@@ -65,6 +65,11 @@ class Step {
     return this.add(`AXIS2_PLACEMENT_3D('',#${this.point(at)},#${this.direction(z)},#${this.direction(x)})`)
   }
 
+  /** POLY_LOOP bounds are 3D points; the plane needs no explicit in-plane X axis. */
+  planePlacement(at: THREE.Vector3, normal: THREE.Vector3): number {
+    return this.add(`AXIS2_PLACEMENT_3D('',#${this.point(at)},#${this.direction(normal)},$)`)
+  }
+
   body(header: string[], footer: string[]): string {
     return [...header, ...this.lines, ...footer].join('\n')
   }
@@ -199,13 +204,12 @@ function meshShells(s: Step, geometry: THREE.BufferGeometry, transform: THREE.Ma
   }
   return planarMeshFaces(points, triangles).map(group => {
     const faces = group.map(({ rings, normal }) => {
-      const a = points[rings[0][0]], b = points[rings[0][1]]
-      const along = b.clone().sub(a).normalize()
+      const a = points[rings[0][0]]
       const bounds = rings.map((ring, index) => {
         const loop = s.addUnique(`POLY_LOOP('',(${ring.map(v => `#${s.point(points[v])}`).join(',')}))`)
         return s.addUnique(`${index === 0 ? 'FACE_OUTER_BOUND' : 'FACE_BOUND'}('',#${loop},.T.)`)
       })
-      const plane = s.addUnique(`PLANE('',#${s.placement(a, normal, along)})`)
+      const plane = s.addUnique(`PLANE('',#${s.planePlacement(a, normal)})`)
       return s.addUnique(`FACE_SURFACE('',(${bounds.map(id => `#${id}`).join(',')}),#${plane},.T.)`)
     })
     return s.addUnique(`CLOSED_SHELL('',(${faces.map(face => `#${face}`).join(',')}))`)
@@ -244,7 +248,7 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
   const asmRep = s.addUnique(`SHAPE_REPRESENTATION('${str(name)}',(#${asmOrigin}),#${ctx})`)
   const asm = product(name, asmRep)
 
-  // World-space parts use identity placement; repeated connector bodies share local geometry.
+  // World-space boards/profiles use identity placement; connectors use local geometry.
   const part = (label: string, description: string, solid: number | number[], faceted = false, placement = asmOrigin) => {
     const own = origin()
     const bodies = (Array.isArray(solid) ? solid : [solid]).map((body) => `#${body}`).join(',')
@@ -311,8 +315,6 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
   // Share connector shells, while keeping each product's solid identity and name independent.
   const bodyKey = (c: ConnectorData) => JSON.stringify([c.type, c.series ?? 20, c.profileSpec,
     c.mountSeries, c.panelMount && [c.panelMount.mode, c.panelMount.spacer, c.panelMount.boardThickness]])
-  const counts = new Map<string, number>()
-  for (const c of connectors) { const key = bodyKey(c); counts.set(key, (counts.get(key) ?? 0) + 1) }
   const reusableShells = new Map<string, number[]>()
   for (const c of connectors) {
     const series = c.series ?? 20
@@ -321,18 +323,19 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     const at = new THREE.Vector3(...c.position)
     const label = partNumber('connector', c.id)
     const description = `${c.type} ${series}${c.profileSpec ? ` ${c.profileSpec}` : ''}`
-    const key = bodyKey(c), shared = counts.get(key)! > 1
+    const key = bodyKey(c)
     let shells = reusableShells.get(key)
     if (!shells) {
-      const transform = shared ? new THREE.Matrix4().makeScale(k, k, k)
-        : new THREE.Matrix4().compose(at, quat, new THREE.Vector3(k, k, k))
+      // Build and round facets in their local frame, so assembly rotation cannot
+      // change welding, coplanar grouping or the representation of identical parts.
+      const transform = new THREE.Matrix4().makeScale(k, k, k)
       shells = connectorMeshes(c.type, series, c.profileSpec, c.mountSeries, c.panelMount).filter(mesh => !mesh.visualOnly)
         .flatMap(({ geometry }) => meshShells(s, geometry, transform))
-      if (shared) reusableShells.set(key, shells)
+      reusableShells.set(key, shells)
     }
     const bodies = shells.map((shell, index) => s.addUnique(`FACETED_BREP('${str(label)}-${index + 1}',#${shell})`))
     const { z, x } = frameFor(quat)
-    part(label, description, bodies, true, shared ? s.placement(at, z, x) : asmOrigin)
+    part(label, description, bodies, true, s.placement(at, z, x))
   }
 
   const stamp = new Date().toISOString().replace(/\.\d+Z$/, '')

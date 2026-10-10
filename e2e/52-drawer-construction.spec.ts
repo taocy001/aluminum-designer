@@ -60,3 +60,61 @@ test('runner supports are added once and undo removes the rails and brackets tog
   expect(s.profiles).toHaveLength(4)
   expect(s.connectors).toHaveLength(0)
 })
+
+test('catalog runner uses standard travel and rejects oversized choices without changing history', async ({ page }) => {
+  await openApp(page)
+  await page.evaluate(() => {
+    const api = (window as any).__aluframe
+    api.tool.getState().putDown()
+    api.store.getState().loadDocument({ profiles: [], connectors: [], panels: [], equipment: [], throughRule: 'rails', fittings: [{
+      id: 'drawer', kind: 'drawer', width: 600, height: 240, depth: 500,
+      position: [0, 200, 0], quaternion: [0, 0, 0, 1], material: 'ply', open: 0,
+      drawer: { runnerLength: 430, runnerTravel: 300, sideClearance: 14 },
+    }] })
+    api.store.getState().selectItems(['drawer'])
+  })
+  await page.getByTestId('sidebar-tab-properties').click()
+  const model = page.getByTestId('drawer-runner-model')
+  await expect(model).toHaveValue('custom')
+  const before = await store(page)
+  await model.selectOption('accuride-3832e')
+  await expect(page.getByTestId('drawer-runner-length')).toHaveValue('450')
+  await expect(page.getByTestId('drawer-runner-travel')).toContainText('457 mm')
+  const after = await store(page)
+  expect(after.past).toBe(before.past + 1)
+  expect(after.fittings[0].drawer).toMatchObject({ runnerModel: 'accuride-3832e', runnerLength: 450, sideClearance: 13 })
+  await page.getByTestId('drawer-runner-length').selectOption('500')
+  await expect(page.getByTestId('drawer-runner-editor').getByRole('alert')).toBeVisible()
+  expect(await store(page)).toEqual(after)
+  await page.getByTestId('drawer-runner-length').selectOption('400')
+  await expect(page.getByTestId('drawer-runner-travel')).toContainText('406 mm')
+  await expect(page.getByTestId('drawer-runner-editor').getByRole('alert')).toHaveCount(0)
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await expect(page.getByTestId('drawer-runner-length')).toHaveValue('450')
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await expect(model).toHaveValue('custom')
+  expect((await store(page)).fittings).toEqual(before.fittings)
+})
+
+test('batch catalog choice finds a common standard length and rejects a too-shallow member atomically', async ({ page }) => {
+  await openApp(page)
+  await page.evaluate(() => {
+    const api = (window as any).__aluframe
+    api.tool.getState().putDown()
+    const base = { kind: 'drawer', width: 600, height: 240, position: [0, 200, 0], quaternion: [0, 0, 0, 1], material: 'ply', open: 0 }
+    api.store.getState().loadDocument({ profiles: [], connectors: [], panels: [], equipment: [], throughRule: 'rails', fittings: [
+      { ...base, id: 'deep', depth: 500 }, { ...base, id: 'shallow', depth: 420, position: [1000, 200, 0] },
+      { ...base, id: 'tiny', depth: 280, position: [2000, 200, 0] },
+    ] })
+    api.store.getState().selectItems(['deep', 'shallow'])
+  })
+  await page.getByTestId('sidebar-tab-properties').click()
+  await page.getByTestId('drawer-runner-model').selectOption('accuride-3832e')
+  expect((await store(page)).fittings.slice(0, 2).map(f => f.drawer.runnerLength)).toEqual([400, 400])
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await page.evaluate(() => (window as any).__aluframe.store.getState().selectItems(['deep', 'tiny']))
+  const before = await store(page)
+  await page.getByTestId('drawer-runner-model').selectOption('accuride-3832e')
+  await expect(page.getByTestId('drawer-runner-editor').getByRole('alert')).toBeVisible()
+  expect(await store(page)).toEqual(before)
+})

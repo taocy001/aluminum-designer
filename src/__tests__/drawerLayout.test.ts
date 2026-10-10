@@ -90,7 +90,10 @@ describe('drawer configuration transaction', () => {
     const b = drawer({ id: 'b', drawer: { reinforcement: { count: 1, width: 50, height: 25 } } })
     const locked = drawer({ id: 'locked', locked: true })
     useStore.setState({ fittings: [a, b, locked] })
-    expect(updateDrawerConfig(['drawer', 'b', 'locked'], { reinforcement: { count: 2 } })).toBe(true)
+    const unchanged = useStore.getState()
+    expect(updateDrawerConfig(['drawer', 'b', 'locked'], { reinforcement: { count: 2 } })).toBe(false)
+    expect(useStore.getState()).toBe(unchanged)
+    expect(updateDrawerConfig(['drawer', 'b'], { reinforcement: { count: 2 } })).toBe(true)
     const next = useStore.getState().fittings
     expect(next.map((f) => f.drawer?.reinforcement)).toEqual([{ count: 2, width: 30, height: 15 }, { count: 2, width: 50, height: 25 }, undefined])
     expect(useStore.getState().past).toHaveLength(1)

@@ -1,6 +1,7 @@
 import { validBoardFabrication, validFabricatedBoard } from './boardFabrication'
 import { fittingParts } from './fittingGeometry'
 import type { FittingData } from '../store/useStore'
+import { ACCURIDE_3832E, runnerVariant } from './drawerRunnerCatalog'
 import { drawerLayout } from './drawerLayout'
 import { handleFitsFront, validHandleFields } from './fittingHandle'
 
@@ -15,6 +16,7 @@ const optional = (v: unknown, valid: (v: unknown) => boolean) => v === undefined
 function validDrawerConfig(value: unknown): boolean {
   if (!record(value)) return false
   return Object.entries(value).every(([key, v]) => {
+    if (key === 'runnerModel') return v === undefined || oneOf(v, ['custom', ACCURIDE_3832E.id])
     if (v === undefined) return ['sideClearance', 'boxThickness', 'bottomThickness', 'rearClearance', 'runnerLength', 'runnerTravel', 'reinforcement'].includes(key)
     if (key === 'reinforcement') return record(v) && Object.keys(v).every((k) => ['count', 'width', 'height'].includes(k))
       && finite(v.count) && Number.isInteger(v.count) && v.count >= 0 && v.count <= 4
@@ -61,10 +63,17 @@ export function validFittingDimensions(f: FittingData): boolean {
   if (!optional(f.drawer, validDrawerConfig)) return false
   const d = drawerLayout(f)
   const { reinforcement: r } = d.config
+  if (d.config.runnerModel === ACCURIDE_3832E.id) {
+    const variant = runnerVariant(f.drawer?.runnerLength)
+    if (!variant || d.config.sideClearance < ACCURIDE_3832E.sideClearance.min
+      || d.config.sideClearance > ACCURIDE_3832E.sideClearance.max
+      || d.boxHeight < ACCURIDE_3832E.height || d.runnerLength > d.availableRunnerDepth
+      || (f.drawer?.runnerTravel !== undefined && f.drawer.runnerTravel !== variant.travel)) return false
+  }
   return Object.values(d).filter((v) => typeof v === 'number').every(finite)
     && d.boxWidth > 40 && d.boxDepth > 40 && d.innerWidth > 0 && d.innerHeight > 0 && d.innerDepth > 0
     && r.count * r.width <= d.innerWidth && d.runnerLength > 0 && d.runnerLength <= Math.min(f.depth, d.boxDepth)
-    && (f.drawer?.runnerTravel === undefined || d.travel <= d.runnerLength)
+    && (d.config.runnerModel === ACCURIDE_3832E.id || f.drawer?.runnerTravel === undefined || d.travel <= d.runnerLength)
 }
 
 export function validFitting(value: unknown): value is FittingData {
