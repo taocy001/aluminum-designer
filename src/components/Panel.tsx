@@ -1,3 +1,4 @@
+import { SharedStandardMaterial, SharedLineMaterial } from './RenderResources'
 import React, { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useStore, type PanelData } from '../store/useStore'
@@ -37,7 +38,7 @@ const Panel: React.FC<PanelData & { isSelected?: boolean }> = ({
   return (
     <group position={position} quaternion={quat} userData={{ panelId: id }}>
       <mesh geometry={geometry}>
-        <meshStandardMaterial
+        <SharedStandardMaterial
           color={color}
           transparent={look.opacity < 1}
           opacity={look.opacity}
@@ -46,7 +47,7 @@ const Panel: React.FC<PanelData & { isSelected?: boolean }> = ({
         />
       </mesh>
       <lineSegments geometry={edges} raycast={() => null}>
-        <lineBasicMaterial color={isSelected ? '#93c5fd' : '#475569'} transparent opacity={0.8} />
+        <SharedLineMaterial color={isSelected ? '#93c5fd' : '#475569'} opacity={0.8} />
       </lineSegments>
     </group>
   )

@@ -39,6 +39,17 @@ try {
       return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'unknown'
     }, { doc, copies, kinds })
     await page.waitForTimeout(1200)
+    const resources = await page.evaluate(() => {
+      const geometries = new Set(), materials = new Set()
+      let renderables = 0
+      window.__aluframe.sceneRoot.traverseVisible(o => {
+        if (!o.isMesh && !o.isLine) return
+        renderables++
+        if (o.geometry) geometries.add(o.geometry.uuid)
+        for (const material of Array.isArray(o.material) ? o.material : [o.material]) if (material) materials.add(material.uuid)
+      })
+      return { renderables, geometries: geometries.size, materials: materials.size }
+    })
     const points = doc.profiles.map(p => new Vector3(0, 0, p.length / 2).applyQuaternion(new Quaternion(...p.quaternion)).add(new Vector3(...p.position)).toArray())
     const target = await page.evaluate(points => {
       for (const p of points) {
@@ -93,7 +104,7 @@ try {
     await page.waitForTimeout(300)
     assert.notDeepEqual(await page.evaluate(() => window.__aluframe.worldToClient(0, 0, 0)), cameraBefore, 'Wheel and orbit must change the view')
     const intervals = drag.frames.slice(1).map((t, i) => t - drag.frames[i]).filter(t => t > .5)
-    results.push({ copies, counts: Object.fromEntries(kinds.map(k => [k, doc[k].length])), renderer,
+    results.push({ copies, counts: Object.fromEntries(kinds.map(k => [k, doc[k].length])), renderer, resources,
       pick: statistics(pickSamples), dragInputRoundTrip: statistics(inputSamples), frameIntervals: statistics(intervals),
       dragElapsedMs: drag.elapsedMs, navigationElapsedMs: performance.now() - navigationStart })
     console.log(JSON.stringify(results.at(-1)))

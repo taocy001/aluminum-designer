@@ -1,3 +1,4 @@
+import { SharedStandardMaterial } from './RenderResources'
 import React, { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useToolStore } from '../store/useToolStore'
@@ -34,7 +35,7 @@ function Instances({ batch }: { batch: Batch }) {
   return <instancedMesh ref={ref} args={[undefined, undefined, batch.parts.length]}
     userData={{ partIds: batch.parts.map(p => p.id) }}>
     <primitive object={batch.geometry} attach="geometry" />
-    <meshStandardMaterial color={batch.color} emissive={batch.glow}
+    <SharedStandardMaterial color={batch.color} emissive={batch.glow}
       emissiveIntensity={batch.glow === '#000000' ? 0 : 0.9}
       metalness={batch.polished ? 0.8 : 0.3} roughness={batch.polished ? 0.2 : 0.55} />
   </instancedMesh>

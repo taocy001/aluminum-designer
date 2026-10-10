@@ -1,3 +1,4 @@
+import { SharedStandardMaterial, SharedLineMaterial } from './RenderResources'
 import React, { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
@@ -34,12 +35,12 @@ const BoardView = React.memo(({ board, holes, color, look, selected }: {
   return <group position={board.position} quaternion={quaternion}>
     <mesh userData={{ fittingBoard: board.role }}>
       <primitive object={geometry} attach="geometry" />
-      <meshStandardMaterial color={color} transparent={look.opacity < 1} opacity={look.opacity}
+      <SharedStandardMaterial color={color} transparent={look.opacity < 1} opacity={look.opacity}
         metalness={look.metalness} roughness={look.roughness} />
     </mesh>
     <lineSegments raycast={() => null}>
       <primitive object={edges} attach="geometry" />
-      <lineBasicMaterial color={selected ? '#93c5fd' : '#475569'} transparent opacity={0.8} />
+      <SharedLineMaterial color={selected ? '#93c5fd' : '#475569'} opacity={0.8} />
     </lineSegments>
   </group>
 })
@@ -83,7 +84,7 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
       {parts.hinges.map((h, i) => (
         <mesh key={`h${i}`} position={h} raycast={() => null}>
           <cylinderGeometry args={[5, 5, f.hingeType === 'continuous' ? f.height : 30, 10]} />
-          <meshStandardMaterial color="#94a3b8" metalness={0.35} roughness={0.45} />
+          <SharedStandardMaterial color="#94a3b8" metalness={0.35} roughness={0.45} />
         </mesh>
       ))}
 
@@ -94,12 +95,12 @@ const Fitting: React.FC<FittingData & { isSelected?: boolean }> = (f) => {
           {handle.mounts.map((mount, i) => (
             <mesh key={i} position={mount.position} name="handle-mount" raycast={() => null}>
               <boxGeometry args={mount.size} />
-              <meshStandardMaterial color="#64748b" metalness={0.5} roughness={0.35} />
+              <SharedStandardMaterial color="#64748b" metalness={0.5} roughness={0.35} />
             </mesh>
           ))}
           <mesh position={handle.grip.position} name="handle-grip" raycast={() => null}>
             <boxGeometry args={handle.grip.size} />
-            <meshStandardMaterial color="#64748b" metalness={0.5} roughness={0.35} />
+            <SharedStandardMaterial color="#64748b" metalness={0.5} roughness={0.35} />
           </mesh>
         </group>
       </group>

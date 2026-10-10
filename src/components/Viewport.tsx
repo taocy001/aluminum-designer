@@ -1,3 +1,4 @@
+import { RenderResourceProvider } from './RenderResources'
 import { useShallow } from 'zustand/react/shallow'
 import { useViewStore, isObjectVisible } from '../store/useViewStore'
 import { useInspectionStore } from '../store/useInspectionStore'
@@ -579,6 +580,7 @@ const Viewport: React.FC = () => {
       style={{ touchAction: 'none' }}
     >
       <Suspense fallback={null}>
+      <RenderResourceProvider>
       <color attach="background" args={['#1e293b']} />
       <ambientLight intensity={0.6} />
       <directionalLight position={[300, 500, 300]} intensity={1.2} />
@@ -632,6 +634,7 @@ const Viewport: React.FC = () => {
       <InspectionMarker />
       <Gestures />
       <DevHook />
+      </RenderResourceProvider>
       </Suspense>
     </Canvas>
   )

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import * as THREE from 'three'
-import { getProfileShape, ProfileSpec } from '../utils/profileShapes'
+import type { ProfileSpec } from '../utils/profileShapes'
+import { useRenderResources, SharedStandardMaterial } from './RenderResources'
 import { useToolStore } from '../store/useToolStore'
 import type { ProfileTrims } from '../utils/jointUtils'
 
@@ -28,12 +29,7 @@ const Profile: React.FC<ProfileProps> = ({
   const isSnapTarget = useToolStore((s) => s.hoverTargetId === id || s.snapRefIds.includes(id)) && !faceFeedbackOnly
   const isHovered = useToolStore((s) => !s.isDragging && s.hoverProfileId === id) && !faceFeedbackOnly
 
-  const geometry = useMemo(() => {
-    const shape = getProfileShape(spec)
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false })
-    geo.computeVertexNormals()
-    return geo
-  }, [spec])
+  const geometry = useRenderResources().profile(spec)
 
   // Real (trimmed) geometry: butt ends are cut back, through ends extended
   const quat = useMemo(() => new THREE.Quaternion(...quaternion).normalize(), [quaternion])
@@ -61,18 +57,18 @@ const Profile: React.FC<ProfileProps> = ({
       position={meshPos}
       quaternion={quat}
       scale={[1, 1, cutLen]}
-      geometry={geometry}
       userData={{ profileId: id }}
     >
-      <meshStandardMaterial
+      <primitive object={geometry} attach="geometry" />
+      <SharedStandardMaterial
         color={color}
         metalness={locked ? 0.55 : 0.3}
         roughness={locked ? 0.35 : 0.6}
-        emissive={conflict && isSelected ? new THREE.Color('#1d4ed8')
-          : conflict ? new THREE.Color('#7f1d1d')
-          : isSnapTarget ? new THREE.Color('#0e7490')
-          : isHovered && !isSelected ? new THREE.Color('#1e40af')
-          : new THREE.Color(0, 0, 0)}
+        emissive={conflict && isSelected ? '#1d4ed8'
+          : conflict ? '#7f1d1d'
+          : isSnapTarget ? '#0e7490'
+          : isHovered && !isSelected ? '#1e40af'
+          : '#000000'}
         emissiveIntensity={isSnapTarget ? 0.6 : 0.8}
       />
     </mesh>
