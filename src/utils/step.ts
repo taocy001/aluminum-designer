@@ -74,6 +74,28 @@ class Step {
     return [...header, ...this.lines, ...footer].join('\n')
   }
 
+  /** STEP strings are escaped to ASCII, so characters and UTF-8 bytes have equal length. */
+  bytes(header: string[], footer: string[]): ArrayBuffer {
+    this.pool.clear()
+    const groups = [header, this.lines, footer]
+    let length = 0
+    for (const lines of groups) for (const line of lines) length += line.length + 1
+    const bytes = new Uint8Array(length)
+    const encoder = new TextEncoder()
+    let offset = 0
+    for (const lines of groups) {
+      for (let i = 0; i < lines.length; i += 4096) {
+        const chunk = lines.slice(i, i + 4096).join('\n') + '\n'
+        // Empty groups contain no records or line terminators.
+        const encoded = encoder.encodeInto(chunk, bytes.subarray(offset))
+        if (encoded.read !== chunk.length || encoded.written !== chunk.length) throw new Error('STEP text must be ASCII escaped')
+        offset += encoded.written
+      }
+    }
+    if (offset !== length) throw new Error('Incomplete STEP output')
+    return bytes.buffer
+  }
+
   get count(): number { return this.n }
 }
 
@@ -218,7 +240,16 @@ function meshShells(s: Step, geometry: THREE.BufferGeometry, transform: THREE.Ma
 
 const mm = (v: number) => Math.round(v * 10) / 10
 
-export function buildStep({ profiles, panels = [], fittings = [], connectors = [], rule, trims: suppliedTrims, name = 'frame' }: StepInput): string {
+export function buildStep(input: StepInput): string {
+  return writeStep(input, (step, header, footer) => step.body(header, footer) + '\n')
+}
+
+export function buildStepBytes(input: StepInput): ArrayBuffer {
+  return writeStep(input, (step, header, footer) => step.bytes(header, footer))
+}
+
+function writeStep<T>({ profiles, panels = [], fittings = [], connectors = [], rule, trims: suppliedTrims, name = 'frame' }: StepInput,
+  output: (step: Step, header: string[], footer: string[]) => T): T {
   const s = new Step()
 
   // units and the one geometric context every representation shares
@@ -348,5 +379,5 @@ export function buildStep({ profiles, panels = [], fittings = [], connectors = [
     'ENDSEC;',
     'DATA;',
   ]
-  return s.body(head, ['ENDSEC;', 'END-ISO-10303-21;']) + '\n'
+  return output(s, head, ['ENDSEC;', 'END-ISO-10303-21;'])
 }

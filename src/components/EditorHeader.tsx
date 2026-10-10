@@ -26,7 +26,7 @@ export default function EditorHeader() {
   useStore(s => [s.past.length, s.future.length].join(','))
   const undoReason = commandReason(commands.find(c => c.id === 'undo')!)
   const redoReason = commandReason(commands.find(c => c.id === 'redo')!)
-  const { language, setLanguage, showToast } = useToolStore()
+  const { language, setLanguage, showToast, stepExporting } = useToolStore()
   const zh = language === 'zh'
   const t = translations[language]
   const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -199,7 +199,7 @@ export default function EditorHeader() {
           <button role="menuitem" className={item} data-testid="save-as" onClick={() => runCommand("save-as")}><FileJson size={16} /><span>{zh ? '另存为…' : 'Save as…'}</span><kbd>{commandShortcut('save-as')}</kbd></button>
           <div className="file-menu-divider" />
           {(['bom', 'cutting', 'dxf', 'step', 'assembly'] as const).map((kind, index) => <button key={kind} role="menuitem" className={item} data-testid={`export-${kind}`}
-            disabled={kind === 'cutting' ? !counts[0] : kind === 'dxf' || kind === 'step' ? !counts.slice(0, 4).some(Boolean) : !hasParts}
+            disabled={kind === 'step' && stepExporting || (kind === 'cutting' ? !counts[0] : kind === 'dxf' || kind === 'step' ? !counts.slice(0, 4).some(Boolean) : !hasParts)}
             onClick={() => { closeMenu(); window.dispatchEvent(new CustomEvent('aluframe:export', { detail: kind })) }}><Download size={16} /><span>{(zh
               ? ['导出物料清单…', '导出下料方案…', '导出 DXF…', '导出 STEP…', '导出装配图…']
               : ['Export bill of materials…', 'Export cutting plan…', 'Export DXF…', 'Export STEP…', 'Export assembly guide…'])[index]}</span></button>)}

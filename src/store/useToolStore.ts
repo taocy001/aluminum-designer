@@ -22,6 +22,7 @@ interface ToolState {
   held: HeldKind | null
   activeSpec: ProfileSpec
   activeConnectorType: string | null
+  stepExporting: boolean
   language: Language
   cameraResetTrigger: number
   cameraViewRequest: { view: CameraView; sequence: number } | null
@@ -227,6 +228,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   held: null,
   activeSpec: '2020',
   activeConnectorType: null,
+  stepExporting: false,
   language: 'zh',
   cameraResetTrigger: 0,
   cameraViewRequest: null,

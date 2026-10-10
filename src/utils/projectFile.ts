@@ -1,6 +1,9 @@
 /** Download a text file when direct file access is unavailable. */
 export function downloadText(filename: string, text: string, mime: string) {
-  const blob = new Blob([text], { type: mime })
+  downloadBlob(filename, new Blob([text], { type: mime }))
+}
+
+export function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

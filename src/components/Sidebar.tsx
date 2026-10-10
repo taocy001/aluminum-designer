@@ -41,7 +41,7 @@ import { downloadText } from '../utils/projectFile'
 import { clearOpLog, opLog, opLogText, subscribeOpLog } from '../utils/opLog'
 import { nestProfiles, nestingCsv } from '../utils/nesting'
 import { buildDxf } from '../utils/dxf'
-import { buildStep as buildStepFile } from '../utils/step'
+import { useStepExport } from '../hooks/useStepExport'
 import { TEMPLATES, templateById } from '../utils/templates'
 import { swingClashes, swingOf } from '../utils/fittingGeometry'
 import { repairJoints } from '../utils/repairJoints'
@@ -390,10 +390,9 @@ const Sidebar: React.FC = () => {
       buildDxf({ profiles, panels, fittings, connectors, rule: throughRule, trims }), 'application/dxf')
     notifyExport()
   }
+  const stepExport = useStepExport()
   const handleExportStep = () => {
-    downloadText(`aluframe-${new Date().toISOString().slice(0, 10)}.step`,
-      buildStepFile({ profiles, panels, fittings, connectors, rule: throughRule, trims }), 'application/step')
-    notifyExport()
+    void stepExport.start({ profiles, panels, fittings, connectors, rule: throughRule, trims }, reviewCount)
   }
   const handleExportAssembly = async () => {
     const { buildAssemblyHtml } = await import('../utils/assemblyHtml')
@@ -436,6 +435,7 @@ const Sidebar: React.FC = () => {
       <div className={`bg-slate-800 border-white/5 flex shrink-0 ${narrow
         ? 'w-full h-11 border-t flex-row items-center gap-3 px-3 order-last'
         : 'w-11 border-r flex-col items-center gap-2 py-3'}`} data-testid="sidebar-rail">
+        {stepExport.status}
         <button onClick={() => setCollapsed(false)} title={t.expandPanel} data-testid="sidebar-expand"
           className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><PanelLeftOpen size={16} /></button>
         <div className={narrow ? 'h-6 w-px bg-white/10' : 'w-6 h-px bg-white/10'} />
@@ -450,6 +450,7 @@ const Sidebar: React.FC = () => {
     <div className={`bg-slate-800 border-white/5 flex flex-col text-slate-200 shrink-0 ${narrow
       ? 'w-full border-t max-h-[62vh] order-last'
       : 'w-80 border-r'}`} data-testid="sidebar">
+      {stepExport.status}
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 shrink-0">
         <span className="text-xs font-medium text-slate-300">{language === 'zh' ? '设计面板' : 'Design panel'}</span>
         <button onClick={() => setCollapsed(true)} title={t.collapsePanel} data-testid="sidebar-collapse"
@@ -1370,7 +1371,7 @@ const Sidebar: React.FC = () => {
               data-testid="export-dxf" title={t.hintExportDxf} className={FILE_BTN}>
               <FileCode size={13} className="text-blue-400" /> {t.exportDxf}
             </button>
-            <button onClick={handleExportStep} disabled={profiles.length + connectors.length + panels.length + fittings.length === 0}
+            <button onClick={handleExportStep} disabled={stepExport.busy || profiles.length + connectors.length + panels.length + fittings.length === 0}
               data-testid="export-step" title={t.hintExportStep} className={FILE_BTN}>
               <Box size={13} className="text-blue-400" /> {t.exportStep}
             </button>
