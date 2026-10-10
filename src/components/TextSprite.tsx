@@ -80,14 +80,19 @@ const TextSprite: React.FC<Props> = ({ text, position, height = 26, color = '#e2
     if (throughWalls || !ref.current) return
     return registerLabel({ sprite: ref.current, priority, owner })
   }, [throughWalls, priority, owner])
+  const anchor = useMemo(() => new THREE.Vector3(), [])
+  const lean = useMemo(() => new THREE.Vector3(), [])
   useFrame(({ camera }) => {
     const sp = ref.current
     if (!sp || throughWalls) return
-    const anchor = Array.isArray(position) ? new THREE.Vector3(...position) : position
-    const lean = camera.position.clone().sub(anchor)
+    anchor.set(...position)
+    sp.parent?.localToWorld(anchor)
+    lean.copy(camera.position).sub(anchor)
     const d = lean.length()
     if (d < 1e-6) return
-    sp.position.copy(anchor).addScaledVector(lean, Math.min(LEAN, d * 0.25) / d)
+    anchor.addScaledVector(lean, Math.min(LEAN, d * 0.25) / d)
+    sp.parent?.worldToLocal(anchor)
+    sp.position.copy(anchor)
   })
 
   return (

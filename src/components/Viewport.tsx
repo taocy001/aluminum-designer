@@ -547,6 +547,7 @@ const Viewport: React.FC = () => {
     [buildStep, profiles, connectors, panels, fittings, throughRule])
   const on = useMemo(() => (steps && buildStep !== null ? shownAt(steps, buildStep) : null), [steps, buildStep])
   const { hiddenIds, isolatedIds } = useViewStore()
+  const selected = useMemo(() => new Set(selectedIds), [selectedIds])
   const hidden = new Set(hiddenIds), isolated = isolatedIds ? new Set(isolatedIds) : null
   const showing = <T extends { id: string }>(list: T[], kind: 'profiles' | 'connectors' | 'panels' | 'fittings' | 'equipment') =>
     list.filter(x => !hidden.has(x.id) && (!isolated || isolated.has(x.id)) && (!on || kind === 'equipment' || on[kind].has(x.id)))
@@ -586,26 +587,26 @@ const Viewport: React.FC = () => {
       <Grid infiniteGrid cellSize={50} sectionSize={500} fadeDistance={6000} fadeStrength={1.5} cellColor="#334155" sectionColor="#475569" position={[0, -0.5, 0]} />
 
       {showing(profiles, 'profiles').map((p) => (
-        <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selectedIds.includes(p.id)} conflict={conflictIds.has(p.id)} />
+        <Profile key={p.id} {...p} trims={trims.get(p.id)} isSelected={selected.has(p.id)} conflict={conflictIds.has(p.id)} />
       ))}
 
       <Connectors parts={showing(connectors, 'connectors')} selectedIds={selectedIds} />
 
       {showing(panels, 'panels').map((b) => (
-        <Panel key={b.id} {...b} isSelected={selectedIds.includes(b.id)} />
+        <Panel key={b.id} {...b} isSelected={selected.has(b.id)} />
       ))}
 
       {showFittings && showing(fittings, 'fittings').map((f) => (
-        <Fitting key={f.id} {...f} isSelected={selectedIds.includes(f.id)} />
+        <Fitting key={f.id} {...f} isSelected={selected.has(f.id)} />
       ))}
 
-      {showing(equipment, 'equipment').map((e) => <Equipment key={e.id} {...e} isSelected={selectedIds.includes(e.id)} conflict={equipmentKinds.get(e.id)} />)}
+      {showing(equipment, 'equipment').map((e) => <Equipment key={e.id} {...e} isSelected={selected.has(e.id)} conflict={equipmentKinds.get(e.id)} />)}
 
       <MeasureOverlay />
       {showDimensionLabels && <DimensionLabels trims={trims} visibleIds={visibleIds} />}
       {showPartNumbers && <PartNumberLabels profiles={showing(profiles, 'profiles')} connectors={showing(connectors, 'connectors')}
         panels={showing(panels, 'panels')} fittings={showFittings ? showing(fittings, 'fittings') : []} trims={trims} />}
-      <FrameDimensions visibleIds={visibleIds} />
+      <FrameDimensions visibleIds={visibleIds} trims={trims} />
       <LabelLayout />
       <ConflictMarkers conflicts={conflicts.filter(c => visibleIds.has(c.a) && visibleIds.has(c.b))} />
       {equipmentConflicts.filter(c => visibleIds.has(c.a) && visibleIds.has(c.b)).map((c) => <ConflictMarker key={`${c.a}-${c.b}-${c.kind}`} conflict={c} clearance={c.kind === 'equipment-clearance'} />)}

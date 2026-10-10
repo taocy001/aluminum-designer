@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useToolStore } from '../store/useToolStore'
 
 /** Resolve label visibility centrally using occlusion, screen overlap, priority and camera distance. */
 export interface LabelEntry {
@@ -50,9 +51,11 @@ const LabelLayout: React.FC = () => {
   const last = useRef({ at: 0, view: new THREE.Matrix4(), movedAt: 0, pending: true })
 
   useFrame(() => {
+    if (!entries.size) return
     const now = performance.now()
     const st = last.current
-    if (!st.view.equals(camera.matrixWorld)) {
+    const tool = useToolStore.getState()
+    if (tool.isDragging || tool.resize || tool.rotationGesture || !st.view.equals(camera.matrixWorld)) {
       st.view.copy(camera.matrixWorld); st.movedAt = now; st.pending = true
       return
     }

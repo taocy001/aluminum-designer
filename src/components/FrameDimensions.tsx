@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Line } from '@react-three/drei'
 import { useStore } from '../store/useStore'
 import { useToolStore } from '../store/useToolStore'
-import { computeAllTrims, computeFrameBounds } from '../utils/jointUtils'
+import { computeFrameBounds, type ProfileTrims } from '../utils/jointUtils'
 import TextSprite from './TextSprite'
 
 /** how far outside the frame the dimension lines stand off, as a fraction of the frame */
@@ -30,12 +30,10 @@ const Dim: React.FC<{ from: THREE.Vector3; to: THREE.Vector3; tick: THREE.Vector
   }
 
 /** Overall dimensions, controlled by the dimension-label visibility setting. */
-const FrameDimensions: React.FC<{ visibleIds?: Set<string> }> = ({ visibleIds }) => {
+const FrameDimensions: React.FC<{ visibleIds?: Set<string>; trims: Map<string, ProfileTrims> }> = ({ visibleIds, trims }) => {
   const profiles = useStore((s) => s.profiles)
   const panels = useStore((s) => s.panels)
-  const throughRule = useStore((s) => s.throughRule)
   const show = useToolStore((s) => s.showDimensionLabels)
-  const trims = useMemo(() => show ? computeAllTrims(profiles) : new Map(), [show, profiles, throughRule])
 
   const bounds = useMemo(() => {
     if (!show) return null
@@ -54,8 +52,16 @@ const FrameDimensions: React.FC<{ visibleIds?: Set<string> }> = ({ visibleIds })
   }, [show, profiles, trims, panels, visibleIds])
 
   if (!show || !bounds || profiles.length === 0) return null
-  const min = bounds.min, max = bounds.max
   const size = bounds.getSize(new THREE.Vector3())
+  return <group name="frame-dimensions" position={bounds.min}>
+    <DimensionLines width={size.x} height={size.y} depth={size.z} />
+  </group>
+}
+
+/** Local lines stay unchanged when the whole frame translates. */
+const DimensionLines = React.memo(({ width, height, depth }: { width: number; height: number; depth: number }) => {
+  const min = new THREE.Vector3(), max = new THREE.Vector3(width, height, depth)
+  const size = max
   const off = Math.max(MIN_OFFSET, Math.max(size.x, size.y, size.z) * OFFSET_RATIO)
 
   // width along X, in front of the frame and on the floor
@@ -72,12 +78,12 @@ const FrameDimensions: React.FC<{ visibleIds?: Set<string> }> = ({ visibleIds })
   const label = Math.max(40, Math.max(size.x, size.y, size.z) * 0.035)
 
   return (
-    <group name="frame-dimensions">
+    <group>
       <Dim from={wFrom} to={wTo} tick={new THREE.Vector3(0, 0, off * 0.4)} color={AXIS_COLOR.x} label={label} />
       <Dim from={dFrom} to={dTo} tick={new THREE.Vector3(off * 0.4, 0, 0)} color={AXIS_COLOR.z} label={label} />
       <Dim from={hFrom} to={hTo} tick={new THREE.Vector3(off * 0.4, 0, 0)} color={AXIS_COLOR.y} label={label} />
     </group>
   )
-}
+})
 
 export default FrameDimensions

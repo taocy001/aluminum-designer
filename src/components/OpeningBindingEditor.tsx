@@ -14,7 +14,9 @@ const fieldClass = 'min-w-0 w-full rounded bg-slate-950 border border-white/10 p
 /** Attach a single existing part to faces explicitly chosen from the selection. */
 export default function OpeningBindingEditor({ part, kind }: { part: FittingData | PanelData; kind: 'fitting' | 'panel' }) {
   const { profiles, selectedIds, throughRule, selectItems } = useSettledDocument()
-  const { language, viewMode, showToast } = useToolStore()
+  const language = useToolStore(s => s.language)
+  const viewMode = useToolStore(s => s.viewMode)
+  const showToast = useToolStore(s => s.showToast)
   const t = translations[language]
   const binding = part.openingBinding
   const [enabled, setEnabled] = useState(!!binding)
@@ -46,9 +48,12 @@ export default function OpeningBindingEditor({ part, kind }: { part: FittingData
     }
   // Geometry updates do not discard a draft face selection.
   }, [part.id, binding, kind])
-  const orientation = kind === 'panel' ? panelOpeningOrientation(part.quaternion, mode) : part.quaternion
-  const sources = [...new Set([...selectedIds, ...(binding ? sourceIds(binding.opening) : [])])]
-  const options = openingFaceOptions(profiles, sources, orientation, throughRule)
+  const orientation = useMemo(() => kind === 'panel' ? panelOpeningOrientation(part.quaternion, mode) : part.quaternion,
+    [kind, part.quaternion, mode])
+  const sources = useMemo(() => [...new Set([...selectedIds, ...(binding ? sourceIds(binding.opening) : [])])],
+    [selectedIds, binding])
+  const options = useMemo(() => openingFaceOptions(profiles, sources, orientation, throughRule),
+    [profiles, sources, orientation, throughRule])
   const candidate = useMemo(() => {
     const result: Partial<OpeningRef> = {}
     for (const role of roles) {
@@ -64,8 +69,10 @@ export default function OpeningBindingEditor({ part, kind }: { part: FittingData
     }
     return result as OpeningRef
   }, [faces, options, fixedBack, depth])
-  const preview = candidate ? resolveOpening(candidate, profiles, throughRule) : null
-  const current = binding ? resolveOpening(binding.opening, profiles, throughRule) : null
+  const preview = useMemo(() => candidate ? resolveOpening(candidate, profiles, throughRule) : null,
+    [candidate, profiles, throughRule])
+  const current = useMemo(() => binding ? resolveOpening(binding.opening, profiles, throughRule) : null,
+    [binding, profiles, throughRule])
   const labels = { left: t.bindingLeft, right: t.bindingRight, bottom: t.bindingBottom,
     top: t.bindingTop, front: t.bindingFront, back: t.bindingBack }
   const disabled = viewMode || !!part.locked
@@ -171,7 +178,9 @@ export default function OpeningBindingEditor({ part, kind }: { part: FittingData
 /** Status and detach controls for generated rails and their brackets. */
 export function SupportBindingEditor({ part }: { part: ProfileData | ConnectorData }) {
   const { profiles, fittings, throughRule, selectItems } = useSettledDocument()
-  const { language, viewMode, showToast } = useToolStore()
+  const language = useToolStore(s => s.language)
+  const viewMode = useToolStore(s => s.viewMode)
+  const showToast = useToolStore(s => s.showToast)
   const t = translations[language]
   const rail = 'length' in part ? part : profiles.find((p) => p.id === part.supportBinding?.profileId)
   const ref = 'length' in part ? part.runnerBinding?.fittingId : part.supportBinding?.profileId
